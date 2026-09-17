@@ -1,0 +1,291 @@
+{
+  "schema_version": 2,
+  "upstream": {
+    "project": "flashinfer-ai/flashinfer",
+    "ref": "main snapshot 2026-08-05",
+    "url": "https://github.com/flashinfer-ai/flashinfer"
+  },
+  "inventory_status": "bootstrap",
+  "generated_at": "2026-08-05",
+  "entries": [
+    {
+      "upstream": "flashinfer.attention.BatchAttention",
+      "local": "flashinfer.attention.BatchAttention",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.single_prefill_with_kv_cache",
+      "local": "flashinfer.prefill.single_prefill_with_kv_cache",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.decode.single_decode_with_kv_cache",
+      "local": "flashinfer.decode.single_decode_with_kv_cache",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.decode.cudnn_batch_decode_with_kv_cache",
+      "local": "flashinfer.decode.cudnn_batch_decode_with_kv_cache",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "仅 causal；workspace_buffer/is_cuda_graph_compatible 接受并忽略；batch_offsets_* 显式报错；backend=cann(npu_fused_infer_attention_score paged 分支, Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.gemm.bmm_fp8",
+      "local": "flashinfer.gemm.bmm_fp8",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "backend=cann(npu_grouped_matmul fp8 路径, Ascend950)/reference(CPU 反量化 fp32)；fp8 GEMM 属 950 代际特性，910B auto 无候选、reference 需 opt-in，仅保证注册/调度链路可用"
+    },
+    {
+      "upstream": "flashinfer.gemm.gemm_fp8_nt_groupwise",
+      "local": "flashinfer.gemm.gemm_fp8_nt_groupwise",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "backend=cann(npu_grouped_matmul fp8 K 分块+分组 scale 折算, Ascend950)/reference；mma_sm 为 SM100 专属参数接受并忽略；910B 说明同 bmm_fp8"
+    },
+    {
+      "upstream": "flashinfer.fused_moe.RoutingMethodType",
+      "local": "flashinfer.RoutingMethodType",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "IntEnum，取值与上游 fused_moe/core.py 一致（Default/Renormalize/DeepSeekV3/Llama4/RenormalizeNaive/Unspecified = 0..5）"
+    },
+    {
+      "upstream": "flashinfer.fused_moe.reorder_rows_for_gated_act_gemm",
+      "local": "flashinfer.reorder_rows_for_gated_act_gemm",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "trt-llm gen 权重行重排（上下半交错）；上游即纯 torch 实现，host 工具不经 dispatcher；仅支持偶数行 2D 输入（同上游 assert）"
+    },
+    {
+      "upstream": "flashinfer.fused_moe.cutlass_fused_moe",
+      "local": "flashinfer.fused_moe",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "仅非量化路径（fp32/fp16/bf16）；fp8/nvfp4 输入、fp8 block scaling、w4a8、min-latency、tp/cluster 并行显式 NotImplementedError（上游 Blackwell 同样未实现前三项）；ep_size>1 走 CANN megaMoe（dispatch/combine 通信内嵌，需显式传入 moe_context 通信域对象，由 cann_ops_transformer get_symm_buffer_for_mega_moe 创建），单卡走 npu_grouped_matmul；backend=cann(Ascend910B/910_93/950)/reference（reference 仅单卡语义）；NPU 无 CUTLASS 概念，主名去前缀为 fused_moe，上游名 cutlass_fused_moe 保留为别名"
+    },
+    {
+      "upstream": "flashinfer.fused_moe.trtllm_fp8_per_tensor_scale_moe",
+      "local": "flashinfer.fp8_per_tensor_scale_moe",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "仅 reference（CPU 反量化 fp32）；910B 无 fp8 GEMM 算子，950 特性在 910B 只保证注册/调度链路可用；tile_tokens_dim 为 SM100 调度参数接受并忽略；路由语义见 RoutingMethodType；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_per_tensor_scale_moe，上游名保留为别名"
+    },
+    {
+      "upstream": "flashinfer.fused_moe.trtllm_fp8_block_scale_moe",
+      "local": "flashinfer.fp8_block_scale_moe",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "仅 reference（CPU 反量化 fp32，128-block scale 展开）；同 per-tensor 版硬件说明；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_block_scale_moe，上游名保留为别名"
+    },
+    {
+      "upstream": "flashinfer.cascade.merge_state",
+      "local": "flashinfer.cascade.merge_state",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "notes": "合并两段 KV 的注意力输出与 logsumexp；backend=cann(npu_attention_update update_type=1, Ascend910B)/reference；上游 CUDA kernel 同式"
+    },
+    {
+      "upstream": "flashinfer.page.append_paged_kv_cache",
+      "local": "flashinfer.page.append_paged_kv_cache",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.cascade.merge_state_in_place",
+      "local": "flashinfer.cascade.merge_state_in_place",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.quantization.packbits",
+      "local": "flashinfer.quantization.packbits",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.quantization.segment_packbits",
+      "local": "flashinfer.quantization.segment_packbits",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.norm.rmsnorm",
+      "local": "flashinfer.norm.rmsnorm",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "enable_pdl 为 NVIDIA PDL 专属参数，NPU 无对应机制，接受并忽略；backend=cann(aclnn, Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.norm.fused_add_rmsnorm",
+      "local": "flashinfer.norm.fused_add_rmsnorm",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*weight；enable_pdl 接受并忽略；backend=cann(aclnn, Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.norm.gemma_rmsnorm",
+      "local": "flashinfer.norm.gemma_rmsnorm",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "缩放因子 weight+1（Gemma 约定）；enable_pdl 接受并忽略；backend=cann(npu_gemma_rms_norm, Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.norm.gemma_fused_add_rmsnorm",
+      "local": "flashinfer.norm.gemma_fused_add_rmsnorm",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*(weight+1)；CANN 无对应算子（npu_add_rms_norm 乘 gamma 而非 gamma+1），默认走 triton 自定义 kernel；backend=triton(Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.norm.layernorm",
+      "local": "flashinfer.norm.layernorm",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "上游 v0.6.0 起提供；参数名 gemma/beta 与上游一致；backend=cann(npu_layer_norm_eval, Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.rope.apply_rope_with_cos_sin_cache_inplace",
+      "local": "flashinfer.rope.apply_rope_with_cos_sin_cache_inplace",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "notes": "原地语义与上游一致；cos_sin_cache 须 float32（同上游校验）；backend=cann(npu_rotary_mul rotary_mode=half/interleave, Ascend910B)/reference"
+    },
+    {
+      "upstream": "flashinfer.norm.fused_add_rmsnorm_quant",
+      "local": "flashinfer.norm.fused_add_rmsnorm_quant",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.activation.silu_and_mul",
+      "local": "flashinfer.activation.silu_and_mul",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.rope.apply_rope",
+      "local": "flashinfer.rope.apply_rope",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.sampling.sampling_from_probs",
+      "local": "flashinfer.sampling.sampling_from_probs",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.sampling.top_k_sampling_from_probs",
+      "local": "flashinfer.sampling.top_k_sampling_from_probs",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.sampling.top_p_sampling_from_probs",
+      "local": "flashinfer.sampling.top_p_sampling_from_probs",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.sparse.BlockSparseAttentionWrapper",
+      "local": "flashinfer.sparse.BlockSparseAttentionWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P2"
+    },
+    {
+      "upstream": "flashinfer.mla.BatchMLAPagedAttentionWrapper",
+      "local": "flashinfer.mla.BatchMLAPagedAttentionWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "unassessed",
+      "implementation_status": "missing",
+      "priority": "P1"
+    }
+  ]
+}

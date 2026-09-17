@@ -1,0 +1,360 @@
+{
+  "schema_version": 2,
+  "upstream": {
+    "project": "flashinfer-ai/flashinfer",
+    "ref": "main snapshot 2026-08-25",
+    "url": "https://github.com/flashinfer-ai/flashinfer"
+  },
+  "scope": "attention_core",
+  "scope_definition": "Core MHA/GQA attention framework APIs: holistic BatchAttention, single prefill/decode, paged batch prefill/decode, ragged batch prefill, and their documented lifecycle surface. CUDA/TRT-LLM-specific adapters, MLA, sparse attention, cascade, POD, and page mutation APIs are outside this phase.",
+  "inventory_status": "complete",
+  "generated_at": "2026-08-25",
+  "attention_surfaces": [
+    {
+      "surface_id": "mixed_paged_attention",
+      "local": "flashinfer.attention.BatchAttention",
+      "attention_mode": "batch_mixed_paged",
+      "public_lifecycle": "plan_run",
+      "host_reference": true,
+      "provider_routing": "mode_bound",
+      "npu_execution": "integration_required"
+    },
+    {
+      "surface_id": "single_prefill",
+      "local": "flashinfer.prefill.single_prefill_with_kv_cache",
+      "attention_mode": "single_prefill",
+      "public_lifecycle": "one_shot",
+      "host_reference": true,
+      "provider_routing": "ephemeral",
+      "npu_execution": "integration_required"
+    },
+    {
+      "surface_id": "paged_batch_prefill",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
+      "attention_mode": "batch_prefill_paged",
+      "public_lifecycle": "plan_run",
+      "host_reference": true,
+      "provider_routing": "mode_bound",
+      "npu_execution": "integration_required"
+    },
+    {
+      "surface_id": "ragged_batch_prefill",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+      "attention_mode": "batch_prefill_ragged",
+      "public_lifecycle": "plan_run",
+      "host_reference": true,
+      "provider_routing": "mode_bound",
+      "npu_execution": "integration_required"
+    },
+    {
+      "surface_id": "single_decode",
+      "local": "flashinfer.decode.single_decode_with_kv_cache",
+      "attention_mode": "single_decode",
+      "public_lifecycle": "one_shot",
+      "host_reference": true,
+      "provider_routing": "ephemeral",
+      "npu_execution": "integration_required"
+    },
+    {
+      "surface_id": "paged_batch_decode",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+      "attention_mode": "batch_decode_paged",
+      "public_lifecycle": "plan_run",
+      "host_reference": true,
+      "provider_routing": "mode_bound",
+      "npu_execution": "integration_required"
+    }
+  ],
+  "entries": [
+    {
+      "upstream": "flashinfer.attention.BatchAttention",
+      "local": "flashinfer.attention.BatchAttention",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Public plan/run facade executes mixed paged prefill/decode requests and always returns output plus LSE. device='cpu' is an explicit oracle opt-in; an NPU device owns a private mode-bound provider resolver."
+    },
+    {
+      "upstream": "flashinfer.attention.BatchAttention.plan",
+      "local": "flashinfer.attention.BatchAttention.plan",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.attention.BatchAttention.run",
+      "local": "flashinfer.attention.BatchAttention.run",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.single_prefill_with_kv_cache",
+      "local": "flashinfer.prefill.single_prefill_with_kv_cache",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Exact snapshot signature with executable Host ReferenceTensor semantics. backend='reference' explicitly selects the oracle; backend='auto' with NPU tensors owns an ephemeral provider resolver. NVFP4 kv_cache_sf remains an explicit gap."
+    },
+    {
+      "upstream": "flashinfer.prefill.single_prefill_with_kv_cache_with_jit_module",
+      "local": "flashinfer.prefill.single_prefill_with_kv_cache_with_jit_module",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "framework",
+      "priority": "P1",
+      "notes": "Host injected-module protocol freezes the upstream signature, 32 MiB scratch metadata, output/LSE shapes, NHD/HND and mask codes, and exact run argument order. It does not compile, load, or authenticate an Ascend JIT artifact."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "The public wrapper keeps backend='reference' as an explicit Host oracle and routes backend='auto' with an NPU workspace through a private, mode-bound provider runtime. No provider is enabled by default; unbound provider options fail before package invocation."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Exact snapshot signature. Host reference reports (0, 0). Provider queries use an unpublished runtime fork over the wrapper's frozen registry and return the selected operation's caller-workspace requirement without mutating active plan state; package-managed workspace currently reports (0, 0)."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "The public signature includes current upstream q/k/v scales, caller-owned buffers, runtime window, attention sinks, NVFP4 scale factors, skip-softmax sparsity, FP16 softmax, and SP-compression controls. The Host oracle rejects enabled backend-specific features that it cannot represent."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.reset_workspace_buffer",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.reset_workspace_buffer",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.is_cuda_graph_enabled",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.is_graph_enabled",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "reference",
+      "priority": "P1",
+      "notes": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.begin_forward",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.begin_forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3",
+      "notes": "Deprecated alias of plan upstream."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3",
+      "notes": "Deprecated run alias with upstream signature, warning, Host execution, and planned-option drift rejection."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.end_forward",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.end_forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3",
+      "notes": "Deprecated no-op upstream."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Public wrapper covers ragged request segmentation, GQA, NHD/HND, masks, scale and LSE semantics. Host reference is explicit; an NPU workspace owns a private mode-bound provider resolver."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.reset_workspace_buffer",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.reset_workspace_buffer",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.is_cuda_graph_enabled",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.is_graph_enabled",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "reference",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.begin_forward",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.begin_forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3",
+      "notes": "Deprecated run alias with upstream signature, warning, Host execution, and planned-option drift rejection."
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.end_forward",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.end_forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3"
+    },
+    {
+      "upstream": "flashinfer.decode.single_decode_with_kv_cache",
+      "local": "flashinfer.decode.single_decode_with_kv_cache",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Exact snapshot signature with executable Host ReferenceTensor semantics. ReferenceTensor inputs explicitly opt into the oracle because the upstream API has no backend argument; NPU tensors own an ephemeral provider resolver."
+    },
+    {
+      "upstream": "flashinfer.decode.single_decode_with_kv_cache_with_jit_module",
+      "local": "flashinfer.decode.single_decode_with_kv_cache_with_jit_module",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "framework",
+      "priority": "P1",
+      "notes": "Host injected-module protocol freezes the upstream signature, 32 MiB scratch metadata, output/LSE allocation, NHD/HND codes, argument order, and the upstream decode behavior that discards requested LSE. No JIT artifact is compiled or loaded."
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Public wrapper covers packed/separate paged KV, graph lifecycle, scalar scales, output/LSE buffers, and multi-token causal decode. Host reference is explicit; an NPU workspace owns a private mode-bound provider resolver."
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0",
+      "notes": "Exact snapshot signature. Host reference reports (0, 0). Provider queries use an unpublished runtime fork over the wrapper's frozen registry and return the selected operation's caller-workspace requirement without mutating active plan state; package-managed workspace currently reports (0, 0)."
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P0"
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.use_tensor_cores",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.use_matrix_cores",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "reference",
+      "priority": "P2",
+      "notes": "NPU capability name will not expose NVIDIA Tensor Core terminology."
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.is_cuda_graph_enabled",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.is_graph_enabled",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "reference",
+      "priority": "P1"
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.begin_forward",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.begin_forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3"
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3",
+      "notes": "Deprecated run alias with upstream signature, warning, Host execution, scale forwarding, and planned-option drift rejection."
+    },
+    {
+      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.end_forward",
+      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.end_forward",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "reference",
+      "priority": "P3"
+    }
+  ]
+}
