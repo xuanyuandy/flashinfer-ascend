@@ -45,13 +45,14 @@ class AttentionPlanSelection:
     active_plan_fingerprint: Optional[str] = None
     registry_generation: Optional[int] = None
     schema_version: int = ATTENTION_PLAN_SELECTION_VERSION
+    kernel_id: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.schema_version != ATTENTION_PLAN_SELECTION_VERSION:
             raise SchemaError("unsupported Attention plan selection version")
         if not isinstance(self.mode, AttentionMode):
             raise TypeError("mode must be AttentionMode")
-        if self.route not in {"reference", "provider"}:
+        if self.route not in {"reference", "provider", "builtin"}:
             raise SchemaError("invalid Attention plan selection route")
         if not isinstance(self.plan_generation, int) or isinstance(
             self.plan_generation, bool
@@ -60,6 +61,12 @@ class AttentionPlanSelection:
         _require_hash(
             "framework_plan_fingerprint", self.framework_plan_fingerprint
         )
+        if self.route == "builtin":
+            if self.backend != "cann" or not self.kernel_id or self.provider_id is not None or self.operation_id is not None or self.active_plan_fingerprint is not None:
+                raise SchemaError("builtin plan selection must identify a CANN kernel")
+            if self.registry_generation is None or self.registry_generation < 0:
+                raise SchemaError("builtin selection requires registry generation")
+            return
         provider_fields = (
             self.provider_id,
             self.operation_id,
@@ -87,7 +94,7 @@ class AttentionPlanSelection:
             )
 
     def to_dict(self):
-        return {
+        value = {
             "schema_version": self.schema_version,
             "mode": self.mode.value,
             "route": self.route,
@@ -99,6 +106,9 @@ class AttentionPlanSelection:
             "active_plan_fingerprint": self.active_plan_fingerprint,
             "registry_generation": self.registry_generation,
         }
+        if self.route == "builtin":
+            value["kernel_id"] = self.kernel_id
+        return value
 
     @property
     def fingerprint(self) -> str:

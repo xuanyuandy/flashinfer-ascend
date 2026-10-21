@@ -95,10 +95,18 @@
       "upstream": "flashinfer.prefill.single_prefill_with_kv_cache",
       "local": "flashinfer.prefill.single_prefill_with_kv_cache",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
       "priority": "P0",
-      "notes": "Exact snapshot signature with executable Host ReferenceTensor semantics. backend='reference' explicitly selects the oracle; backend='auto' with NPU tensors owns an ephemeral provider resolver. NVFP4 kv_cache_sf remains an explicit gap."
+      "backend": "cann",
+      "reason": "CANN eager 路径目前只支持 dense FP16/BF16、NONE 位置编码、head_dim 64/128；非零 soft-cap、FP16 QK reduction、NVFP4 明确报错。",
+      "notes": "A5 FIA BSND；因果、custom/packed mask、GQA、NHD/HND、scale 和 log2 LSE 已对拍。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 1325,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.single_prefill_with_kv_cache_with_jit_module",
@@ -106,51 +114,101 @@
       "upstream_kind": "stable",
       "semantic_status": "compatible",
       "implementation_status": "framework",
-      "priority": "P1",
-      "notes": "Host injected-module protocol freezes the upstream signature, 32 MiB scratch metadata, output/LSE shapes, NHD/HND and mask codes, and exact run argument order. It does not compile, load, or authenticate an Ascend JIT artifact."
+      "priority": "P0",
+      "backend": "injected_jit",
+      "reason": "",
+      "notes": "显式注入 run 模块与临时缓冲 ABI；不宣称已具备编译/装载能力。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 1197,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
       "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
       "priority": "P0",
-      "notes": "The public wrapper keeps backend='reference' as an explicit Host oracle and routes backend='auto' with an NPU workspace through a private, mode-bound provider runtime. No provider is enabled by default; unbound provider options fail before package invocation."
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 2628,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
       "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
       "priority": "P0",
-      "notes": "Exact snapshot signature. Host reference reports (0, 0). Provider queries use an unpublished runtime fork over the wrapper's frozen registry and return the selected operation's caller-workspace requirement without mutating active plan state; package-managed workspace currently reports (0, 0)."
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 3010,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
       "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P0"
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 3290,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
       "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
       "priority": "P0",
-      "notes": "The public signature includes current upstream q/k/v scales, caller-owned buffers, runtime window, attention sinks, NVFP4 scale factors, skip-softmax sparsity, FP16 softmax, and SP-compression controls. The Host oracle rejects enabled backend-specific features that it cannot represent."
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 4108,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.reset_workspace_buffer",
       "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.reset_workspace_buffer",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P1"
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 2980,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.is_cuda_graph_enabled",
@@ -175,10 +233,18 @@
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
       "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P3",
-      "notes": "Deprecated run alias with upstream signature, warning, Host execution, and planned-option drift rejection."
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 4031,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.end_forward",
@@ -193,34 +259,69 @@
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
       "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
       "priority": "P0",
-      "notes": "Public wrapper covers ragged request segmentation, GQA, NHD/HND, masks, scale and LSE semantics. Host reference is explicit; an NPU workspace owns a private mode-bound provider resolver."
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 4802,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan",
       "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P0"
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 5141,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
       "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P0"
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 6016,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.reset_workspace_buffer",
       "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.reset_workspace_buffer",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P1"
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 5115,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.is_cuda_graph_enabled",
@@ -243,10 +344,18 @@
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
       "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
-      "implementation_status": "reference",
-      "priority": "P3",
-      "notes": "Deprecated run alias with upstream signature, warning, Host execution, and planned-option drift rejection."
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P0",
+      "backend": "cann",
+      "reason": "CANN 为按请求收集 KV 的 eager FIA 组合实现；use_cuda_graph、原生最大 workspace 查询、特殊位置编码/soft-cap/JIT 变体与 split-K 控制尚未接入，启用时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/prefill.py",
+        "line": 5954,
+        "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.end_forward",
@@ -271,8 +380,16 @@
       "upstream_kind": "stable",
       "semantic_status": "compatible",
       "implementation_status": "framework",
-      "priority": "P1",
-      "notes": "Host injected-module protocol freezes the upstream signature, 32 MiB scratch metadata, output/LSE allocation, NHD/HND codes, argument order, and the upstream decode behavior that discards requested LSE. No JIT artifact is compiled or loaded."
+      "priority": "P0",
+      "backend": "injected_jit",
+      "reason": "",
+      "notes": "显式注入 run 模块与临时缓冲 ABI；不宣称已具备编译/装载能力。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/decode.py",
+        "line": 886,
+        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
+      }
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
@@ -359,6 +476,26 @@
       "semantic_status": "compatible",
       "implementation_status": "reference",
       "priority": "P3"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan_selection",
+      "local": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan_selection",
+      "upstream_kind": "experimental",
+      "api_kind": "npu_extension",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "reason": "NPU 扩展诊断接口，固定上游没有对应 plan_selection 属性；返回 reference/provider/builtin 路由与登记 kernel 身份，不暴露执行句柄。"
+    },
+    {
+      "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan_selection",
+      "local": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan_selection",
+      "upstream_kind": "experimental",
+      "api_kind": "npu_extension",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "reason": "NPU 扩展诊断接口，固定上游没有对应 plan_selection 属性；返回 reference/provider/builtin 路由与登记 kernel 身份，不暴露执行句柄。"
     }
   ]
 }

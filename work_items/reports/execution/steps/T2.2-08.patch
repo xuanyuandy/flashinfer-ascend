@@ -1,0 +1,29 @@
+--- a/flashinfer/_single_attention.py
++++ b/flashinfer/_single_attention.py
+@@ -103,7 +103,12 @@
+         runtime = AttentionOperatorRuntime(adapted.device, snapshot.registry,
+                                            snapshot.operation_catalog, mode=mode)
+         runtime.plan(spec, adapted.metadata)
+-        return runtime.run(q, (k, v), return_lse=return_lse)
++        kv = (k, v)
++        if adapted.kv_quant_spec is not None:
++            from .attention.operator_quantization import combine_attention_operator_quantized_kv_input
++
++            kv = combine_attention_operator_quantized_kv_input(k, v)
++        return runtime.run(q, kv, return_lse=return_lse)
+     options = dict(
+         decode=mode == AttentionMode.SINGLE_DECODE, kv_layout=kv_layout,
+         causal=bool(causal), pos_encoding_mode=pos_encoding_mode,
+--- a/flashinfer/attention/public_batch.py
++++ b/flashinfer/attention/public_batch.py
+@@ -247,6 +247,10 @@
+                     raise NotImplementedError("provider " + label + " binding is not implemented")
+             if values.get("window_left") not in (None, spec.window_left):
+                 raise SchemaError("run window_left must match the plan")
++            if self._mode == AttentionMode.BATCH_PREFILL_RAGGED and spec.kv_quant_spec is not None:
++                from .operator_quantization import combine_attention_operator_quantized_kv_input
++
++                kv = combine_attention_operator_quantized_kv_input(*kv)
+             return self._operator_runtime.run(
+                 q, kv, return_lse=values.get("return_lse", False),
+                 out=values.get("out"), k_scale=values.get("k_scale"),

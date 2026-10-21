@@ -1,0 +1,9 @@
+........F.....                                                           [100%]
+=================================== FAILURES ===================================
+_ PublicRaggedPrefillProviderRuntimeCheckpointTests.test_unbound_options_fail_before_provider_execution _
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:112: in test_unbound_options_fail_before_provider_execution
+    with self.assertRaisesRegex(NotImplementedError, "o_scale"):
+E   AssertionError: NotImplementedError not raised
+=========================== short test summary info ============================
+FAILED tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py::PublicRaggedPrefillProviderRuntimeCheckpointTests::test_unbound_options_fail_before_provider_execution
+1 failed, 13 passed in 0.05s

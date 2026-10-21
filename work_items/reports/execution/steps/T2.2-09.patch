@@ -1,0 +1,44 @@
+--- a/docs/tasks/T02-cann-interface-backfill.md
++++ b/docs/tasks/T02-cann-interface-backfill.md
+@@ -139,3 +139,5 @@
+ - A5/CANN 9.2 的 BNSD masked GQA 有部分 LSE 未正确写出；探测证实 BSND 路径误差约 2.4e-7，选择 BSND 后保留原精度断言通过。日志 `T2.2-lse-probe.log`。
+ - eager 每请求收集 KV 与调用 FIA；未声明图捕获或性能最优。NPU graph/最大 workspace 查询留 T9/T10，显式拒绝；不把未知 workspace 声称为零。
+ - 单独归属：T2.2 增加 prefill 与 backend/JIT 路径；T4.2 修公开 single decode；T4.4 修 decode wrapper；T4.6 统一 PDL。原有有意差异与新增限制均登记。
++
++- prefill/JIT/provider/量化接入定向回归：48 项通过（`T2.2-prefill-final.log`）；固定源码签名由 `check_prefill_signatures.py` 单独核验。
+--- a/work_items/scripts/check_prefill_signatures.py
++++ b/work_items/scripts/check_prefill_signatures.py
+@@ -0,0 +1,33 @@
++"""Verify declarations against the fixed upstream object, not moving HEAD."""
++
++import ast
++from pathlib import Path
++import subprocess
++
++REF = "2895577720741ddfedff118202c89584996b8875"
++source = subprocess.check_output([
++    "git", "-C", "/home/dy/projects/flashinfer-ori", "show",
++    REF + ":flashinfer/prefill.py",
++], text=True)
++
++
++def extract(text):
++    result = {}
++    for node in ast.parse(text).body:
++        if isinstance(node, ast.FunctionDef) and node.name == "single_prefill_with_kv_cache":
++            result[node.name] = ast.unparse(node.args)
++        if isinstance(node, ast.ClassDef) and node.name in (
++            "BatchPrefillWithPagedKVCacheWrapper", "BatchPrefillWithRaggedKVCacheWrapper",
++        ):
++            for method in node.body:
++                if isinstance(method, ast.FunctionDef) and method.name in (
++                    "__init__", "plan", "run", "forward", "workspace_size",
++                ):
++                    result[node.name + "." + method.name] = ast.unparse(method.args)
++    return result
++
++
++expected = extract(source)
++actual = extract(Path("flashinfer/prefill.py").read_text())
++assert actual == expected, {k: (v, actual.get(k)) for k, v in expected.items() if actual.get(k) != v}
++print(f"{len(expected)}/{len(expected)} prefill declarations match {REF}")

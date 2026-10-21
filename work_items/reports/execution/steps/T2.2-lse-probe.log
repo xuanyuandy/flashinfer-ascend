@@ -1,0 +1,15 @@
+{"layout": "BNSD", "rank": 4, "full_heads": false, "repeat_kv": false, "max_abs_lse_error": 2.5604448318481445}
+BNSD 4 True False RuntimeError npu_fused_infer_attention_score_symint:../third_party/op-plugin/op_plugin/ops/opapi/FusedInferAttentionScoreKernelNpuOpApi.cpp:437 NPU function error: call aclnnFusedInferAttentionScoreV5 failed, error code is 561002
+[ERROR] 2026-10-21-16:35:14 (PID:33493, Device:0, RankID:-1) ERR00100 PTA call acl api failed.
+[PID: 33493] 2026-10-21-16:35:14.956.445 Invalid_Argument_Tensor_Shape(EZ0009): Parameter atten_mask of FusedInferAttentionScore has incorrect shape [1, 4, 3, 7]. Reason: The shape of atten_mask must be [B(1) or 1, >=Q_S(3), >=KV_S(7) + systemPrefixLen(0)].
+        Solution: Check whether the shape of input/output tensor is correct.
+TraceBack (most recent call last):
+        Failed to execute operator FusedInferAttentionScore_0. Reason: Failed to execute tiling function.
+        Check NnopbaseExecutorDoTiling(executor) failed
+        Check NnopbaseExecutorTilingAndUpdateBinInfo(executor) failed
+        Check NnopbaseExecutorMatchCache(executor) failed
+        Check NnopbaseRunForWorkspace(*executor, workspaceSize) failed
+
+{"layout": "BNSD", "rank": 3, "full_heads": false, "repeat_kv": false, "max_abs_lse_error": 2.5604448318481445}
+{"layout": "BSND", "rank": 4, "full_heads": false, "repeat_kv": false, "max_abs_lse_error": 2.384185791015625e-07}
+{"layout": "BNSD", "rank": 4, "full_heads": false, "repeat_kv": true, "max_abs_lse_error": 2.384185791015625e-07}

@@ -129,3 +129,15 @@ pytest tests/ -q
 - 14 项测试通过，含 FP16/BF16/FP32、并列阈值、indices、无效行、随机分布与本地复现、speculative 前缀和独立接受计数。
 - CUDA Philox 的 seed/offset 流尚未实现，显式报错；随机序列跨硬件不同，已逐条登记 reason。该限制使随机接口标为 intentionally_different，不能宣称完整 RNG drop-in。
 - 日志：`work_items/reports/execution/steps/T2.1-tests-final.log`；账本增量：`T2.1-parity-entries.json`。
+
+## T2.2 首批执行记录（2026-10-21）
+
+- single prefill、paged/ragged prefill 已接真实 CANN FIA；single decode 的 CANN runner 已用私有规范化入口对拍，公开形状和参数纠偏归 T4.2 单独提交。
+- 消除前序 T1 为收集测试而加的 prefill 与 JIT 声明：现已真实执行；JIT 入口只承诺注入模块的调用 ABI，不冒充 T18 的编译器实现。
+- 按固定上游对象恢复完整签名，发现旧测试缺 variant_owns_mask/uniform_q_len/lse_base/lse_layout 等参数，已根据源码更新断言；LSE 对外为 log2，wrapper 可选 ln/NH/HN。
+- 真实 A5 对拍 21 项通过：FP16/BF16、64/128 维、GQA、NHD/HND、因果、分页末页与非顺序页、ragged、调用方 out/LSE。
+- A5/CANN 9.2 的 BNSD masked GQA 有部分 LSE 未正确写出；探测证实 BSND 路径误差约 2.4e-7，选择 BSND 后保留原精度断言通过。日志 `T2.2-lse-probe.log`。
+- eager 每请求收集 KV 与调用 FIA；未声明图捕获或性能最优。NPU graph/最大 workspace 查询留 T9/T10，显式拒绝；不把未知 workspace 声称为零。
+- 单独归属：T2.2 增加 prefill 与 backend/JIT 路径；T4.2 修公开 single decode；T4.4 修 decode wrapper；T4.6 统一 PDL。原有有意差异与新增限制均登记。
+
+- prefill/JIT/provider/量化接入定向回归：48 项通过（`T2.2-prefill-final.log`）；固定源码签名由 `check_prefill_signatures.py` 单独核验。

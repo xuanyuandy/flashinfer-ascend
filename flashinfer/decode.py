@@ -26,7 +26,12 @@ _OP_DECODE = "attention.decode"
 def single_decode_with_kv_cache_with_jit_module(
     jit_module, q, k, v, *args, kv_layout="NHD", window_left=-1, return_lse=False,
 ):
-    raise NotImplementedError("T2.2: single decode JIT facade is not implemented")
+    from ._single_attention import run_single_jit
+    from .attention.schema import AttentionMode
+
+    return run_single_jit(AttentionMode.SINGLE_DECODE, jit_module, q, k, v, args,
+                          kv_layout=kv_layout, window_left=window_left,
+                          return_lse=return_lse)
 
 
 def single_decode_with_kv_cache(

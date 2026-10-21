@@ -77,7 +77,7 @@ class SinglePrefillFrontendTests(unittest.TestCase):
         self.assertEqual(output.dtype, "float16")
         self.assertAlmostEqual(output.data[0], 6.0)
         self.assertEqual(lse.shape, (1, 1))
-        self.assertAlmostEqual(lse.data[0], math.log(2.0))
+        self.assertAlmostEqual(lse.data[0], math.log2(2.0))
 
     def test_hnd_layout_supports_distinct_value_dimension_and_gqa(self):
         q = tensor([[[0.0], [0.0]]])

@@ -1,0 +1,75 @@
+........F..F.....FFFF....                                                [100%]
+=================================== FAILURES ===================================
+_ SingleFrontendSignatureTests.test_single_decode_signature_matches_flashinfer_order _
+tests/test_single_frontend.py:34: in test_single_decode_signature_matches_flashinfer_order
+    self.assertEqual(
+E   AssertionError: Lists differ: ['q', 'k_cache', 'v_cache', 'kv_layout', 'backend', 'kernel_id'] != ['q', 'k', 'v', 'kv_layout', 'pos_encoding_mode',[136 chars]lse']
+E   
+E   First differing element 1:
+E   'k_cache'
+E   'k'
+E   
+E   Second list contains 9 additional elements.
+E   First extra element 6:
+E   'q_scale'
+E   
+E   - ['q', 'k_cache', 'v_cache', 'kv_layout', 'backend', 'kernel_id']
+E   + ['q',
+E   +  'k',
+E   +  'v',
+E   +  'kv_layout',
+E   +  'pos_encoding_mode',
+E   +  'use_tensor_cores',
+E   +  'q_scale',
+E   +  'k_scale',
+E   +  'v_scale',
+E   +  'window_left',
+E   +  'logits_soft_cap',
+E   +  'sm_scale',
+E   +  'rope_scale',
+E   +  'rope_theta',
+E   +  'return_lse']
+______ SinglePrefillFrontendTests.test_basic_output_lse_and_output_dtype _______
+tests/test_single_frontend.py:80: in test_basic_output_lse_and_output_dtype
+    self.assertAlmostEqual(lse.data[0], math.log(2.0))
+E   AssertionError: 1.0 != 0.6931471805599453 within 7 places (0.3068528194400547 difference)
+__ SingleDecodeFrontendTests.test_decode_rejects_unsupported_value_dimension ___
+tests/test_single_frontend.py:195: in test_decode_rejects_unsupported_value_dimension
+    single_decode_with_kv_cache(
+flashinfer/decode.py:55: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+----------------------------- Captured stderr call -----------------------------
+[W1021 09:45:29.842651091 Module.cpp:235] Warning: AclrtGetDeviceInfo failed to get total global memory, error code is 507899. The possible cause is that the driver version is too old or does not match CANN. Fall back to aclrtGetMemInfo. Please upgrade the driver to the matching version. (function operator())
+_________ SingleDecodeFrontendTests.test_decode_scalar_scales_compose __________
+tests/test_single_frontend.py:180: in test_decode_scalar_scales_compose
+    output = single_decode_with_kv_cache(
+E   TypeError: single_decode_with_kv_cache() got an unexpected keyword argument 'q_scale'
+_ SingleDecodeFrontendTests.test_invalid_layout_position_mode_and_scale_are_schema_errors _
+tests/test_single_frontend.py:206: in test_invalid_layout_position_mode_and_scale_are_schema_errors
+    single_decode_with_kv_cache(q, k, v, kv_layout="BAD")
+flashinfer/decode.py:55: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ SingleDecodeFrontendTests.test_nhd_and_hnd_layouts_return_flashinfer_shapes __
+tests/test_single_frontend.py:171: in test_nhd_and_hnd_layouts_return_flashinfer_shapes
+    output, lse = single_decode_with_kv_cache(
+E   TypeError: single_decode_with_kv_cache() got an unexpected keyword argument 'return_lse'
+=========================== short test summary info ============================
+FAILED tests/test_single_frontend.py::SingleFrontendSignatureTests::test_single_decode_signature_matches_flashinfer_order
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_basic_output_lse_and_output_dtype
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_decode_rejects_unsupported_value_dimension
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_decode_scalar_scales_compose
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_invalid_layout_position_mode_and_scale_are_schema_errors
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_nhd_and_hnd_layouts_return_flashinfer_shapes
+6 failed, 19 passed in 2.34s

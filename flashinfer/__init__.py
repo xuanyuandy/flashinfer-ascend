@@ -10,6 +10,7 @@ from .decode import (
     BatchDecodeWithPagedKVCacheWrapper,
     cudnn_batch_decode_with_kv_cache,
     single_decode_with_kv_cache,
+    single_decode_with_kv_cache_with_jit_module,
 )
 from .cascade import merge_state
 from .gemm import bmm_fp8, gemm_fp8_nt_groupwise
@@ -32,7 +33,10 @@ from .norm import (
     rmsnorm,
 )
 from .rope import apply_rope_with_cos_sin_cache_inplace
-from .prefill import single_prefill_with_kv_cache
+from .prefill import (
+    single_prefill_with_kv_cache, single_prefill_with_kv_cache_with_jit_module,
+    BatchPrefillWithPagedKVCacheWrapper, BatchPrefillWithRaggedKVCacheWrapper,
+)
 from .sampling import (
     sampling_from_probs, sampling_from_logits, top_p_sampling_from_probs,
     top_k_sampling_from_probs, top_k_top_p_sampling_from_probs,
@@ -63,6 +67,8 @@ __all__ = [
     "__version__",
     # 对外 API（对标 flashinfer）
     "single_prefill_with_kv_cache",
+    "single_prefill_with_kv_cache_with_jit_module",
+    "single_decode_with_kv_cache_with_jit_module",
     "sampling_from_probs", "sampling_from_logits", "top_p_sampling_from_probs",
     "top_k_sampling_from_probs", "top_k_top_p_sampling_from_probs",
     "min_p_sampling_from_probs", "top_p_renorm_probs", "top_k_renorm_probs",
@@ -81,6 +87,8 @@ __all__ = [
     "trtllm_fp8_block_scale_moe",
     "merge_state",
     "BatchDecodeWithPagedKVCacheWrapper",
+    "BatchPrefillWithPagedKVCacheWrapper",
+    "BatchPrefillWithRaggedKVCacheWrapper",
     "rmsnorm",
     "fused_add_rmsnorm",
     "gemma_rmsnorm",

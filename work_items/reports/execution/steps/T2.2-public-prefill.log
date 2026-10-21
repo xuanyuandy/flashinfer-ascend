@@ -1,0 +1,32 @@
+...........................................FF...                         [100%]
+=================================== FAILURES ===================================
+_ PublicQuantizedRaggedPrefillTests.test_bad_separate_inputs_fail_before_external_callable _
+flashinfer.runtime.schema.SchemaError: quantized provider plan requires AttentionOperatorQuantizedKVInput
+
+During handling of the above exception, another exception occurred:
+tests/test_public_quantized_ragged_prefill.py:290: in test_bad_separate_inputs_fail_before_external_callable
+    with self.assertRaisesRegex(SchemaError, "for key"):
+E   AssertionError: "for key" does not match "quantized provider plan requires AttentionOperatorQuantizedKVInput"
+_ PublicQuantizedRaggedPrefillTests.test_public_separate_kv_inputs_inject_independent_storage_and_scale _
+tests/test_public_quantized_ragged_prefill.py:269: in test_public_separate_kv_inputs_inject_independent_storage_and_scale
+    output = wrapper.run("q", key, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/prefill.py:318: in run
+    return self._run_facade(q, (k, v), locals())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/attention/public_batch.py:250: in _run_facade
+    return self._operator_runtime.run(
+flashinfer/attention/operator_resolver.py:852: in run
+    lowered = session.run(
+flashinfer/attention/operator_run.py:518: in run
+    lowered = lower_attention_operator_run(
+flashinfer/attention/operator_run.py:284: in lower_attention_operator_run
+    lowered = adapter.lower(active_plan, request)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/attention/operator_quantization.py:766: in lower
+    raise SchemaError(
+E   flashinfer.runtime.schema.SchemaError: quantized provider plan requires AttentionOperatorQuantizedKVInput
+=========================== short test summary info ============================
+FAILED tests/test_public_quantized_ragged_prefill.py::PublicQuantizedRaggedPrefillTests::test_bad_separate_inputs_fail_before_external_callable
+FAILED tests/test_public_quantized_ragged_prefill.py::PublicQuantizedRaggedPrefillTests::test_public_separate_kv_inputs_inject_independent_storage_and_scale
+2 failed, 46 passed in 0.19s

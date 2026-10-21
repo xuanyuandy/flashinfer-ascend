@@ -1,0 +1,28 @@
+[infer 86ad8d6] T2.1 接入 sampling 十个接口并登记随机序列边界
+ 32 files changed, 2866 insertions(+), 11 deletions(-)
+ create mode 100644 flashinfer/_sampling.py
+ create mode 100644 flashinfer/cann/sampling.py
+ create mode 100644 flashinfer/sampling.py
+ create mode 100644 tests/test_sampling.py
+ create mode 100644 work_items/reports/execution/T2.1-parity-entries.json
+ create mode 100644 work_items/reports/execution/steps/T2.1-01.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.1-01.patch
+ create mode 100644 work_items/reports/execution/steps/T2.1-02.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.1-02.patch
+ create mode 100644 work_items/reports/execution/steps/T2.1-03.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.1-03.patch
+ create mode 100644 work_items/reports/execution/steps/T2.1-04.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.1-04.patch
+ create mode 100644 work_items/reports/execution/steps/T2.1-05.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.1-05.patch
+ create mode 100644 work_items/reports/execution/steps/T2.1-06.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.1-06.patch
+ create mode 100644 work_items/reports/execution/steps/T2.1-probe.log
+ create mode 100644 work_items/reports/execution/steps/T2.1-regression.log
+ create mode 100644 work_items/reports/execution/steps/T2.1-signatures.log
+ create mode 100644 work_items/reports/execution/steps/T2.1-tests-final.log
+ create mode 100644 work_items/reports/execution/steps/T2.1-tests.log
+ create mode 100644 work_items/reports/execution/steps/T3-commit.log
+ create mode 100644 work_items/scripts/check_sampling_signatures.py
+ create mode 100644 work_items/scripts/merge_parity.py
+ create mode 100644 work_items/scripts/probe_sampling.py
