@@ -142,7 +142,7 @@ def _batch_run(wrapper, q, *kv, **options):
 
 def attention_descriptors():
     result = []
-    for op in ("single_prefill", "single_decode", "batch_prefill_paged", "batch_prefill_ragged"):
+    for op in ("single_prefill", "single_decode", "batch_prefill_paged", "batch_prefill_ragged", "batch_decode_paged"):
         result.append(KernelDescriptor(
             kernel_id="cann/attention/" + op + "_fia_v1", backend=Backend.CANN,
             capability=CapabilitySpec(

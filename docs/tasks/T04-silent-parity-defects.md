@@ -17,7 +17,7 @@
 - [x] **T4.1** MoE 路由枚举取值与上游不一致 ⚠ 最高危
 - [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
 - [x] **T4.3** MoE 三个「兼容别名」实际改了参数名
-- [ ] **T4.4** decode wrapper 的 `plan()` 参数集不同
+- [x] **T4.4** decode wrapper 的 `plan()` 参数集不同
 - [ ] **T4.5** 未知后端名抛裸异常
 - [ ] **T4.6** `enable_pdl` 行为在本仓内部自相矛盾 ⚠ 新增
 
@@ -179,3 +179,7 @@ pytest tests/ -q -k "parity or enum or pdl or backend"
 ## T4.3 自动执行记录
 
 按任务允许的删除路线，移除三个不兼容前缀别名及根导出，保留 NPU 原接口。固定上游不仅参数名不同，还插入 bias、量化/激活选项并改变 output 位置与返回值；完整声明见 `T4.3-upstream-signatures.json`。不使用伪装签名或宽泛 kwargs 声称兼容，账本逐条标记 intentionally_different。别名不存在与原计算接口可用均由回归验证。
+
+## T4.4 自动执行记录
+
+构造/plan/run/forward/workspace_size 的五份声明按固定上游核验；补齐 metadata 寻址、reset_workspace_buffer、规划状态与后端查询。61 项 Host/provider/资源生命周期回归通过；29 项真实 A5 Attention 对拍通过，包含分页 decode、多 token 因果、NHD/HND、两种 dtype、workspace reset。最大 workspace 和 native graph 留 T9/T10；不把 CANN 未知 workspace 声称为零。

@@ -1,0 +1,309 @@
+--- a/flashinfer/attention/public_batch.py
++++ b/flashinfer/attention/public_batch.py
+@@ -37,6 +37,7 @@
+         self._mode = mode
+         self._kv_layout = parse_kv_layout(values["kv_layout"])
+         self._backend = values["backend"]
++        self._use_tensor_cores = bool(values.get("use_tensor_cores", False))
+         self._native_backend = _real_tensor(values["float_workspace_buffer"]) and self._backend != "reference"
+         self._max_total_num_rows = values.get("max_total_num_rows")
+         if values.get("variant_owns_mask") or values.get("jit_args") is not None or values.get("jit_kwargs") is not None:
+@@ -76,6 +77,8 @@
+             self._native_decision = None
+             return
+         fixed_batch_size = None
++        if mode == AttentionMode.BATCH_DECODE_PAGED and self._use_tensor_cores and self._backend != "reference":
++            raise NotImplementedError("provider matrix-core preference binding is not implemented")
+         if graph and isinstance(values["float_workspace_buffer"], ReferenceTensor):
+             if any(value is None for value in buffers):
+                 raise SchemaError("graph mode requires all fixed metadata buffers")
+@@ -199,6 +202,70 @@
+         )
+         self._publish_plan(spec, metadata, mask_data)
+ 
++    def _plan_decode(self, values):
++        legacy_names = (
++            "pos_encoding_mode", "window_left", "logits_soft_cap", "q_data_type",
++            "kv_data_type", "o_data_type", "data_type", "sm_scale", "rope_scale",
++            "rope_theta", "non_blocking", "block_tables", "seq_lens",
++            "fixed_split_size", "disable_split_kv", "q_len_per_req",
++        )
++        options = dict(
++            pos_encoding_mode="NONE", window_left=-1, window_right=0,
++            logits_soft_cap=None, q_data_type="float16", kv_data_type=None,
++            o_data_type=None, data_type=None, sm_scale=None, rope_scale=None,
++            rope_theta=None, non_blocking=True, block_tables=None, seq_lens=None,
++            fixed_split_size=None, disable_split_kv=False, q_len_per_req=1,
++            is_causal=None,
++        )
++        given = dict(values.get("kwargs", {}))
++        positional = values.get("deprecated_positional_args", ())
++        if len(positional) > len(legacy_names):
++            raise TypeError("too many deprecated plan arguments")
++        if positional:
++            warnings.warn("plan options after page_size must be passed by keyword", DeprecationWarning, stacklevel=3)
++            for name, item in zip(legacy_names, positional):
++                if name in given:
++                    raise TypeError("multiple values for " + name)
++                given[name] = item
++        unknown = set(given) - set(options)
++        if unknown:
++            raise TypeError("unexpected plan keyword argument: " + sorted(unknown)[0])
++        options.update(given)
++        q_len = options["q_len_per_req"]
++        if not isinstance(q_len, int) or q_len < 1:
++            raise ValueError("q_len_per_req must be a positive integer")
++        if q_len > 1 and not self._use_tensor_cores:
++            raise ValueError("q_len_per_req > 1 requires use_tensor_cores=True")
++        if options["is_causal"] not in (None, q_len > 1):
++            raise ValueError("is_causal must match q_len_per_req > 1")
++        if options["window_right"] != 0:
++            raise ValueError("window_right != 0 requires a backend that supports it")
++        if options["fixed_split_size"] is not None or options["disable_split_kv"]:
++            raise NotImplementedError("split-K planning controls are not implemented")
++        require_no_host_plan_extensions(block_tables=options["block_tables"], seq_lens=options["seq_lens"])
++        metadata = PagedKVMetadata(
++            framework_index_values(values["indptr"], "indptr"),
++            framework_index_values(values["indices"], "indices"),
++            framework_index_values(values["last_page_len"], "last_page_len"),
++            values["page_size"],
++        )
++        if options["data_type"] is not None:
++            options["q_data_type"] = options["q_data_type"] or options["data_type"]
++            options["kv_data_type"] = options["kv_data_type"] or options["data_type"]
++        q_dtype = canonicalize_dtype_name(options["q_data_type"])
++        kv_dtype, quant = canonicalize_kv_dtype(options["kv_data_type"], q_dtype)
++        spec = AttentionPlanSpec(
++            self._mode, values["num_qo_heads"], values["num_kv_heads"], values["head_dim"],
++            kv_layout=self._kv_layout, q_dtype=q_dtype, kv_dtype=kv_dtype,
++            o_dtype=q_dtype if options["o_data_type"] is None else canonicalize_dtype_name(options["o_data_type"]),
++            kv_quant_spec=quant, q_len_per_req=q_len, causal=q_len > 1,
++            pos_encoding_mode=parse_pos_encoding_mode(options["pos_encoding_mode"]),
++            sm_scale=None if options["sm_scale"] is None else finite_scalar(options["sm_scale"], "sm_scale"),
++            window_left=options["window_left"], logits_soft_cap=options["logits_soft_cap"],
++            rope_scale=options["rope_scale"], rope_theta=options["rope_theta"],
++        )
++        self._publish_plan(spec, metadata, None)
++
+     def _publish_plan(self, spec, metadata, mask_data):
+         if self._native_backend:
+             if spec.pos_encoding_mode.value != "NONE" or spec.logits_soft_cap != 0 or spec.use_fp16_qk_reduction or spec.kv_quant_spec is not None:
+@@ -224,12 +291,14 @@
+                 if self._fixed_graph_buffers[1].shape[0] < len(metadata.indices):
+                     raise SchemaError("paged_kv_indices graph buffer capacity is too small")
+             if self._fixed_graph_buffers[0].shape[0] != expected + 1:
+-                raise SchemaError("batch size must match fixed graph buffers")
++                raise AttentionStateError("fixed batch size must match graph buffers")
+         self._commit_plan(spec, metadata, mask_data)
+ 
+     def _run_facade(self, q, kv, values):
+         values = dict(values)
+         spec = self.plan_state.spec
++        if values.get("q_len_per_req") not in (None, spec.q_len_per_req):
++            raise SchemaError("run q_len_per_req must match the plan")
+         if values.get("lse_base", "log2") not in ("log2", "ln") or values.get("lse_layout", "NH") not in ("NH", "HN"):
+             raise ValueError("lse_base must be log2/ln and lse_layout must be NH/HN")
+         if self._operator_runtime is not None:
+--- a/flashinfer/cann/attention.py
++++ b/flashinfer/cann/attention.py
+@@ -142,7 +142,7 @@
+ 
+ def attention_descriptors():
+     result = []
+-    for op in ("single_prefill", "single_decode", "batch_prefill_paged", "batch_prefill_ragged"):
++    for op in ("single_prefill", "single_decode", "batch_prefill_paged", "batch_prefill_ragged", "batch_decode_paged"):
+         result.append(KernelDescriptor(
+             kernel_id="cann/attention/" + op + "_fia_v1", backend=Backend.CANN,
+             capability=CapabilitySpec(
+--- a/flashinfer/decode.py
++++ b/flashinfer/decode.py
+@@ -66,77 +66,118 @@
+     )
+ 
+ 
+-class BatchDecodeWithPagedKVCacheWrapper:
+-    """paged KV decode 的 plan/run wrapper（对标 flashinfer，§3.3）。
+-
+-    - ``plan()``：按 paged 结构参数构建签名、dispatch、固化 Plan（含选定
+-      kernel），只发生一次；
+-    - ``run()``：复用 Plan 直接拉起 kernel，不重复 dispatch。
+-    """
+-
++from .attention.public_batch import PublicBatchWrapper
++from .attention.schema import AttentionMode
++from functools import partialmethod
++
++
++class BatchDecodeWithPagedKVCacheWrapper(PublicBatchWrapper):
+     def __init__(
+         self,
+-        float_workspace_buffer: Any,
++        float_workspace_buffer: torch.Tensor,
+         kv_layout: str = "NHD",
+-        *,
+-        backend: Union[str, Backend, None] = None,
+-        kernel_id: Optional[str] = None,
++        use_cuda_graph: bool = False,
++        use_tensor_cores: bool = False,
++        paged_kv_indptr_buffer: Optional[torch.Tensor] = None,
++        paged_kv_indices_buffer: Optional[torch.Tensor] = None,
++        paged_kv_last_page_len_buffer: Optional[torch.Tensor] = None,
++        backend: str = "auto",
++        jit_args: Optional[List[Any]] = None,
+     ) -> None:
+-        self._kv_layout = kv_layout
+-        self._backend = backend
+-        self._kernel_id = kernel_id
+-        self._plan: Optional[Plan] = None
+-
+-    @property
+-    def is_planning_done(self) -> bool:
+-        return self._plan is not None
++        self._init_facade(AttentionMode.BATCH_DECODE_PAGED, locals())
+ 
+     def plan(
+         self,
++        indptr: torch.Tensor,
++        indices: torch.Tensor,
++        last_page_len: torch.Tensor,
+         num_qo_heads: int,
+         num_kv_heads: int,
+         head_dim: int,
+         page_size: int,
+-        q_dtype: Any = None,
+-        kv_dtype: Any = None,
+-        causal: bool = True,
+-    ) -> Plan:
+-        """paged 结构参数期 dispatch：真实 shape 未定，以结构维度构建签名。"""
+-        def _dtype_name(dtype: Any) -> str:
+-            name = str(dtype) if dtype is not None else "unset"
+-            return name[len("torch."):] if name.startswith("torch.") else name
+-
+-        hardware = current_hardware()
+-        signature = InputSignature(
+-            op=_OP_DECODE,
+-            dtypes=(_dtype_name(q_dtype), _dtype_name(kv_dtype or q_dtype)),
+-            shapes=(),
+-            layouts=(self._kv_layout,),
+-            specializations=tuple(sorted((
+-                ("causal", str(bool(causal))),
+-                ("head_dim", str(int(head_dim))),
+-                ("num_kv_heads", str(int(num_kv_heads))),
+-                ("num_qo_heads", str(int(num_qo_heads))),
+-                ("page_size", str(int(page_size))),
+-                ("paged", "True"),
+-            ))),
+-        )
+-        decision = dispatch(
+-            signature,
+-            hardware,
+-            backend=self._backend,
+-            kernel_id=self._kernel_id,
+-        )
+-        self._plan = Plan(
+-            signature=signature, hardware=hardware, decision=decision
+-        )
+-        return self._plan
+-
+-    def run(self, q, kv_cache, *args, **kwargs):
+-        """复用 plan 期固化的 kernel 执行。plan() 未调用时显式报错。"""
+-        if self._plan is None:
+-            raise RuntimeError("plan() 未调用：wrapper 无已固化的 Plan")
+-        return _run_selected(self._plan.kernel_id, q, kv_cache, *args, **kwargs)
++        *deprecated_positional_args: Any,
++        **kwargs: Any,
++    ) -> None:
++        self._plan_decode(locals())
++
++    def run(
++        self,
++        q: torch.Tensor,
++        paged_kv_cache: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]],
++        *args,
++        q_scale: Optional[float] = None,
++        k_scale: Optional[float] = None,
++        v_scale: Optional[float] = None,
++        out: Optional[torch.Tensor] = None,
++        lse: Optional[torch.Tensor] = None,
++        return_lse: bool = False,
++        enable_pdl: Optional[bool] = None,
++        window_left: Optional[int] = None,
++        sinks: Optional[torch.Tensor] = None,
++        q_len_per_req: Optional[int] = None,
++        skip_softmax_threshold_scale_factor: Optional[float] = None,
++        kv_cache_sf: Optional[
++            Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]
++        ] = None,
++    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
++        return self._run_facade(q, paged_kv_cache, locals())
++
++    def forward(
++        self,
++        q: torch.Tensor,
++        paged_kv_cache: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]],
++        pos_encoding_mode: str = "NONE",
++        q_scale: Optional[float] = None,
++        k_scale: Optional[float] = None,
++        v_scale: Optional[float] = None,
++        window_left: int = -1,
++        logits_soft_cap: Optional[float] = None,
++        sm_scale: Optional[float] = None,
++        rope_scale: Optional[float] = None,
++        rope_theta: Optional[float] = None,
++    ) -> torch.Tensor:
++        return self._deprecated_forward(q, paged_kv_cache, locals())
++
++    def workspace_size(
++        self,
++        indptr: torch.Tensor,
++        indices: torch.Tensor,
++        last_page_len: torch.Tensor,
++        num_qo_heads: int,
++        num_kv_heads: int,
++        head_dim: int,
++        page_size: int,
++        pos_encoding_mode: str = "NONE",
++        window_left: int = -1,
++        logits_soft_cap: Optional[float] = None,
++        q_data_type: Optional[Union[str, torch.dtype]] = "float16",
++        kv_data_type: Optional[Union[str, torch.dtype]] = None,
++        o_data_type: Optional[Union[str, torch.dtype]] = None,
++        data_type: Optional[Union[str, torch.dtype]] = None,
++        sm_scale: Optional[float] = None,
++        rope_scale: Optional[float] = None,
++        rope_theta: Optional[float] = None,
++        block_tables: Optional[torch.Tensor] = None,
++        seq_lens: Optional[torch.Tensor] = None,
++        fixed_split_size: Optional[int] = None,
++        disable_split_kv: bool = False,
++        q_len_per_req: int = 1,
++    ) -> Tuple[int, int]:
++        return self._workspace_query(locals())
++
++    run_return_lse = partialmethod(run, return_lse=True)
++    begin_forward = plan
++
++    @property
++    def use_tensor_cores(self):
++        return self._use_tensor_cores
++
++    @property
++    def use_matrix_cores(self):
++        return self._use_tensor_cores
++
++    def end_forward(self):
++        return None
+ 
+ 
+ _OP_CUDNN_DECODE = "decode.cudnn_batch_decode_with_kv_cache"
+--- a/tests/test_batch_frontend.py
++++ b/tests/test_batch_frontend.py
+@@ -527,7 +527,7 @@
+             tensor([[[0.0]]]), packed, return_lse=True
+         )
+         self.assertEqual(output.data, (15.0,))
+-        self.assertAlmostEqual(lse.data[0], math.log(2.0))
++        self.assertAlmostEqual(lse.data[0], math.log2(2.0))
+ 
+     def test_multi_token_decode_is_causal(self):
+         wrapper = BatchDecodeWithPagedKVCacheWrapper(

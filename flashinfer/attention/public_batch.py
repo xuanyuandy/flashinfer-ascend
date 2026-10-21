@@ -37,6 +37,7 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
         self._mode = mode
         self._kv_layout = parse_kv_layout(values["kv_layout"])
         self._backend = values["backend"]
+        self._use_tensor_cores = bool(values.get("use_tensor_cores", False))
         self._native_backend = _real_tensor(values["float_workspace_buffer"]) and self._backend != "reference"
         self._max_total_num_rows = values.get("max_total_num_rows")
         if values.get("variant_owns_mask") or values.get("jit_args") is not None or values.get("jit_kwargs") is not None:
@@ -76,6 +77,8 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             self._native_decision = None
             return
         fixed_batch_size = None
+        if mode == AttentionMode.BATCH_DECODE_PAGED and self._use_tensor_cores and self._backend != "reference":
+            raise NotImplementedError("provider matrix-core preference binding is not implemented")
         if graph and isinstance(values["float_workspace_buffer"], ReferenceTensor):
             if any(value is None for value in buffers):
                 raise SchemaError("graph mode requires all fixed metadata buffers")
@@ -199,6 +202,70 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
         )
         self._publish_plan(spec, metadata, mask_data)
 
+    def _plan_decode(self, values):
+        legacy_names = (
+            "pos_encoding_mode", "window_left", "logits_soft_cap", "q_data_type",
+            "kv_data_type", "o_data_type", "data_type", "sm_scale", "rope_scale",
+            "rope_theta", "non_blocking", "block_tables", "seq_lens",
+            "fixed_split_size", "disable_split_kv", "q_len_per_req",
+        )
+        options = dict(
+            pos_encoding_mode="NONE", window_left=-1, window_right=0,
+            logits_soft_cap=None, q_data_type="float16", kv_data_type=None,
+            o_data_type=None, data_type=None, sm_scale=None, rope_scale=None,
+            rope_theta=None, non_blocking=True, block_tables=None, seq_lens=None,
+            fixed_split_size=None, disable_split_kv=False, q_len_per_req=1,
+            is_causal=None,
+        )
+        given = dict(values.get("kwargs", {}))
+        positional = values.get("deprecated_positional_args", ())
+        if len(positional) > len(legacy_names):
+            raise TypeError("too many deprecated plan arguments")
+        if positional:
+            warnings.warn("plan options after page_size must be passed by keyword", DeprecationWarning, stacklevel=3)
+            for name, item in zip(legacy_names, positional):
+                if name in given:
+                    raise TypeError("multiple values for " + name)
+                given[name] = item
+        unknown = set(given) - set(options)
+        if unknown:
+            raise TypeError("unexpected plan keyword argument: " + sorted(unknown)[0])
+        options.update(given)
+        q_len = options["q_len_per_req"]
+        if not isinstance(q_len, int) or q_len < 1:
+            raise ValueError("q_len_per_req must be a positive integer")
+        if q_len > 1 and not self._use_tensor_cores:
+            raise ValueError("q_len_per_req > 1 requires use_tensor_cores=True")
+        if options["is_causal"] not in (None, q_len > 1):
+            raise ValueError("is_causal must match q_len_per_req > 1")
+        if options["window_right"] != 0:
+            raise ValueError("window_right != 0 requires a backend that supports it")
+        if options["fixed_split_size"] is not None or options["disable_split_kv"]:
+            raise NotImplementedError("split-K planning controls are not implemented")
+        require_no_host_plan_extensions(block_tables=options["block_tables"], seq_lens=options["seq_lens"])
+        metadata = PagedKVMetadata(
+            framework_index_values(values["indptr"], "indptr"),
+            framework_index_values(values["indices"], "indices"),
+            framework_index_values(values["last_page_len"], "last_page_len"),
+            values["page_size"],
+        )
+        if options["data_type"] is not None:
+            options["q_data_type"] = options["q_data_type"] or options["data_type"]
+            options["kv_data_type"] = options["kv_data_type"] or options["data_type"]
+        q_dtype = canonicalize_dtype_name(options["q_data_type"])
+        kv_dtype, quant = canonicalize_kv_dtype(options["kv_data_type"], q_dtype)
+        spec = AttentionPlanSpec(
+            self._mode, values["num_qo_heads"], values["num_kv_heads"], values["head_dim"],
+            kv_layout=self._kv_layout, q_dtype=q_dtype, kv_dtype=kv_dtype,
+            o_dtype=q_dtype if options["o_data_type"] is None else canonicalize_dtype_name(options["o_data_type"]),
+            kv_quant_spec=quant, q_len_per_req=q_len, causal=q_len > 1,
+            pos_encoding_mode=parse_pos_encoding_mode(options["pos_encoding_mode"]),
+            sm_scale=None if options["sm_scale"] is None else finite_scalar(options["sm_scale"], "sm_scale"),
+            window_left=options["window_left"], logits_soft_cap=options["logits_soft_cap"],
+            rope_scale=options["rope_scale"], rope_theta=options["rope_theta"],
+        )
+        self._publish_plan(spec, metadata, None)
+
     def _publish_plan(self, spec, metadata, mask_data):
         if self._native_backend:
             if spec.pos_encoding_mode.value != "NONE" or spec.logits_soft_cap != 0 or spec.use_fp16_qk_reduction or spec.kv_quant_spec is not None:
@@ -224,12 +291,14 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
                 if self._fixed_graph_buffers[1].shape[0] < len(metadata.indices):
                     raise SchemaError("paged_kv_indices graph buffer capacity is too small")
             if self._fixed_graph_buffers[0].shape[0] != expected + 1:
-                raise SchemaError("batch size must match fixed graph buffers")
+                raise AttentionStateError("fixed batch size must match graph buffers")
         self._commit_plan(spec, metadata, mask_data)
 
     def _run_facade(self, q, kv, values):
         values = dict(values)
         spec = self.plan_state.spec
+        if values.get("q_len_per_req") not in (None, spec.q_len_per_req):
+            raise SchemaError("run q_len_per_req must match the plan")
         if values.get("lse_base", "log2") not in ("log2", "ln") or values.get("lse_layout", "NH") not in ("NH", "HN"):
             raise ValueError("lse_base must be log2/ln and lse_layout must be NH/HN")
         if self._operator_runtime is not None:
@@ -294,10 +363,14 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
                 )
             scales = [adapt_head_scale(values.get(name), name=name, num_heads=heads, device=q.device)
                       for name, heads in (("q_scale", spec.num_qo_heads), ("k_scale", spec.num_kv_heads), ("v_scale", spec.num_kv_heads))]
+            if self.is_graph_enabled and values.get("lse_layout", "NH") == "HN":
+                raise NotImplementedError("HN LSE graph resources are not bound yet (T9)")
             result = self._execute_reference(
                 q, kv_data, args=values.get("args", ()),
                 q_scale=scales[0], k_scale=scales[1], v_scale=scales[2],
-                out=values.get("out"), lse=None, return_lse=wants_lse,
+                out=values.get("out"),
+                lse=values.get("lse") if values.get("lse_layout", "NH") == "NH" else None,
+                return_lse=wants_lse, capture_return_lse=bool(values.get("return_lse")),
                 enable_pdl=values.get("enable_pdl"), window_left=values.get("window_left"),
                 sinks=values.get("sinks"), kv_cache_sf=values.get("kv_cache_sf"),
                 skip_softmax_threshold_scale_factor=values.get("skip_softmax_threshold_scale_factor"),
@@ -318,7 +391,7 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
     @staticmethod
     def _finish_lse(value, natural, base, layout, out):
         factor = (1 / math.log(2) if base == "log2" else 1) if natural else (math.log(2) if base == "ln" else 1)
-        if isinstance(value, ReferenceTensor):
+        if isinstance(value, (ReferenceTensor, ReferenceBuffer)):
             data = tuple(x * factor for x in value.data)
             shape = value.shape
             if layout == "HN":

@@ -1,0 +1,9 @@
+.............................F....................                       [100%]
+=================================== FAILURES ===================================
+_ HostGraphContractLifecycleTests.test_caller_lse_buffer_does_not_hide_return_shape_change _
+tests/test_attention_execution_identity.py:196: in test_caller_lse_buffer_does_not_hide_return_shape_change
+    self.assertFalse(wrapper.capture_record.identity.return_lse)
+E   AssertionError: True is not false
+=========================== short test summary info ============================
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_caller_lse_buffer_does_not_hide_return_shape_change
+1 failed, 49 passed in 0.17s

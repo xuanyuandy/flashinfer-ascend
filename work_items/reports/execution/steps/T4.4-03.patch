@@ -1,0 +1,281 @@
+--- a/docs/tasks/T04-silent-parity-defects.md
++++ b/docs/tasks/T04-silent-parity-defects.md
+@@ -17,7 +17,7 @@
+ - [x] **T4.1** MoE 路由枚举取值与上游不一致 ⚠ 最高危
+ - [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
+ - [x] **T4.3** MoE 三个「兼容别名」实际改了参数名
+-- [ ] **T4.4** decode wrapper 的 `plan()` 参数集不同
++- [x] **T4.4** decode wrapper 的 `plan()` 参数集不同
+ - [ ] **T4.5** 未知后端名抛裸异常
+ - [ ] **T4.6** `enable_pdl` 行为在本仓内部自相矛盾 ⚠ 新增
+ 
+@@ -179,3 +179,7 @@
+ ## T4.3 自动执行记录
+ 
+ 按任务允许的删除路线，移除三个不兼容前缀别名及根导出，保留 NPU 原接口。固定上游不仅参数名不同，还插入 bias、量化/激活选项并改变 output 位置与返回值；完整声明见 `T4.3-upstream-signatures.json`。不使用伪装签名或宽泛 kwargs 声称兼容，账本逐条标记 intentionally_different。别名不存在与原计算接口可用均由回归验证。
++
++## T4.4 自动执行记录
++
++构造/plan/run/forward/workspace_size 的五份声明按固定上游核验；补齐 metadata 寻址、reset_workspace_buffer、规划状态与后端查询。61 项 Host/provider/资源生命周期回归通过；29 项真实 A5 Attention 对拍通过，包含分页 decode、多 token 因果、NHD/HND、两种 dtype、workspace reset。最大 workspace 和 native graph 留 T9/T10；不把 CANN 未知 workspace 声称为零。
+--- a/flashinfer/data/api_parity.json
++++ b/flashinfer/data/api_parity.json
+@@ -88,9 +88,18 @@
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+       "upstream_kind": "stable",
+-      "semantic_status": "unassessed",
+-      "implementation_status": "missing",
+-      "priority": "P0"
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1194,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.cudnn_batch_decode_with_kv_cache",
+@@ -1966,6 +1975,91 @@
+         "TopKSigmoid": 9,
+         "Unspecified": 10
+       }
++    },
++    {
++      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
++      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1574,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
++    },
++    {
++      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
++      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1604,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
++    },
++    {
++      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
++      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1893,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
++    },
++    {
++      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
++      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 2700,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
++    },
++    {
++      "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
++      "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 2770,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     }
+   ]
+ }
+--- a/flashinfer/data/attention_api_parity.json
++++ b/flashinfer/data/attention_api_parity.json
+@@ -403,43 +403,86 @@
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P0",
+-      "notes": "Public wrapper covers packed/separate paged KV, graph lifecycle, scalar scales, output/LSE buffers, and multi-token causal decode. Host reference is explicit; an NPU workspace owns a private mode-bound provider resolver."
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1194,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P0",
+-      "notes": "Exact snapshot signature. Host reference reports (0, 0). Provider queries use an unpublished runtime fork over the wrapper's frozen registry and return the selected operation's caller-workspace requirement without mutating active plan state; package-managed workspace currently reports (0, 0)."
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1604,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P0"
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1893,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P0"
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 2770,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P1"
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 1574,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.use_tensor_cores",
+@@ -472,10 +515,18 @@
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
+       "local": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P3",
+-      "notes": "Deprecated run alias with upstream signature, warning, Host execution, scale forwarding, and planned-option drift rejection."
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 当前为按请求 FIA 组合，graph、最大 workspace、split-K/特殊位置与量化执行等能力未接入时明确报错。",
++      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 2700,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.end_forward",
+--- a/tests/test_attention_cann.py
++++ b/tests/test_attention_cann.py
+@@ -7,6 +7,7 @@
+ from flashinfer._single_attention import single_attention
+ from flashinfer.attention.schema import AttentionMode
+ from flashinfer.cann.attention import dense_attention
++from flashinfer.runtime import SchemaError
+ 
+ 
+ @pytest.fixture(scope="module")
+@@ -112,5 +113,5 @@
+     output, lse = wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)), return_lse=True, q_len_per_req=q_len)
+     torch.testing.assert_close(output.cpu(), torch.cat([x[0] for x in expected]), rtol=0.02, atol=0.02)
+     torch.testing.assert_close(lse.cpu(), torch.cat([x[1] for x in expected]), rtol=0.02, atol=0.02)
+-    with pytest.raises(Exception, match="q_len_per_req"):
++    with pytest.raises(SchemaError, match="q_len_per_req"):
+         wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)), q_len_per_req=q_len + 1)

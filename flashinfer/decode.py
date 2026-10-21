@@ -66,77 +66,118 @@ def single_decode_with_kv_cache(
     )
 
 
-class BatchDecodeWithPagedKVCacheWrapper:
-    """paged KV decode 的 plan/run wrapper（对标 flashinfer，§3.3）。
+from .attention.public_batch import PublicBatchWrapper
+from .attention.schema import AttentionMode
+from functools import partialmethod
 
-    - ``plan()``：按 paged 结构参数构建签名、dispatch、固化 Plan（含选定
-      kernel），只发生一次；
-    - ``run()``：复用 Plan 直接拉起 kernel，不重复 dispatch。
-    """
 
+class BatchDecodeWithPagedKVCacheWrapper(PublicBatchWrapper):
     def __init__(
         self,
-        float_workspace_buffer: Any,
+        float_workspace_buffer: torch.Tensor,
         kv_layout: str = "NHD",
-        *,
-        backend: Union[str, Backend, None] = None,
-        kernel_id: Optional[str] = None,
+        use_cuda_graph: bool = False,
+        use_tensor_cores: bool = False,
+        paged_kv_indptr_buffer: Optional[torch.Tensor] = None,
+        paged_kv_indices_buffer: Optional[torch.Tensor] = None,
+        paged_kv_last_page_len_buffer: Optional[torch.Tensor] = None,
+        backend: str = "auto",
+        jit_args: Optional[List[Any]] = None,
     ) -> None:
-        self._kv_layout = kv_layout
-        self._backend = backend
-        self._kernel_id = kernel_id
-        self._plan: Optional[Plan] = None
-
-    @property
-    def is_planning_done(self) -> bool:
-        return self._plan is not None
+        self._init_facade(AttentionMode.BATCH_DECODE_PAGED, locals())
 
     def plan(
         self,
+        indptr: torch.Tensor,
+        indices: torch.Tensor,
+        last_page_len: torch.Tensor,
         num_qo_heads: int,
         num_kv_heads: int,
         head_dim: int,
         page_size: int,
-        q_dtype: Any = None,
-        kv_dtype: Any = None,
-        causal: bool = True,
-    ) -> Plan:
-        """paged 结构参数期 dispatch：真实 shape 未定，以结构维度构建签名。"""
-        def _dtype_name(dtype: Any) -> str:
-            name = str(dtype) if dtype is not None else "unset"
-            return name[len("torch."):] if name.startswith("torch.") else name
+        *deprecated_positional_args: Any,
+        **kwargs: Any,
+    ) -> None:
+        self._plan_decode(locals())
 
-        hardware = current_hardware()
-        signature = InputSignature(
-            op=_OP_DECODE,
-            dtypes=(_dtype_name(q_dtype), _dtype_name(kv_dtype or q_dtype)),
-            shapes=(),
-            layouts=(self._kv_layout,),
-            specializations=tuple(sorted((
-                ("causal", str(bool(causal))),
-                ("head_dim", str(int(head_dim))),
-                ("num_kv_heads", str(int(num_kv_heads))),
-                ("num_qo_heads", str(int(num_qo_heads))),
-                ("page_size", str(int(page_size))),
-                ("paged", "True"),
-            ))),
-        )
-        decision = dispatch(
-            signature,
-            hardware,
-            backend=self._backend,
-            kernel_id=self._kernel_id,
-        )
-        self._plan = Plan(
-            signature=signature, hardware=hardware, decision=decision
-        )
-        return self._plan
+    def run(
+        self,
+        q: torch.Tensor,
+        paged_kv_cache: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]],
+        *args,
+        q_scale: Optional[float] = None,
+        k_scale: Optional[float] = None,
+        v_scale: Optional[float] = None,
+        out: Optional[torch.Tensor] = None,
+        lse: Optional[torch.Tensor] = None,
+        return_lse: bool = False,
+        enable_pdl: Optional[bool] = None,
+        window_left: Optional[int] = None,
+        sinks: Optional[torch.Tensor] = None,
+        q_len_per_req: Optional[int] = None,
+        skip_softmax_threshold_scale_factor: Optional[float] = None,
+        kv_cache_sf: Optional[
+            Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]
+        ] = None,
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
+        return self._run_facade(q, paged_kv_cache, locals())
 
-    def run(self, q, kv_cache, *args, **kwargs):
-        """复用 plan 期固化的 kernel 执行。plan() 未调用时显式报错。"""
-        if self._plan is None:
-            raise RuntimeError("plan() 未调用：wrapper 无已固化的 Plan")
-        return _run_selected(self._plan.kernel_id, q, kv_cache, *args, **kwargs)
+    def forward(
+        self,
+        q: torch.Tensor,
+        paged_kv_cache: Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]],
+        pos_encoding_mode: str = "NONE",
+        q_scale: Optional[float] = None,
+        k_scale: Optional[float] = None,
+        v_scale: Optional[float] = None,
+        window_left: int = -1,
+        logits_soft_cap: Optional[float] = None,
+        sm_scale: Optional[float] = None,
+        rope_scale: Optional[float] = None,
+        rope_theta: Optional[float] = None,
+    ) -> torch.Tensor:
+        return self._deprecated_forward(q, paged_kv_cache, locals())
+
+    def workspace_size(
+        self,
+        indptr: torch.Tensor,
+        indices: torch.Tensor,
+        last_page_len: torch.Tensor,
+        num_qo_heads: int,
+        num_kv_heads: int,
+        head_dim: int,
+        page_size: int,
+        pos_encoding_mode: str = "NONE",
+        window_left: int = -1,
+        logits_soft_cap: Optional[float] = None,
+        q_data_type: Optional[Union[str, torch.dtype]] = "float16",
+        kv_data_type: Optional[Union[str, torch.dtype]] = None,
+        o_data_type: Optional[Union[str, torch.dtype]] = None,
+        data_type: Optional[Union[str, torch.dtype]] = None,
+        sm_scale: Optional[float] = None,
+        rope_scale: Optional[float] = None,
+        rope_theta: Optional[float] = None,
+        block_tables: Optional[torch.Tensor] = None,
+        seq_lens: Optional[torch.Tensor] = None,
+        fixed_split_size: Optional[int] = None,
+        disable_split_kv: bool = False,
+        q_len_per_req: int = 1,
+    ) -> Tuple[int, int]:
+        return self._workspace_query(locals())
+
+    run_return_lse = partialmethod(run, return_lse=True)
+    begin_forward = plan
+
+    @property
+    def use_tensor_cores(self):
+        return self._use_tensor_cores
+
+    @property
+    def use_matrix_cores(self):
+        return self._use_tensor_cores
+
+    def end_forward(self):
+        return None
 
 
 _OP_CUDNN_DECODE = "decode.cudnn_batch_decode_with_kv_cache"

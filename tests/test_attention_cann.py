@@ -7,6 +7,7 @@ import flashinfer
 from flashinfer._single_attention import single_attention
 from flashinfer.attention.schema import AttentionMode
 from flashinfer.cann.attention import dense_attention
+from flashinfer.runtime import SchemaError
 
 
 @pytest.fixture(scope="module")
@@ -86,3 +87,31 @@ def test_batch_prefill_segments_pages_outputs_and_lse(npu, layout, ragged):
     assert wrapper.resolved_backend == "cann"
     assert wrapper.plan_selection.route == "builtin"
     assert wrapper.plan_selection.kernel_id.startswith("cann/")
+
+
+@pytest.mark.parametrize("layout", ["NHD", "HND"])
+@pytest.mark.parametrize("q_len", [1, 2])
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])
+def test_paged_decode_plan_metadata_and_workspace_reset(npu, layout, q_len, dtype):
+    torch.manual_seed(23)
+    q = torch.randn(2 * q_len, 4, 64, dtype=dtype)
+    keys = torch.randn(3, 4, 2, 64, dtype=dtype)
+    vals = torch.randn_like(keys)
+    gathered_k = (keys[2, :3], keys[:2].reshape(8, 2, 64)[:5])
+    gathered_v = (vals[2, :3], vals[:2].reshape(8, 2, 64)[:5])
+    expected = [dense_attention(q[r * q_len:(r + 1) * q_len], gathered_k[r], gathered_v[r],
+                                native=False, causal=q_len > 1, return_lse=True) for r in range(2)]
+    ws = torch.empty(1024, dtype=torch.uint8, device=npu)
+    wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(ws, layout, use_tensor_cores=q_len > 1)
+    wrapper.plan(torch.tensor([0, 1, 3], dtype=torch.int32), torch.tensor([2, 0, 1], dtype=torch.int32),
+                 torch.tensor([3, 1], dtype=torch.int32), 4, 2, 64, 4, q_data_type=dtype, q_len_per_req=q_len)
+    plan = wrapper.plan_state
+    wrapper.reset_workspace_buffer(torch.empty_like(ws), torch.empty(0, dtype=torch.uint8, device=npu))
+    assert wrapper.plan_state is plan
+    if layout == "HND":
+        keys, vals = keys.transpose(1, 2), vals.transpose(1, 2)
+    output, lse = wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)), return_lse=True, q_len_per_req=q_len)
+    torch.testing.assert_close(output.cpu(), torch.cat([x[0] for x in expected]), rtol=0.02, atol=0.02)
+    torch.testing.assert_close(lse.cpu(), torch.cat([x[1] for x in expected]), rtol=0.02, atol=0.02)
+    with pytest.raises(SchemaError, match="q_len_per_req"):
+        wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)), q_len_per_req=q_len + 1)

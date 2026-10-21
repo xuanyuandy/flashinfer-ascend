@@ -527,7 +527,7 @@ class BatchDecodeFrontendTests(unittest.TestCase):
             tensor([[[0.0]]]), packed, return_lse=True
         )
         self.assertEqual(output.data, (15.0,))
-        self.assertAlmostEqual(lse.data[0], math.log(2.0))
+        self.assertAlmostEqual(lse.data[0], math.log2(2.0))
 
     def test_multi_token_decode_is_causal(self):
         wrapper = BatchDecodeWithPagedKVCacheWrapper(

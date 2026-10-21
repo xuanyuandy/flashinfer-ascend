@@ -343,6 +343,7 @@ class HostBatchReferenceWrapper:
         skip_softmax_threshold_scale_factor,
         use_fp16_softmax=None,
         uses_spcompress=None,
+        capture_return_lse=None,
     ):
         if args:
             raise NotImplementedError(
@@ -395,7 +396,7 @@ class HostBatchReferenceWrapper:
                 self._workspace_contract,
                 self._graph_resources,
                 tensor_contract,
-                return_lse=bool(return_lse),
+                return_lse=bool(return_lse) if capture_return_lse is None else bool(capture_return_lse),
             )
             if self._capture_record is None:
                 self._capture_generation += 1
