@@ -157,3 +157,7 @@
 {"time": "2026-10-21T17:08:45.162721+00:00", "task": "T4.4-04", "action": "begin", "description": "更新旧版 smoke 以验证已对齐的 plan-run 契约"}
 {"time": "2026-10-21T17:08:45.265810+00:00", "task": "T4.4-04", "action": "end", "patch": "work_items/reports/execution/steps/T4.4-04.patch", "changed_files": ["tests/test_api_smoke.py"]}
 {"time": "2026-10-21T17:08:45.517246+00:00", "task": "T4.4-smoke", "action": "command", "command": ["/root/miniforge3/envs/flashinfer-a5/bin/python", "-m", "pytest", "-q", "tests/test_api_smoke.py"], "exit_code": 0, "log": "work_items/reports/execution/steps/T4.4-smoke.log"}
+{"time": "2026-10-21T17:08:45.616128+00:00", "task": "T4.4-smoke-commit", "action": "command", "command": ["git", "-c", "user.name=Codex Agent", "-c", "user.email=codex@localhost", "commit", "-m", "T4.4 更新全量测试暴露的旧版 decode 冒烟契约"], "exit_code": 0, "log": "work_items/reports/execution/steps/T4.4-smoke-commit.log"}
+{"time": "2026-10-21T17:08:45.814963+00:00", "task": "T2.2-10", "action": "begin", "description": "补齐已存在的 BatchAttention 顶层导出"}
+{"time": "2026-10-21T17:08:45.916506+00:00", "task": "T2.2-10", "action": "end", "patch": "work_items/reports/execution/steps/T2.2-10.patch", "changed_files": ["flashinfer/__init__.py"]}
+{"time": "2026-10-21T17:08:46.122980+00:00", "task": "T2.2-batch-root", "action": "command", "command": ["/root/miniforge3/envs/flashinfer-a5/bin/python", "-m", "pytest", "-q", "tests/test_batch_attention_frontend.py"], "exit_code": 0, "log": "work_items/reports/execution/steps/T2.2-batch-root.log"}

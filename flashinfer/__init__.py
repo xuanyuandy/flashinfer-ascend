@@ -7,6 +7,7 @@ M1 起接入（实施路线见 docs/framework_design.md §15）。
 
 from .version import __version__
 from .activation import silu_and_mul, gelu_and_mul, gelu_tanh_and_mul
+from .attention import BatchAttention
 from .decode import (
     BatchDecodeWithPagedKVCacheWrapper,
     cudnn_batch_decode_with_kv_cache,
@@ -64,6 +65,7 @@ from .runtime import (
 
 __all__ = [
     "__version__",
+    "BatchAttention",
     "silu_and_mul", "gelu_and_mul", "gelu_tanh_and_mul",
     # 对外 API（对标 flashinfer）
     "single_prefill_with_kv_cache",
