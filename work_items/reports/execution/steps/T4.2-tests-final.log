@@ -1,0 +1,12 @@
+..................F...                                                   [100%]
+=================================== FAILURES ===================================
+_ PublicSingleDecodeProviderRuntimeCheckpointTests.test_unbound_semantics_fail_before_package_resolution _
+NotImplementedError: provider query-scale binding is not implemented
+
+During handling of the above exception, another exception occurred:
+tests/test_checkpoint_045_public_single_decode_provider_runtime.py:87: in test_unbound_semantics_fail_before_package_resolution
+    with self.assertRaisesRegex(NotImplementedError, "Q/K/V scale"):
+E   AssertionError: "Q/K/V scale" does not match "provider query-scale binding is not implemented"
+=========================== short test summary info ============================
+FAILED tests/test_checkpoint_045_public_single_decode_provider_runtime.py::PublicSingleDecodeProviderRuntimeCheckpointTests::test_unbound_semantics_fail_before_package_resolution
+1 failed, 21 passed in 0.08s

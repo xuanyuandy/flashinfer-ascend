@@ -80,10 +80,11 @@ def single_attention(mode, q, k, v, *, backend="auto", kv_layout="NHD",
         from .attention.operator_resolver import AttentionOperatorRuntime
 
         for label, enabled in (
-            ("per-head scale", any(x is not None for x in (scale_q, scale_k, scale_v))),
+            ("Q/K/V scale (query-scale)" if mode == AttentionMode.SINGLE_DECODE else "per-head scale",
+             any(x is not None for x in (scale_q, scale_k, scale_v))),
             ("custom-mask", custom_mask is not None or packed_custom_mask is not None),
             ("KV scale", k_scale is not None or v_scale is not None),
-            ("Tensor Core", use_tensor_cores),
+            ("matrix-core", use_tensor_cores),
         ):
             if enabled:
                 raise NotImplementedError("provider " + label + " binding is not implemented")
@@ -109,6 +110,9 @@ def single_attention(mode, q, k, v, *, backend="auto", kv_layout="NHD",
 
             kv = combine_attention_operator_quantized_kv_input(k, v)
         return runtime.run(q, kv, return_lse=return_lse)
+    # CUDA's Tensor Core hint selects an implementation of the same formula;
+    # real NPU tensors use the registered CANN implementation in either case.
+    del use_tensor_cores
     options = dict(
         decode=mode == AttentionMode.SINGLE_DECODE, kv_layout=kv_layout,
         causal=bool(causal), pos_encoding_mode=pos_encoding_mode,

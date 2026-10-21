@@ -15,7 +15,7 @@
 ## 进度
 
 - [x] **T4.1** MoE 路由枚举取值与上游不一致 ⚠ 最高危
-- [ ] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
+- [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
 - [ ] **T4.3** MoE 三个「兼容别名」实际改了参数名
 - [ ] **T4.4** decode wrapper 的 `plan()` 参数集不同
 - [ ] **T4.5** 未知后端名抛裸异常
@@ -171,3 +171,7 @@ pytest tests/ -q -k "parity or enum or pdl or backend"
 ## T4.1 自动执行记录
 
 路由枚举移到与上游同名的 `tllm_enums.py` 并保持原导出身份。TopK=5、Unspecified=10，完整 11 个成员、可 eval 的 repr 已验证；未实现的合法路由在计算前明确报错。定向测试结果见 `T4.1-tests.log`。
+
+## T4.2 自动执行记录
+
+公开 single decode 已恢复固定上游完整签名和 q[heads,dim]/K-V[tokens,kv_heads,dim]；显式拒绝旧 batch 维，LSE 为 log2。公开 API 接入 T2.2 的真实 FIA runner，包含 NHD/HND/GQA 与输出/LSE 数值对拍。

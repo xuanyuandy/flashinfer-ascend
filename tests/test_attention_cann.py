@@ -29,8 +29,9 @@ def test_single_fia_gqa_lse_and_layout(npu, dtype, decode, layout, head_dim):
     if layout == "HND":
         k, v = k.transpose(0, 1), v.transpose(0, 1)
     expected, expected_lse = dense_attention(q, k, v, native=False, decode=decode, kv_layout=layout, causal=not decode, return_lse=True)
-    mode = AttentionMode.SINGLE_DECODE if decode else AttentionMode.SINGLE_PREFILL
-    actual, lse = single_attention(mode, q.to(npu), k.to(npu), v.to(npu), backend="cann", kv_layout=layout, causal=not decode, return_lse=True)
+    call = flashinfer.single_decode_with_kv_cache if decode else flashinfer.single_prefill_with_kv_cache
+    options = {} if decode else {"causal": True}
+    actual, lse = call(q.to(npu), k.to(npu), v.to(npu), kv_layout=layout, return_lse=True, **options)
     torch.testing.assert_close(actual.cpu(), expected, rtol=0.015, atol=0.015)
     torch.testing.assert_close(lse.cpu(), expected_lse, rtol=0.015, atol=0.015)
 

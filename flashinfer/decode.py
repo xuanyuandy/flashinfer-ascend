@@ -35,27 +35,35 @@ def single_decode_with_kv_cache_with_jit_module(
 
 
 def single_decode_with_kv_cache(
-    q,
-    k_cache,
-    v_cache,
+    q: torch.Tensor,
+    k: torch.Tensor,
+    v: torch.Tensor,
     kv_layout: str = "NHD",
-    *,
-    backend: Union[str, Backend, None] = None,
-    kernel_id: Optional[str] = None,
-):
-    """单步 decode attention：q (B, H, D)，k/v_cache (B, S, H_kv, D)。
+    pos_encoding_mode: str = "NONE",
+    use_tensor_cores: bool = False,
+    q_scale: Optional[float] = None,
+    k_scale: Optional[float] = None,
+    v_scale: Optional[float] = None,
+    window_left: int = -1,
+    logits_soft_cap: Optional[float] = None,
+    sm_scale: Optional[float] = None,
+    rope_scale: Optional[float] = None,
+    rope_theta: Optional[float] = None,
+    return_lse: bool = False,
+) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
 
-    调度参数语义同 prefill（§3.2.2）。
-    """
-    signature = build_signature(
-        _OP_DECODE,
-        (q, k_cache, v_cache),
-        layouts=(kv_layout, kv_layout, kv_layout),
+    """Decode one request: q [heads, dim], K/V [tokens, kv_heads, dim]."""
+    from ._single_attention import single_attention
+    from .attention.schema import AttentionMode
+
+    return single_attention(
+        AttentionMode.SINGLE_DECODE, q, k, v, kv_layout=kv_layout,
+        pos_encoding_mode=pos_encoding_mode, use_tensor_cores=use_tensor_cores,
+        scale_q=q_scale, k_scale=k_scale, v_scale=v_scale,
+        window_left=window_left, logits_soft_cap=logits_soft_cap,
+        sm_scale=sm_scale, rope_scale=rope_scale, rope_theta=rope_theta,
+        return_lse=return_lse,
     )
-    decision = dispatch(
-        signature, current_hardware(), backend=backend, kernel_id=kernel_id
-    )
-    return _run_selected(decision.kernel_id, q, k_cache, v_cache)
 
 
 class BatchDecodeWithPagedKVCacheWrapper:

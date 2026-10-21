@@ -15,7 +15,7 @@
 ## 进度
 
 - [x] **T2.1** sampling（10 个接口）— 性价比最高
-- [ ] **T2.2** Attention（4 个接口 + 2 个占位转正）
+- [x] **T2.2** Attention（4 个接口 + 2 个占位转正）
 - [ ] **T2.3** rope（5 个接口）
 - [ ] **T2.4** GEMM（4 个接口）
 - [x] **T2.5** activation（3 个接口）
@@ -155,3 +155,5 @@ T2.3/T2.4 缺少原覆盖表中的确切 5/4 个接口名；已继续查找并�
 - scatter API 的准确关键字是 `cache_mode="Norm"`（ND）；默认 PA_NZ 不能直接写上游 ND cache。非连续视图通过 ND staging 写回，保持调用方 cache 地址与别名。
 - 检出相邻历史差异：旧 `merge_state` 使用自然对数；按全局约束登记为有意不同，文档注明，未在该任务顺手改行为。
 - sparse/fp4 的确切剩余接口仍依赖未提供的原覆盖表，本子任务不勾选整项完成。
+
+T4.2 已将公开 single decode 接到规范化与 FIA 执行，T2.2 四个公开入口现均有真实 CANN 路径。decode wrapper 的分页 plan/reset 修复仍单独归 T4.4。

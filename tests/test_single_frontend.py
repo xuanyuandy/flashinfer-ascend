@@ -161,6 +161,12 @@ class SinglePrefillFrontendTests(unittest.TestCase):
 
 
 class SingleDecodeFrontendTests(unittest.TestCase):
+    def test_legacy_batch_dimension_is_rejected(self):
+        with self.assertRaisesRegex(SchemaError, "rank 2"):
+            single_decode_with_kv_cache(
+                tensor([[[0.0]]]), tensor([[[1.0]]]), tensor([[[2.0]]]),
+            )
+
     def test_nhd_and_hnd_layouts_return_flashinfer_shapes(self):
         q = tensor([[0.0], [0.0]])
         for layout, k, v in (
@@ -174,7 +180,7 @@ class SingleDecodeFrontendTests(unittest.TestCase):
                 self.assertEqual(output.shape, (2, 1))
                 self.assertEqual(output.data, (4.0, 4.0))
                 self.assertEqual(lse.shape, (2,))
-                self.assertAlmostEqual(lse.data[0], math.log(2.0))
+                self.assertAlmostEqual(lse.data[0], math.log2(2.0))
 
     def test_decode_scalar_scales_compose(self):
         output = single_decode_with_kv_cache(

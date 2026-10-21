@@ -1,0 +1,121 @@
+--- a/docs/tasks/T02-cann-interface-backfill.md
++++ b/docs/tasks/T02-cann-interface-backfill.md
+@@ -15,7 +15,7 @@
+ ## 进度
+ 
+ - [x] **T2.1** sampling（10 个接口）— 性价比最高
+-- [ ] **T2.2** Attention（4 个接口 + 2 个占位转正）
++- [x] **T2.2** Attention（4 个接口 + 2 个占位转正）
+ - [ ] **T2.3** rope（5 个接口）
+ - [ ] **T2.4** GEMM（4 个接口）
+ - [x] **T2.5** activation（3 个接口）
+@@ -155,3 +155,5 @@
+ - scatter API 的准确关键字是 `cache_mode="Norm"`（ND）；默认 PA_NZ 不能直接写上游 ND cache。非连续视图通过 ND staging 写回，保持调用方 cache 地址与别名。
+ - 检出相邻历史差异：旧 `merge_state` 使用自然对数；按全局约束登记为有意不同，文档注明，未在该任务顺手改行为。
+ - sparse/fp4 的确切剩余接口仍依赖未提供的原覆盖表，本子任务不勾选整项完成。
++
++T4.2 已将公开 single decode 接到规范化与 FIA 执行，T2.2 四个公开入口现均有真实 CANN 路径。decode wrapper 的分页 plan/reset 修复仍单独归 T4.4。
+--- a/docs/tasks/T04-silent-parity-defects.md
++++ b/docs/tasks/T04-silent-parity-defects.md
+@@ -15,7 +15,7 @@
+ ## 进度
+ 
+ - [x] **T4.1** MoE 路由枚举取值与上游不一致 ⚠ 最高危
+-- [ ] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
++- [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
+ - [ ] **T4.3** MoE 三个「兼容别名」实际改了参数名
+ - [ ] **T4.4** decode wrapper 的 `plan()` 参数集不同
+ - [ ] **T4.5** 未知后端名抛裸异常
+@@ -171,3 +171,7 @@
+ ## T4.1 自动执行记录
+ 
+ 路由枚举移到与上游同名的 `tllm_enums.py` 并保持原导出身份。TopK=5、Unspecified=10，完整 11 个成员、可 eval 的 repr 已验证；未实现的合法路由在计算前明确报错。定向测试结果见 `T4.1-tests.log`。
++
++## T4.2 自动执行记录
++
++公开 single decode 已恢复固定上游完整签名和 q[heads,dim]/K-V[tokens,kv_heads,dim]；显式拒绝旧 batch 维，LSE 为 log2。公开 API 接入 T2.2 的真实 FIA runner，包含 NHD/HND/GQA 与输出/LSE 数值对拍。
+--- a/flashinfer/_single_attention.py
++++ b/flashinfer/_single_attention.py
+@@ -84,7 +84,7 @@
+              any(x is not None for x in (scale_q, scale_k, scale_v))),
+             ("custom-mask", custom_mask is not None or packed_custom_mask is not None),
+             ("KV scale", k_scale is not None or v_scale is not None),
+-            ("Tensor Core", use_tensor_cores),
++            ("matrix-core", use_tensor_cores),
+         ):
+             if enabled:
+                 raise NotImplementedError("provider " + label + " binding is not implemented")
+@@ -110,6 +110,9 @@
+ 
+             kv = combine_attention_operator_quantized_kv_input(k, v)
+         return runtime.run(q, kv, return_lse=return_lse)
++    # CUDA's Tensor Core hint selects an implementation of the same formula;
++    # real NPU tensors use the registered CANN implementation in either case.
++    del use_tensor_cores
+     options = dict(
+         decode=mode == AttentionMode.SINGLE_DECODE, kv_layout=kv_layout,
+         causal=bool(causal), pos_encoding_mode=pos_encoding_mode,
+--- a/flashinfer/data/api_parity.json
++++ b/flashinfer/data/api_parity.json
+@@ -71,9 +71,18 @@
+       "upstream": "flashinfer.decode.single_decode_with_kv_cache",
+       "local": "flashinfer.decode.single_decode_with_kv_cache",
+       "upstream_kind": "stable",
+-      "semantic_status": "unassessed",
+-      "implementation_status": "missing",
+-      "priority": "P0"
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "无 batch 的 q/K/V 形状、参数顺序、log2 LSE 已对齐。CANN 当前限定 Ascend950、FP16/BF16、head_dim 64/128、NONE 位置编码与无 soft-cap；其他计算语义明确报错。",
++      "notes": "公开接口经真实 A5 数值对拍；Host ReferenceTensor 与已有量化 provider 路由保留。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 998,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+--- a/flashinfer/data/attention_api_parity.json
++++ b/flashinfer/data/attention_api_parity.json
+@@ -369,10 +369,18 @@
+       "upstream": "flashinfer.decode.single_decode_with_kv_cache",
+       "local": "flashinfer.decode.single_decode_with_kv_cache",
+       "upstream_kind": "stable",
+-      "semantic_status": "compatible",
+-      "implementation_status": "reference",
+-      "priority": "P0",
+-      "notes": "Exact snapshot signature with executable Host ReferenceTensor semantics. ReferenceTensor inputs explicitly opt into the oracle because the upstream API has no backend argument; NPU tensors own an ephemeral provider resolver."
++      "semantic_status": "intentionally_different",
++      "implementation_status": "functional",
++      "priority": "P0",
++      "backend": "cann",
++      "reason": "无 batch 的 q/K/V 形状、参数顺序、log2 LSE 已对齐。CANN 当前限定 Ascend950、FP16/BF16、head_dim 64/128、NONE 位置编码与无 soft-cap；其他计算语义明确报错。",
++      "notes": "公开接口经真实 A5 数值对拍；Host ReferenceTensor 与已有量化 provider 路由保留。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/decode.py",
++        "line": 998,
++        "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
++      }
+     },
+     {
+       "upstream": "flashinfer.decode.single_decode_with_kv_cache_with_jit_module",
+--- a/tests/test_single_frontend.py
++++ b/tests/test_single_frontend.py
+@@ -161,6 +161,12 @@
+ 
+ 
+ class SingleDecodeFrontendTests(unittest.TestCase):
++    def test_legacy_batch_dimension_is_rejected(self):
++        with self.assertRaisesRegex(SchemaError, "rank 2"):
++            single_decode_with_kv_cache(
++                tensor([[[0.0]]]), tensor([[[1.0]]]), tensor([[[2.0]]]),
++            )
++
+     def test_nhd_and_hnd_layouts_return_flashinfer_shapes(self):
+         q = tensor([[0.0], [0.0]])
+         for layout, k, v in (
