@@ -1,0 +1,35 @@
+[
+  {
+    "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
+    "_patch": {
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
+    }
+  },
+  {
+    "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
+    "_patch": {
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
+    }
+  },
+  {
+    "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+    "_patch": {
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
+    }
+  }
+]

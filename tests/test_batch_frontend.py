@@ -404,8 +404,7 @@ class PagedPrefillFrontendTests(unittest.TestCase):
         kv = (tensor([[[[0.0]]]]), tensor([[[[1.0]]]]))
         with self.assertRaisesRegex(SchemaError, "match"):
             wrapper.run(q, kv, window_left=-1)
-        with self.assertRaisesRegex(NotImplementedError, "enable_pdl"):
-            wrapper.run(q, kv, enable_pdl=True)
+        self.assertEqual(wrapper.run(q, kv, enable_pdl=True).data, (1.0,))
         with self.assertRaisesRegex(NotImplementedError, "NVFP4"):
             wrapper.run(q, kv, kv_cache_sf=tensor([1.0]))
         self.assertEqual(

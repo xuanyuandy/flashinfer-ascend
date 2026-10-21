@@ -6,7 +6,7 @@
 | **执行序号** | 4 / 20 |
 | **依赖** | — |
 | **规模** | 中 |
-| **状态** | `执行中` |
+| **状态** | `六项实现与定向验收通过；整体验收待账本核验` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -19,7 +19,7 @@
 - [x] **T4.3** MoE 三个「兼容别名」实际改了参数名
 - [x] **T4.4** decode wrapper 的 `plan()` 参数集不同
 - [x] **T4.5** 未知后端名抛裸异常
-- [ ] **T4.6** `enable_pdl` 行为在本仓内部自相矛盾 ⚠ 新增
+- [x] **T4.6** `enable_pdl` 行为在本仓内部自相矛盾 ⚠ 新增
 
 ---
 
@@ -187,3 +187,7 @@ pytest tests/ -q -k "parity or enum or pdl or backend"
 ## T4.5 自动执行记录
 
 未知 backend 统一抛 DispatchError 并列出当前枚举支持值；fa2/fa3/cudnn/trtllm-gen/cutlass/cute-dsl 等 CUDA 后端额外提示使用 auto/cann。显式策略与环境变量策略共用诊断；dispatch 和 explain_dispatch 均覆盖。结果见 `T4.5-tests.log`。
+
+## T4.6 自动执行记录
+
+attention 删除 PDL raise，与 norm/activation 统一为显式丢弃的硬件降级语义；None/False/True 均接受。旧测试改为验证同结果；贡献规范见根目录 CONTRIBUTING.md。账本按参数粒度标 compatible，不掩盖接口其他尚未实现的语义。

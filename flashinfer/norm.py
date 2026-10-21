@@ -75,7 +75,7 @@ def rmsnorm(
     output : torch.Tensor
         Normalized tensor, shape 与 input 相同。
     """
-    del enable_pdl  # NPU 无 PDL；仅为签名级 drop-in 兼容保留
+    del enable_pdl  # 上游在非 CUDA 设备上同样关闭 PDL，语义兼容
     import torch  # 延迟导入：模块本身不依赖 torch（§14.1 host 单测）
 
     if out is None:
@@ -125,7 +125,7 @@ def fused_add_rmsnorm(
     backend / kernel_id
         调度覆盖参数（§3.2.2，与计算语义正交）。
     """
-    del enable_pdl  # NPU 无 PDL；仅为签名级 drop-in 兼容保留
+    del enable_pdl  # 上游在非 CUDA 设备上同样关闭 PDL，语义兼容
     signature = build_signature(
         _OP_FUSED_ADD_RMSNORM,
         (input, residual, weight),
@@ -153,7 +153,7 @@ def gemma_rmsnorm(
     差异是缩放因子为 ``weight + 1``（Gemma 约定）。``enable_pdl`` 为
     NVIDIA PDL 专属参数，NPU 无对应机制，接受并忽略。
     """
-    del enable_pdl
+    del enable_pdl  # 上游在非 CUDA 设备上同样关闭 PDL，语义兼容
     import torch
 
     if out is None:
@@ -189,7 +189,7 @@ def gemma_fused_add_rmsnorm(
     CANN 无该算子（``npu_add_rms_norm`` 缩放因子为 ``gamma`` 而非
     ``gamma + 1``），默认走 Triton 自定义 kernel。
     """
-    del enable_pdl
+    del enable_pdl  # 上游在非 CUDA 设备上同样关闭 PDL，语义兼容
     signature = build_signature(
         _OP_GEMMA_FUSED_ADD_RMSNORM,
         (input, residual, weight),

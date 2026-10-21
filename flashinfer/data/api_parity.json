@@ -245,7 +245,13 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "enable_pdl 为 NVIDIA PDL 专属参数，NPU 无对应机制，接受并忽略；backend=cann(aclnn, Ascend910B)/reference"
+      "notes": "enable_pdl 为 NVIDIA PDL 专属参数，NPU 无对应机制，接受并忽略；backend=cann(aclnn, Ascend910B)/reference",
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.norm.fused_add_rmsnorm",
@@ -254,7 +260,13 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*weight；enable_pdl 接受并忽略；backend=cann(aclnn, Ascend910B)/reference"
+      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*weight；enable_pdl 接受并忽略；backend=cann(aclnn, Ascend910B)/reference",
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.norm.gemma_rmsnorm",
@@ -263,7 +275,13 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "缩放因子 weight+1（Gemma 约定）；enable_pdl 接受并忽略；backend=cann(npu_gemma_rms_norm, Ascend910B)/reference"
+      "notes": "缩放因子 weight+1（Gemma 约定）；enable_pdl 接受并忽略；backend=cann(npu_gemma_rms_norm, Ascend910B)/reference",
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.norm.gemma_fused_add_rmsnorm",
@@ -272,7 +290,13 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*(weight+1)；CANN 无对应算子（npu_add_rms_norm 乘 gamma 而非 gamma+1），默认走 triton 自定义 kernel；backend=triton(Ascend910B)/reference"
+      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*(weight+1)；CANN 无对应算子（npu_add_rms_norm 乘 gamma 而非 gamma+1），默认走 triton 自定义 kernel；backend=triton(Ascend910B)/reference",
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.norm.layernorm",
@@ -326,6 +350,12 @@
         "path": "flashinfer/activation.py",
         "line": 91,
         "sha256": "39004c0b12291b06c560134c0e50a980e1ff073aeaefabc65236a789c0ad0d7e"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -1763,6 +1793,12 @@
         "path": "flashinfer/prefill.py",
         "line": 4108,
         "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -1841,6 +1877,12 @@
         "path": "flashinfer/prefill.py",
         "line": 6016,
         "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -1896,6 +1938,12 @@
         "path": "flashinfer/activation.py",
         "line": 175,
         "sha256": "39004c0b12291b06c560134c0e50a980e1ff073aeaefabc65236a789c0ad0d7e"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -1924,6 +1972,12 @@
         "path": "flashinfer/activation.py",
         "line": 135,
         "sha256": "39004c0b12291b06c560134c0e50a980e1ff073aeaefabc65236a789c0ad0d7e"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -2059,6 +2113,12 @@
         "path": "flashinfer/decode.py",
         "line": 2770,
         "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     }
   ]

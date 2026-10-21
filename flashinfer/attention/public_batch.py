@@ -297,6 +297,9 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
     def _run_facade(self, q, kv, values):
         values = dict(values)
         spec = self.plan_state.spec
+        # CUDA PDL is a hardware launch hint; upstream disables it on NPU.
+        # Preserve the public argument while explicitly discarding the hint.
+        values.pop("enable_pdl", None)
         if values.get("q_len_per_req") not in (None, spec.q_len_per_req):
             raise SchemaError("run q_len_per_req must match the plan")
         if values.get("lse_base", "log2") not in ("log2", "ln") or values.get("lse_layout", "NH") not in ("NH", "HN"):

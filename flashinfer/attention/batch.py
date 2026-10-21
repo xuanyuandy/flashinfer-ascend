@@ -349,8 +349,8 @@ class HostBatchReferenceWrapper:
             raise NotImplementedError(
                 "custom JIT run arguments are not implemented by the Host facade"
             )
-        if enable_pdl not in (None, False):
-            raise NotImplementedError("enable_pdl is CUDA-specific and unsupported")
+        # Upstream disables CUDA PDL on unsupported hardware, including NPU/CPU.
+        del enable_pdl
         if sinks is not None:
             raise NotImplementedError("attention sinks are not in the Host oracle yet")
         if kv_cache_sf is not None:

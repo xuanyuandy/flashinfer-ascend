@@ -191,6 +191,12 @@
         "path": "flashinfer/prefill.py",
         "line": 4108,
         "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -304,6 +310,12 @@
         "path": "flashinfer/prefill.py",
         "line": 6016,
         "sha256": "b2824a09b370bdc0e6ce4bd3fdee2e3ffa6c86cf5996def83226407abda54902"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
@@ -465,6 +477,12 @@
         "path": "flashinfer/decode.py",
         "line": 2770,
         "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00"
+      },
+      "parameters": {
+        "enable_pdl": {
+          "semantic_status": "compatible",
+          "notes": "上游在非 CUDA/不支持 PDL 的设备上关闭 PDL；NPU 保留参数位并显式丢弃，None/False/True 等价于 False。"
+        }
       }
     },
     {
