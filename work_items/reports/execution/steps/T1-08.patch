@@ -1,0 +1,16 @@
+--- a/flashinfer/runtime/schema.py
++++ b/flashinfer/runtime/schema.py
+@@ -151,8 +151,11 @@
+     causal: bool = False
+     pos_encoding: str = "NONE"
+     deterministic: bool = False
+-
+-    def __post_init__(self):
++    schema_version: int = 1
++
++    def __post_init__(self):
++        if self.schema_version != 1:
++            raise SchemaError("unsupported workload schema version")
+         if not self.op:
+             raise SchemaError("workload op must be non-empty")
+         for name in ("dtypes", "layouts", "static_dims", "dynamic_bounds", "quant_specs"):

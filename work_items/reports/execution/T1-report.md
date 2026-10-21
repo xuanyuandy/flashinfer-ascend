@@ -24,3 +24,13 @@
 ## 留痕
 
 `events.jsonl` 按时间记录操作；`steps/*.patch` 保存每组修改；`steps/*.log` 保存命令输出；`preexisting.patch` 和 untracked 清单隔离前序 A5 改动。导入/收集门禁与失败清单已交付，按用户持续执行授权进入 P1；用户复核尚未发生。
+
+## P1 后的契约复查
+
+恢复 `QuantSpec` 分组的 `group_size` 必填校验、manifest 要求的 capability binding 版本，以及 `WorkloadSpec.schema_version=1`。
+最后一项由冻结 wire 反推验证：只在诊断副本中替换已知错误的 binary header 后，补齐 workload 版本即可得到原始冻结 wire 的完整 SHA-256；未修改运行期指纹或测试断言。
+证据为 [`T1-workload-version-recovery.json`](T1-workload-version-recovery.json)。
+
+当前工作区全量回归 997 通过、3 失败（[`steps/P1-full-after-workload.log`](steps/P1-full-after-workload.log)）。
+仍失败的是 binary ABI v1、binary ABI v2 和由其 header 派生的 wire 指纹；error ABI 单独检查也尚未匹配。
+导入 119 个模块零失败，收集 1000 项零错误。最初 119 项失败清单保留为历史基线；最新状态见 P0/P1 总报告。
