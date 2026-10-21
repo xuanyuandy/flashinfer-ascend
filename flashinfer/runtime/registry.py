@@ -139,11 +139,13 @@ def _builtin_descriptors() -> Tuple[KernelDescriptor, ...]:
     from ..cann import cann_descriptors
     from ..triton import triton_descriptors
     from . import reference_kernels
+    from .._sampling import descriptors as sampling_descriptors
 
     return (
         reference_kernels.builtin_descriptors()
         + cann_descriptors()
         + triton_descriptors()
+        + sampling_descriptors(Backend.REFERENCE)
     )
 
 

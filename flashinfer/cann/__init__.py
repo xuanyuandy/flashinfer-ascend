@@ -24,6 +24,7 @@ from .gemm import gemm_descriptors
 from .moe import moe_descriptors
 from .norm import norm_descriptors
 from .rope import rope_descriptors
+from .sampling import sampling_descriptors
 
 
 def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
@@ -35,4 +36,5 @@ def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
         + moe_descriptors()
         + cascade_descriptors()
         + gemm_descriptors()
+        + sampling_descriptors()
     )

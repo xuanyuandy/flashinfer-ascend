@@ -6,7 +6,7 @@
 | **执行序号** | 3 / 20 |
 | **依赖** | —（验证需 T1） |
 | **规模** | 大 |
-| **状态** | `未开始` |
+| **状态** | `执行中：T2.1 已通过自动验收` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,7 +14,7 @@
 
 ## 进度
 
-- [ ] **T2.1** sampling（10 个接口）— 性价比最高
+- [x] **T2.1** sampling（10 个接口）— 性价比最高
 - [ ] **T2.2** Attention（4 个接口 + 2 个占位转正）
 - [ ] **T2.3** rope（5 个接口）
 - [ ] **T2.4** GEMM（4 个接口）
@@ -121,3 +121,11 @@ pytest tests/ -q
 - **验收结果**：
 - **遗留问题**（不要顺手改，记在这里）：
 - **提交**：`T2 <标题>`
+
+## T2.1 执行记录（2026-10-21）
+
+- 10 个接口按固定上游 commit 的名称、参数顺序、默认值与注解声明，注册 10 个 CANN 与 10 个显式 reference descriptor，公开顶层导出。
+- A5 原生算子与 MinP 已实测可用。原生 TopK/TopP 会按索引切并列项；本实现先用 NPU 张量算子按上游阈值过滤，再调原生采样，避免该静默差异。
+- 14 项测试通过，含 FP16/BF16/FP32、并列阈值、indices、无效行、随机分布与本地复现、speculative 前缀和独立接受计数。
+- CUDA Philox 的 seed/offset 流尚未实现，显式报错；随机序列跨硬件不同，已逐条登记 reason。该限制使随机接口标为 intentionally_different，不能宣称完整 RNG drop-in。
+- 日志：`work_items/reports/execution/steps/T2.1-tests-final.log`；账本增量：`T2.1-parity-entries.json`。

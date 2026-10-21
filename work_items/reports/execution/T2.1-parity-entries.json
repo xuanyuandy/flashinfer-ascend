@@ -1,0 +1,369 @@
+[
+  {
+    "upstream": "flashinfer.sampling.sampling_from_probs",
+    "local": "flashinfer.sampling.sampling_from_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 1073,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.sampling_from_logits",
+    "local": "flashinfer.sampling.sampling_from_logits",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 983,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.top_p_sampling_from_probs",
+    "local": "flashinfer.sampling.top_p_sampling_from_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 1184,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.top_k_sampling_from_probs",
+    "local": "flashinfer.sampling.top_k_sampling_from_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 1314,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.top_k_top_p_sampling_from_probs",
+    "local": "flashinfer.sampling.top_k_top_p_sampling_from_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 1827,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.min_p_sampling_from_probs",
+    "local": "flashinfer.sampling.min_p_sampling_from_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 1444,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.top_p_renorm_probs",
+    "local": "flashinfer.sampling.top_p_renorm_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "compatible",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "",
+    "notes": "设备侧阈值过滤与重归一化，保留边界并列项与输入 dtype；浮点归约允许数值容差。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 2000,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.top_k_renorm_probs",
+    "local": "flashinfer.sampling.top_k_renorm_probs",
+    "upstream_kind": "stable",
+    "semantic_status": "compatible",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "",
+    "notes": "设备侧阈值过滤与重归一化，保留边界并列项与输入 dtype；浮点归约允许数值容差。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 2089,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.top_k_mask_logits",
+    "local": "flashinfer.sampling.top_k_mask_logits",
+    "upstream_kind": "stable",
+    "semantic_status": "compatible",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "",
+    "notes": "设备侧阈值过滤与重归一化，保留边界并列项与输入 dtype；浮点归约允许数值容差。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 2177,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  },
+  {
+    "upstream": "flashinfer.sampling.chain_speculative_sampling",
+    "local": "flashinfer.sampling.chain_speculative_sampling",
+    "upstream_kind": "stable",
+    "semantic_status": "intentionally_different",
+    "implementation_status": "functional",
+    "priority": "P1",
+    "backend": "cann",
+    "soc_models": [
+      "Ascend950"
+    ],
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "cann_coverage": "verified_composite",
+    "cann_operators": [
+      "npu_top_k_top_p_sample",
+      "CANN Sort/Gather/ReduceSum/Mask"
+    ],
+    "reason": "NPU 与 CUDA 不共享逐样本随机序列；接受设备本地 Generator，显式 seed/offset 的 CUDA Philox row-stream 契约尚未实现，传入时抛 NotImplementedError。",
+    "notes": "按上游阈值保留所有并列概率；原生 CANN TopK/TopP 的截断语义不同，先在设备侧过滤后调用原生采样。当前为 eager 组合实现，未声明入图/性能最优。",
+    "upstream_source": {
+      "commit": "2895577720741ddfedff118202c89584996b8875",
+      "path": "flashinfer/sampling.py",
+      "line": 2249,
+      "sha256": "ce794984221a9909499799d5723cd49867339ff7405bac9de98af0f70711c6d3"
+    },
+    "consumers": {
+      "vllm": "unverified",
+      "sglang": "unverified"
+    }
+  }
+]

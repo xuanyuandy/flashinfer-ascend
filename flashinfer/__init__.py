@@ -33,6 +33,12 @@ from .norm import (
 )
 from .rope import apply_rope_with_cos_sin_cache_inplace
 from .prefill import single_prefill_with_kv_cache
+from .sampling import (
+    sampling_from_probs, sampling_from_logits, top_p_sampling_from_probs,
+    top_k_sampling_from_probs, top_k_top_p_sampling_from_probs,
+    min_p_sampling_from_probs, top_p_renorm_probs, top_k_renorm_probs,
+    top_k_mask_logits, chain_speculative_sampling,
+)
 from .runtime import (
     Backend,
     CapabilitySpec,
@@ -57,6 +63,10 @@ __all__ = [
     "__version__",
     # 对外 API（对标 flashinfer）
     "single_prefill_with_kv_cache",
+    "sampling_from_probs", "sampling_from_logits", "top_p_sampling_from_probs",
+    "top_k_sampling_from_probs", "top_k_top_p_sampling_from_probs",
+    "min_p_sampling_from_probs", "top_p_renorm_probs", "top_k_renorm_probs",
+    "top_k_mask_logits", "chain_speculative_sampling",
     "single_decode_with_kv_cache",
     "cudnn_batch_decode_with_kv_cache",
     "bmm_fp8",
