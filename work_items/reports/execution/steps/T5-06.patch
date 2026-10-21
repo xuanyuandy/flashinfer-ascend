@@ -1,0 +1,73 @@
+--- a/tests/test_parity_tracking.py
++++ b/tests/test_parity_tracking.py
+@@ -38,6 +38,24 @@
+     assert raw["upstream_source"]["declaration"] == "flashinfer.norm.rmsnorm"
+     raw["future_metadata"] = {"source": "reviewed-evidence", "versions": [1, 2]}
+     assert ParityEntry.from_dict(json.loads(json.dumps(raw))).to_dict() == raw
++
++    # Refreshing the declaration inventory must also keep a subsequently supplied
++    # coverage-matrix row, even when the local interface is not implemented yet.
++    import ast
++    from work_items.scripts.update_parity_inventory import annotate
++
++    class Source:
++        def resolve(self, _symbol):
++            text = "def apply_rope(): pass\n"
++            return "flashinfer/rope.py", text, ast.parse(text).body[0], "flashinfer.rope.apply_rope"
++
++    rope = next(e for e in manifest.entries if e.upstream == "flashinfer.rope.apply_rope").to_dict()
++    rope.update(cann_coverage="covered", cann_operators=["npu_apply_rotary_pos_emb"],
++                coverage_evidence={"matrix": "provided-coverage-table", "row": 3},
++                consumers={"vllm": "used", "sglang": "unverified"})
++    refreshed = annotate(dict(rope), Source())
++    for name in ("cann_coverage", "cann_operators", "coverage_evidence", "consumers"):
++        assert refreshed[name] == rope[name]
+ 
+ 
+ @pytest.mark.parametrize("patch, message", [
+--- a/work_items/scripts/update_parity_inventory.py
++++ b/work_items/scripts/update_parity_inventory.py
+@@ -14,6 +14,7 @@
+ 
+ 
+ REF = "2895577720741ddfedff118202c89584996b8875"
++LOCAL_COVERAGE_EVIDENCE = "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+ DOMAINS = {
+     "activation", "attention", "cascade", "decode", "fused_moe", "gemm",
+     "mla", "norm", "page", "prefill", "quantization", "rope", "sampling",
+@@ -177,13 +178,17 @@
+         and entry["implementation_status"] in {"functional", "optimized"}
+     ), None)
+     if owner is not None:
+-        operators = CANN_OPERATORS[owner]
+-        entry["cann_coverage"] = "covered" if operators else "unverified"
+-        entry["cann_operators"] = operators
+-        entry["coverage_evidence"] = "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++        if entry.get("cann_coverage", "unverified") == "unverified" or entry.get("coverage_evidence") == LOCAL_COVERAGE_EVIDENCE:
++            operators = CANN_OPERATORS[owner]
++            entry["cann_coverage"] = "covered" if operators else "unverified"
++            entry["cann_operators"] = operators
++            entry["coverage_evidence"] = LOCAL_COVERAGE_EVIDENCE
+     else:
+-        entry.update(cann_coverage="unverified", cann_operators=[])
+-        entry.pop("coverage_evidence", None)
++        if entry.get("coverage_evidence") == LOCAL_COVERAGE_EVIDENCE:
++            entry.update(cann_coverage="unverified", cann_operators=[])
++            entry.pop("coverage_evidence", None)
++        entry.setdefault("cann_coverage", "unverified")
++        entry.setdefault("cann_operators", [])
+     if entry["semantic_status"] == "intentionally_different" and entry["implementation_status"] == "missing":
+         entry["cann_coverage"] = "not_applicable"
+     if symbol.endswith(".is_cuda_graph_enabled") or symbol.endswith(".use_tensor_cores"):
+@@ -217,9 +222,8 @@
+         notes="147 条原始覆盖表、vllm-ascend 检出及下游使用证据尚未提供；当前由指定提交的公开声明补充库存，未核实字段保留 unverified。",
+     )
+     for surface in manifest.get("attention_surfaces", ()):
+-        surface["npu_execution"] = (
+-            "integration_required" if surface["attention_mode"] == "batch_mixed_paged" else "functional"
+-        )
++        if surface["attention_mode"] != "batch_mixed_paged" and surface["npu_execution"] == "integration_required":
++            surface["npu_execution"] = "functional"
+ 
+ 
+ def main():

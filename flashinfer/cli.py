@@ -23,7 +23,7 @@ from .attention import (
 )
 from .attention.json_envelope import decode_attention_json
 from .config import format_config
-from .parity import load_packaged_manifest
+from .parity import load_packaged_manifest, validate_packaged_manifests
 from .runtime import SchemaError, load_kernel_manifest
 
 
@@ -46,6 +46,17 @@ def _parity_report(args: argparse.Namespace) -> int:
     if args.require_complete and not manifest.is_complete:
         return 1
     return 0
+
+
+def _parity_check(args: argparse.Namespace) -> int:
+    try:
+        manifests = validate_packaged_manifests()
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        print("parity check failed: %s" % error, file=sys.stderr)
+        return 2
+    print("\n\n".join(manifest.report() for manifest in manifests))
+    print("\nParity ledger integrity: passed")
+    return int(args.require_complete and not all(m.is_complete for m in manifests))
 
 
 def _list_kernels(_args: argparse.Namespace) -> int:
@@ -263,6 +274,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="return non-zero unless stable API parity is complete",
     )
     parity.set_defaults(handler=_parity_report)
+
+    parity_check = subparsers.add_parser(
+        "parity-check", help="validate both pinned API ledgers and report coverage"
+    )
+    parity_check.add_argument(
+        "--require-complete", action="store_true",
+        help="also require verified inventory and runnable stable API coverage",
+    )
+    parity_check.set_defaults(handler=_parity_check)
 
     kernels = subparsers.add_parser(
         "list-kernels", help="list runtime-visible kernel descriptors"

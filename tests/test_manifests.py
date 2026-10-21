@@ -32,20 +32,24 @@ class ManifestTests(unittest.TestCase):
         manifest = load_packaged_manifest("all")
         self.assertEqual(manifest.schema_version, 2)
         self.assertEqual(manifest.inventory_status, "bootstrap")
-        self.assertGreaterEqual(len(manifest.entries), 20)
+        self.assertGreaterEqual(len(manifest.entries), 147)
         self.assertFalse(manifest.is_complete)
-        # 已落地 functional：norm×5 + rope×1 + decode×1 + gemm×2，其余仍为 missing
-        self.assertEqual(manifest.counts()["missing"], len(manifest.entries) - 9)
-        self.assertEqual(manifest.counts()["functional"], 9)
+        statuses = {entry.upstream: entry.implementation_status for entry in manifest.entries}
+        for symbol in (
+            "flashinfer.norm.rmsnorm", "flashinfer.sampling.sampling_from_probs",
+            "flashinfer.activation.silu_and_mul", "flashinfer.cascade.merge_states",
+            "flashinfer.page.append_paged_kv_cache",
+        ):
+            self.assertEqual(statuses[symbol], "functional")
+        self.assertEqual(statuses["flashinfer.rope.apply_rope"], "missing")
+        self.assertEqual(manifest.coverage_matrix["status"], "missing_source")
 
     def test_attention_parity_inventory_tracks_single_reference_facades(self):
         manifest = load_packaged_manifest("attention")
         self.assertEqual(manifest.schema_version, 2)
         self.assertEqual(manifest.scope, "attention_core")
-        self.assertEqual(manifest.inventory_status, "complete")
+        self.assertEqual(manifest.inventory_status, "bootstrap")
         self.assertGreaterEqual(len(manifest.entries), 18)
-        self.assertEqual(manifest.counts()["reference"], 32)
-        self.assertEqual(manifest.counts()["framework"], 2)
         self.assertEqual(manifest.counts()["missing"], 0)
         statuses = {
             entry.upstream: entry.implementation_status
@@ -59,32 +63,32 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(statuses[symbol], "reference")
         self.assertEqual(
             statuses["flashinfer.prefill.single_prefill_with_kv_cache"],
-            "reference",
+            "functional",
         )
         self.assertEqual(
             statuses["flashinfer.decode.single_decode_with_kv_cache"],
-            "reference",
+            "functional",
         )
         for symbol in (
             "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
             "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
             "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
-            "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
             "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
             "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan",
             "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
             "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
             "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.plan",
             "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
-            "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
             "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
             "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
             "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
         ):
-            self.assertEqual(statuses[symbol], "reference")
+            self.assertEqual(statuses[symbol], "functional")
         for symbol in (
             "flashinfer.prefill.single_prefill_with_kv_cache_with_jit_module",
             "flashinfer.decode.single_decode_with_kv_cache_with_jit_module",
+            "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
+            "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
         ):
             self.assertEqual(statuses[symbol], "framework")
         self.assertFalse(manifest.is_complete)
@@ -116,24 +120,21 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(surfaces[mode].public_lifecycle, "plan_run")
             self.assertEqual(surfaces[mode].provider_routing, "mode_bound")
         self.assertTrue(all(item.host_reference for item in surfaces.values()))
-        self.assertTrue(
-            all(
-                item.npu_execution == "integration_required"
-                for item in surfaces.values()
-            )
-        )
+        self.assertEqual(surfaces["batch_mixed_paged"].npu_execution, "integration_required")
+        self.assertTrue(all(item.npu_execution == "functional" for mode, item in surfaces.items()
+                            if mode != "batch_mixed_paged"))
         self.assertEqual(
             manifest.attention_surface_counts(),
             {
                 "host_reference": 6,
                 "provider_routed": 6,
-                "npu_callable": 0,
+                "npu_callable": 5,
             },
         )
         report = manifest.report()
         self.assertIn("attention-surfaces: 6", report)
         self.assertIn("provider-routed-surfaces: 6", report)
-        self.assertIn("npu-callable-surfaces: 0", report)
+        self.assertIn("npu-callable-surfaces: 5", report)
 
     def test_attention_surface_lifecycle_and_inventory_links_are_enforced(self):
         source = json.loads(

@@ -20,5 +20,8 @@ classifiers = [
 [tool.setuptools.packages.find]
 include = ["flashinfer*"]
 
+[tool.setuptools.package-data]
+flashinfer = ["data/*.json", "data/kernels/*.json"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]

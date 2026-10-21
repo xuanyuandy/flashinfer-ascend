@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/home/dy/projects/flashinfer/work_items/scripts/update_parity_inventory.py", line 248, in <module>
+    main()
+  File "/home/dy/projects/flashinfer/work_items/scripts/update_parity_inventory.py", line 233, in main
+    refresh(general, upstream, set(upstream.exported_symbols()))
+  File "/home/dy/projects/flashinfer/work_items/scripts/update_parity_inventory.py", line 200, in refresh
+    manifest["entries"] = [annotate(entry, upstream) for _, entry in sorted(entries.items())]
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dy/projects/flashinfer/work_items/scripts/update_parity_inventory.py", line 200, in <listcomp>
+    manifest["entries"] = [annotate(entry, upstream) for _, entry in sorted(entries.items())]
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/dy/projects/flashinfer/work_items/scripts/update_parity_inventory.py", line 157, in annotate
+    raise ValueError("unresolved ledger symbol: " + symbol)
+ValueError: unresolved ledger symbol: flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.end_forward

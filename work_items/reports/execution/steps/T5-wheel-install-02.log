@@ -1,0 +1,7 @@
+Processing /tmp/flashinfer-p1-wheels/flashinfer-0.1.0.dev0-py3-none-any.whl
+Installing collected packages: flashinfer
+  Attempting uninstall: flashinfer
+    Found existing installation: flashinfer 0.1.0.dev0
+    Not uninstalling flashinfer at /home/dy/projects/flashinfer, outside environment /tmp/flashinfer-parity-host-20261021
+    Can't uninstall 'flashinfer'. No files were found to uninstall.
+Successfully installed flashinfer-0.1.0.dev0

@@ -1,0 +1,683 @@
+--- a/flashinfer/data/api_parity.json
++++ b/flashinfer/data/api_parity.json
+@@ -2242,11 +2242,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.end_forward",
+@@ -2263,8 +2260,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
+@@ -2316,11 +2312,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.is_cuda_graph_enabled",
+@@ -2343,11 +2336,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
++      "cann_coverage": "unverified",
++      "cann_operators": [],
+       "notes": "保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。"
+     },
+     {
+@@ -2373,11 +2363,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.prewarm_paged_kv_stride_variant",
+@@ -2400,11 +2387,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
+@@ -2429,11 +2413,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.resolved_backend",
+@@ -2456,11 +2437,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+@@ -2519,11 +2497,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
+@@ -2548,11 +2523,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.CUDAGraphBatchDecodeWithPagedKVCacheWrapper",
+@@ -4266,11 +4238,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.end_forward",
+@@ -4288,8 +4257,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
+@@ -4341,11 +4309,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.is_cuda_graph_enabled",
+@@ -4369,11 +4334,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
+@@ -4398,11 +4360,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan_selection",
+@@ -4419,8 +4378,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.prewarm_paged_kv_stride_variant",
+@@ -4443,11 +4401,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.reset_workspace_buffer",
+@@ -4472,11 +4427,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
+@@ -4536,11 +4488,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+@@ -4591,11 +4540,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.end_forward",
+@@ -4612,8 +4558,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
+@@ -4665,11 +4610,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.is_cuda_graph_enabled",
+@@ -4692,11 +4634,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
++      "cann_coverage": "unverified",
++      "cann_operators": [],
+       "notes": "保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。"
+     },
+     {
+@@ -4722,11 +4661,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan_selection",
+@@ -4743,8 +4679,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.reset_workspace_buffer",
+@@ -4769,11 +4704,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
+--- a/flashinfer/data/attention_api_parity.json
++++ b/flashinfer/data/attention_api_parity.json
+@@ -185,11 +185,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.end_forward",
+@@ -206,8 +203,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward",
+@@ -259,11 +255,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
++      "cann_coverage": "unverified",
++      "cann_operators": [],
+       "notes": "保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。"
+     },
+     {
+@@ -289,11 +282,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.reset_workspace_buffer",
+@@ -318,11 +308,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.run",
+@@ -381,11 +368,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.workspace_size",
+@@ -410,11 +394,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.decode.single_decode_with_kv_cache",
+@@ -521,11 +502,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.end_forward",
+@@ -543,8 +521,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward",
+@@ -597,11 +574,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan",
+@@ -626,11 +600,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.plan_selection",
+@@ -647,8 +618,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.reset_workspace_buffer",
+@@ -673,11 +643,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.run",
+@@ -737,11 +704,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
+@@ -792,11 +756,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.end_forward",
+@@ -813,8 +774,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward",
+@@ -866,11 +826,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
++      "cann_coverage": "unverified",
++      "cann_operators": [],
+       "notes": "保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。"
+     },
+     {
+@@ -896,11 +853,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.plan_selection",
+@@ -917,8 +871,7 @@
+         "sglang": "unverified"
+       },
+       "cann_coverage": "not_applicable",
+-      "cann_operators": [],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.reset_workspace_buffer",
+@@ -943,11 +896,8 @@
+         "vllm": "unverified",
+         "sglang": "unverified"
+       },
+-      "cann_coverage": "covered",
+-      "cann_operators": [
+-        "npu_fused_infer_attention_score"
+-      ],
+-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
++      "cann_coverage": "unverified",
++      "cann_operators": []
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.run",
+--- a/flashinfer/parity.py
++++ b/flashinfer/parity.py
+@@ -71,6 +71,10 @@
+             "implementation_status", "priority", "notes", "reason", "cann_coverage",
+             "cann_operators", "local_status", "consumers", "api_kind", "upstream_source",
+         }
++        for name in ("upstream", "local", "upstream_kind", "semantic_status",
++                     "implementation_status", "priority", "notes", "reason"):
++            if name in value and not isinstance(value[name], str):
++                raise SchemaError("%s must be a string" % name)
+         operators = value.get("cann_operators", ())
+         if not isinstance(operators, (list, tuple)) or not all(
+             isinstance(name, str) and name.strip() for name in operators
+@@ -319,6 +323,7 @@
+             )
+             for entry in self.entries
+             if entry.upstream_kind == "stable" and entry.api_kind == "upstream"
++            and not entry.extra_fields.get("upstream_alias_of")
+         )
+ 
+     def validate_tracking(self) -> None:
+@@ -337,6 +342,7 @@
+         return tuple(
+             entry for entry in self.entries
+             if entry.api_kind == "upstream"
++            and not entry.extra_fields.get("upstream_alias_of")
+             and entry.semantic_status != "intentionally_different"
+             and (entry.implementation_status not in {"functional", "optimized"}
+                  or entry.semantic_status == "unassessed")
+@@ -363,6 +369,10 @@
+             "  scope: %s" % self.scope,
+             "  inventory: %s" % self.inventory_status,
+             "  symbols: %d" % len(self.entries),
++            "  upstream-symbols: %d" % sum(
++                entry.api_kind == "upstream" and not entry.extra_fields.get("upstream_alias_of")
++                for entry in self.entries
++            ),
+             "  coverage-matrix: %s" % self.coverage_matrix.get("status", "unverified"),
+             "  intentionally-different: %d" % sum(
+                 entry.semantic_status == "intentionally_different" for entry in self.entries
+--- a/tests/test_parity_tracking.py
++++ b/tests/test_parity_tracking.py
+@@ -47,6 +47,7 @@
+     ({"consumers": {"vllm": "maybe"}}, "consumer"),
+     ({"local_status": "missing"}, "local_status"),
+     ({"upstream_source": {"commit": "main"}}, "full commit"),
++    ({"semantic_status": "intentionally_different", "reason": None}, "reason must be a string"),
+ ])
+ def test_tracking_metadata_cannot_silently_overstate_coverage(patch, message):
+     raw = next(e for e in load_packaged_manifest("all").entries
+--- a/work_items/scripts/update_parity_inventory.py
++++ b/work_items/scripts/update_parity_inventory.py
+@@ -171,15 +171,19 @@
+         ))
+     entry["local_status"] = entry["implementation_status"]
+     entry.setdefault("consumers", {"vllm": "unverified", "sglang": "unverified"})
+-    owner = next((s for s in CANN_OPERATORS if symbol == s or symbol.startswith(s + ".")), None)
++    owner = symbol if symbol in CANN_OPERATORS else next((
++        s for s in ATTENTION_CLASSES
++        if symbol in {s + ".run", s + ".forward"}
++        and entry["implementation_status"] in {"functional", "optimized"}
++    ), None)
+     if owner is not None:
+         operators = CANN_OPERATORS[owner]
+         entry["cann_coverage"] = "covered" if operators else "unverified"
+         entry["cann_operators"] = operators
+         entry["coverage_evidence"] = "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+     else:
+-        entry.setdefault("cann_coverage", "unverified")
+-        entry.setdefault("cann_operators", [])
++        entry.update(cann_coverage="unverified", cann_operators=[])
++        entry.pop("coverage_evidence", None)
+     if entry["semantic_status"] == "intentionally_different" and entry["implementation_status"] == "missing":
+         entry["cann_coverage"] = "not_applicable"
+     if symbol.endswith(".is_cuda_graph_enabled") or symbol.endswith(".use_tensor_cores"):

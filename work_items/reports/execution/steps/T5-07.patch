@@ -1,0 +1,11 @@
+--- a/docs/TASKS.md
++++ b/docs/TASKS.md
+@@ -48,7 +48,7 @@
+   <sub>依赖 — · 规模 极小 · 执行序号 2 · 已核实 59 个 NVIDIA 专属定义，自动验收通过</sub>
+ - [ ] **[T2](tasks/T02-cann-interface-backfill.md)** · 补齐 32 条「CANN 有、本仓没接」的接口  
+   <sub>依赖 —（验证需 T1） · 规模 大 · 执行序号 3 · T2.1/2.2/2.5 自动验收通过；T2.6 已接入 cascade/page；其余待覆盖原表</sub>
+-- [x] **[T4](tasks/T04-silent-parity-defects.md)** · 修掉 6 处会静默出错的对标缺陷  
++- [x] **[T4](tasks/T04-silent-parity-defects.md)** · 修掉 6 处会静默出错的对标缺陷
+   <sub>依赖 — · 规模 中 · 执行序号 4 · 六项完成，parity/enum/pdl/backend 门禁 131 项通过；用户尚未复核</sub>
+ - [ ] **[T5](tasks/T05-parity-ledger.md)** · 让对标账本可复现、可运行、覆盖完整  
+   <sub>依赖 T1 · 规模 中 · 执行序号 5 · 双账本固定提交、校验与 CI 已接通；原始 147 条覆盖表待提供，保留 bootstrap</sub>

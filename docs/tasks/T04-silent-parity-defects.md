@@ -6,7 +6,7 @@
 | **执行序号** | 4 / 20 |
 | **依赖** | — |
 | **规模** | 中 |
-| **状态** | `六项实现与定向验收通过；整体验收待账本核验` |
+| **状态** | `六项完成，整体自动验收通过；用户尚未复核` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,6 +14,7 @@
 
 ## 进度
 
+- [x] 六项实现、固定上游核对及整体验收完成
 - [x] **T4.1** MoE 路由枚举取值与上游不一致 ⚠ 最高危
 - [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
 - [x] **T4.3** MoE 三个「兼容别名」实际改了参数名
@@ -191,3 +192,10 @@ pytest tests/ -q -k "parity or enum or pdl or backend"
 ## T4.6 自动执行记录
 
 attention 删除 PDL raise，与 norm/activation 统一为显式丢弃的硬件降级语义；None/False/True 均接受。旧测试改为验证同结果；贡献规范见根目录 CONTRIBUTING.md。账本按参数粒度标 compatible，不掩盖接口其他尚未实现的语义。
+
+## 整体验收
+
+`pytest tests/ -q -k "parity or enum or pdl or backend"`：131 通过、869 未选取。
+双账本已通过 `python -m flashinfer parity-check` 校验，六项对应变更、参数降级与删除别名均有记录。
+证据见 [`T5-and-T4-gates.log`](../../work_items/reports/execution/steps/T5-and-T4-gates.log)。
+全量测试仍有 T1 的三项历史 ABI 指纹失败，未计为 T4 验收通过；用户复核尚未发生。
