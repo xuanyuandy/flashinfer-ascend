@@ -1,0 +1,62 @@
+--- a/tests/test_api_smoke.py
++++ b/tests/test_api_smoke.py
+@@ -28,37 +28,46 @@
+     assert "reference/attention/prefill_ragged_v1" in kernel_ids
+ 
+ 
+-def test_decode_auto_dispatch_has_no_runner_yet():
+-    # auto 路径上内置 kernel 只有 reference，而 reference 默认被排除 → 无候选
++def test_decode_auto_dispatch_selects_registered_cann_runner():
+     from flashinfer.runtime.signature import InputSignature
+     from flashinfer.runtime.hardware import HardwareSignature
+ 
+-    with pytest.raises(DispatchError, match="无可用 kernel"):
+-        finpu.dispatch(
+-            InputSignature(op="attention.decode", dtypes=("float16",)),
+-            HardwareSignature(soc_model="Ascend910B", aicore_count=20),
+-        )
++    decision = finpu.dispatch(
++        InputSignature(op="attention.single_decode", dtypes=("float16",),
++                       layouts=("NHD",), specializations=(("head_dim", "64"),)),
++        HardwareSignature(soc_model="Ascend950", aicore_count=56),
++    )
++    assert decision.backend == finpu.Backend.CANN
++    assert callable(finpu.get_global_registry().get(decision.kernel_id).runner)
+ 
+ 
+ def test_wrapper_requires_plan_before_run():
++    from flashinfer.attention import ReferenceTensor
++
+     wrapper = finpu.BatchDecodeWithPagedKVCacheWrapper(
+-        float_workspace_buffer=None
++        ReferenceTensor.zeros((128,), dtype="uint8"), backend="reference",
+     )
+     assert not wrapper.is_planning_done
+     with pytest.raises(RuntimeError, match="plan"):
+-        wrapper.run(q=None, kv_cache=None)
++        wrapper.run(q=None, paged_kv_cache=None)
+ 
+ 
+-def test_wrapper_plan_falls_back_to_reference_with_opt_in():
++def test_wrapper_plan_selects_reference_only_with_opt_in():
++    from flashinfer.attention import ReferenceTensor
++
+     wrapper = finpu.BatchDecodeWithPagedKVCacheWrapper(
+-        float_workspace_buffer=None, backend="reference"
++        ReferenceTensor.zeros((128,), dtype="uint8"), backend="reference",
+     )
+     plan = wrapper.plan(
++        ReferenceTensor.from_nested([0, 1], dtype="int32"),
++        ReferenceTensor.from_nested([0], dtype="int32"),
++        ReferenceTensor.from_nested([1], dtype="int32"),
+         num_qo_heads=8,
+         num_kv_heads=8,
+         head_dim=128,
+         page_size=16,
+-        q_dtype="float16",
++        q_data_type="float16",
+     )
+-    assert plan.kernel_id == "reference/attention/decode_v1"
++    assert plan is None
++    assert wrapper.plan_selection.backend == "reference"
+     assert wrapper.is_planning_done

@@ -1,0 +1,113 @@
+...............................................FF....................... [  7%]
+........................................................................ [ 14%]
+...............................................F........................ [ 21%]
+...................F.................................................... [ 29%]
+........................................................................ [ 36%]
+....F.......................................F........................... [ 43%]
+........................................................................ [ 51%]
+........................................................................ [ 58%]
+........................................................................ [ 65%]
+........................................................................ [ 73%]
+................................................................F.....F. [ 80%]
+........................................................................ [ 87%]
+........................................................................ [ 94%]
+F.................................................                       [100%]
+=================================== FAILURES ===================================
+____________________ test_wrapper_requires_plan_before_run _____________________
+flashinfer/attention/frontend.py:291: in validate_framework_workspace_buffer
+    shape = tuple(int(dim) for dim in shape)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   TypeError: 'NoneType' object is not iterable
+
+The above exception was the direct cause of the following exception:
+tests/test_api_smoke.py:44: in test_wrapper_requires_plan_before_run
+    wrapper = finpu.BatchDecodeWithPagedKVCacheWrapper(
+flashinfer/decode.py:87: in __init__
+    self._init_facade(AttentionMode.BATCH_DECODE_PAGED, locals())
+flashinfer/attention/public_batch.py:105: in _init_facade
+    self._init_host_wrapper(
+flashinfer/attention/batch.py:109: in _init_host_wrapper
+    float_workspace_buffer = validate_framework_workspace_buffer(
+flashinfer/attention/frontend.py:293: in validate_framework_workspace_buffer
+    raise SchemaError("%s must expose a rank-1 shape" % name) from error
+E   flashinfer.runtime.schema.SchemaError: float_workspace_buffer must expose a rank-1 shape
+____________ test_wrapper_plan_falls_back_to_reference_with_opt_in _____________
+tests/test_api_smoke.py:53: in test_wrapper_plan_falls_back_to_reference_with_opt_in
+    wrapper = finpu.BatchDecodeWithPagedKVCacheWrapper(
+flashinfer/decode.py:87: in __init__
+    self._init_facade(AttentionMode.BATCH_DECODE_PAGED, locals())
+flashinfer/attention/public_batch.py:105: in _init_facade
+    self._init_host_wrapper(
+flashinfer/attention/batch.py:145: in _init_host_wrapper
+    self._float_workspace_buffer = validate_workspace_buffer(
+flashinfer/attention/frontend.py:274: in validate_workspace_buffer
+    tensor = require_reference_tensor(value, name)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/attention/frontend.py:255: in require_reference_tensor
+    raise TypeError("%s must be ReferenceTensor in the Host-only facade" % name)
+E   TypeError: float_workspace_buffer must be ReferenceTensor in the Host-only facade
+_ AttentionMetadataWireTests.test_config_directory_layout_and_canonical_blob_are_frozen _
+tests/test_attention_metadata_wire.py:53: in test_config_directory_layout_and_canonical_blob_are_frozen
+    self.assertEqual(
+E   AssertionError: '6e20474b9896355d04e8c84c865a21d274ae9a866c3250b6d0f7fc84f4e44a1e' != 'f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352'
+E   - 6e20474b9896355d04e8c84c865a21d274ae9a866c3250b6d0f7fc84f4e44a1e
+E   + f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352
+_ AttentionQuantizedKVLaunchABITests.test_v1_is_frozen_and_v2_has_an_independent_binary_identity _
+tests/test_attention_quant_launch_abi.py:202: in test_v1_is_frozen_and_v2_has_an_independent_binary_identity
+    self.assertEqual(
+E   AssertionError: 'b1120f7bfd2f436baa17d7365bac8e1e8287526f87d567056a5914e5f0b3229c' != '3087d1b9867361fbb9beac7a116ca60d15964be575943e0258481656b4f721ac'
+E   - b1120f7bfd2f436baa17d7365bac8e1e8287526f87d567056a5914e5f0b3229c
+E   + 3087d1b9867361fbb9beac7a116ca60d15964be575943e0258481656b4f721ac
+_ BatchAttentionFrontendTests.test_host_execution_requires_explicit_cpu_device _
+tests/test_batch_attention_frontend.py:48: in test_host_execution_requires_explicit_cpu_device
+    self.assertIs(flashinfer.BatchAttention, BatchAttention)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'flashinfer' has no attribute 'BatchAttention'
+_ QuantSpecInt8StorageShapeCheckpoint.test_invalid_quant_spec_and_invalid_logical_shape_are_rejected _
+tests/test_checkpoint_001_quant_spec_int8_shape.py:47: in test_invalid_quant_spec_and_invalid_logical_shape_are_rejected
+    with self.assertRaisesRegex(SchemaError, "requires group_size"):
+E   AssertionError: SchemaError not raised
+_ ManifestTests.test_attention_parity_inventory_tracks_single_reference_facades _
+tests/test_manifests.py:47: in test_attention_parity_inventory_tracks_single_reference_facades
+    self.assertEqual(manifest.counts()["reference"], 32)
+E   AssertionError: 13 != 32
+_____________ ManifestTests.test_packaged_parity_manifest_is_valid _____________
+tests/test_manifests.py:38: in test_packaged_parity_manifest_is_valid
+    self.assertEqual(manifest.counts()["missing"], len(manifest.entries) - 9)
+E   AssertionError: 67 != 112
+_ KernelBinaryABITests.test_attention_binary_abi_matches_logical_order_mutation_and_stream _
+tests/test_runtime_abi.py:177: in test_attention_binary_abi_matches_logical_order_mutation_and_stream
+    self.assertEqual(
+E   AssertionError: '21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e' != 'cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c'
+E   - 21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e
+E   + cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c
+=============================== warnings summary ===============================
+tests/test_a5_npu.py::test_bmm_fp8[float16-float8_e4m3fn-float8_e4m3fn]
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/torch/utils/backend_registration.py:167: UserWarning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (Triggered internally at ../torch_npu/csrc/aten/common/TensorFactories.cpp:437.)
+    return self.to(
+
+tests/test_cache_key.py::test_default_toolchain_fingerprint_is_stable_on_host
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:13: FutureWarning: triton.language.extra.cann.extension.atan2 is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.atan2 instead.
+    @_deprecated(replacement="triton.language.extra.cann.libdevice.atan2")
+
+tests/test_cache_key.py::test_default_toolchain_fingerprint_is_stable_on_host
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:35: FutureWarning: triton.language.extra.cann.extension.isfinited is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.isfinited instead.
+    @_deprecated(replacement="triton.language.extra.cann.libdevice.isfinited")
+
+tests/test_cache_key.py::test_default_toolchain_fingerprint_is_stable_on_host
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:49: FutureWarning: triton.language.extra.cann.extension.finitef is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.finitef instead.
+    @_deprecated(replacement="triton.language.extra.cann.libdevice.finitef")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/dy/projects/flashinfer/work_items/reports/execution/P1-before-T5.xml -
+=========================== short test summary info ============================
+FAILED tests/test_api_smoke.py::test_wrapper_requires_plan_before_run - flash...
+FAILED tests/test_api_smoke.py::test_wrapper_plan_falls_back_to_reference_with_opt_in
+FAILED tests/test_attention_metadata_wire.py::AttentionMetadataWireTests::test_config_directory_layout_and_canonical_blob_are_frozen
+FAILED tests/test_attention_quant_launch_abi.py::AttentionQuantizedKVLaunchABITests::test_v1_is_frozen_and_v2_has_an_independent_binary_identity
+FAILED tests/test_batch_attention_frontend.py::BatchAttentionFrontendTests::test_host_execution_requires_explicit_cpu_device
+FAILED tests/test_checkpoint_001_quant_spec_int8_shape.py::QuantSpecInt8StorageShapeCheckpoint::test_invalid_quant_spec_and_invalid_logical_shape_are_rejected
+FAILED tests/test_manifests.py::ManifestTests::test_attention_parity_inventory_tracks_single_reference_facades
+FAILED tests/test_manifests.py::ManifestTests::test_packaged_parity_manifest_is_valid
+FAILED tests/test_runtime_abi.py::KernelBinaryABITests::test_attention_binary_abi_matches_logical_order_mutation_and_stream
+9 failed, 977 passed, 4 warnings in 9.43s
