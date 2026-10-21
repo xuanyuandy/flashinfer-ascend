@@ -88,9 +88,21 @@ def dispatch(
     registry = registry or get_global_registry()
     if backend is None:
         backend = config.default_backend()
-    policy: Union[str, Backend] = (
-        "auto" if backend == "auto" else Backend(backend)
-    )
+    try:
+        policy: Union[str, Backend] = (
+            "auto" if backend == "auto" else Backend(backend)
+        )
+    except (ValueError, TypeError) as error:
+        supported = ", ".join(("auto", *sorted(item.value for item in Backend)))
+        cuda_backends = {"fa2", "fa3", "cudnn", "trtllm-gen", "cutlass", "cute-dsl", "cutile"}
+        hint = (
+            "这是 CUDA 专有后端；昇腾请使用 backend='auto' 或 backend='cann'。"
+            if isinstance(backend, str) and backend in cuda_backends
+            else "请使用本仓已登记的 backend 名称。"
+        )
+        raise DispatchError(
+            f"不支持的 backend {backend!r}。{hint}支持的 backend 值：{supported}"
+        ) from error
 
     cache_key = None
     if not config.dispatch_cache_disabled():

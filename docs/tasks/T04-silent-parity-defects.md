@@ -18,7 +18,7 @@
 - [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
 - [x] **T4.3** MoE 三个「兼容别名」实际改了参数名
 - [x] **T4.4** decode wrapper 的 `plan()` 参数集不同
-- [ ] **T4.5** 未知后端名抛裸异常
+- [x] **T4.5** 未知后端名抛裸异常
 - [ ] **T4.6** `enable_pdl` 行为在本仓内部自相矛盾 ⚠ 新增
 
 ---
@@ -183,3 +183,7 @@ pytest tests/ -q -k "parity or enum or pdl or backend"
 ## T4.4 自动执行记录
 
 构造/plan/run/forward/workspace_size 的五份声明按固定上游核验；补齐 metadata 寻址、reset_workspace_buffer、规划状态与后端查询。61 项 Host/provider/资源生命周期回归通过；29 项真实 A5 Attention 对拍通过，包含分页 decode、多 token 因果、NHD/HND、两种 dtype、workspace reset。最大 workspace 和 native graph 留 T9/T10；不把 CANN 未知 workspace 声称为零。
+
+## T4.5 自动执行记录
+
+未知 backend 统一抛 DispatchError 并列出当前枚举支持值；fa2/fa3/cudnn/trtllm-gen/cutlass/cute-dsl 等 CUDA 后端额外提示使用 auto/cann。显式策略与环境变量策略共用诊断；dispatch 和 explain_dispatch 均覆盖。结果见 `T4.5-tests.log`。

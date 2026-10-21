@@ -1,0 +1,63 @@
+--- a/flashinfer/runtime/dispatch.py
++++ b/flashinfer/runtime/dispatch.py
+@@ -88,9 +88,21 @@
+     registry = registry or get_global_registry()
+     if backend is None:
+         backend = config.default_backend()
+-    policy: Union[str, Backend] = (
+-        "auto" if backend == "auto" else Backend(backend)
+-    )
++    try:
++        policy: Union[str, Backend] = (
++            "auto" if backend == "auto" else Backend(backend)
++        )
++    except (ValueError, TypeError) as error:
++        supported = ", ".join(("auto", *sorted(item.value for item in Backend)))
++        cuda_backends = {"fa2", "fa3", "cudnn", "trtllm-gen", "cutlass", "cute-dsl", "cutile"}
++        hint = (
++            "这是 CUDA 专有后端；昇腾请使用 backend='auto' 或 backend='cann'。"
++            if isinstance(backend, str) and backend in cuda_backends
++            else "请使用本仓已登记的 backend 名称。"
++        )
++        raise DispatchError(
++            f"不支持的 backend {backend!r}。{hint}支持的 backend 值：{supported}"
++        ) from error
+ 
+     cache_key = None
+     if not config.dispatch_cache_disabled():
+--- a/tests/test_dispatch_backend_parity.py
++++ b/tests/test_dispatch_backend_parity.py
+@@ -0,0 +1,33 @@
++import pytest
++
++from flashinfer.runtime import (
++    DispatchError, HardwareSignature, InputSignature, KernelRegistry,
++    dispatch, explain_dispatch,
++)
++
++
++@pytest.mark.parametrize("backend", ["fa2", "fa3", "cudnn", "trtllm-gen", "cutlass", "cute-dsl"])
++@pytest.mark.parametrize("operation", [dispatch, explain_dispatch])
++def test_cuda_backend_names_explain_the_npu_migration(backend, operation):
++    with pytest.raises(DispatchError) as raised:
++        operation(InputSignature("unknown"), HardwareSignature("Ascend950", 56),
++                  backend=backend, registry=KernelRegistry())
++    message = str(raised.value)
++    assert backend in message
++    assert "CUDA" in message
++    assert "backend='auto'" in message and "backend='cann'" in message
++    assert "reference" in message and "triton" in message
++
++
++@pytest.mark.parametrize("backend", ["typo", 42])
++def test_unknown_backend_does_not_leak_enum_value_error(backend):
++    with pytest.raises(DispatchError, match="支持的 backend 值"):
++        dispatch(InputSignature("unknown"), HardwareSignature("Ascend950", 56),
++                 backend=backend, registry=KernelRegistry())
++
++
++def test_environment_policy_gets_the_same_diagnostic(monkeypatch):
++    monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "fa3")
++    with pytest.raises(DispatchError, match="CUDA"):
++        dispatch(InputSignature("unknown"), HardwareSignature("Ascend950", 56),
++                 backend=None, registry=KernelRegistry())
