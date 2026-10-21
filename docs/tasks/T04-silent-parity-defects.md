@@ -16,7 +16,7 @@
 
 - [x] **T4.1** MoE 路由枚举取值与上游不一致 ⚠ 最高危
 - [x] **T4.2** `single_decode_with_kv_cache` 张量形状约定不同
-- [ ] **T4.3** MoE 三个「兼容别名」实际改了参数名
+- [x] **T4.3** MoE 三个「兼容别名」实际改了参数名
 - [ ] **T4.4** decode wrapper 的 `plan()` 参数集不同
 - [ ] **T4.5** 未知后端名抛裸异常
 - [ ] **T4.6** `enable_pdl` 行为在本仓内部自相矛盾 ⚠ 新增
@@ -175,3 +175,7 @@ pytest tests/ -q -k "parity or enum or pdl or backend"
 ## T4.2 自动执行记录
 
 公开 single decode 已恢复固定上游完整签名和 q[heads,dim]/K-V[tokens,kv_heads,dim]；显式拒绝旧 batch 维，LSE 为 log2。公开 API 接入 T2.2 的真实 FIA runner，包含 NHD/HND/GQA 与输出/LSE 数值对拍。
+
+## T4.3 自动执行记录
+
+按任务允许的删除路线，移除三个不兼容前缀别名及根导出，保留 NPU 原接口。固定上游不仅参数名不同，还插入 bias、量化/激活选项并改变 output 位置与返回值；完整声明见 `T4.3-upstream-signatures.json`。不使用伪装签名或宽泛 kwargs 声称兼容，账本逐条标记 intentionally_different。别名不存在与原计算接口可用均由回归验证。

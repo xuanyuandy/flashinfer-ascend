@@ -18,6 +18,9 @@ entries = {e["upstream"]: e for e in manifest["entries"]}
 for entry in json.loads(args.entries.read_text()):
     if "_patch" in entry:
         entries[entry["upstream"]].update(entry["_patch"])
+        for old, new in entry.get("_notes_replace", ()):
+            current = entries[entry["upstream"]]
+            current["notes"] = current.get("notes", "").replace(old, new)
     else:
         entries[entry["upstream"]] = entry
 manifest["entries"] = list(entries.values())

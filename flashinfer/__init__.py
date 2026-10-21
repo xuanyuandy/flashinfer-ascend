@@ -18,13 +18,10 @@ from .page import append_paged_kv_cache
 from .gemm import bmm_fp8, gemm_fp8_nt_groupwise
 from .fused_moe import (
     RoutingMethodType,
-    cutlass_fused_moe,
     fp8_block_scale_moe,
     fp8_per_tensor_scale_moe,
     fused_moe,
     reorder_rows_for_gated_act_gemm,
-    trtllm_fp8_block_scale_moe,
-    trtllm_fp8_per_tensor_scale_moe,
 )
 from .jit import build_cache_key, toolchain_fingerprint
 from .norm import (
@@ -85,9 +82,6 @@ __all__ = [
     "fused_moe",
     "fp8_per_tensor_scale_moe",
     "fp8_block_scale_moe",
-    "cutlass_fused_moe",
-    "trtllm_fp8_per_tensor_scale_moe",
-    "trtllm_fp8_block_scale_moe",
     "merge_state",
     "merge_states", "append_paged_kv_cache",
     "BatchDecodeWithPagedKVCacheWrapper",

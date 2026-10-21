@@ -1,6 +1,6 @@
 """Fused MoE 系列对外 API（§3.1 薄门面层）。
 
-对齐上游 flashinfer.fused_moe（v0.2.9 core.py / v0.2.8 fused_moe.py）：
+对照固定上游 289557772，以下计算通过 NPU 原接口提供：
 - ``RoutingMethodType``：top-k 路由方法枚举（纯 Python，同上游取值）；
 - ``reorder_rows_for_gated_act_gemm``：trt-llm gen 权重行重排工具
   （上游即纯 torch 实现，host 侧工具，不经 dispatcher）；
@@ -11,11 +11,11 @@
   （CPU 反量化 fp32 计算），保证注册/调度/门面链路可用（用户口径：950
   特性在 910B 只保证编译通过）。
 
-命名说明（§3.1 规则 2 的显式差异，parity 清单标记 compatible）：
+命名说明（对标账本登记 intentionally_different）：
 上游接口名中的 ``cutlass_`` / ``trtllm_`` 前缀是 NVIDIA 专用后端库
 （CUTLASS / TensorRT-LLM gen），昇腾 NPU 无对应概念，故本仓主接口名
-去除该前缀。上游旧名（``cutlass_fused_moe`` 等）保留为别名，drop-in
-迁移代码可不加修改继续运行。
+去除该前缀。这些 NPU 接口的参数顺序、选项及返回值与固定上游有差异，
+因此不再暴露误称 drop-in 的三个前缀别名。
 """
 
 from __future__ import annotations
@@ -109,7 +109,7 @@ def fused_moe(
     kernel_id: Optional[str] = None,
 ):
     """非量化 fused MoE（对标上游 cutlass_fused_moe；NPU 无 CUTLASS
-    概念，主名去除后端前缀，上游名保留为别名）。
+    概念，主名去除后端前缀；签名差异已登记）。
 
     对每个 token 按 ``token_selected_experts`` 选中的专家依次执行
     ``swiglu(x @ fc1_e) @ fc2_e``，按 ``token_final_scales`` 加权聚合，
@@ -262,7 +262,7 @@ def fp8_per_tensor_scale_moe(
     kernel_id: Optional[str] = None,
 ) -> None:
     """FP8 per-tensor scale MoE（对标上游 trtllm_fp8_per_tensor_scale_moe；
-    NPU 无 TRT-LLM 概念，主名去除后端前缀，上游名保留为别名）。
+    NPU 无 TRT-LLM 概念，主名去除后端前缀；签名差异已登记）。
 
     路由（``routing_method_type``，见 :class:`RoutingMethodType`）→
     选中专家执行 fp8 双 GEMM（per-tensor scale 反量化）→ 结果原地写入
@@ -333,7 +333,7 @@ def fp8_block_scale_moe(
     kernel_id: Optional[str] = None,
 ) -> None:
     """FP8 block scale MoE（对标上游 trtllm_fp8_block_scale_moe；
-    NPU 无 TRT-LLM 概念，主名去除后端前缀，上游名保留为别名）。
+    NPU 无 TRT-LLM 概念，主名去除后端前缀；签名差异已登记）。
 
     与 per-tensor 版的差异在量化粒度：hidden/gemm 权重均按 128-block
     携带 scale（``hidden_states_scale`` 布局 (hidden//128, seq_len)）。
@@ -373,10 +373,3 @@ def fp8_block_scale_moe(
         int(routing_method_type),
     )
     return None
-
-
-# 上游同名别名（drop-in 兼容）：NPU 无 CUTLASS/TRT-LLM 概念，
-# 主接口名已去除该前缀，旧名保留为别名。
-cutlass_fused_moe = fused_moe
-trtllm_fp8_per_tensor_scale_moe = fp8_per_tensor_scale_moe
-trtllm_fp8_block_scale_moe = fp8_block_scale_moe

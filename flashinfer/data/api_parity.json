@@ -141,28 +141,31 @@
       "upstream": "flashinfer.fused_moe.cutlass_fused_moe",
       "local": "flashinfer.fused_moe",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
+      "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "仅非量化路径（fp32/fp16/bf16）；fp8/nvfp4 输入、fp8 block scaling、w4a8、min-latency、tp/cluster 并行显式 NotImplementedError（上游 Blackwell 同样未实现前三项）；ep_size>1 走 CANN megaMoe（dispatch/combine 通信内嵌，需显式传入 moe_context 通信域对象，由 cann_ops_transformer get_symm_buffer_for_mega_moe 创建），单卡走 npu_grouped_matmul；backend=cann(Ascend910B/910_93/950)/reference（reference 仅单卡语义）；NPU 无 CUTLASS 概念，主名去前缀为 fused_moe，上游名 cutlass_fused_moe 保留为别名"
+      "notes": "仅非量化路径（fp32/fp16/bf16）；fp8/nvfp4 输入、fp8 block scaling、w4a8、min-latency、tp/cluster 并行显式 NotImplementedError（上游 Blackwell 同样未实现前三项）；ep_size>1 走 CANN megaMoe（dispatch/combine 通信内嵌，需显式传入 moe_context 通信域对象，由 cann_ops_transformer get_symm_buffer_for_mega_moe 创建），单卡走 npu_grouped_matmul；backend=cann(Ascend910B/910_93/950)/reference（reference 仅单卡语义）；NPU 无 CUTLASS 概念，主名去前缀为 fused_moe，不再暴露不兼容的 cutlass_fused_moe 别名",
+      "reason": "已删除不兼容的前缀别名。NPU 计算接口的参数顺序、选项与返回值不同于固定上游，不能以别名声称 drop-in；使用账本 local 字段指向的 NPU 原接口。"
     },
     {
       "upstream": "flashinfer.fused_moe.trtllm_fp8_per_tensor_scale_moe",
       "local": "flashinfer.fp8_per_tensor_scale_moe",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
+      "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "仅 reference（CPU 反量化 fp32）；910B 无 fp8 GEMM 算子，950 特性在 910B 只保证注册/调度链路可用；tile_tokens_dim 为 SM100 调度参数接受并忽略；路由语义见 RoutingMethodType；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_per_tensor_scale_moe，上游名保留为别名"
+      "notes": "仅 reference（CPU 反量化 fp32）；910B 无 fp8 GEMM 算子，950 特性在 910B 只保证注册/调度链路可用；tile_tokens_dim 为 SM100 调度参数接受并忽略；路由语义见 RoutingMethodType；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_per_tensor_scale_moe，不再暴露不兼容的前缀别名",
+      "reason": "已删除不兼容的前缀别名。NPU 计算接口的参数顺序、选项与返回值不同于固定上游，不能以别名声称 drop-in；使用账本 local 字段指向的 NPU 原接口。"
     },
     {
       "upstream": "flashinfer.fused_moe.trtllm_fp8_block_scale_moe",
       "local": "flashinfer.fp8_block_scale_moe",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
+      "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "仅 reference（CPU 反量化 fp32，128-block scale 展开）；同 per-tensor 版硬件说明；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_block_scale_moe，上游名保留为别名"
+      "notes": "仅 reference（CPU 反量化 fp32，128-block scale 展开）；同 per-tensor 版硬件说明；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_block_scale_moe，不再暴露不兼容的前缀别名",
+      "reason": "已删除不兼容的前缀别名。NPU 计算接口的参数顺序、选项与返回值不同于固定上游，不能以别名声称 drop-in；使用账本 local 字段指向的 NPU 原接口。"
     },
     {
       "upstream": "flashinfer.cascade.merge_state",

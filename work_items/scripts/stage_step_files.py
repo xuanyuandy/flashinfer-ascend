@@ -1,18 +1,29 @@
 """Stage only a recorded step's delta, preserving preexisting working edits."""
 
-import difflib
 import gzip
 import json
 from pathlib import Path
 import subprocess
 import sys
+import tempfile
 
 step, *names = sys.argv[1:]
 with gzip.open(f"work_items/reports/execution/steps/{step}.before.json.gz", "rt") as stream:
     before = json.load(stream)
-patch = "".join(line for name in names for line in difflib.unified_diff(
-    before.get(name, "").splitlines(keepends=True),
-    Path(name).read_text().splitlines(keepends=True),
-    fromfile="a/" + name, tofile="b/" + name,
-))
-subprocess.run(["git", "apply", "--cached", "--whitespace=nowarn", "-"], input=patch, text=True, check=True)
+updates = []
+with tempfile.TemporaryDirectory(prefix="flashinfer-stage-") as directory:
+    root = Path(directory)
+    for name in names:
+        current = subprocess.check_output(["git", "show", ":" + name], text=True)
+        paths = [root / item for item in ("index", "before", "after")]
+        for path, value in zip(paths, (current, before.get(name, ""), Path(name).read_text())):
+            path.write_text(value)
+        merged = subprocess.run(["git", "merge-file", "-p", *map(str, paths)],
+                                capture_output=True, text=True)
+        if merged.returncode:
+            raise SystemExit(f"cannot isolate {name}: three-way staging needs manual resolution")
+        updates.append((name, merged.stdout))
+# Do not change the index unless every file merged without conflicts.
+for name, value in updates:
+    blob = subprocess.check_output(["git", "hash-object", "-w", "--stdin"], input=value, text=True).strip()
+    subprocess.run(["git", "update-index", "--cacheinfo", "100644," + blob + "," + name], check=True)

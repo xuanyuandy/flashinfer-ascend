@@ -1,0 +1,7 @@
+--- a/flashinfer/fused_moe.py
++++ b/flashinfer/fused_moe.py
+@@ -372,4 +372,3 @@
+         int(routing_method_type),
+     )
+     return None
+-

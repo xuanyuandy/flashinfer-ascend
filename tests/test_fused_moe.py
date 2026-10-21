@@ -68,12 +68,19 @@ def _bs_sig() -> InputSignature:
 
 
 class TestUpstreamNameAliases:
-    """上游 cutlass_/trtllm_ 前缀名保留为别名（drop-in 兼容）。"""
+    """Incompatible upstream names must not masquerade as drop-in aliases."""
 
-    def test_aliases_point_to_same_functions(self):
-        assert finpu.cutlass_fused_moe is finpu.fused_moe
-        assert finpu.trtllm_fp8_per_tensor_scale_moe is finpu.fp8_per_tensor_scale_moe
-        assert finpu.trtllm_fp8_block_scale_moe is finpu.fp8_block_scale_moe
+    def test_incompatible_aliases_are_absent(self):
+        import importlib
+
+        module = importlib.import_module("flashinfer.fused_moe")
+        for name in ("cutlass_fused_moe", "trtllm_fp8_per_tensor_scale_moe",
+                     "trtllm_fp8_block_scale_moe"):
+            assert not hasattr(finpu, name)
+            assert not hasattr(module, name)
+        assert callable(finpu.fused_moe)
+        assert callable(finpu.fp8_per_tensor_scale_moe)
+        assert callable(finpu.fp8_block_scale_moe)
 
 
 class TestRoutingMethodType:
