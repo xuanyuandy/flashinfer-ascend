@@ -309,8 +309,15 @@ def _route_topk(
 
     返回 (expert_idx (S, top_k) long, scales (S, top_k) float)。
     """
+    from ..tllm_enums import RoutingMethodType
+
+    try:
+        method = RoutingMethodType(routing_method_type)
+    except ValueError as error:
+        raise ValueError(f"unknown routing_method_type: {routing_method_type}") from error
+    if method.value > 4:
+        raise NotImplementedError(f"{method!r} routing is not implemented by this provider")
     torch = _require_torch()
-    method = int(routing_method_type)
     if method == 0:  # Default: Softmax -> TopK
         p = logits.softmax(-1)
         w, idx = p.topk(top_k, dim=-1)

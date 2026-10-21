@@ -20,7 +20,6 @@
 
 from __future__ import annotations
 
-from enum import IntEnum
 from typing import List, Optional, Union
 
 from .runtime import (
@@ -53,22 +52,7 @@ def _dtype_name(dtype) -> str:
     return name[len("torch."):] if name.startswith("torch.") else name
 
 
-class RoutingMethodType(IntEnum):
-    """top-K 路由方法（对标上游 fused_moe/core.py 同名枚举，取值一致）。"""
-
-    # Default: Softmax -> TopK
-    Default = 0
-    # Renormalize: TopK -> Softmax
-    Renormalize = 1
-    # DeepSeekV3: Sigmoid -> RoutingBiasAdd -> Top2 in group -> Top4 groups
-    # -> TopK experts from the TopK groups
-    DeepSeekV3 = 2
-    # Llama4: Top1 -> Sigmoid
-    Llama4 = 3
-    # Qwen3: Softmax -> TopK -> Renormalize
-    RenormalizeNaive = 4
-    # Unspecified
-    Unspecified = 5
+from .tllm_enums import RoutingMethodType
 
 
 def _reorder_row_indices(m: int):

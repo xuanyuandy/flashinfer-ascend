@@ -1,0 +1,24 @@
+[
+  {
+    "upstream": "flashinfer.tllm_enums.RoutingMethodType",
+    "local": "flashinfer.tllm_enums.RoutingMethodType",
+    "upstream_kind": "stable",
+    "semantic_status": "compatible",
+    "implementation_status": "functional",
+    "priority": "P0",
+    "notes": "11 个成员和值与固定上游提交一致；eval(repr(x)) 往返。枚举不宣称所有路由均已实现；本仓 provider 对 5..10 显式抛 NotImplementedError。",
+    "members": {
+      "Default": 0,
+      "Renormalize": 1,
+      "DeepSeekV3": 2,
+      "Llama4": 3,
+      "RenormalizeNaive": 4,
+      "TopK": 5,
+      "SigmoidRenorm": 6,
+      "MiniMax2": 7,
+      "Sigmoid": 8,
+      "TopKSigmoid": 9,
+      "Unspecified": 10
+    }
+  }
+]

@@ -80,7 +80,7 @@ class TestRoutingMethodType:
     def test_enum_values_match_upstream(self):
         R = finpu.RoutingMethodType
         assert (R.Default, R.Renormalize, R.DeepSeekV3) == (0, 1, 2)
-        assert (R.Llama4, R.RenormalizeNaive, R.Unspecified) == (3, 4, 5)
+        assert (R.Llama4, R.RenormalizeNaive, R.Unspecified) == (3, 4, 10)
 
     def test_is_int_enum(self):
         assert finpu.RoutingMethodType.DeepSeekV3 == 2
