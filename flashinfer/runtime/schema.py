@@ -129,6 +129,8 @@ class QuantSpec(_Record):
             raise SchemaError("unsupported packing_order")
         if self.granularity not in {"tensor", "channel", "token", "group", "block"}:
             raise SchemaError("unsupported quantization granularity")
+        if self.granularity in {"group", "block"} and not self.group_size:
+            raise SchemaError(f"{self.granularity} quantization requires group_size")
         for name in ("axis", "group_size"):
             value = getattr(self, name)
             if value is not None:
@@ -251,8 +253,11 @@ class KernelCapabilityBinding(_Record):
     profile_id: str
     rule_id: str
     profile_fingerprint: str
+    schema_version: int = 1
 
     def __post_init__(self):
+        if self.schema_version != 1:
+            raise SchemaError("unsupported capability binding schema version")
         if not all((self.domain, self.profile_id, self.rule_id)):
             raise SchemaError("capability binding identifiers must be non-empty")
         _hash_field("profile_fingerprint", self.profile_fingerprint)
