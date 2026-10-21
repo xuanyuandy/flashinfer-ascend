@@ -20,6 +20,27 @@ from .runtime.schema import DispatchError
 _OP_RAGGED_PREFILL = "attention.prefill"
 
 
+class BatchPrefillWithPagedKVCacheWrapper:
+    """Public declaration; the executable facade is tracked by task T2.2."""
+
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+
+
+class BatchPrefillWithRaggedKVCacheWrapper:
+    """Public declaration; the executable facade is tracked by task T2.2."""
+
+    def __init__(self, *args, **kwargs):
+        raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+
+
+def single_prefill_with_kv_cache_with_jit_module(
+    jit_module, q, k, v, *args, kv_layout="NHD", mask_mode=0,
+    window_left=-1, return_lse=False,
+):
+    raise NotImplementedError("T2.2: single prefill JIT facade is not implemented")
+
+
 def _run_selected(kernel_id: str, *args, **kwargs):
     """拉起 dispatch 选中的 kernel。产物未接入时显式报错（M0 骨架）。"""
     descriptor = get_global_registry().get(kernel_id)

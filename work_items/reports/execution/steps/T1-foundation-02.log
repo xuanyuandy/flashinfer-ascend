@@ -1,0 +1,18 @@
+............F..F..............................                           [100%]
+=================================== FAILURES ===================================
+_ CStructABITests.test_attention_pod_sizes_offsets_and_fingerprints_are_frozen _
+tests/test_runtime_abi.py:50: in test_attention_pod_sizes_offsets_and_fingerprints_are_frozen
+    self.assertEqual(
+E   AssertionError: '184d211243c520a5fa2882d64232907558ddeea62762906f1ad219696c6b052c' != '16aa51eecb63ed2e4bdb592f0ed7915958198b544d9859f1d0c39c8fd78b519b'
+E   - 184d211243c520a5fa2882d64232907558ddeea62762906f1ad219696c6b052c
+E   + 16aa51eecb63ed2e4bdb592f0ed7915958198b544d9859f1d0c39c8fd78b519b
+_ KernelBinaryABITests.test_attention_binary_abi_matches_logical_order_mutation_and_stream _
+tests/test_runtime_abi.py:177: in test_attention_binary_abi_matches_logical_order_mutation_and_stream
+    self.assertEqual(
+E   AssertionError: '310259ec944a9557bba0fb52d6548f1e6036855d063d4618fdc39ae363b42b51' != 'cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c'
+E   - 310259ec944a9557bba0fb52d6548f1e6036855d063d4618fdc39ae363b42b51
+E   + cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c
+=========================== short test summary info ============================
+FAILED tests/test_runtime_abi.py::CStructABITests::test_attention_pod_sizes_offsets_and_fingerprints_are_frozen
+FAILED tests/test_runtime_abi.py::KernelBinaryABITests::test_attention_binary_abi_matches_logical_order_mutation_and_stream
+2 failed, 44 passed in 0.72s

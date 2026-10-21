@@ -1,0 +1,40 @@
+--- a/flashinfer/runtime/registry.py
++++ b/flashinfer/runtime/registry.py
+@@ -76,7 +76,7 @@
+     def _insert(self, descriptor: KernelDescriptor) -> None:
+         if descriptor.kernel_id in self._descriptors:
+             raise ValueError(
+-                "duplicate kernel_id：%s（不允许覆盖，§12）" % descriptor.kernel_id
++                "duplicate kernel_id 重复：%s（不允许覆盖，§12）" % descriptor.kernel_id
+             )
+         self._descriptors[descriptor.kernel_id] = descriptor
+         self._revision += 1
+--- a/flashinfer/runtime/schema.py
++++ b/flashinfer/runtime/schema.py
+@@ -114,8 +114,11 @@
+     has_zero_point: bool = False
+     physical_layout: str = "logical"
+     packing_order: Optional[str] = None
+-
+-    def __post_init__(self):
++    schema_version: int = 1
++
++    def __post_init__(self):
++        if self.schema_version != 1:
++            raise SchemaError("unsupported quantization schema version")
+         if self.scheme not in {"symmetric", "asymmetric"}:
+             raise SchemaError("unsupported quantization scheme")
+         if self.scheme == "asymmetric" and not self.has_zero_point:
+@@ -381,9 +384,12 @@
+     primitive: CPrimitive
+     count: int = 1
+     reserved: bool = False
++    schema_version: int = 1
+ 
+     def __post_init__(self):
+         object.__setattr__(self, "primitive", CPrimitive(self.primitive))
++        if self.schema_version != 1:
++            raise SchemaError("unsupported C field schema version")
+         if not self.name or self.count <= 0:
+             raise SchemaError("field name and positive count required")
+ 

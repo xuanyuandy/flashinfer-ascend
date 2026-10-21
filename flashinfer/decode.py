@@ -23,6 +23,12 @@ from .prefill import _run_selected
 _OP_DECODE = "attention.decode"
 
 
+def single_decode_with_kv_cache_with_jit_module(
+    jit_module, q, k, v, *args, kv_layout="NHD", window_left=-1, return_lse=False,
+):
+    raise NotImplementedError("T2.2: single decode JIT facade is not implemented")
+
+
 def single_decode_with_kv_cache(
     q,
     k_cache,

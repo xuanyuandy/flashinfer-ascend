@@ -1,0 +1,1063 @@
+....................................................................FFFF [  8%]
+FFFFFFF....FFFFFFF............................................F......... [ 16%]
+..................................F.................F...FFFFFF.......... [ 25%]
+........................................................................ [ 33%]
+........FF.FF.FFFF.F....FFFFFFFFFFFFFFFFF..................F.....F...... [ 42%]
+........................................................................ [ 50%]
+........................................................................ [ 59%]
+..................................................................FFFFFF [ 67%]
+F..FFFFFFFFFFFFFFFF.FFF.FFF.FFFFFFFFF................................... [ 75%]
+......................................................................F. [ 84%]
+.................................................FFFFFFFF.FFF........... [ 92%]
+..........................F.....................FFFFFFFFFFFFF            [100%]
+=================================== FAILURES ===================================
+_ AttentionExecutionIdentitySchemaTests.test_capture_reports_each_mutated_identity_dimension _
+tests/test_attention_execution_identity.py:105: in test_capture_reports_each_mutated_identity_dimension
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ AttentionExecutionIdentitySchemaTests.test_graph_resources_are_versioned_and_capacity_sensitive _
+tests/test_attention_execution_identity.py:127: in test_graph_resources_are_versioned_and_capacity_sensitive
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ AttentionExecutionIdentitySchemaTests.test_host_capture_round_trip_preserves_identity _
+tests/test_attention_execution_identity.py:69: in test_host_capture_round_trip_preserves_identity
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ AttentionExecutionIdentitySchemaTests.test_kernel_binding_fields_are_atomic_and_forbidden_on_reference _
+tests/test_attention_execution_identity.py:86: in test_kernel_binding_fields_are_atomic_and_forbidden_on_reference
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ HostGraphContractLifecycleTests.test_caller_lse_buffer_does_not_hide_return_shape_change _
+tests/test_attention_execution_identity.py:192: in test_caller_lse_buffer_does_not_hide_return_shape_change
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ HostGraphContractLifecycleTests.test_equivalent_new_allocations_reuse_structural_contract _
+tests/test_attention_execution_identity.py:166: in test_equivalent_new_allocations_reuse_structural_contract
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ HostGraphContractLifecycleTests.test_non_graph_wrapper_never_publishes_capture _
+tests/test_attention_execution_identity.py:238: in test_non_graph_wrapper_never_publishes_capture
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ HostGraphContractLifecycleTests.test_replan_invalidates_then_recaptures_contract _
+tests/test_attention_execution_identity.py:212: in test_replan_invalidates_then_recaptures_contract
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ HostGraphContractLifecycleTests.test_return_shape_change_rejects_stale_contract _
+tests/test_attention_execution_identity.py:176: in test_return_shape_change_rejects_stale_contract
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ HostGraphContractLifecycleTests.test_run_options_change_rejects_stale_contract _
+tests/test_attention_execution_identity.py:184: in test_run_options_change_rejects_stale_contract
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ HostGraphContractLifecycleTests.test_workspace_rebind_rejects_stale_contract _
+tests/test_attention_execution_identity.py:203: in test_workspace_rebind_rejects_stale_contract
+    wrapper = graph_decode_wrapper()
+              ^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_execution_identity.py:39: in graph_decode_wrapper
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ AttentionSingleJITProtocolTests.test_decode_discards_requested_lse_but_forwards_its_buffer _
+tests/test_attention_jit_protocol.py:127: in test_decode_discards_requested_lse_but_forwards_its_buffer
+    output = single_decode_with_kv_cache_with_jit_module(
+flashinfer/decode.py:29: in single_decode_with_kv_cache_with_jit_module
+    raise NotImplementedError("T2.2: single decode JIT facade is not implemented")
+E   NotImplementedError: T2.2: single decode JIT facade is not implemented
+_ AttentionSingleJITProtocolTests.test_invalid_module_mask_window_and_mutated_output_are_rejected _
+tests/test_attention_jit_protocol.py:150: in test_invalid_module_mask_window_and_mutated_output_are_rejected
+    single_prefill_with_kv_cache_with_jit_module(object(), q, k, v)
+flashinfer/prefill.py:41: in single_prefill_with_kv_cache_with_jit_module
+    raise NotImplementedError("T2.2: single prefill JIT facade is not implemented")
+E   NotImplementedError: T2.2: single prefill JIT facade is not implemented
+__ AttentionSingleJITProtocolTests.test_nested_capture_restores_outer_context __
+tests/test_attention_jit_protocol.py:218: in test_nested_capture_restores_outer_context
+    single_prefill_with_kv_cache_with_jit_module(
+flashinfer/prefill.py:41: in single_prefill_with_kv_cache_with_jit_module
+    raise NotImplementedError("T2.2: single prefill JIT facade is not implemented")
+E   NotImplementedError: T2.2: single prefill JIT facade is not implemented
+_ AttentionSingleJITProtocolTests.test_opt_in_capture_automatically_records_success_and_failure _
+tests/test_attention_jit_protocol.py:174: in test_opt_in_capture_automatically_records_success_and_failure
+    single_prefill_with_kv_cache_with_jit_module(
+flashinfer/prefill.py:41: in single_prefill_with_kv_cache_with_jit_module
+    raise NotImplementedError("T2.2: single prefill JIT facade is not implemented")
+E   NotImplementedError: T2.2: single prefill JIT facade is not implemented
+_ AttentionSingleJITProtocolTests.test_prefill_allocates_exact_buffers_and_forwards_upstream_codes _
+tests/test_attention_jit_protocol.py:95: in test_prefill_allocates_exact_buffers_and_forwards_upstream_codes
+    output, lse = single_prefill_with_kv_cache_with_jit_module(
+flashinfer/prefill.py:41: in single_prefill_with_kv_cache_with_jit_module
+    raise NotImplementedError("T2.2: single prefill JIT facade is not implemented")
+E   NotImplementedError: T2.2: single prefill JIT facade is not implemented
+_ AttentionSingleJITProtocolTests.test_public_signatures_and_package_exports_match_upstream_surface _
+tests/test_attention_jit_protocol.py:82: in test_public_signatures_and_package_exports_match_upstream_surface
+    flashinfer.single_prefill_with_kv_cache_with_jit_module,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'flashinfer' has no attribute 'single_prefill_with_kv_cache_with_jit_module'
+_ AttentionSingleJITProtocolTests.test_thread_contexts_do_not_cross_publish_traces _
+tests/test_attention_jit_protocol.py:245: in test_thread_contexts_do_not_cross_publish_traces
+    results = tuple(pool.map(capture_one, range(8)))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/miniforge3/envs/flashinfer-a5/lib/python3.11/concurrent/futures/_base.py:619: in result_iterator
+    yield _result_or_cancel(fs.pop())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/root/miniforge3/envs/flashinfer-a5/lib/python3.11/concurrent/futures/_base.py:317: in _result_or_cancel
+    return fut.result(timeout)
+           ^^^^^^^^^^^^^^^^^^^
+/root/miniforge3/envs/flashinfer-a5/lib/python3.11/concurrent/futures/_base.py:449: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+/root/miniforge3/envs/flashinfer-a5/lib/python3.11/concurrent/futures/_base.py:401: in __get_result
+    raise self._exception
+/root/miniforge3/envs/flashinfer-a5/lib/python3.11/concurrent/futures/thread.py:58: in run
+    result = self.fn(*self.args, **self.kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_attention_jit_protocol.py:239: in capture_one
+    single_prefill_with_kv_cache_with_jit_module(
+flashinfer/prefill.py:41: in single_prefill_with_kv_cache_with_jit_module
+    raise NotImplementedError("T2.2: single prefill JIT facade is not implemented")
+E   NotImplementedError: T2.2: single prefill JIT facade is not implemented
+_ AttentionMetadataWireTests.test_config_directory_layout_and_canonical_blob_are_frozen _
+tests/test_attention_metadata_wire.py:53: in test_config_directory_layout_and_canonical_blob_are_frozen
+    self.assertEqual(
+E   AssertionError: '6e20474b9896355d04e8c84c865a21d274ae9a866c3250b6d0f7fc84f4e44a1e' != 'f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352'
+E   - 6e20474b9896355d04e8c84c865a21d274ae9a866c3250b6d0f7fc84f4e44a1e
+E   + f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352
+_ AttentionQuantizedKVLaunchABITests.test_v1_is_frozen_and_v2_has_an_independent_binary_identity _
+tests/test_attention_quant_launch_abi.py:202: in test_v1_is_frozen_and_v2_has_an_independent_binary_identity
+    self.assertEqual(
+E   AssertionError: 'b1120f7bfd2f436baa17d7365bac8e1e8287526f87d567056a5914e5f0b3229c' != '3087d1b9867361fbb9beac7a116ca60d15964be575943e0258481656b4f721ac'
+E   - b1120f7bfd2f436baa17d7365bac8e1e8287526f87d567056a5914e5f0b3229c
+E   + 3087d1b9867361fbb9beac7a116ca60d15964be575943e0258481656b4f721ac
+_ QuantizedKVAttentionTests.test_batch_decode_quant_spec_is_in_plan_workload_and_run_contract _
+tests/test_attention_quantized_kv.py:205: in test_batch_decode_quant_spec_is_in_plan_workload_and_run_contract
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+______ QuantizedKVAttentionTests.test_paged_prefill_consumes_quantized_kv ______
+tests/test_attention_quantized_kv.py:283: in test_paged_prefill_consumes_quantized_kv
+    wrapper = BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ QuantizedKVAttentionTests.test_quantized_and_unquantized_plans_have_different_fingerprints _
+tests/test_attention_quantized_kv.py:487: in test_quantized_and_unquantized_plans_have_different_fingerprints
+    quantized_wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_____ QuantizedKVAttentionTests.test_ragged_prefill_consumes_quantized_kv ______
+tests/test_attention_quantized_kv.py:254: in test_ragged_prefill_consumes_quantized_kv
+    wrapper = BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ QuantizedKVAttentionTests.test_single_decode_int8_uses_independent_k_and_v_scales _
+tests/test_attention_quantized_kv.py:180: in test_single_decode_int8_uses_independent_k_and_v_scales
+    output = single_decode_with_kv_cache(tensor([[1.0]]), key, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ QuantizedKVAttentionTests.test_single_decode_packed_int4_is_end_to_end_executable _
+tests/test_attention_quantized_kv.py:197: in test_single_decode_packed_int4_is_end_to_end_executable
+    output = single_decode_with_kv_cache(tensor([[1.0, 1.0]]), key, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_____ QuantizedKVAttentionTests.test_single_prefill_consumes_quantized_kv ______
+tests/test_attention_quantized_kv.py:161: in test_single_prefill_consumes_quantized_kv
+    output = single_prefill_with_kv_cache(
+flashinfer/prefill.py:78: in single_prefill_with_kv_cache
+    return _run_selected(decision.kernel_id, q, k, v, causal=causal)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/prefill.py:52: in _run_selected
+    return descriptor.runner(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/runtime/reference_kernels.py:37: in _prefill_ragged_ref
+    scores = torch.einsum("qhd,khd->hqk", q.float(), k.float())
+                                          ^^^^^^^
+E   AttributeError: 'ReferenceTensor' object has no attribute 'float'
+_ QuantizedKVPropertyTests.test_random_int8_kv_matches_explicit_dequantization _
+tests/test_attention_trace.py:343: in test_random_int8_kv_matches_explicit_dequantization
+    quant_output, quant_lse = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'kv_layout'
+_ QuantizedKVPropertyTests.test_random_packed_int4_kv_matches_explicit_dequantization _
+tests/test_attention_trace.py:398: in test_random_packed_int4_kv_matches_explicit_dequantization
+    quant_output, quant_lse = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'kv_layout'
+_ WorkspaceContractTests.test_reset_rejects_alias_and_device_change_after_plan _
+tests/test_attention_workspace.py:83: in test_reset_rejects_alias_and_device_change_after_plan
+    wrapper.reset_workspace_buffer(shared, shared)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'reset_workspace_buffer'
+_ WorkspaceContractTests.test_reset_tracks_binding_generation_and_preserves_active_plan _
+tests/test_attention_workspace.py:60: in test_reset_tracks_binding_generation_and_preserves_active_plan
+    wrapper.plan(index([0, 1]), index([0]), index([1]), 1, 1, 1, 1)
+flashinfer/decode.py:104: in plan
+    ("head_dim", str(int(head_dim))),
+                     ^^^^^^^^^^^^^
+E   TypeError: int() argument must be a string, a bytes-like object or a real number, not 'ReferenceTensor'
+_ WorkspaceSizeFacadeTests.test_decode_workspace_query_preserves_existing_plan _
+tests/test_attention_workspace.py:145: in test_decode_workspace_query_preserves_existing_plan
+    wrapper.plan(index([0, 1]), index([0]), index([1]), 1, 1, 1, 1)
+flashinfer/decode.py:104: in plan
+    ("head_dim", str(int(head_dim))),
+                     ^^^^^^^^^^^^^
+E   TypeError: int() argument must be a string, a bytes-like object or a real number, not 'ReferenceTensor'
+_ WorkspaceSizeFacadeTests.test_prefill_workspace_query_is_zero_for_host_and_does_not_plan _
+tests/test_attention_workspace.py:130: in test_prefill_workspace_query_is_zero_for_host_and_does_not_plan
+    wrapper = BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+______ WorkspaceSizeFacadeTests.test_workspace_query_runs_plan_validation ______
+tests/test_attention_workspace.py:158: in test_workspace_query_runs_plan_validation
+    wrapper.workspace_size(
+    ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'workspace_size'
+_ WorkspaceSizeFacadeTests.test_workspace_size_signatures_match_upstream_snapshot _
+tests/test_attention_workspace.py:96: in test_workspace_size_signatures_match_upstream_snapshot
+    BatchPrefillWithPagedKVCacheWrapper.workspace_size
+E   AttributeError: type object 'BatchPrefillWithPagedKVCacheWrapper' has no attribute 'workspace_size'
+_ BatchAttentionFrontendTests.test_host_execution_requires_explicit_cpu_device _
+tests/test_batch_attention_frontend.py:48: in test_host_execution_requires_explicit_cpu_device
+    self.assertIs(flashinfer.BatchAttention, BatchAttention)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'flashinfer' has no attribute 'BatchAttention'
+____ BatchFrontendSignatureTests.test_package_root_reexports_batch_wrappers ____
+tests/test_batch_frontend.py:194: in test_package_root_reexports_batch_wrappers
+    flashinfer.BatchPrefillWithPagedKVCacheWrapper,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: module 'flashinfer' has no attribute 'BatchPrefillWithPagedKVCacheWrapper'
+_ BatchFrontendSignatureTests.test_paged_prefill_constructor_plan_and_run_signatures _
+tests/test_batch_frontend.py:33: in test_paged_prefill_constructor_plan_and_run_signatures
+    self.assertEqual(
+E   AssertionError: Lists differ: ['args', 'kwargs'] != ['float_workspace_buffer', 'kv_layout', 'us[178 chars]rgs']
+E   
+E   First differing element 0:
+E   'args'
+E   'float_workspace_buffer'
+E   
+E   Second list contains 10 additional elements.
+E   First extra element 2:
+E   'use_cuda_graph'
+E   
+E   - ['args', 'kwargs']
+E   + ['float_workspace_buffer',
+E   +  'kv_layout',
+E   +  'use_cuda_graph',
+E   +  'qo_indptr_buf',
+E   +  'paged_kv_indptr_buf',
+E   +  'paged_kv_indices_buf',
+E   +  'paged_kv_last_page_len_buf',
+E   +  'custom_mask_buf',
+E   +  'mask_indptr_buf',
+E   +  'backend',
+E   +  'jit_args',
+E   +  'jit_kwargs']
+_ BatchFrontendSignatureTests.test_ragged_and_decode_signatures_track_upstream_shape _
+tests/test_batch_frontend.py:87: in test_ragged_and_decode_signatures_track_upstream_shape
+    self.assertEqual(
+E   AssertionError: Lists differ: ['args', 'kwargs'] != ['float_workspace_buffer', 'kv_layout', 'us[118 chars]rgs']
+E   
+E   First differing element 0:
+E   'args'
+E   'float_workspace_buffer'
+E   
+E   Second list contains 8 additional elements.
+E   First extra element 2:
+E   'use_cuda_graph'
+E   
+E   - ['args', 'kwargs']
+E   + ['float_workspace_buffer',
+E   +  'kv_layout',
+E   +  'use_cuda_graph',
+E   +  'qo_indptr_buf',
+E   +  'kv_indptr_buf',
+E   +  'custom_mask_buf',
+E   +  'mask_indptr_buf',
+E   +  'backend',
+E   +  'jit_args',
+E   +  'jit_kwargs']
+__ PagedPrefillFrontendTests.test_auto_backend_does_not_select_host_reference __
+tests/test_batch_frontend.py:210: in test_auto_backend_does_not_select_host_reference
+    BatchPrefillWithPagedKVCacheWrapper(workspace())
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedPrefillFrontendTests.test_deprecated_forward_executes_matching_plan_and_rejects_drift _
+tests/test_batch_frontend.py:312: in test_deprecated_forward_executes_matching_plan_and_rejects_drift
+    wrapper = BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+__ PagedPrefillFrontendTests.test_paged_plan_run_follows_physical_page_table ___
+tests/test_batch_frontend.py:213: in test_paged_plan_run_follows_physical_page_table
+    wrapper = BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedPrefillFrontendTests.test_runtime_window_must_match_plan_and_extensions_fail_explicitly _
+tests/test_batch_frontend.py:277: in test_runtime_window_must_match_plan_and_extensions_fail_explicitly
+    wrapper = BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedPrefillFrontendTests.test_segment_packed_mask_and_caller_owned_buffers __
+tests/test_batch_frontend.py:247: in test_segment_packed_mask_and_caller_owned_buffers
+    wrapper = BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ RaggedPrefillFrontendTests.test_deprecated_forward_executes_ragged_reference _
+tests/test_batch_frontend.py:373: in test_deprecated_forward_executes_ragged_reference
+    wrapper = BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+______ RaggedPrefillFrontendTests.test_ragged_hnd_gqa_and_per_head_scales ______
+tests/test_batch_frontend.py:349: in test_ragged_hnd_gqa_and_per_head_scales
+    wrapper = BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ RaggedPrefillFrontendTests.test_ragged_plan_run_keeps_request_segments_separate _
+tests/test_batch_frontend.py:331: in test_ragged_plan_run_keeps_request_segments_separate
+    wrapper = BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ BatchDecodeFrontendTests.test_deprecated_forward_executes_decode_and_rejects_plan_drift _
+tests/test_batch_frontend.py:486: in test_deprecated_forward_executes_decode_and_rejects_plan_drift
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+__ BatchDecodeFrontendTests.test_graph_mode_freezes_batch_and_checks_capacity __
+tests/test_batch_frontend.py:449: in test_graph_mode_freezes_batch_and_checks_capacity
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+__________ BatchDecodeFrontendTests.test_multi_token_decode_is_causal __________
+tests/test_batch_frontend.py:419: in test_multi_token_decode_is_causal
+    wrapper = BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_tensor_cores'
+_ BatchDecodeFrontendTests.test_multi_token_requires_public_matrix_core_preference _
+tests/test_batch_frontend.py:443: in test_multi_token_requires_public_matrix_core_preference
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_len_per_req'
+____________ BatchDecodeFrontendTests.test_packed_cache_run_and_lse ____________
+tests/test_batch_frontend.py:394: in test_packed_cache_run_and_lse
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+__ BatchDecodeFrontendTests.test_reset_workspace_and_legacy_plan_positionals ___
+tests/test_batch_frontend.py:472: in test_reset_workspace_and_legacy_plan_positionals
+    wrapper.reset_workspace_buffer(workspace(64), workspace(32))
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'reset_workspace_buffer'
+_ QuantSpecInt8StorageShapeCheckpoint.test_invalid_quant_spec_and_invalid_logical_shape_are_rejected _
+tests/test_checkpoint_001_quant_spec_int8_shape.py:47: in test_invalid_quant_spec_and_invalid_logical_shape_are_rejected
+    with self.assertRaisesRegex(SchemaError, "requires group_size"):
+E   AssertionError: SchemaError not raised
+_ AttentionPlanRunLifecycleCheckpoint.test_public_surface_keeps_plan_internal_to_the_wrapper _
+tests/test_checkpoint_003_attention_plan_run_lifecycle.py:26: in test_public_surface_keeps_plan_internal_to_the_wrapper
+    BatchPrefillWithPagedKVCacheWrapper.run
+E   AttributeError: type object 'BatchPrefillWithPagedKVCacheWrapper' has no attribute 'run'
+_ PublicPagedPrefillProviderRuntimeCheckpointTests.test_provider_graph_fails_and_workspace_query_remains_non_executing _
+NotImplementedError: T2.2: paged prefill facade is not implemented
+
+During handling of the above exception, another exception occurred:
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:127: in test_provider_graph_fails_and_workspace_query_remains_non_executing
+    with self.assertRaisesRegex(NotImplementedError, "graph resources"):
+E   AssertionError: "graph resources" does not match "T2.2: paged prefill facade is not implemented"
+_ PublicPagedPrefillProviderRuntimeCheckpointTests.test_public_plan_selects_provider_and_run_hides_lse_by_default _
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:75: in test_public_plan_selects_provider_and_run_hides_lse_by_default
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:68: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicPagedPrefillProviderRuntimeCheckpointTests.test_public_signature_exposes_no_provider_runtime_handle _
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:146: in test_public_signature_exposes_no_provider_runtime_handle
+    BatchPrefillWithPagedKVCacheWrapper.plan,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: type object 'BatchPrefillWithPagedKVCacheWrapper' has no attribute 'plan'
+_ PublicPagedPrefillProviderRuntimeCheckpointTests.test_unbound_public_options_fail_before_provider_execution _
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:108: in test_unbound_public_options_fail_before_provider_execution
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:68: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicPagedPrefillProviderRuntimeCheckpointTests.test_wrapper_freezes_the_registry_snapshot_at_construction _
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:96: in test_wrapper_freezes_the_registry_snapshot_at_construction
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py:68: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicPagedDecodeProviderRuntimeCheckpointTests.test_provider_resource_controls_and_non_executing_workspace_query _
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:142: in test_provider_resource_controls_and_non_executing_workspace_query
+    BatchDecodeWithPagedKVCacheWrapper(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.__init__() got an unexpected keyword argument 'use_cuda_graph'
+_ PublicPagedDecodeProviderRuntimeCheckpointTests.test_public_plan_selects_provider_and_run_preserves_return_shape _
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:89: in test_public_plan_selects_provider_and_run_preserves_return_shape
+    self.assertIsNone(plan_public_wrapper(wrapper))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:46: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ PublicPagedDecodeProviderRuntimeCheckpointTests.test_unbound_options_fail_before_provider_execution _
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:124: in test_unbound_options_fail_before_provider_execution
+    plan_public_wrapper(wrapper)
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:46: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ PublicPagedDecodeProviderRuntimeCheckpointTests.test_wrapper_freezes_registry_and_catalog_at_construction _
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:116: in test_wrapper_freezes_registry_and_catalog_at_construction
+    plan_public_wrapper(wrapper)
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:46: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ PublicRaggedPrefillProviderRuntimeCheckpointTests.test_provider_graph_resources_fail_explicitly _
+NotImplementedError: T2.2: ragged prefill facade is not implemented
+
+During handling of the above exception, another exception occurred:
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:121: in test_provider_graph_resources_fail_explicitly
+    with self.assertRaisesRegex(NotImplementedError, "graph resources"):
+E   AssertionError: "graph resources" does not match "T2.2: ragged prefill facade is not implemented"
+_ PublicRaggedPrefillProviderRuntimeCheckpointTests.test_public_plan_selects_provider_and_run_preserves_return_shape _
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:73: in test_public_plan_selects_provider_and_run_preserves_return_shape
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:66: in wrapper
+    return BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ PublicRaggedPrefillProviderRuntimeCheckpointTests.test_public_signature_exposes_no_provider_runtime_handle _
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:131: in test_public_signature_exposes_no_provider_runtime_handle
+    BatchPrefillWithRaggedKVCacheWrapper.plan,
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: type object 'BatchPrefillWithRaggedKVCacheWrapper' has no attribute 'plan'
+_ PublicRaggedPrefillProviderRuntimeCheckpointTests.test_unbound_options_fail_before_provider_execution _
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:107: in test_unbound_options_fail_before_provider_execution
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:66: in wrapper
+    return BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ PublicRaggedPrefillProviderRuntimeCheckpointTests.test_wrapper_freezes_registry_and_catalog_at_construction _
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:98: in test_wrapper_freezes_registry_and_catalog_at_construction
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py:66: in wrapper
+    return BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ ProviderResourceBindingCheckpointTests.test_caller_managed_requirement_checks_capacity_atomically _
+tests/test_checkpoint_042_provider_resource_binding.py:112: in test_caller_managed_requirement_checks_capacity_atomically
+    active = self.wrapper()
+             ^^^^^^^^^^^^^^
+tests/test_checkpoint_042_provider_resource_binding.py:75: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ ProviderResourceBindingCheckpointTests.test_caller_owned_output_buffers_fail_before_external_execution _
+tests/test_checkpoint_042_provider_resource_binding.py:94: in test_caller_owned_output_buffers_fail_before_external_execution
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_042_provider_resource_binding.py:75: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ ProviderResourceBindingCheckpointTests.test_public_plan_binds_package_managed_workspace_to_generation _
+tests/test_checkpoint_042_provider_resource_binding.py:80: in test_public_plan_binds_package_managed_workspace_to_generation
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_042_provider_resource_binding.py:75: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ ProviderResourceBindingCheckpointTests.test_query_and_bound_workspace_must_share_device _
+tests/test_checkpoint_042_provider_resource_binding.py:104: in test_query_and_bound_workspace_must_share_device
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_042_provider_resource_binding.py:75: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ ProviderResourceBindingCheckpointTests.test_workspace_or_mutable_output_arguments_require_explicit_binders _
+tests/test_checkpoint_042_provider_resource_binding.py:137: in test_workspace_or_mutable_output_arguments_require_explicit_binders
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_checkpoint_042_provider_resource_binding.py:75: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ ProviderWorkspaceResetCheckpointTests.test_reset_after_plan_updates_binding_and_preserves_active_plan _
+tests/test_checkpoint_043_provider_workspace_reset.py:73: in test_reset_after_plan_updates_binding_and_preserves_active_plan
+    plan_wrapper(wrapper)
+tests/test_checkpoint_043_provider_workspace_reset.py:34: in plan_wrapper
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ ProviderWorkspaceResetCheckpointTests.test_reset_before_plan_is_bound_by_the_selected_operation _
+tests/test_checkpoint_043_provider_workspace_reset.py:99: in test_reset_before_plan_is_bound_by_the_selected_operation
+    wrapper.reset_workspace_buffer(
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'reset_workspace_buffer'
+_ ProviderWorkspaceResetCheckpointTests.test_reset_rejects_alias_dtype_and_device_drift _
+tests/test_checkpoint_043_provider_workspace_reset.py:117: in test_reset_rejects_alias_dtype_and_device_drift
+    wrapper.reset_workspace_buffer(shared, shared)
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'reset_workspace_buffer'
+_ PublicSinglePrefillProviderRuntimeCheckpointTests.test_public_call_plans_selects_and_executes_without_provider_handles _
+tests/test_checkpoint_044_public_single_prefill_provider_runtime.py:67: in test_public_call_plans_selects_and_executes_without_provider_handles
+    output = single_prefill_with_kv_cache(q, k, v)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/prefill.py:75: in single_prefill_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.prefill，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/prefill_ragged_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ PublicSinglePrefillProviderRuntimeCheckpointTests.test_tensor_contract_fails_before_provider_resolution _
+tests/test_checkpoint_044_public_single_prefill_provider_runtime.py:101: in test_tensor_contract_fails_before_provider_resolution
+    single_prefill_with_kv_cache(q, k, wrong_value)
+flashinfer/prefill.py:75: in single_prefill_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.prefill，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/prefill_ragged_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ PublicSinglePrefillProviderRuntimeCheckpointTests.test_unbound_semantics_fail_before_package_resolution _
+tests/test_checkpoint_044_public_single_prefill_provider_runtime.py:86: in test_unbound_semantics_fail_before_package_resolution
+    single_prefill_with_kv_cache(q, k, v, scale_q="scale")
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'scale_q'
+_ PublicSingleDecodeProviderRuntimeCheckpointTests.test_public_call_plans_selects_and_executes_without_provider_handles _
+tests/test_checkpoint_045_public_single_decode_provider_runtime.py:67: in test_public_call_plans_selects_and_executes_without_provider_handles
+    output = single_decode_with_kv_cache(q, k, v)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ PublicSingleDecodeProviderRuntimeCheckpointTests.test_tensor_contract_fails_before_provider_resolution _
+tests/test_checkpoint_045_public_single_decode_provider_runtime.py:102: in test_tensor_contract_fails_before_provider_resolution
+    single_decode_with_kv_cache(wrong_q, k, v)
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ PublicSingleDecodeProviderRuntimeCheckpointTests.test_unbound_semantics_fail_before_package_resolution _
+tests/test_checkpoint_045_public_single_decode_provider_runtime.py:86: in test_unbound_semantics_fail_before_package_resolution
+    single_decode_with_kv_cache(q, k, v, use_tensor_cores=True)
+E   TypeError: single_decode_with_kv_cache() got an unexpected keyword argument 'use_tensor_cores'
+_ PublicPlanSelectionCheckpointTests.test_all_batch_modes_publish_provider_selection_after_plan _
+tests/test_checkpoint_047_public_plan_selection.py:140: in test_all_batch_modes_publish_provider_selection_after_plan
+    for mode, wrapper in provider_wrappers():
+                         ^^^^^^^^^^^^^^^^^^^
+tests/test_checkpoint_047_public_plan_selection.py:45: in provider_wrappers
+    BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicPlanSelectionCheckpointTests.test_reference_selection_contains_no_provider_identity _
+tests/test_checkpoint_047_public_plan_selection.py:176: in test_reference_selection_contains_no_provider_identity
+    wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ PagedPrefillWorkspaceQueryCheckpointTests.test_failed_query_preserves_an_existing_plan _
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:144: in test_failed_query_preserves_an_existing_plan
+    value = wrapper()
+            ^^^^^^^^^
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:35: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedPrefillWorkspaceQueryCheckpointTests.test_query_after_plan_preserves_every_published_runtime_object _
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:108: in test_query_after_plan_preserves_every_published_runtime_object
+    value = wrapper()
+            ^^^^^^^^^
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:35: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedPrefillWorkspaceQueryCheckpointTests.test_query_before_plan_returns_exact_caller_workspace_requirement _
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:93: in test_query_before_plan_returns_exact_caller_workspace_requirement
+    value = wrapper()
+            ^^^^^^^^^
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:35: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedPrefillWorkspaceQueryCheckpointTests.test_query_uses_the_wrapper_frozen_registry_snapshot _
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:129: in test_query_uses_the_wrapper_frozen_registry_snapshot
+    value = wrapper()
+            ^^^^^^^^^
+tests/test_checkpoint_048_paged_prefill_workspace_query.py:35: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PagedDecodeWorkspaceQueryCheckpointTests.test_failed_query_preserves_existing_plan _
+tests/test_checkpoint_049_paged_decode_workspace_query.py:102: in test_failed_query_preserves_existing_plan
+    plan_public_wrapper(value)
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:46: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ PagedDecodeWorkspaceQueryCheckpointTests.test_query_after_plan_preserves_selection_workspace_and_executor _
+tests/test_checkpoint_049_paged_decode_workspace_query.py:74: in test_query_after_plan_preserves_selection_workspace_and_executor
+    plan_public_wrapper(value)
+tests/test_checkpoint_039_public_paged_decode_provider_runtime.py:46: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'q_data_type'
+_ PagedDecodeWorkspaceQueryCheckpointTests.test_query_before_plan_does_not_publish_runtime_state _
+tests/test_checkpoint_049_paged_decode_workspace_query.py:61: in test_query_before_plan_does_not_publish_runtime_state
+    initial_workspace = value.workspace_contract
+                        ^^^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'workspace_contract'
+_ PagedDecodeWorkspaceQueryCheckpointTests.test_query_rejects_unbound_controls_before_provider_resolution _
+tests/test_checkpoint_049_paged_decode_workspace_query.py:95: in test_query_rejects_unbound_controls_before_provider_resolution
+    query_workspace(value, fixed_split_size=1)
+tests/test_checkpoint_049_paged_decode_workspace_query.py:21: in query_workspace
+    return value.workspace_size(
+           ^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'workspace_size'
+_____________ ManifestTests.test_packaged_parity_manifest_is_valid _____________
+tests/test_manifests.py:38: in test_packaged_parity_manifest_is_valid
+    self.assertEqual(manifest.counts()["missing"], len(manifest.entries) - 9)
+E   AssertionError: 18 != 24
+_ PublicQuantizedPagedDecodeTests.test_decode_rejects_bad_quantized_input_before_external_callable _
+tests/test_public_quantized_paged_decode.py:211: in test_decode_rejects_bad_quantized_input_before_external_callable
+    plan_public_wrapper(wrapper, self.case)
+tests/test_public_quantized_paged_decode.py:137: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'pos_encoding_mode'
+_ PublicQuantizedPagedDecodeTests.test_public_plan_and_run_inject_exact_int8_token_scales _
+tests/test_public_quantized_paged_decode.py:190: in test_public_plan_and_run_inject_exact_int8_token_scales
+    self.assertIsNone(plan_public_wrapper(wrapper, self.case))
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests/test_public_quantized_paged_decode.py:137: in plan_public_wrapper
+    return wrapper.plan(
+E   TypeError: BatchDecodeWithPagedKVCacheWrapper.plan() got an unexpected keyword argument 'pos_encoding_mode'
+_ PublicQuantizedPagedDecodeTests.test_quantized_workspace_query_does_not_publish_a_plan_or_execute _
+tests/test_public_quantized_paged_decode.py:244: in test_quantized_workspace_query_does_not_publish_a_plan_or_execute
+    size = wrapper.workspace_size(
+           ^^^^^^^^^^^^^^^^^^^^^^
+E   AttributeError: 'BatchDecodeWithPagedKVCacheWrapper' object has no attribute 'workspace_size'
+_ PublicQuantizedPagedPrefillTests.test_invalid_quantized_inputs_fail_before_external_callable _
+tests/test_public_quantized_paged_prefill.py:282: in test_invalid_quantized_inputs_fail_before_external_callable
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_public_quantized_paged_prefill.py:253: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicQuantizedPagedPrefillTests.test_public_plan_and_run_inject_exact_storage_and_independent_scales _
+tests/test_public_quantized_paged_prefill.py:260: in test_public_plan_and_run_inject_exact_storage_and_independent_scales
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_public_quantized_paged_prefill.py:253: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicQuantizedPagedPrefillTests.test_quantized_workspace_query_is_non_mutating_and_non_executing _
+tests/test_public_quantized_paged_prefill.py:312: in test_quantized_workspace_query_is_non_mutating_and_non_executing
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_public_quantized_paged_prefill.py:253: in wrapper
+    return BatchPrefillWithPagedKVCacheWrapper(
+flashinfer/prefill.py:27: in __init__
+    raise NotImplementedError("T2.2: paged prefill facade is not implemented")
+E   NotImplementedError: T2.2: paged prefill facade is not implemented
+_ PublicQuantizedRaggedPrefillTests.test_bad_separate_inputs_fail_before_external_callable _
+tests/test_public_quantized_ragged_prefill.py:286: in test_bad_separate_inputs_fail_before_external_callable
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_public_quantized_ragged_prefill.py:258: in wrapper
+    return BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ PublicQuantizedRaggedPrefillTests.test_public_separate_kv_inputs_inject_independent_storage_and_scale _
+tests/test_public_quantized_ragged_prefill.py:265: in test_public_separate_kv_inputs_inject_independent_storage_and_scale
+    wrapper = self.wrapper()
+              ^^^^^^^^^^^^^^
+tests/test_public_quantized_ragged_prefill.py:258: in wrapper
+    return BatchPrefillWithRaggedKVCacheWrapper(
+flashinfer/prefill.py:34: in __init__
+    raise NotImplementedError("T2.2: ragged prefill facade is not implemented")
+E   NotImplementedError: T2.2: ragged prefill facade is not implemented
+_ PublicQuantizedSingleAttentionTests.test_single_decode_plans_and_injects_quantized_components _
+tests/test_public_quantized_single_attention.py:301: in test_single_decode_plans_and_injects_quantized_components
+    output = single_decode_with_kv_cache(q, key, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ PublicQuantizedSingleAttentionTests.test_single_prefill_plans_and_injects_quantized_components _
+tests/test_public_quantized_single_attention.py:282: in test_single_prefill_plans_and_injects_quantized_components
+    output = single_prefill_with_kv_cache(q, key, value)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+flashinfer/prefill.py:75: in single_prefill_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.prefill，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/prefill_ragged_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ PublicQuantizedSingleAttentionTests.test_single_quantized_contract_fails_before_external_callable _
+tests/test_public_quantized_single_attention.py:319: in test_single_quantized_contract_fails_before_external_callable
+    single_prefill_with_kv_cache(q, key, FakeNpuTensor("plain", (3, 1, 1)))
+flashinfer/prefill.py:75: in single_prefill_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.prefill，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/prefill_ragged_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ KernelBinaryABITests.test_attention_binary_abi_matches_logical_order_mutation_and_stream _
+tests/test_runtime_abi.py:177: in test_attention_binary_abi_matches_logical_order_mutation_and_stream
+    self.assertEqual(
+E   AssertionError: '21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e' != 'cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c'
+E   - 21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e
+E   + cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c
+_ SingleFrontendSignatureTests.test_single_decode_signature_matches_flashinfer_order _
+tests/test_single_frontend.py:34: in test_single_decode_signature_matches_flashinfer_order
+    self.assertEqual(
+E   AssertionError: Lists differ: ['q', 'k_cache', 'v_cache', 'kv_layout', 'backend', 'kernel_id'] != ['q', 'k', 'v', 'kv_layout', 'pos_encoding_mode',[136 chars]lse']
+E   
+E   First differing element 1:
+E   'k_cache'
+E   'k'
+E   
+E   Second list contains 9 additional elements.
+E   First extra element 6:
+E   'q_scale'
+E   
+E   - ['q', 'k_cache', 'v_cache', 'kv_layout', 'backend', 'kernel_id']
+E   + ['q',
+E   +  'k',
+E   +  'v',
+E   +  'kv_layout',
+E   +  'pos_encoding_mode',
+E   +  'use_tensor_cores',
+E   +  'q_scale',
+E   +  'k_scale',
+E   +  'v_scale',
+E   +  'window_left',
+E   +  'logits_soft_cap',
+E   +  'sm_scale',
+E   +  'rope_scale',
+E   +  'rope_theta',
+E   +  'return_lse']
+_ SingleFrontendSignatureTests.test_single_prefill_signature_matches_flashinfer_order _
+tests/test_single_frontend.py:19: in test_single_prefill_signature_matches_flashinfer_order
+    self.assertEqual(
+E   AssertionError: Lists differ: ['q', 'k', 'v', 'causal', 'backend', 'kernel_id'] != ['q', 'k', 'v', 'scale_q', 'scale_k', 'scale_v', 'o_dtype'[238 chars]ale']
+E   
+E   First differing element 3:
+E   'causal'
+E   'scale_q'
+E   
+E   Second list contains 17 additional elements.
+E   First extra element 6:
+E   'o_dtype'
+E   
+E   - ['q', 'k', 'v', 'causal', 'backend', 'kernel_id']
+E   + ['q',
+E   +  'k',
+E   +  'v',
+E   +  'scale_q',
+E   +  'scale_k',
+E   +  'scale_v',
+E   +  'o_dtype',
+E   +  'custom_mask',
+E   +  'packed_custom_mask',
+E   +  'causal',
+E   +  'kv_layout',
+E   +  'pos_encoding_mode',
+E   +  'use_fp16_qk_reduction',
+E   +  'sm_scale',
+E   +  'window_left',
+E   +  'logits_soft_cap',
+E   +  'rope_scale',
+E   +  'rope_theta',
+E   +  'backend',
+E   +  'return_lse',
+E   +  'kv_cache_sf',
+E   +  'k_scale',
+E   +  'v_scale']
+_ SinglePrefillFrontendTests.test_auto_backend_never_silently_selects_reference _
+flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.prefill，backend policy=auto。逐条淘汰原因：
+  - reference/attention/prefill_ragged_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+
+During handling of the above exception, another exception occurred:
+tests/test_single_frontend.py:64: in test_auto_backend_never_silently_selects_reference
+    with self.assertRaisesRegex(DispatchError, "explicitly"):
+E   AssertionError: "explicitly" does not match "无可用 kernel：op=attention.prefill，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/prefill_ragged_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）"
+______ SinglePrefillFrontendTests.test_basic_output_lse_and_output_dtype _______
+tests/test_single_frontend.py:68: in test_basic_output_lse_and_output_dtype
+    output, lse = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'o_dtype'
+_ SinglePrefillFrontendTests.test_hnd_layout_supports_distinct_value_dimension_and_gqa _
+tests/test_single_frontend.py:86: in test_hnd_layout_supports_distinct_value_dimension_and_gqa
+    output = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'kv_layout'
+____ SinglePrefillFrontendTests.test_nvfp4_scale_factor_is_an_explicit_gap _____
+tests/test_single_frontend.py:154: in test_nvfp4_scale_factor_is_an_explicit_gap
+    single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'kv_cache_sf'
+_ SinglePrefillFrontendTests.test_packed_mask_takes_precedence_and_uses_little_endian_bits _
+tests/test_single_frontend.py:95: in test_packed_mask_takes_precedence_and_uses_little_endian_bits
+    output = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'custom_mask'
+______ SinglePrefillFrontendTests.test_per_head_and_legacy_scales_compose ______
+tests/test_single_frontend.py:135: in test_per_head_and_legacy_scales_compose
+    output = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'scale_q'
+_ SinglePrefillFrontendTests.test_unpacked_mask_and_reference_mask_value_validation _
+tests/test_single_frontend.py:106: in test_unpacked_mask_and_reference_mask_value_validation
+    output = single_prefill_with_kv_cache(
+E   TypeError: single_prefill_with_kv_cache() got an unexpected keyword argument 'custom_mask'
+__ SingleDecodeFrontendTests.test_decode_rejects_unsupported_value_dimension ___
+tests/test_single_frontend.py:195: in test_decode_rejects_unsupported_value_dimension
+    single_decode_with_kv_cache(
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_________ SingleDecodeFrontendTests.test_decode_scalar_scales_compose __________
+tests/test_single_frontend.py:180: in test_decode_scalar_scales_compose
+    output = single_decode_with_kv_cache(
+E   TypeError: single_decode_with_kv_cache() got an unexpected keyword argument 'q_scale'
+_ SingleDecodeFrontendTests.test_invalid_layout_position_mode_and_scale_are_schema_errors _
+tests/test_single_frontend.py:206: in test_invalid_layout_position_mode_and_scale_are_schema_errors
+    single_decode_with_kv_cache(q, k, v, kv_layout="BAD")
+flashinfer/decode.py:50: in single_decode_with_kv_cache
+    decision = dispatch(
+flashinfer/runtime/dispatch.py:112: in dispatch
+    decision = _dispatch_uncached(
+flashinfer/runtime/dispatch.py:200: in _dispatch_uncached
+    raise DispatchError(
+E   flashinfer.runtime.schema.DispatchError: 无可用 kernel：op=attention.decode，backend policy=auto。逐条淘汰原因：
+E     - reference/attention/decode_v1 [reference]：reference 需显式 opt-in（backend='reference' 或 allow_reference=True）
+_ SingleDecodeFrontendTests.test_nhd_and_hnd_layouts_return_flashinfer_shapes __
+tests/test_single_frontend.py:171: in test_nhd_and_hnd_layouts_return_flashinfer_shapes
+    output, lse = single_decode_with_kv_cache(
+E   TypeError: single_decode_with_kv_cache() got an unexpected keyword argument 'return_lse'
+=============================== warnings summary ===============================
+tests/test_a5_npu.py::test_bmm_fp8[float16-float8_e4m3fn-float8_e4m3fn]
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/torch/utils/backend_registration.py:167: UserWarning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (Triggered internally at ../torch_npu/csrc/aten/common/TensorFactories.cpp:437.)
+    return self.to(
+
+tests/test_cache_key.py::test_default_toolchain_fingerprint_is_stable_on_host
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:13: FutureWarning: triton.language.extra.cann.extension.atan2 is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.atan2 instead.
+    @_deprecated(replacement="triton.language.extra.cann.libdevice.atan2")
+
+tests/test_cache_key.py::test_default_toolchain_fingerprint_is_stable_on_host
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:35: FutureWarning: triton.language.extra.cann.extension.isfinited is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.isfinited instead.
+    @_deprecated(replacement="triton.language.extra.cann.libdevice.isfinited")
+
+tests/test_cache_key.py::test_default_toolchain_fingerprint_is_stable_on_host
+  /root/miniforge3/envs/flashinfer-a5/lib/python3.11/site-packages/triton/language/extra/cann/extension/math_ops.py:49: FutureWarning: triton.language.extra.cann.extension.finitef is deprecated and will be removed in the next release; use triton.language.extra.cann.libdevice.finitef instead.
+    @_deprecated(replacement="triton.language.extra.cann.libdevice.finitef")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+- generated xml file: /home/dy/projects/flashinfer/work_items/reports/execution/T1-baseline.xml -
+=========================== short test summary info ============================
+FAILED tests/test_attention_execution_identity.py::AttentionExecutionIdentitySchemaTests::test_capture_reports_each_mutated_identity_dimension
+FAILED tests/test_attention_execution_identity.py::AttentionExecutionIdentitySchemaTests::test_graph_resources_are_versioned_and_capacity_sensitive
+FAILED tests/test_attention_execution_identity.py::AttentionExecutionIdentitySchemaTests::test_host_capture_round_trip_preserves_identity
+FAILED tests/test_attention_execution_identity.py::AttentionExecutionIdentitySchemaTests::test_kernel_binding_fields_are_atomic_and_forbidden_on_reference
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_caller_lse_buffer_does_not_hide_return_shape_change
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_equivalent_new_allocations_reuse_structural_contract
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_non_graph_wrapper_never_publishes_capture
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_replan_invalidates_then_recaptures_contract
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_return_shape_change_rejects_stale_contract
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_run_options_change_rejects_stale_contract
+FAILED tests/test_attention_execution_identity.py::HostGraphContractLifecycleTests::test_workspace_rebind_rejects_stale_contract
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_decode_discards_requested_lse_but_forwards_its_buffer
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_invalid_module_mask_window_and_mutated_output_are_rejected
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_nested_capture_restores_outer_context
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_opt_in_capture_automatically_records_success_and_failure
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_prefill_allocates_exact_buffers_and_forwards_upstream_codes
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_public_signatures_and_package_exports_match_upstream_surface
+FAILED tests/test_attention_jit_protocol.py::AttentionSingleJITProtocolTests::test_thread_contexts_do_not_cross_publish_traces
+FAILED tests/test_attention_metadata_wire.py::AttentionMetadataWireTests::test_config_directory_layout_and_canonical_blob_are_frozen
+FAILED tests/test_attention_quant_launch_abi.py::AttentionQuantizedKVLaunchABITests::test_v1_is_frozen_and_v2_has_an_independent_binary_identity
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_batch_decode_quant_spec_is_in_plan_workload_and_run_contract
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_paged_prefill_consumes_quantized_kv
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_quantized_and_unquantized_plans_have_different_fingerprints
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_ragged_prefill_consumes_quantized_kv
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_single_decode_int8_uses_independent_k_and_v_scales
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_single_decode_packed_int4_is_end_to_end_executable
+FAILED tests/test_attention_quantized_kv.py::QuantizedKVAttentionTests::test_single_prefill_consumes_quantized_kv
+FAILED tests/test_attention_trace.py::QuantizedKVPropertyTests::test_random_int8_kv_matches_explicit_dequantization
+FAILED tests/test_attention_trace.py::QuantizedKVPropertyTests::test_random_packed_int4_kv_matches_explicit_dequantization
+FAILED tests/test_attention_workspace.py::WorkspaceContractTests::test_reset_rejects_alias_and_device_change_after_plan
+FAILED tests/test_attention_workspace.py::WorkspaceContractTests::test_reset_tracks_binding_generation_and_preserves_active_plan
+FAILED tests/test_attention_workspace.py::WorkspaceSizeFacadeTests::test_decode_workspace_query_preserves_existing_plan
+FAILED tests/test_attention_workspace.py::WorkspaceSizeFacadeTests::test_prefill_workspace_query_is_zero_for_host_and_does_not_plan
+FAILED tests/test_attention_workspace.py::WorkspaceSizeFacadeTests::test_workspace_query_runs_plan_validation
+FAILED tests/test_attention_workspace.py::WorkspaceSizeFacadeTests::test_workspace_size_signatures_match_upstream_snapshot
+FAILED tests/test_batch_attention_frontend.py::BatchAttentionFrontendTests::test_host_execution_requires_explicit_cpu_device
+FAILED tests/test_batch_frontend.py::BatchFrontendSignatureTests::test_package_root_reexports_batch_wrappers
+FAILED tests/test_batch_frontend.py::BatchFrontendSignatureTests::test_paged_prefill_constructor_plan_and_run_signatures
+FAILED tests/test_batch_frontend.py::BatchFrontendSignatureTests::test_ragged_and_decode_signatures_track_upstream_shape
+FAILED tests/test_batch_frontend.py::PagedPrefillFrontendTests::test_auto_backend_does_not_select_host_reference
+FAILED tests/test_batch_frontend.py::PagedPrefillFrontendTests::test_deprecated_forward_executes_matching_plan_and_rejects_drift
+FAILED tests/test_batch_frontend.py::PagedPrefillFrontendTests::test_paged_plan_run_follows_physical_page_table
+FAILED tests/test_batch_frontend.py::PagedPrefillFrontendTests::test_runtime_window_must_match_plan_and_extensions_fail_explicitly
+FAILED tests/test_batch_frontend.py::PagedPrefillFrontendTests::test_segment_packed_mask_and_caller_owned_buffers
+FAILED tests/test_batch_frontend.py::RaggedPrefillFrontendTests::test_deprecated_forward_executes_ragged_reference
+FAILED tests/test_batch_frontend.py::RaggedPrefillFrontendTests::test_ragged_hnd_gqa_and_per_head_scales
+FAILED tests/test_batch_frontend.py::RaggedPrefillFrontendTests::test_ragged_plan_run_keeps_request_segments_separate
+FAILED tests/test_batch_frontend.py::BatchDecodeFrontendTests::test_deprecated_forward_executes_decode_and_rejects_plan_drift
+FAILED tests/test_batch_frontend.py::BatchDecodeFrontendTests::test_graph_mode_freezes_batch_and_checks_capacity
+FAILED tests/test_batch_frontend.py::BatchDecodeFrontendTests::test_multi_token_decode_is_causal
+FAILED tests/test_batch_frontend.py::BatchDecodeFrontendTests::test_multi_token_requires_public_matrix_core_preference
+FAILED tests/test_batch_frontend.py::BatchDecodeFrontendTests::test_packed_cache_run_and_lse
+FAILED tests/test_batch_frontend.py::BatchDecodeFrontendTests::test_reset_workspace_and_legacy_plan_positionals
+FAILED tests/test_checkpoint_001_quant_spec_int8_shape.py::QuantSpecInt8StorageShapeCheckpoint::test_invalid_quant_spec_and_invalid_logical_shape_are_rejected
+FAILED tests/test_checkpoint_003_attention_plan_run_lifecycle.py::AttentionPlanRunLifecycleCheckpoint::test_public_surface_keeps_plan_internal_to_the_wrapper
+FAILED tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py::PublicPagedPrefillProviderRuntimeCheckpointTests::test_provider_graph_fails_and_workspace_query_remains_non_executing
+FAILED tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py::PublicPagedPrefillProviderRuntimeCheckpointTests::test_public_plan_selects_provider_and_run_hides_lse_by_default
+FAILED tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py::PublicPagedPrefillProviderRuntimeCheckpointTests::test_public_signature_exposes_no_provider_runtime_handle
+FAILED tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py::PublicPagedPrefillProviderRuntimeCheckpointTests::test_unbound_public_options_fail_before_provider_execution
+FAILED tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py::PublicPagedPrefillProviderRuntimeCheckpointTests::test_wrapper_freezes_the_registry_snapshot_at_construction
+FAILED tests/test_checkpoint_039_public_paged_decode_provider_runtime.py::PublicPagedDecodeProviderRuntimeCheckpointTests::test_provider_resource_controls_and_non_executing_workspace_query
+FAILED tests/test_checkpoint_039_public_paged_decode_provider_runtime.py::PublicPagedDecodeProviderRuntimeCheckpointTests::test_public_plan_selects_provider_and_run_preserves_return_shape
+FAILED tests/test_checkpoint_039_public_paged_decode_provider_runtime.py::PublicPagedDecodeProviderRuntimeCheckpointTests::test_unbound_options_fail_before_provider_execution
+FAILED tests/test_checkpoint_039_public_paged_decode_provider_runtime.py::PublicPagedDecodeProviderRuntimeCheckpointTests::test_wrapper_freezes_registry_and_catalog_at_construction
+FAILED tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py::PublicRaggedPrefillProviderRuntimeCheckpointTests::test_provider_graph_resources_fail_explicitly
+FAILED tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py::PublicRaggedPrefillProviderRuntimeCheckpointTests::test_public_plan_selects_provider_and_run_preserves_return_shape
+FAILED tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py::PublicRaggedPrefillProviderRuntimeCheckpointTests::test_public_signature_exposes_no_provider_runtime_handle
+FAILED tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py::PublicRaggedPrefillProviderRuntimeCheckpointTests::test_unbound_options_fail_before_provider_execution
+FAILED tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py::PublicRaggedPrefillProviderRuntimeCheckpointTests::test_wrapper_freezes_registry_and_catalog_at_construction
+FAILED tests/test_checkpoint_042_provider_resource_binding.py::ProviderResourceBindingCheckpointTests::test_caller_managed_requirement_checks_capacity_atomically
+FAILED tests/test_checkpoint_042_provider_resource_binding.py::ProviderResourceBindingCheckpointTests::test_caller_owned_output_buffers_fail_before_external_execution
+FAILED tests/test_checkpoint_042_provider_resource_binding.py::ProviderResourceBindingCheckpointTests::test_public_plan_binds_package_managed_workspace_to_generation
+FAILED tests/test_checkpoint_042_provider_resource_binding.py::ProviderResourceBindingCheckpointTests::test_query_and_bound_workspace_must_share_device
+FAILED tests/test_checkpoint_042_provider_resource_binding.py::ProviderResourceBindingCheckpointTests::test_workspace_or_mutable_output_arguments_require_explicit_binders
+FAILED tests/test_checkpoint_043_provider_workspace_reset.py::ProviderWorkspaceResetCheckpointTests::test_reset_after_plan_updates_binding_and_preserves_active_plan
+FAILED tests/test_checkpoint_043_provider_workspace_reset.py::ProviderWorkspaceResetCheckpointTests::test_reset_before_plan_is_bound_by_the_selected_operation
+FAILED tests/test_checkpoint_043_provider_workspace_reset.py::ProviderWorkspaceResetCheckpointTests::test_reset_rejects_alias_dtype_and_device_drift
+FAILED tests/test_checkpoint_044_public_single_prefill_provider_runtime.py::PublicSinglePrefillProviderRuntimeCheckpointTests::test_public_call_plans_selects_and_executes_without_provider_handles
+FAILED tests/test_checkpoint_044_public_single_prefill_provider_runtime.py::PublicSinglePrefillProviderRuntimeCheckpointTests::test_tensor_contract_fails_before_provider_resolution
+FAILED tests/test_checkpoint_044_public_single_prefill_provider_runtime.py::PublicSinglePrefillProviderRuntimeCheckpointTests::test_unbound_semantics_fail_before_package_resolution
+FAILED tests/test_checkpoint_045_public_single_decode_provider_runtime.py::PublicSingleDecodeProviderRuntimeCheckpointTests::test_public_call_plans_selects_and_executes_without_provider_handles
+FAILED tests/test_checkpoint_045_public_single_decode_provider_runtime.py::PublicSingleDecodeProviderRuntimeCheckpointTests::test_tensor_contract_fails_before_provider_resolution
+FAILED tests/test_checkpoint_045_public_single_decode_provider_runtime.py::PublicSingleDecodeProviderRuntimeCheckpointTests::test_unbound_semantics_fail_before_package_resolution
+FAILED tests/test_checkpoint_047_public_plan_selection.py::PublicPlanSelectionCheckpointTests::test_all_batch_modes_publish_provider_selection_after_plan
+FAILED tests/test_checkpoint_047_public_plan_selection.py::PublicPlanSelectionCheckpointTests::test_reference_selection_contains_no_provider_identity
+FAILED tests/test_checkpoint_048_paged_prefill_workspace_query.py::PagedPrefillWorkspaceQueryCheckpointTests::test_failed_query_preserves_an_existing_plan
+FAILED tests/test_checkpoint_048_paged_prefill_workspace_query.py::PagedPrefillWorkspaceQueryCheckpointTests::test_query_after_plan_preserves_every_published_runtime_object
+FAILED tests/test_checkpoint_048_paged_prefill_workspace_query.py::PagedPrefillWorkspaceQueryCheckpointTests::test_query_before_plan_returns_exact_caller_workspace_requirement
+FAILED tests/test_checkpoint_048_paged_prefill_workspace_query.py::PagedPrefillWorkspaceQueryCheckpointTests::test_query_uses_the_wrapper_frozen_registry_snapshot
+FAILED tests/test_checkpoint_049_paged_decode_workspace_query.py::PagedDecodeWorkspaceQueryCheckpointTests::test_failed_query_preserves_existing_plan
+FAILED tests/test_checkpoint_049_paged_decode_workspace_query.py::PagedDecodeWorkspaceQueryCheckpointTests::test_query_after_plan_preserves_selection_workspace_and_executor
+FAILED tests/test_checkpoint_049_paged_decode_workspace_query.py::PagedDecodeWorkspaceQueryCheckpointTests::test_query_before_plan_does_not_publish_runtime_state
+FAILED tests/test_checkpoint_049_paged_decode_workspace_query.py::PagedDecodeWorkspaceQueryCheckpointTests::test_query_rejects_unbound_controls_before_provider_resolution
+FAILED tests/test_manifests.py::ManifestTests::test_packaged_parity_manifest_is_valid
+FAILED tests/test_public_quantized_paged_decode.py::PublicQuantizedPagedDecodeTests::test_decode_rejects_bad_quantized_input_before_external_callable
+FAILED tests/test_public_quantized_paged_decode.py::PublicQuantizedPagedDecodeTests::test_public_plan_and_run_inject_exact_int8_token_scales
+FAILED tests/test_public_quantized_paged_decode.py::PublicQuantizedPagedDecodeTests::test_quantized_workspace_query_does_not_publish_a_plan_or_execute
+FAILED tests/test_public_quantized_paged_prefill.py::PublicQuantizedPagedPrefillTests::test_invalid_quantized_inputs_fail_before_external_callable
+FAILED tests/test_public_quantized_paged_prefill.py::PublicQuantizedPagedPrefillTests::test_public_plan_and_run_inject_exact_storage_and_independent_scales
+FAILED tests/test_public_quantized_paged_prefill.py::PublicQuantizedPagedPrefillTests::test_quantized_workspace_query_is_non_mutating_and_non_executing
+FAILED tests/test_public_quantized_ragged_prefill.py::PublicQuantizedRaggedPrefillTests::test_bad_separate_inputs_fail_before_external_callable
+FAILED tests/test_public_quantized_ragged_prefill.py::PublicQuantizedRaggedPrefillTests::test_public_separate_kv_inputs_inject_independent_storage_and_scale
+FAILED tests/test_public_quantized_single_attention.py::PublicQuantizedSingleAttentionTests::test_single_decode_plans_and_injects_quantized_components
+FAILED tests/test_public_quantized_single_attention.py::PublicQuantizedSingleAttentionTests::test_single_prefill_plans_and_injects_quantized_components
+FAILED tests/test_public_quantized_single_attention.py::PublicQuantizedSingleAttentionTests::test_single_quantized_contract_fails_before_external_callable
+FAILED tests/test_runtime_abi.py::KernelBinaryABITests::test_attention_binary_abi_matches_logical_order_mutation_and_stream
+FAILED tests/test_single_frontend.py::SingleFrontendSignatureTests::test_single_decode_signature_matches_flashinfer_order
+FAILED tests/test_single_frontend.py::SingleFrontendSignatureTests::test_single_prefill_signature_matches_flashinfer_order
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_auto_backend_never_silently_selects_reference
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_basic_output_lse_and_output_dtype
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_hnd_layout_supports_distinct_value_dimension_and_gqa
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_nvfp4_scale_factor_is_an_explicit_gap
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_packed_mask_takes_precedence_and_uses_little_endian_bits
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_per_head_and_legacy_scales_compose
+FAILED tests/test_single_frontend.py::SinglePrefillFrontendTests::test_unpacked_mask_and_reference_mask_value_validation
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_decode_rejects_unsupported_value_dimension
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_decode_scalar_scales_compose
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_invalid_layout_position_mode_and_scale_are_schema_errors
+FAILED tests/test_single_frontend.py::SingleDecodeFrontendTests::test_nhd_and_hnd_layouts_return_flashinfer_shapes
+119 failed, 734 passed, 4 warnings in 11.00s

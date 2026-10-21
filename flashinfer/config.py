@@ -56,3 +56,12 @@ def tuning_dir() -> str:
 def online_tuning_enabled() -> bool:
     """在线探索 tuning 开关（§9.4，进阶特性，默认关闭）。"""
     return os.environ.get("FLASHINFER_NPU_ONLINE_TUNING", "0") == "1"
+
+
+def format_config() -> str:
+    """Host-only diagnostics for the environment-backed runtime configuration."""
+    return "\n".join(f"{name}: {value}" for name, value in (
+        ("cache_dir", cache_dir()), ("backend", default_backend()),
+        ("jit_disabled", jit_disabled()), ("jit_cache_size", jit_cache_size()),
+        ("tuning_dir", tuning_dir()), ("online_tuning", online_tuning_enabled()),
+    ))

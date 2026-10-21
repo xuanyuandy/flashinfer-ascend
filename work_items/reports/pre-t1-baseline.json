@@ -1,0 +1,558 @@
+{
+  "schema_version": 1,
+  "recorded_at_utc": "2026-10-21T08:33:43.513689+00:00",
+  "scope": "Read-only pre-T1 audit; no T1 implementation or commit performed.",
+  "repository": {
+    "path": "/home/dy/projects/flashinfer",
+    "head": "a65a89e988c39bf0c7bfa8b9003d417b04ea1e4c"
+  },
+  "upstream": {
+    "path": "/home/dy/projects/flashinfer-ori",
+    "checkout_head": "da992ed9919604c5eb6dc255c63f5e89a466452c",
+    "required_commit": "2895577720741ddfedff118202c89584996b8875"
+  },
+  "environment": {
+    "python_executable": "/root/miniforge3/envs/flashinfer-a5/bin/python",
+    "conda_environment": "flashinfer-a5"
+  },
+  "package_python_files": 104,
+  "current_test_files": 99,
+  "import_failure_count": 71,
+  "import_failures": [
+    {
+      "module": "flashinfer.__main__",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.accuracy",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.accuracy_evidence",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.accuracy_execution",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.accuracy_samples",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.batch",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.capability",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.corpus",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.corpus_samples",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.dispatch",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.execution_identity",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.frontend",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.holistic",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.jit_protocol",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.json_envelope",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.launch_binding",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.launch_contract",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.launch_packet",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.launcher_provider",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.metadata_wire",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.numerics",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operation_catalog",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_authority",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_bootstrap",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_callable",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_evidence_manifest",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_execution",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_integration",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_materialization",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_package",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_physical_evidence",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_plan",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_provider",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_quantization",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_resolver",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_resources",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.operator_run",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.plan_selection",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.planner",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.protocol_trace",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.provider_adapters",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.quant_layout",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.quant_physical_layout",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.reference",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.resource_limits",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.schema",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.storage_lease",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.tensor_contract",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.torch_adapter",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.trace",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.workspace",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.attention.wrapper",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.cli",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.artifacts",
+      "exception": "ImportError",
+      "message": "cannot import name 'ArtifactRef' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.artifacts",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.execution",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.loading",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.modules",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.plan",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.planning",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.utils",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.attention.variants",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.cache",
+      "exception": "ImportError",
+      "message": "cannot import name 'ArtifactFormat' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.core",
+      "exception": "ImportError",
+      "message": "cannot import name 'ArtifactFormat' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.env",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.jit.loading",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime' (/home/dy/projects/flashinfer/flashinfer/runtime/__init__.py)"
+    },
+    {
+      "module": "flashinfer.parity",
+      "exception": "ImportError",
+      "message": "cannot import name 'SchemaError' from 'flashinfer.runtime.schema' (/home/dy/projects/flashinfer/flashinfer/runtime/schema.py)"
+    },
+    {
+      "module": "flashinfer.quantization",
+      "exception": "ImportError",
+      "message": "cannot import name 'QuantSpec' from 'flashinfer.runtime.schema' (/home/dy/projects/flashinfer/flashinfer/runtime/schema.py)"
+    },
+    {
+      "module": "flashinfer.runtime.manifest",
+      "exception": "ImportError",
+      "message": "cannot import name 'ArtifactRef' from 'flashinfer.runtime.schema' (/home/dy/projects/flashinfer/flashinfer/runtime/schema.py)"
+    }
+  ],
+  "collection": {
+    "command": "python -m pytest --collect-only -q",
+    "exit_code": 2,
+    "collected_tests": 211,
+    "error_count": 87,
+    "error_modules": [
+      "tests/test_attention_accuracy.py",
+      "tests/test_attention_accuracy_evidence.py",
+      "tests/test_attention_accuracy_execution.py",
+      "tests/test_attention_capability.py",
+      "tests/test_attention_corpus.py",
+      "tests/test_attention_execution_identity.py",
+      "tests/test_attention_jit_protocol.py",
+      "tests/test_attention_json_envelope.py",
+      "tests/test_attention_launch_binding.py",
+      "tests/test_attention_launch_packet.py",
+      "tests/test_attention_launcher_provider.py",
+      "tests/test_attention_metadata_wire.py",
+      "tests/test_attention_numerics.py",
+      "tests/test_attention_planner.py",
+      "tests/test_attention_properties.py",
+      "tests/test_attention_protocol_trace.py",
+      "tests/test_attention_quant_launch_abi.py",
+      "tests/test_attention_quant_physical_layout.py",
+      "tests/test_attention_quantized_kv.py",
+      "tests/test_attention_reference.py",
+      "tests/test_attention_resource_limits.py",
+      "tests/test_attention_schema.py",
+      "tests/test_attention_storage_lease.py",
+      "tests/test_attention_tensor_contract.py",
+      "tests/test_attention_torch_adapter.py",
+      "tests/test_attention_trace.py",
+      "tests/test_attention_workspace.py",
+      "tests/test_batch_attention_frontend.py",
+      "tests/test_batch_frontend.py",
+      "tests/test_checkpoint_001_quant_spec_int8_shape.py",
+      "tests/test_checkpoint_002_packed_int4_shape.py",
+      "tests/test_checkpoint_003_attention_plan_run_lifecycle.py",
+      "tests/test_checkpoint_004_attention_operator_provider_spi.py",
+      "tests/test_checkpoint_005_attention_provider_binding.py",
+      "tests/test_checkpoint_006_attention_operator_active_plan.py",
+      "tests/test_checkpoint_007_attention_operator_run_lowering.py",
+      "tests/test_checkpoint_008_attention_operator_wrapper_session.py",
+      "tests/test_checkpoint_009_attention_operation_catalog.py",
+      "tests/test_checkpoint_010_attention_catalog_bound_lowering.py",
+      "tests/test_checkpoint_011_attention_callable_observation.py",
+      "tests/test_checkpoint_012_attention_atomic_runtime_binding.py",
+      "tests/test_checkpoint_013_attention_provider_adapters.py",
+      "tests/test_checkpoint_014_public_batch_attention_provider_runtime.py",
+      "tests/test_checkpoint_015_runtime_implementation_auto_selection.py",
+      "tests/test_checkpoint_016_plan_tensor_materialization.py",
+      "tests/test_checkpoint_017_guarded_callable_execution.py",
+      "tests/test_checkpoint_018_lazy_operator_package_resolution.py",
+      "tests/test_checkpoint_019_package_runtime_integration.py",
+      "tests/test_checkpoint_020_provider_plan_gates.py",
+      "tests/test_checkpoint_021_evidence_authority_resolver.py",
+      "tests/test_checkpoint_022_operator_runtime_bootstrap.py",
+      "tests/test_checkpoint_023_public_runtime_registry_snapshot.py",
+      "tests/test_checkpoint_024_operator_quantization_binding.py",
+      "tests/test_checkpoint_025_quantized_provider_run_lowering.py",
+      "tests/test_checkpoint_026_quantized_provider_tensor_metadata.py",
+      "tests/test_checkpoint_027_provider_physical_layout_binding.py",
+      "tests/test_checkpoint_028_physical_layout_evidence.py",
+      "tests/test_checkpoint_029_evidence_manifest.py",
+      "tests/test_checkpoint_030_attention_jit_framework.py",
+      "tests/test_checkpoint_031_attention_jit_active_plan.py",
+      "tests/test_checkpoint_032_attention_jit_artifact_verification.py",
+      "tests/test_checkpoint_033_attention_jit_module_loading.py",
+      "tests/test_checkpoint_034_attention_jit_executor_binding.py",
+      "tests/test_checkpoint_035_attention_jit_planner_binding.py",
+      "tests/test_checkpoint_037_mode_bound_operator_runtime.py",
+      "tests/test_checkpoint_038_public_paged_prefill_provider_runtime.py",
+      "tests/test_checkpoint_039_public_paged_decode_provider_runtime.py",
+      "tests/test_checkpoint_040_public_ragged_prefill_provider_runtime.py",
+      "tests/test_checkpoint_042_provider_resource_binding.py",
+      "tests/test_checkpoint_043_provider_workspace_reset.py",
+      "tests/test_checkpoint_044_public_single_prefill_provider_runtime.py",
+      "tests/test_checkpoint_045_public_single_decode_provider_runtime.py",
+      "tests/test_checkpoint_047_public_plan_selection.py",
+      "tests/test_checkpoint_048_paged_prefill_workspace_query.py",
+      "tests/test_checkpoint_049_paged_decode_workspace_query.py",
+      "tests/test_cli.py",
+      "tests/test_manifests.py",
+      "tests/test_public_quantized_batch_attention.py",
+      "tests/test_public_quantized_paged_decode.py",
+      "tests/test_public_quantized_paged_prefill.py",
+      "tests/test_public_quantized_ragged_prefill.py",
+      "tests/test_public_quantized_single_attention.py",
+      "tests/test_registry.py",
+      "tests/test_runtime_abi.py",
+      "tests/test_runtime_artifact.py",
+      "tests/test_schema.py",
+      "tests/test_single_frontend.py"
+    ]
+  },
+  "unresolved_inputs": [
+    "147-row operator coverage table",
+    "companion architecture document",
+    "vllm-ascend checkout and exact commit"
+  ],
+  "existing_tracked_worktree_changes": [
+    {
+      "path": "README.md",
+      "sha256": "a00ecbc3880cae12aa272032a8f30f80d8d919d964cc5a4c6debad2b43cecb4e"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "d1242c72aa83f29ab6182d5d8dad0805c5c0d9ed21692d43f179e2e41e59f4f9"
+    },
+    {
+      "path": "flashinfer/cann/cascade.py",
+      "sha256": "b599495e5b8d3025c2a506125558e7c5a85aa92f977ba1fea3ae806c66768b50"
+    },
+    {
+      "path": "flashinfer/cann/decode.py",
+      "sha256": "85283199e1b9f4b821cf01d06b81df4b9c1690d6855256b1fb9b5309572c8263"
+    },
+    {
+      "path": "flashinfer/cann/gemm.py",
+      "sha256": "f242d494f21c3739efd921254b651d0f7178845e3e2dc3ef5625406e4beb0e8f"
+    },
+    {
+      "path": "flashinfer/cann/moe.py",
+      "sha256": "b3a6aed2a252f651ee3b7eae22acae7ee4286d3244cb27400acfb9839987504a"
+    },
+    {
+      "path": "flashinfer/cann/norm.py",
+      "sha256": "6a0b3907502b809f4df83ddd40c90de82aa335a6c972c63645d76f19c41c0ed9"
+    },
+    {
+      "path": "flashinfer/cann/rope.py",
+      "sha256": "83981e5f6177b063d5ddff33810a0a90afce2fa5baa6f006a21531dd4775bd84"
+    },
+    {
+      "path": "flashinfer/data/api_parity.json",
+      "sha256": "ff1fa4b936268391827976b55ed08e2910a4b3b624e97444fb45a5046e11ad5b"
+    },
+    {
+      "path": "flashinfer/fused_moe.py",
+      "sha256": "3069885170ba7fb8c1593c4eea8f24031aba122314b0aaf848139ffb3c82eca7"
+    },
+    {
+      "path": "flashinfer/gemm.py",
+      "sha256": "30900246cf69b91fdab27fef0818aba53c472b42bb809ade74e8deead9af1eff"
+    },
+    {
+      "path": "flashinfer/runtime/hardware.py",
+      "sha256": "b3b487c10f96fbd0bec5cf633e38b9931b1cb16e13a7281719fd834d83fec848"
+    },
+    {
+      "path": "flashinfer/triton/norm.py",
+      "sha256": "82f2cb1e3807b635e5b24097062f5ec14d975d4fc60dcc20778f2636f5dbdc47"
+    },
+    {
+      "path": "tests/test_cudnn_decode.py",
+      "sha256": "0b90924152136a7e54e835e05b6594f95103977253cb6b037647dc0a63e6665d"
+    },
+    {
+      "path": "tests/test_fused_moe.py",
+      "sha256": "7af8a3a4cf3f15eeb80ba3e94fa1b18f2f7e1966757e8159ebb3c01211092975"
+    },
+    {
+      "path": "tests/test_norm.py",
+      "sha256": "86e5105a3a2504e048cba4e2726340ac00864aca11c752e3d9091b40c1a3e6b2"
+    },
+    {
+      "path": "tests/test_rope.py",
+      "sha256": "333da60e9e5a013a69a37d7685da5c2555df4a8ac7d493ca4333296e404e476a"
+    }
+  ],
+  "runtime_restore_source": {
+    "previous_commit": "5857cc4",
+    "runtime_schema_in_previous_commit": false,
+    "evidence": "git ls-tree 5857cc4 flashinfer/runtime/schema.py returns no entry"
+  },
+  "notes": [
+    "Existing A5 modifications remain uncommitted and are not included in a new task commit.",
+    "Schema/ABI-dependent behavior tests are not yet executable; T1 must produce the complete failure list after import restoration.",
+    "Optional NPU/Triton dependencies are installed in this audit environment."
+  ]
+}

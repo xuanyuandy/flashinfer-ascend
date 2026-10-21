@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import threading
+from dataclasses import dataclass
 from typing import Dict, Iterable, Optional, Tuple
 
 from .schema import Backend, KernelDescriptor
@@ -18,6 +19,12 @@ CUSTOM_KERNEL_PREFIX = "custom/"
 
 _GLOBAL_LOCK = threading.Lock()
 _GLOBAL_REGISTRY: Optional["KernelRegistry"] = None
+
+
+@dataclass(frozen=True)
+class CompatibilityReport:
+    kernel_id: str
+    reasons: Tuple[str, ...]
 
 
 class KernelRegistry:
@@ -69,7 +76,7 @@ class KernelRegistry:
     def _insert(self, descriptor: KernelDescriptor) -> None:
         if descriptor.kernel_id in self._descriptors:
             raise ValueError(
-                "kernel_id 重复：%s（不允许覆盖，§12）" % descriptor.kernel_id
+                "duplicate kernel_id 重复：%s（不允许覆盖，§12）" % descriptor.kernel_id
             )
         self._descriptors[descriptor.kernel_id] = descriptor
         self._revision += 1
@@ -85,6 +92,46 @@ class KernelRegistry:
         if op is not None:
             values = tuple(d for d in values if d.op == op)
         return tuple(sorted(values, key=lambda d: d.kernel_id))
+
+    def explain(self, workload, capability):
+        """Report manifest constraints without importing or executing a provider."""
+        return tuple(
+            CompatibilityReport(d.kernel_id, d.constraints.unsupported_reasons(workload, capability))
+            for d in self.descriptors(workload.op)
+        )
+
+    def select(self, workload, capability, *, backend=None,
+               allow_reference=False, tuned_kernel_ids=()):
+        """Select a manifest descriptor for the existing build_plan API.
+
+        Tensor frontends continue to use runtime.dispatch; this path consumes
+        WorkloadSpec/DeviceCapability, as required by manifest clients.
+        """
+        from .dispatch import DispatchError
+
+        policy = None if backend in (None, "auto") else Backend(backend)
+        candidates = []
+        rejected = []
+        for report in self.explain(workload, capability):
+            descriptor = self.get(report.kernel_id)
+            reasons = list(report.reasons)
+            if policy is not None and descriptor.backend != policy:
+                reasons.append("forced backend does not match")
+            if descriptor.backend == Backend.REFERENCE and not allow_reference:
+                reasons.append("reference requires explicit opt-in")
+            if reasons:
+                rejected.append(f"{descriptor.kernel_id}: {', '.join(reasons)}")
+            else:
+                candidates.append(descriptor)
+        if not candidates:
+            raise DispatchError("no compatible kernel; " + "; ".join(rejected))
+        tuning = {kernel_id: i for i, kernel_id in enumerate(tuned_kernel_ids)}
+        return min(candidates, key=lambda d: (
+            tuning.get(d.kernel_id, len(tuning)),
+            d.backend == Backend.REFERENCE,
+            -d.priority,
+            d.kernel_id,
+        ))
 
 
 def _builtin_descriptors() -> Tuple[KernelDescriptor, ...]:

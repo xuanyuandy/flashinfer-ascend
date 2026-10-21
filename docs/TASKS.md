@@ -37,7 +37,7 @@
 > 这一阶段不做，后面所有任务都无法验证。全仓 104 个 Python 模块里 72 个今天 import 就失败。
 
 - [ ] **[T1](tasks/T01-runtime-schema-symbols.md)** · 补齐 10 个缺失的 runtime 基础定义  
-  <sub>依赖 — · 规模 大 · 执行序号 1</sub>
+  <sub>依赖 — · 规模 大 · 执行序号 1 · 导入/收集门禁通过，ABI 指纹待修复；[报告](../work_items/reports/execution/T1-report.md)</sub>
 
 ### P1 · 接口对齐（第一步任务）
 

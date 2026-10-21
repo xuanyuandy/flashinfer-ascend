@@ -1,0 +1,11 @@
+...............F.....................................................    [100%]
+=================================== FAILURES ===================================
+_ KernelBinaryABITests.test_attention_binary_abi_matches_logical_order_mutation_and_stream _
+tests/test_runtime_abi.py:177: in test_attention_binary_abi_matches_logical_order_mutation_and_stream
+    self.assertEqual(
+E   AssertionError: '21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e' != 'cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c'
+E   - 21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e
+E   + cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c
+=========================== short test summary info ============================
+FAILED tests/test_runtime_abi.py::KernelBinaryABITests::test_attention_binary_abi_matches_logical_order_mutation_and_stream
+1 failed, 68 passed in 0.16s
