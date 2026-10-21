@@ -147,3 +147,11 @@ pytest tests/ -q
 三个 activation 接口及顶层导出已接入 npu_swiglu/npu_gelu_mul，注册 3 个 CANN 与 3 个显式 reference descriptor；FP16/BF16/FP32、6/128/4096 尾维、out、PDL 对拍 28 项通过。gelu 的 erf/tanh 两种模式单独调用；大尺寸按原生算子限制分块。
 
 T2.3/T2.4 缺少原覆盖表中的确切 5/4 个接口名；已继续查找并请求原表路径，保留待核实状态，先推进清单中有明确名字的单元。
+
+## T2.6 明确接口执行记录
+
+- `merge_states` 与 `append_paged_kv_cache` 已新增并注册 CANN/reference，25 项真实 A5 对拍通过，涵盖 1/3/17/100 个状态、全无效与部分无效状态组、FP16/BF16/FP32、两种布局与 packed/分离 cache。
+- 本机 attention_update 每次 TensorList 必须小于 16；用 float32 原生合并树适配，保留精度断言。
+- scatter API 的准确关键字是 `cache_mode="Norm"`（ND）；默认 PA_NZ 不能直接写上游 ND cache。非连续视图通过 ND staging 写回，保持调用方 cache 地址与别名。
+- 检出相邻历史差异：旧 `merge_state` 使用自然对数；按全局约束登记为有意不同，文档注明，未在该任务顺手改行为。
+- sparse/fp4 的确切剩余接口仍依赖未提供的原覆盖表，本子任务不勾选整项完成。

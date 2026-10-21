@@ -159,18 +159,39 @@
       "upstream": "flashinfer.cascade.merge_state",
       "local": "flashinfer.cascade.merge_state",
       "upstream_kind": "stable",
-      "semantic_status": "compatible",
+      "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "合并两段 KV 的注意力输出与 logsumexp；backend=cann(npu_attention_update update_type=1, Ascend910B)/reference；上游 CUDA kernel 同式"
+      "notes": "合并两段 KV 的注意力输出与 logsumexp；backend=cann(npu_attention_update update_type=1, Ascend910B)/reference；上游 CUDA kernel 同式",
+      "reason": "现有双状态 merge_state 使用自然对数 LSE，上游 state.cuh 的 attention/cascade 契约使用 log2。按不扩大修复范围的约定保留原行为并明确登记；新 merge_states 按上游 log2 实现。"
     },
     {
       "upstream": "flashinfer.page.append_paged_kv_cache",
       "local": "flashinfer.page.append_paged_kv_cache",
       "upstream_kind": "stable",
-      "semantic_status": "unassessed",
-      "implementation_status": "missing",
-      "priority": "P0"
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "backend": "cann",
+      "soc_models": [
+        "Ascend950"
+      ],
+      "dtypes": [
+        "float16",
+        "bfloat16",
+        "float32"
+      ],
+      "cann_coverage": "verified",
+      "cann_operators": [
+        "npu_scatter_pa_kv_cache"
+      ],
+      "notes": "使用 cache_mode=Norm 的 ND 布局；纯 indptr/indices/positions 计算 slot_mapping。兼容 packed/分离 cache 与 NHD/HND，验证重复槽和越界后才写入，metadata 不变。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/page.py",
+        "line": 580,
+        "sha256": "609dcde184160ed53f8115a3b380bdd1465c09a6bdcc9a4855082a0c49707b46"
+      }
     },
     {
       "upstream": "flashinfer.cascade.merge_state_in_place",
@@ -1882,6 +1903,34 @@
         "path": "flashinfer/activation.py",
         "line": 135,
         "sha256": "39004c0b12291b06c560134c0e50a980e1ff073aeaefabc65236a789c0ad0d7e"
+      }
+    },
+    {
+      "upstream": "flashinfer.cascade.merge_states",
+      "local": "flashinfer.cascade.merge_states",
+      "upstream_kind": "stable",
+      "semantic_status": "compatible",
+      "implementation_status": "functional",
+      "priority": "P1",
+      "backend": "cann",
+      "soc_models": [
+        "Ascend950"
+      ],
+      "dtypes": [
+        "float16",
+        "bfloat16",
+        "float32"
+      ],
+      "cann_coverage": "verified",
+      "cann_operators": [
+        "npu_attention_update"
+      ],
+      "notes": "输入与输出均为 log2 LSE；转自然对数调用原生 TensorList update 后转回。原生每次最多 15 个状态，通过 float32 合并树支持更大状态数。",
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/cascade.py",
+        "line": 170,
+        "sha256": "2add681fb45c0396ac1937f90563e0652442bd584a9e4075f4d34e932adb36f8"
       }
     }
   ]

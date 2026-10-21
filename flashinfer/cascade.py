@@ -21,6 +21,13 @@ from .runtime.schema import DispatchError
 _OP_MERGE_STATE = "cascade.merge_state"
 
 
+def merge_states(v, s):
+    """Merge stacked states with base-2 LSE; v [seq, states, heads, dim]."""
+    signature = build_signature("cascade.merge_states", (v, s))
+    decision = dispatch(signature, current_hardware(), backend=None)
+    return _run_selected(decision.kernel_id, v, s)
+
+
 def _run_selected(kernel_id: str, *args, **kwargs):
     """拉起 dispatch 选中的 kernel。产物未接入时显式报错。"""
     descriptor = get_global_registry().get(kernel_id)
@@ -66,6 +73,9 @@ def merge_state(
     S : torch.Tensor
         The logsumexp value from the merged KV-segment，float32，shape 同
         ``s_a``。
+
+    本仓现有 ``merge_state`` 暂沿用自然对数 LSE，已在账本登记为有意差异。
+    新的 ``merge_states`` 使用上游 log2 契约；两者不可直接混用 LSE。
     """
     if v_a.shape != v_b.shape:
         raise ValueError(

@@ -16,7 +16,10 @@ raw = (subprocess.check_output(["git", "show", "HEAD:" + str(path)], text=True)
 manifest = json.loads(raw)
 entries = {e["upstream"]: e for e in manifest["entries"]}
 for entry in json.loads(args.entries.read_text()):
-    entries[entry["upstream"]] = entry
+    if "_patch" in entry:
+        entries[entry["upstream"]].update(entry["_patch"])
+    else:
+        entries[entry["upstream"]] = entry
 manifest["entries"] = list(entries.values())
 data = json.dumps(manifest, ensure_ascii=False, indent=2) + "\n"
 if args.stage_only:

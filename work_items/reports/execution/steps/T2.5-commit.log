@@ -1,0 +1,14 @@
+[infer 3108f64] T2.5 接入 SiLU 和两种 GELU 融合激活接口
+ 18 files changed, 709 insertions(+), 4 deletions(-)
+ create mode 100644 flashinfer/_activation.py
+ create mode 100644 flashinfer/activation.py
+ create mode 100644 flashinfer/cann/activation.py
+ create mode 100644 tests/test_activation.py
+ create mode 100644 work_items/reports/execution/T2.5-parity-entries.json
+ create mode 100644 work_items/reports/execution/steps/T2.2-commit.log
+ create mode 100644 work_items/reports/execution/steps/T2.5-01.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.5-01.patch
+ create mode 100644 work_items/reports/execution/steps/T2.5-02.before.json.gz
+ create mode 100644 work_items/reports/execution/steps/T2.5-02.patch
+ create mode 100644 work_items/reports/execution/steps/T2.5-activation.log
+ create mode 100644 work_items/reports/execution/steps/T2.5-final.log

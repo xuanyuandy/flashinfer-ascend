@@ -13,7 +13,8 @@ from .decode import (
     single_decode_with_kv_cache,
     single_decode_with_kv_cache_with_jit_module,
 )
-from .cascade import merge_state
+from .cascade import merge_state, merge_states
+from .page import append_paged_kv_cache
 from .gemm import bmm_fp8, gemm_fp8_nt_groupwise
 from .fused_moe import (
     RoutingMethodType,
@@ -88,6 +89,7 @@ __all__ = [
     "trtllm_fp8_per_tensor_scale_moe",
     "trtllm_fp8_block_scale_moe",
     "merge_state",
+    "merge_states", "append_paged_kv_cache",
     "BatchDecodeWithPagedKVCacheWrapper",
     "BatchPrefillWithPagedKVCacheWrapper",
     "BatchPrefillWithRaggedKVCacheWrapper",

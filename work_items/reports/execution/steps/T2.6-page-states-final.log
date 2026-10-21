@@ -1,0 +1,8 @@
+.........................                                                [100%]
+=============================== warnings summary ===============================
+tests/test_page_and_states.py::test_page_append_slots_aliases_and_untouched_values[dtype0-False-NHD]
+  /home/dy/projects/flashinfer/flashinfer/_page.py:56: UserWarning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (Triggered internally at ../torch_npu/csrc/aten/common/TensorFactories.cpp:437.)
+    offset = positions.long() % page_size
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+25 passed, 1 warning in 3.93s

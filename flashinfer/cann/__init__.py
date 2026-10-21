@@ -27,6 +27,8 @@ from .rope import rope_descriptors
 from .sampling import sampling_descriptors
 from .attention import attention_descriptors
 from .activation import activation_descriptors
+from .page import page_descriptors
+from .cascade_multi import cascade_multi_descriptors
 
 
 def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
@@ -41,4 +43,6 @@ def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
         + sampling_descriptors()
         + attention_descriptors()
         + activation_descriptors()
+        + page_descriptors()
+        + cascade_multi_descriptors()
     )
