@@ -1,0 +1,1124 @@
+--- a/flashinfer/data/api_parity.json
++++ b/flashinfer/data/api_parity.json
+@@ -286,6 +286,950 @@
+       "semantic_status": "unassessed",
+       "implementation_status": "missing",
+       "priority": "P1"
++    },
++    {
++      "upstream": "flashinfer.comm.cuda_ipc.CudaRTLibrary",
++      "local": "flashinfer.comm.cuda_ipc.CudaRTLibrary",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 CUDA runtime 的 IPC memory handle；昇腾使用 HCCL/Ascend 内存共享协议，无法复用 CUDA IPC 句柄。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/cuda_ipc.py",
++        "line": 101,
++        "sha256": "e74e838f9da6217fdcf3d1722c05dd6bda6bdcdc5e37699b5c6a2615c6af9884"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.cuda_ipc.create_shared_buffer",
++      "local": "flashinfer.comm.cuda_ipc.create_shared_buffer",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 CUDA runtime 的 IPC memory handle；昇腾使用 HCCL/Ascend 内存共享协议，无法复用 CUDA IPC 句柄。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/cuda_ipc.py",
++        "line": 245,
++        "sha256": "e74e838f9da6217fdcf3d1722c05dd6bda6bdcdc5e37699b5c6a2615c6af9884"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.cuda_ipc.free_shared_buffer",
++      "local": "flashinfer.comm.cuda_ipc.free_shared_buffer",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 CUDA runtime 的 IPC memory handle；昇腾使用 HCCL/Ascend 内存共享协议，无法复用 CUDA IPC 句柄。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/cuda_ipc.py",
++        "line": 288,
++        "sha256": "e74e838f9da6217fdcf3d1722c05dd6bda6bdcdc5e37699b5c6a2615c6af9884"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.init_custom_ar",
++      "local": "flashinfer.comm.vllm_ar.init_custom_ar",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 94,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.dispose",
++      "local": "flashinfer.comm.vllm_ar.dispose",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 121,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.all_reduce",
++      "local": "flashinfer.comm.vllm_ar.all_reduce",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 132,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.get_graph_buffer_ipc_meta",
++      "local": "flashinfer.comm.vllm_ar.get_graph_buffer_ipc_meta",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 163,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.register_buffer",
++      "local": "flashinfer.comm.vllm_ar.register_buffer",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 180,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.register_graph_buffers",
++      "local": "flashinfer.comm.vllm_ar.register_graph_buffers",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 193,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.vllm_ar.meta_size",
++      "local": "flashinfer.comm.vllm_ar.meta_size",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/vllm_ar.py",
++        "line": 210,
++        "sha256": "89ca20e656879b8c88918b24fcdd80b2953831dc7bebfcaaed9e5a1f2574c69d"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.AllReduceStrategyType",
++      "local": "flashinfer.comm.trtllm_ar.AllReduceStrategyType",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 37,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.AllReduceStrategyConfig",
++      "local": "flashinfer.comm.trtllm_ar.AllReduceStrategyConfig",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 48,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.AllReduceFusionOp",
++      "local": "flashinfer.comm.trtllm_ar.AllReduceFusionOp",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 54,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.AllReduceFusionPattern",
++      "local": "flashinfer.comm.trtllm_ar.AllReduceFusionPattern",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 68,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.QuantizationSFLayout",
++      "local": "flashinfer.comm.trtllm_ar.QuantizationSFLayout",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 100,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_destroy_ipc_workspace_for_all_reduce",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_destroy_ipc_workspace_for_all_reduce",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 349,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_create_ipc_workspace_for_all_reduce_fusion",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_create_ipc_workspace_for_all_reduce_fusion",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 407,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_destroy_ipc_workspace_for_all_reduce_fusion",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_destroy_ipc_workspace_for_all_reduce_fusion",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 623,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.compute_fp4_swizzled_layout_sf_size",
++      "local": "flashinfer.comm.trtllm_ar.compute_fp4_swizzled_layout_sf_size",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 639,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_lamport_initialize",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_lamport_initialize",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 663,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_lamport_initialize_all",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_lamport_initialize_all",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 678,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_allreduce_fusion",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_allreduce_fusion",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 772,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_moe_allreduce_fusion",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_moe_allreduce_fusion",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 1030,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_ar.trtllm_moe_finalize_allreduce_fusion",
++      "local": "flashinfer.comm.trtllm_ar.trtllm_moe_finalize_allreduce_fusion",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_ar.py",
++        "line": 1174,
++        "sha256": "68c11a3f5c1da410474fc6fb7f0a82337448da3286df04641c61d4a463919f18"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.MNNVLAllreduceFusionStrategy",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.MNNVLAllreduceFusionStrategy",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 34,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.MNNVLQuantType",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.MNNVLQuantType",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 54,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.MNNVLAllReduceFusionWorkspace",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.MNNVLAllReduceFusionWorkspace",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 61,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_allreduce",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_allreduce",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 426,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_fused_allreduce_add_rmsnorm",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_fused_allreduce_add_rmsnorm",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 530,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_fused_allreduce_add_rmsnorm_quant",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_fused_allreduce_add_rmsnorm_quant",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 631,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.get_allreduce_mnnvl_workspace",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.get_allreduce_mnnvl_workspace",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 891,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_all_reduce",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_all_reduce",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 946,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_fused_allreduce_rmsnorm",
++      "local": "flashinfer.comm.trtllm_mnnvl_ar.trtllm_mnnvl_fused_allreduce_rmsnorm",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_mnnvl_ar.py",
++        "line": 1027,
++        "sha256": "56491333f93b05d122ecafae4b110376869013f2406d46d5a0b0d32ad08a47f5"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_active_rank_mask",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_active_rank_mask",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 38,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_initialize",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_initialize",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 401,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_wrap_payload_tensor_in_workspace",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_wrap_payload_tensor_in_workspace",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 451,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_dispatch",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_dispatch",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 504,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_combine",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_combine",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 670,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_sanitize_expert_ids",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_sanitize_expert_ids",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 811,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_get_workspace_size_per_rank",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.moe_a2a_get_workspace_size_per_rank",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 856,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.trtllm_moe_alltoall.MoeAlltoAll",
++      "local": "flashinfer.comm.trtllm_moe_alltoall.MoeAlltoAll",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/trtllm_moe_alltoall.py",
++        "line": 916,
++        "sha256": "deffcf04d4be0dea2a397626fe21e3cd794305387a9153c5d86e47b30d457c20"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.get_unique_id",
++      "local": "flashinfer.comm.nvshmem.get_unique_id",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 9,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.alloc_empty_unique_id",
++      "local": "flashinfer.comm.nvshmem.alloc_empty_unique_id",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 19,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.init",
++      "local": "flashinfer.comm.nvshmem.init",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 24,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.alltoall",
++      "local": "flashinfer.comm.nvshmem.alltoall",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 36,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.finalize",
++      "local": "flashinfer.comm.nvshmem.finalize",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 41,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.my_pe",
++      "local": "flashinfer.comm.nvshmem.my_pe",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 46,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.n_pes",
++      "local": "flashinfer.comm.nvshmem.n_pes",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 50,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.malloc",
++      "local": "flashinfer.comm.nvshmem.malloc",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 54,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.free_tensor",
++      "local": "flashinfer.comm.nvshmem.free_tensor",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 90,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.barrier_all",
++      "local": "flashinfer.comm.nvshmem.barrier_all",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 95,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem.barrier_all_on_current_stream",
++      "local": "flashinfer.comm.nvshmem.barrier_all_on_current_stream",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem.py",
++        "line": 101,
++        "sha256": "a3a492eff9fadeb55d85261c1ec7691018f5e348de7f7ca723bfdb20fa94b1fb"
++      }
++    },
++    {
++      "upstream": "flashinfer.comm.nvshmem_allreduce.NVSHMEMAllReduce",
++      "local": "flashinfer.comm.nvshmem_allreduce.NVSHMEMAllReduce",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "依赖 NVSHMEM symmetric heap 和 CUDA all-reduce kernel；不把 HCCL 的实现冒充为同一运行时。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/comm/nvshmem_allreduce.py",
++        "line": 56,
++        "sha256": "109ec82feb2c62a9b45fc93146b60de9f4de4a6d67c21d6fc25e06efc9b66469"
++      }
++    },
++    {
++      "upstream": "flashinfer.green_ctx.create_green_ctx_streams",
++      "local": "flashinfer.green_ctx.create_green_ctx_streams",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "CUDA green context 按 NVIDIA SM 切分资源；Ascend AI Core 不具有相同的 CUDA context/stream 资源契约。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/green_ctx.py",
++        "line": 103,
++        "sha256": "48a4795a0504534294ceccdcf2df7efbabbfd42d75f5d8f065e1a63a4c96e8e8"
++      }
++    },
++    {
++      "upstream": "flashinfer.green_ctx.split_device_green_ctx",
++      "local": "flashinfer.green_ctx.split_device_green_ctx",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "CUDA green context 按 NVIDIA SM 切分资源；Ascend AI Core 不具有相同的 CUDA context/stream 资源契约。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/green_ctx.py",
++        "line": 126,
++        "sha256": "48a4795a0504534294ceccdcf2df7efbabbfd42d75f5d8f065e1a63a4c96e8e8"
++      }
++    },
++    {
++      "upstream": "flashinfer.green_ctx.split_device_green_ctx_by_sm_count",
++      "local": "flashinfer.green_ctx.split_device_green_ctx_by_sm_count",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "CUDA green context 按 NVIDIA SM 切分资源；Ascend AI Core 不具有相同的 CUDA context/stream 资源契约。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/green_ctx.py",
++        "line": 196,
++        "sha256": "48a4795a0504534294ceccdcf2df7efbabbfd42d75f5d8f065e1a63a4c96e8e8"
++      }
++    },
++    {
++      "upstream": "flashinfer.quantization.fp4_quantization.shuffle_matrix_a",
++      "local": "flashinfer.quantization.fp4_quantization.shuffle_matrix_a",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "接口固定 TensorRT-LLM/CUTLASS NVFP4 的行置换或 swizzled scale 布局；Ascend ND/NZ 不是相同的物理排布。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/quantization/fp4_quantization.py",
++        "line": 1474,
++        "sha256": "50221b0ebc1b76ec896c78e6fe368177a717953f5cb6d2643db108dc5fa91003"
++      }
++    },
++    {
++      "upstream": "flashinfer.quantization.fp4_quantization.shuffle_matrix_sf_a",
++      "local": "flashinfer.quantization.fp4_quantization.shuffle_matrix_sf_a",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "接口固定 TensorRT-LLM/CUTLASS NVFP4 的行置换或 swizzled scale 布局；Ascend ND/NZ 不是相同的物理排布。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/quantization/fp4_quantization.py",
++        "line": 1496,
++        "sha256": "50221b0ebc1b76ec896c78e6fe368177a717953f5cb6d2643db108dc5fa91003"
++      }
++    },
++    {
++      "upstream": "flashinfer.quantization.fp4_quantization.block_scale_interleave",
++      "local": "flashinfer.quantization.fp4_quantization.block_scale_interleave",
++      "upstream_kind": "stable",
++      "semantic_status": "intentionally_different",
++      "implementation_status": "missing",
++      "priority": "P3",
++      "reason": "接口固定 TensorRT-LLM/CUTLASS NVFP4 的行置换或 swizzled scale 布局；Ascend ND/NZ 不是相同的物理排布。",
++      "notes": "硬件/供应商专属接口，不列入昇腾待实现缺口。",
++      "upstream_source": {
++        "commit": "2895577720741ddfedff118202c89584996b8875",
++        "path": "flashinfer/quantization/fp4_quantization.py",
++        "line": 1356,
++        "sha256": "50221b0ebc1b76ec896c78e6fe368177a717953f5cb6d2643db108dc5fa91003"
++      }
+     }
+   ]
+ }
+--- a/flashinfer/data/attention_api_parity.json
++++ b/flashinfer/data/attention_api_parity.json
+@@ -159,7 +159,8 @@
+       "semantic_status": "intentionally_different",
+       "implementation_status": "reference",
+       "priority": "P1",
+-      "notes": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved."
++      "notes": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved.",
++      "reason": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved."
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.begin_forward",
+@@ -227,7 +228,8 @@
+       "upstream_kind": "stable",
+       "semantic_status": "intentionally_different",
+       "implementation_status": "reference",
+-      "priority": "P1"
++      "priority": "P1",
++      "reason": "现有账本以 is_graph_enabled 暴露后端中立图标志；上游 CUDA 命名兼容别名的实现由 T9 核对。"
+     },
+     {
+       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.begin_forward",
+@@ -321,7 +323,8 @@
+       "semantic_status": "intentionally_different",
+       "implementation_status": "reference",
+       "priority": "P2",
+-      "notes": "NPU capability name will not expose NVIDIA Tensor Core terminology."
++      "notes": "NPU capability name will not expose NVIDIA Tensor Core terminology.",
++      "reason": "NPU capability name will not expose NVIDIA Tensor Core terminology."
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.is_cuda_graph_enabled",
+@@ -329,7 +332,8 @@
+       "upstream_kind": "stable",
+       "semantic_status": "intentionally_different",
+       "implementation_status": "reference",
+-      "priority": "P1"
++      "priority": "P1",
++      "reason": "现有账本以 is_graph_enabled 暴露后端中立图标志；上游 CUDA 命名兼容别名的实现由 T9 核对。"
+     },
+     {
+       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.begin_forward",
+--- a/flashinfer/parity.py
++++ b/flashinfer/parity.py
+@@ -49,6 +49,7 @@
+     implementation_status: str
+     priority: str
+     notes: str = ""
++    reason: str = ""
+ 
+     @classmethod
+     def from_dict(cls, value: Mapping[str, Any]) -> "ParityEntry":
+@@ -60,6 +61,7 @@
+             implementation_status=str(value["implementation_status"]),
+             priority=str(value["priority"]),
+             notes=str(value.get("notes", "")),
++            reason=str(value.get("reason", "")),
+         )
+         entry.validate()
+         return entry
+@@ -73,6 +75,8 @@
+             raise SchemaError("invalid upstream_kind: %s" % self.upstream_kind)
+         if self.semantic_status not in SEMANTIC_STATUSES:
+             raise SchemaError("invalid semantic_status: %s" % self.semantic_status)
++        if self.semantic_status == "intentionally_different" and not self.reason.strip():
++            raise SchemaError("intentionally_different entry requires reason")
+         if self.implementation_status not in IMPLEMENTATION_STATUSES:
+             raise SchemaError(
+                 "invalid implementation_status: %s" % self.implementation_status
+--- a/work_items/scripts/update_nvidia_inventory.py
++++ b/work_items/scripts/update_nvidia_inventory.py
+@@ -0,0 +1,99 @@
++"""Reproduce the T3 inventory from declarations in the pinned upstream commit."""
++
++import argparse
++import ast
++import hashlib
++import json
++from pathlib import Path
++import subprocess
++
++REF = "2895577720741ddfedff118202c89584996b8875"
++SOURCES = {
++    "comm.cuda_ipc": (
++        "CudaRTLibrary create_shared_buffer free_shared_buffer",
++        "依赖 CUDA runtime 的 IPC memory handle；昇腾使用 HCCL/Ascend 内存共享协议，无法复用 CUDA IPC 句柄。",
++    ),
++    "comm.vllm_ar": (
++        "init_custom_ar dispose all_reduce get_graph_buffer_ipc_meta register_buffer register_graph_buffers meta_size",
++        "该自定义 all-reduce 绑定 CUDA IPC、GPU 指针及 CUDA graph 注册；HCCL 不兼容其资源和句柄协议。",
++    ),
++    "comm.trtllm_ar": (
++        "AllReduceStrategyType AllReduceStrategyConfig AllReduceFusionOp AllReduceFusionPattern QuantizationSFLayout trtllm_destroy_ipc_workspace_for_all_reduce trtllm_create_ipc_workspace_for_all_reduce_fusion trtllm_destroy_ipc_workspace_for_all_reduce_fusion compute_fp4_swizzled_layout_sf_size trtllm_lamport_initialize trtllm_lamport_initialize_all trtllm_allreduce_fusion trtllm_moe_allreduce_fusion trtllm_moe_finalize_allreduce_fusion",
++        "属于 TensorRT-LLM CUDA IPC/Lamport all-reduce 协议或其专属枚举/FP4 scale 排布；不能映射为语义相同的 HCCL 接口。",
++    ),
++    "comm.trtllm_mnnvl_ar": (
++        "MNNVLAllreduceFusionStrategy MNNVLQuantType MNNVLAllReduceFusionWorkspace trtllm_mnnvl_allreduce trtllm_mnnvl_fused_allreduce_add_rmsnorm trtllm_mnnvl_fused_allreduce_add_rmsnorm_quant get_allreduce_mnnvl_workspace trtllm_mnnvl_all_reduce trtllm_mnnvl_fused_allreduce_rmsnorm",
++        "依赖 NVIDIA MNNVL/NVLink fabric、multicast 或对称 GPU workspace；昇腾互联与 HCCL 的资源模型不同。",
++    ),
++    "comm.trtllm_moe_alltoall": (
++        "moe_a2a_active_rank_mask moe_a2a_initialize moe_a2a_wrap_payload_tensor_in_workspace moe_a2a_dispatch moe_a2a_combine moe_a2a_sanitize_expert_ids moe_a2a_get_workspace_size_per_rank MoeAlltoAll",
++        "属于 TensorRT-LLM MNNVL MoE all-to-all 的 workspace、payload 与 CUDA kernel 协议；HCCL 需要另行设计张量通信接口。",
++    ),
++    "comm.nvshmem": (
++        "get_unique_id alloc_empty_unique_id init alltoall finalize my_pe n_pes malloc free_tensor barrier_all barrier_all_on_current_stream",
++        "绑定 NVIDIA NVSHMEM 的 PE、symmetric heap、unique id 和 CUDA stream；昇腾 HCCL 不提供兼容的 NVSHMEM 协议。",
++    ),
++    "comm.nvshmem_allreduce": (
++        "NVSHMEMAllReduce",
++        "依赖 NVSHMEM symmetric heap 和 CUDA all-reduce kernel；不把 HCCL 的实现冒充为同一运行时。",
++    ),
++    "green_ctx": (
++        "create_green_ctx_streams split_device_green_ctx split_device_green_ctx_by_sm_count",
++        "CUDA green context 按 NVIDIA SM 切分资源；Ascend AI Core 不具有相同的 CUDA context/stream 资源契约。",
++    ),
++    "quantization.fp4_quantization": (
++        "shuffle_matrix_a shuffle_matrix_sf_a block_scale_interleave",
++        "接口固定 TensorRT-LLM/CUTLASS NVFP4 的行置换或 swizzled scale 布局；Ascend ND/NZ 不是相同的物理排布。",
++    ),
++}
++
++
++def main():
++    parser = argparse.ArgumentParser()
++    parser.add_argument("--upstream", default="/home/dy/projects/flashinfer-ori")
++    parser.add_argument("--stage-only", action="store_true")
++    args = parser.parse_args()
++    inventory = []
++    for module, (names, reason) in SOURCES.items():
++        path = "flashinfer/" + module.replace(".", "/") + ".py"
++        source = subprocess.check_output(
++            ["git", "-C", args.upstream, "show", REF + ":" + path], text=True
++        )
++        declarations = {n.name: n for n in ast.parse(source).body
++                        if isinstance(n, (ast.ClassDef, ast.FunctionDef))}
++        for name in names.split():
++            node = declarations[name]  # Fail if the pinned declaration is absent.
++            symbol = "flashinfer." + module + "." + name
++            inventory.append(dict(
++                upstream=symbol, local=symbol, upstream_kind="stable",
++                semantic_status="intentionally_different",
++                implementation_status="missing", priority="P3", reason=reason,
++                notes="硬件/供应商专属接口，不列入昇腾待实现缺口。",
++                upstream_source=dict(commit=REF, path=path, line=node.lineno,
++                                     sha256=hashlib.sha256(source.encode()).hexdigest()),
++            ))
++    for name in ("api_parity.json", "attention_api_parity.json"):
++        path = Path("flashinfer/data") / name
++        raw = (subprocess.check_output(["git", "show", "HEAD:" + str(path)], text=True)
++               if args.stage_only else path.read_text())
++        value = json.loads(raw)
++        for entry in value["entries"]:
++            if entry["semantic_status"] == "intentionally_different":
++                entry["reason"] = entry.get("reason") or entry.get("notes") or (
++                    "现有账本以 is_graph_enabled 暴露后端中立图标志；上游 CUDA 命名兼容别名的实现由 T9 核对。"
++                )
++        if name == "api_parity.json":
++            by_name = {e["upstream"]: e for e in value["entries"]}
++            by_name.update({e["upstream"]: e for e in inventory})
++            value["entries"] = list(by_name.values())
++        data = json.dumps(value, ensure_ascii=False, indent=2) + "\n"
++        if args.stage_only:
++            blob = subprocess.check_output(["git", "hash-object", "-w", "--stdin"], input=data, text=True).strip()
++            subprocess.run(["git", "update-index", "--cacheinfo", "100644," + blob + "," + str(path)], check=True)
++        else:
++            path.write_text(data)
++    print(json.dumps(dict(nvidia_only=len(inventory), commit=REF), indent=2))
++
++
++if __name__ == "__main__":
++    main()

@@ -6,7 +6,7 @@
 | **执行序号** | 2 / 20 |
 | **依赖** | — |
 | **规模** | 极小 |
-| **状态** | `未开始` |
+| **状态** | `自动验收通过；待用户复核` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,7 +14,7 @@
 
 ## 进度
 
-- [ ] 完成并通过验收
+- [x] 完成并通过自动验收（用户复核待进行）
 
 ---
 
@@ -51,3 +51,11 @@
 - **验收结果**：
 - **遗留问题**（不要顺手改，记在这里）：
 - **提交**：`T3 <标题>`
+
+## 2026-10-21 执行结果
+
+- 固定读取上游 `2895577720741ddfedff118202c89584996b8875`，核实并登记 59 个 NVIDIA 专属定义：CUDA IPC、vLLM CUDA AR、TRT-LLM/Lamport、MNNVL、NVSHMEM、green context 和 NVFP4 布局。逐项保存源码路径、行号、SHA-256 与 reason，不重复计算导出别名。
+- Attention 原有 4 条有意差异补齐 reason；没有将可移植的 Attention 计算接口归为 CUDA 专属。
+- 复现脚本：`work_items/scripts/update_nvidia_inventory.py`；`ParityEntry` 拒绝没有 reason 的有意差异。
+- 自动验收：`pytest -q tests/test_parity_nvidia.py`；完整结果见执行日志 `T3-verify.log`。
+- 与 147 条原覆盖表的逐条对应仍归 T5；原表当前未找到，不虚构其内容。

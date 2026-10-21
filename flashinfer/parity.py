@@ -49,6 +49,7 @@ class ParityEntry:
     implementation_status: str
     priority: str
     notes: str = ""
+    reason: str = ""
 
     @classmethod
     def from_dict(cls, value: Mapping[str, Any]) -> "ParityEntry":
@@ -60,6 +61,7 @@ class ParityEntry:
             implementation_status=str(value["implementation_status"]),
             priority=str(value["priority"]),
             notes=str(value.get("notes", "")),
+            reason=str(value.get("reason", "")),
         )
         entry.validate()
         return entry
@@ -73,6 +75,8 @@ class ParityEntry:
             raise SchemaError("invalid upstream_kind: %s" % self.upstream_kind)
         if self.semantic_status not in SEMANTIC_STATUSES:
             raise SchemaError("invalid semantic_status: %s" % self.semantic_status)
+        if self.semantic_status == "intentionally_different" and not self.reason.strip():
+            raise SchemaError("intentionally_different entry requires reason")
         if self.implementation_status not in IMPLEMENTATION_STATUSES:
             raise SchemaError(
                 "invalid implementation_status: %s" % self.implementation_status

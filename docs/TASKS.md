@@ -44,8 +44,8 @@
 > 这是本仓的主线职责。依据是 147 条算子覆盖表与本仓登记表的三列联表。
 > 当前：本仓实际接入 15 条（全表 10%）；CANN 侧「已覆盖」46 条。
 
-- [ ] **[T3](tasks/T03-mark-nvidia-only.md)** · 把 46 条 NVIDIA 专有接口标成「有意不同」  
-  <sub>依赖 — · 规模 极小 · 执行序号 2</sub>
+- [x] **[T3](tasks/T03-mark-nvidia-only.md)** · 把 46 条 NVIDIA 专有接口标成「有意不同」  
+  <sub>依赖 — · 规模 极小 · 执行序号 2 · 已核实 59 个 NVIDIA 专属定义，自动验收通过</sub>
 - [ ] **[T2](tasks/T02-cann-interface-backfill.md)** · 补齐 32 条「CANN 有、本仓没接」的接口  
   <sub>依赖 —（验证需 T1） · 规模 大 · 执行序号 3</sub>
 - [ ] **[T4](tasks/T04-silent-parity-defects.md)** · 修掉 6 处会静默出错的对标缺陷  

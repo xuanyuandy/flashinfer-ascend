@@ -159,7 +159,8 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "reference",
       "priority": "P1",
-      "notes": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved."
+      "notes": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved.",
+      "reason": "Backend-neutral name avoids exposing CUDA terminology; fixed-shape semantics are preserved."
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.begin_forward",
@@ -227,7 +228,8 @@
       "upstream_kind": "stable",
       "semantic_status": "intentionally_different",
       "implementation_status": "reference",
-      "priority": "P1"
+      "priority": "P1",
+      "reason": "现有账本以 is_graph_enabled 暴露后端中立图标志；上游 CUDA 命名兼容别名的实现由 T9 核对。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.begin_forward",
@@ -321,7 +323,8 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "reference",
       "priority": "P2",
-      "notes": "NPU capability name will not expose NVIDIA Tensor Core terminology."
+      "notes": "NPU capability name will not expose NVIDIA Tensor Core terminology.",
+      "reason": "NPU capability name will not expose NVIDIA Tensor Core terminology."
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.is_cuda_graph_enabled",
@@ -329,7 +332,8 @@
       "upstream_kind": "stable",
       "semantic_status": "intentionally_different",
       "implementation_status": "reference",
-      "priority": "P1"
+      "priority": "P1",
+      "reason": "现有账本以 is_graph_enabled 暴露后端中立图标志；上游 CUDA 命名兼容别名的实现由 T9 核对。"
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.begin_forward",
