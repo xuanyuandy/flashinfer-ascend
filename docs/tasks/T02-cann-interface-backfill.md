@@ -18,7 +18,7 @@
 - [ ] **T2.2** Attention（4 个接口 + 2 个占位转正）
 - [ ] **T2.3** rope（5 个接口）
 - [ ] **T2.4** GEMM（4 个接口）
-- [ ] **T2.5** activation（3 个接口）
+- [x] **T2.5** activation（3 个接口）
 - [ ] **T2.6** 其余（cascade / page / sparse / fp4，各 1~2 条）
 
 ---
@@ -141,3 +141,9 @@ pytest tests/ -q
 - 单独归属：T2.2 增加 prefill 与 backend/JIT 路径；T4.2 修公开 single decode；T4.4 修 decode wrapper；T4.6 统一 PDL。原有有意差异与新增限制均登记。
 
 - prefill/JIT/provider/量化接入定向回归：48 项通过（`T2.2-prefill-final.log`）；固定源码签名由 `check_prefill_signatures.py` 单独核验。
+
+## T2.5 执行记录
+
+三个 activation 接口及顶层导出已接入 npu_swiglu/npu_gelu_mul，注册 3 个 CANN 与 3 个显式 reference descriptor；FP16/BF16/FP32、6/128/4096 尾维、out、PDL 对拍 28 项通过。gelu 的 erf/tanh 两种模式单独调用；大尺寸按原生算子限制分块。
+
+T2.3/T2.4 缺少原覆盖表中的确切 5/4 个接口名；已继续查找并请求原表路径，保留待核实状态，先推进清单中有明确名字的单元。

@@ -140,12 +140,14 @@ def _builtin_descriptors() -> Tuple[KernelDescriptor, ...]:
     from ..triton import triton_descriptors
     from . import reference_kernels
     from .._sampling import descriptors as sampling_descriptors
+    from .._activation import descriptors as activation_descriptors
 
     return (
         reference_kernels.builtin_descriptors()
         + cann_descriptors()
         + triton_descriptors()
         + sampling_descriptors(Backend.REFERENCE)
+        + activation_descriptors(Backend.REFERENCE)
     )
 
 

@@ -1,0 +1,204 @@
+--- a/flashinfer/__init__.py
++++ b/flashinfer/__init__.py
+@@ -6,6 +6,7 @@
+ """
+ 
+ from .version import __version__
++from .activation import silu_and_mul, gelu_and_mul, gelu_tanh_and_mul
+ from .decode import (
+     BatchDecodeWithPagedKVCacheWrapper,
+     cudnn_batch_decode_with_kv_cache,
+@@ -65,6 +66,7 @@
+ 
+ __all__ = [
+     "__version__",
++    "silu_and_mul", "gelu_and_mul", "gelu_tanh_and_mul",
+     # 对外 API（对标 flashinfer）
+     "single_prefill_with_kv_cache",
+     "single_prefill_with_kv_cache_with_jit_module",
+--- a/flashinfer/_activation.py
++++ b/flashinfer/_activation.py
+@@ -0,0 +1,58 @@
++"""Activation implementations; torch and torch_npu are imported at execution."""
++
++from functools import partial
++
++NAMES = ("silu_and_mul", "gelu_and_mul", "gelu_tanh_and_mul")
++
++
++def execute(name, input, out, *, native):
++    import torch
++
++    if input.numel() == 0:
++        return out
++    if native:
++        import torch_npu
++
++        if input.device.type != "npu":
++            raise ValueError("CANN activation requires NPU tensors")
++        if name == "silu_and_mul":
++            result = torch_npu.npu_swiglu(input, dim=-1)
++        else:
++            # Native GeluMul supports <=1024 input columns and <=200000 rows.
++            # GELU is pointwise; tile both matching halves together so larger
++            # hidden sizes preserve the same formula without an unfused path.
++            half = input.shape[-1] // 2
++            flat = input.reshape(-1, 2 * half)
++            result = torch.empty((*input.shape[:-1], half), dtype=input.dtype, device=input.device)
++            dest = result.reshape(-1, half)
++            for row in range(0, flat.shape[0], 200000):
++                for col in range(0, half, 512):
++                    width = min(512, half - col)
++                    tile = torch.cat((flat[row:row + 200000, col:col + width],
++                                      flat[row:row + 200000, half + col:half + col + width]), -1)
++                    dest[row:row + 200000, col:col + width] = torch_npu.npu_gelu_mul(
++                        tile, approximate="tanh" if name == "gelu_tanh_and_mul" else "none",
++                    )
++    else:
++        import torch.nn.functional as functional
++
++        a, b = input.float().chunk(2, dim=-1)
++        active = functional.silu(a) if name == "silu_and_mul" else functional.gelu(
++            a, approximate="tanh" if name == "gelu_tanh_and_mul" else "none",
++        )
++        result = (active * b).to(input.dtype)
++    out.copy_(result)
++    return out
++
++
++def descriptors(backend):
++    from .runtime.schema import Backend, CapabilitySpec, KernelDescriptor
++
++    native = backend == Backend.CANN
++    return tuple(KernelDescriptor(
++        kernel_id=f"{backend.value}/activation/{name}_v1", backend=backend,
++        capability=CapabilitySpec(
++            op="activation." + name, dtypes=("float16", "bfloat16", "float32"),
++            layouts=("ND",), soc_models=("Ascend950",) if native else (),
++        ), runner=partial(execute, name, native=native),
++    ) for name in NAMES)
+--- a/flashinfer/activation.py
++++ b/flashinfer/activation.py
+@@ -0,0 +1,39 @@
++"""Upstream-compatible gated activation frontends."""
++
++from __future__ import annotations
++
++from typing import Optional, TYPE_CHECKING
++
++if TYPE_CHECKING:
++    import torch
++
++from .runtime import build_signature, current_hardware, dispatch, get_global_registry
++
++
++def _run(name, input, out, enable_pdl):
++    import torch
++
++    # CUDA PDL is hardware-specific. Upstream also disables it on non-CUDA devices.
++    del enable_pdl
++    if input.ndim < 1 or input.shape[-1] % 2:
++        raise ValueError("The last dimension must be even (2 * hidden_size).")
++    expected = (*input.shape[:-1], input.shape[-1] // 2)
++    if out is None:
++        out = torch.empty(expected, dtype=input.dtype, device=input.device)
++    if out.shape != expected or out.dtype != input.dtype or out.device != input.device:
++        raise ValueError("out must have the expected shape, dtype and device")
++    signature = build_signature("activation." + name, (input,), layouts=("ND",))
++    decision = dispatch(signature, current_hardware(), backend=None)
++    return get_global_registry().get(decision.kernel_id).runner(input, out)
++
++
++def silu_and_mul(input: torch.Tensor, out: torch.Tensor = None, enable_pdl: Optional[bool] = None) -> torch.Tensor:
++    return _run("silu_and_mul", input, out, enable_pdl)
++
++
++def gelu_and_mul(input: torch.Tensor, out: torch.Tensor = None, enable_pdl: Optional[bool] = None) -> torch.Tensor:
++    return _run("gelu_and_mul", input, out, enable_pdl)
++
++
++def gelu_tanh_and_mul(input: torch.Tensor, out: torch.Tensor = None, enable_pdl: Optional[bool] = None) -> torch.Tensor:
++    return _run("gelu_tanh_and_mul", input, out, enable_pdl)
+--- a/flashinfer/cann/__init__.py
++++ b/flashinfer/cann/__init__.py
+@@ -26,6 +26,7 @@
+ from .rope import rope_descriptors
+ from .sampling import sampling_descriptors
+ from .attention import attention_descriptors
++from .activation import activation_descriptors
+ 
+ 
+ def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
+@@ -39,4 +40,5 @@
+         + gemm_descriptors()
+         + sampling_descriptors()
+         + attention_descriptors()
++        + activation_descriptors()
+     )
+--- a/flashinfer/cann/activation.py
++++ b/flashinfer/cann/activation.py
+@@ -0,0 +1,8 @@
++"""Native CANN SwiGLU/GeluMul descriptors."""
++
++from .._activation import descriptors
++from ..runtime.schema import Backend
++
++
++def activation_descriptors():
++    return descriptors(Backend.CANN)
+--- a/flashinfer/runtime/registry.py
++++ b/flashinfer/runtime/registry.py
+@@ -140,12 +140,14 @@
+     from ..triton import triton_descriptors
+     from . import reference_kernels
+     from .._sampling import descriptors as sampling_descriptors
++    from .._activation import descriptors as activation_descriptors
+ 
+     return (
+         reference_kernels.builtin_descriptors()
+         + cann_descriptors()
+         + triton_descriptors()
+         + sampling_descriptors(Backend.REFERENCE)
++        + activation_descriptors(Backend.REFERENCE)
+     )
+ 
+ 
+--- a/tests/test_activation.py
++++ b/tests/test_activation.py
+@@ -0,0 +1,36 @@
++import pytest
++import torch
++import torch.nn.functional as functional
++
++import flashinfer
++
++
++@pytest.mark.parametrize("name", ["silu_and_mul", "gelu_and_mul", "gelu_tanh_and_mul"])
++@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16, torch.float32])
++@pytest.mark.parametrize("width", [6, 128, 4096])
++def test_activation_cann_numerics_out_and_pdl(monkeypatch, name, dtype, width):
++    pytest.importorskip("torch_npu")
++    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(0):
++        pytest.skip("requires verified Ascend950")
++    monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "cann")
++    torch.manual_seed(42)
++    source = torch.randn(2, 3, width, dtype=dtype)
++    a, b = source.float().chunk(2, -1)
++    expected = ((functional.silu(a) if name == "silu_and_mul" else functional.gelu(
++        a, approximate="tanh" if name == "gelu_tanh_and_mul" else "none")) * b).to(dtype)
++    source = source.npu()
++    out = torch.empty(expected.shape, dtype=dtype, device=source.device)
++    result = getattr(flashinfer, name)(source, out, enable_pdl=True)
++    assert result is out
++    torch.testing.assert_close(out.cpu(), expected, rtol=0.015 if dtype == torch.bfloat16 else 0.002,
++                               atol=0.015 if dtype == torch.bfloat16 else 0.002)
++
++
++def test_reference_and_invalid_activation(monkeypatch):
++    monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "reference")
++    source = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
++    assert flashinfer.gelu_and_mul(source).shape == (1, 2)
++    with pytest.raises(ValueError, match="even"):
++        flashinfer.silu_and_mul(torch.ones(1, 3))
++    with pytest.raises(ValueError, match="out"):
++        flashinfer.gelu_and_mul(source, torch.empty(1, 4))

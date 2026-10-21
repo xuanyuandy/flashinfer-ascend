@@ -26,6 +26,7 @@ from .norm import norm_descriptors
 from .rope import rope_descriptors
 from .sampling import sampling_descriptors
 from .attention import attention_descriptors
+from .activation import activation_descriptors
 
 
 def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
@@ -39,4 +40,5 @@ def cann_descriptors() -> Tuple[KernelDescriptor, ...]:
         + gemm_descriptors()
         + sampling_descriptors()
         + attention_descriptors()
+        + activation_descriptors()
     )
