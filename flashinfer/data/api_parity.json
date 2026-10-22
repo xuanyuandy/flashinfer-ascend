@@ -5805,6 +5805,60 @@
       "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
+      "upstream": "flashinfer.runtime.registry.KernelRegistry.register_external",
+      "local": "flashinfer.runtime.registry.KernelRegistry.register_external",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.2 外部仓专用注册入口：强制 backend=external 与仓库自有命名空间，拒绝 custom/ 等框架保留前缀；允许冻结后接入，禁止覆盖，更新 revision 使调度缓存失效。register/register_custom 不接受 external。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：区分经本仓验证的外部仓实现与需 opt-in 的用户 custom；固定上游没有本仓 runtime 注册身份契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.registry.register_external_kernel",
+      "local": "flashinfer.runtime.registry.register_external_kernel",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.2 对全局 registry 调用 register_external；同时从 flashinfer.runtime 与 flashinfer 顶层导出。用于本仓主动对接并验证的外部仓，不复用 register_custom_kernel；仅提供身份与注册机制，不宣称已接入外部执行体或性能收益。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：区分经本仓验证的外部仓实现与需 opt-in 的用户 custom；固定上游没有本仓 runtime 注册身份契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.schema.Backend",
+      "local": "flashinfer.runtime.schema.Backend",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.2 新增 EXTERNAL='external'，表达本仓主动对接并验证的外部仓身份，默认参与 auto 候选池且不受 FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS 控制。既有 backend 序列化值、reference opt-in、custom opt-in 与启发式排序档位保持不变。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：区分经本仓验证的外部仓实现与需 opt-in 的用户 custom；固定上游没有本仓 runtime 注册身份契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
       "upstream": "flashinfer.runtime.schema.ArtifactRef",
       "local": "flashinfer.runtime.schema.ArtifactRef",
       "upstream_kind": "stable",

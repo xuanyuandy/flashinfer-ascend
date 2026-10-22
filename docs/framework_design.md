@@ -483,22 +483,30 @@ CANN、driver、`torch_npu` 等软件栈版本**不进入 HardwareSignature**，
 | `cann` | CANN 内置算子或 aclnn 组合实现 | 无（调用预装算子库） | 是 |
 | `ascendc` | 本仓 Ascend C 自研算子 | AOT / JIT | 是（AOT） |
 | `triton` | 本仓 Triton（triton-ascend）自研算子 | AOT / JIT | 是（AOT） |
+| `external` | 本仓主动对接并验证的外部仓实现 | 由外部仓提供 | 是（默认参与 auto） |
 | `custom` | 用户注册的自定义 kernel（§10） | AOT / JIT | 否（参与 auto 需显式开启） |
 | `reference` | correctness / 调试用高精度参考实现 | 无 | 否（显式 opt-in） |
 
-候选按**来源**分两类，`backend` 字段即类别标记：
+候选按**来源与信任等级**分三类，`backend` 字段即类别标记：
 
-| | 内置 kernel | custom kernel |
-| --- | --- | --- |
-| 来源 | 随本仓分发 | 用户运行期 `register_kernel()` 注册 |
-| backend 取值 | `cann` / `ascendc` / `triton` / `reference` | **必须为 `custom`**（注册时强制，其余四个值保留给本仓，否则 §10.5.2 的开关可被绕过） |
-| 质量保障 | CI correctness、发布流程、发布期 tuning 实测 | 无（用户自担） |
-| 进入 auto 候选池 | 默认在池中 | 需 `FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS` |
+| | 内置 kernel | 外部仓 kernel | custom kernel |
+| --- | --- | --- | --- |
+| 来源 | 随本仓分发 | 本仓主动对接并验证的外部仓，如 vllm-ascend、MindSpeed、ATB | 用户运行期临时注册 |
+| backend 取值 | `cann` / `ascendc` / `triton` / `reference` | **必须为 `external`** | **必须为 `custom`** |
+| 质量保障 | CI correctness、发布流程、发布期 tuning 实测 | 由本仓对接并验证 | 无（用户自担） |
+| 注册入口 | `KernelRegistry.register()`（仅初始化期） | `register_external_kernel()` / `KernelRegistry.register_external()` | `register_custom_kernel()` / `KernelRegistry.register_custom()` |
+| 命名空间 | 不得占用 `custom/` | 仓库自有前缀，如 `vllm-ascend/`，不得占用 backend 名称对应的框架保留前缀 | 强制 `custom/` 前缀 |
+| 进入 auto 候选池 | 默认在池中（`reference` 仍需显式 opt-in） | 默认在池中，无需环境变量 | 需 `FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS=1` |
 
-注意 `custom` 标记的是**来源与信任等级，不是实现技术**——用户 kernel 实际也用
-Ascend C 或 Triton 编写，但调度策略关心"是否经过质量门禁"而非"用什么语言实现"，
-因此用户写的 Ascend C kernel 归类为 `custom` 而非 `ascendc`。两类一旦同在候选池中，
-选择算法完全同权（同一套 capability 过滤 + 排序）；差异只在信任策略（§10.5）。
+`register_external_kernel()` 从 `flashinfer.runtime` 和 `flashinfer` 顶层导出，
+用于本仓已验证的外部仓集成；外部仓不得使用 custom 注册入口，反之亦然。
+外部仓与 custom 的专用入口均允许在内置 registry 冻结后注册；新增记录会更新
+registry revision，使既有调度缓存失效，同名记录仍不允许覆盖。
+
+`custom` 与 `external` 标记的是**来源与信任等级，不是实现技术**：用户用
+Ascend C 或 Triton 编写的临时 kernel 仍归类为 `custom`；本仓主动对接并验证的
+外部仓实现归类为 `external`。三类候选共用 capability 过滤与既有排序；
+此身份扩展只改变候选池准入，不调整启发式排序档位。
 
 ### 5.3 选择算法
 
@@ -1089,12 +1097,12 @@ plan / run、workspace、trace、JIT 缓存等底层设施，仅把执行体替�
 
 ```python
 from flashinfer.runtime import (
-    KernelDescriptor, CapabilitySpec, ArtifactRef, register_kernel,
+    KernelDescriptor, CapabilitySpec, ArtifactRef, register_custom_kernel,
 )
 
-register_kernel(
+register_custom_kernel(
     KernelDescriptor(
-        kernel_id="mycompany/attention/decode_fused_v1",  # 自定义命名空间前缀
+        kernel_id="custom/mycompany/attention/decode_fused_v1",  # custom/ 为强制保留前缀
         op="attention.decode",                            # 挂载到已有 op 语义
         backend="custom",                                # 见 §5.2
         compile_mode="aot",
@@ -1116,7 +1124,7 @@ register_kernel(
 1. **显式路由**（推荐，零策略影响）：
 
 ```python
-wrapper.plan(..., kernel_id="mycompany/attention/decode_fused_v1")
+wrapper.plan(..., kernel_id="custom/mycompany/attention/decode_fused_v1")
 ```
 
 `kernel_id` 显式指定直接锁定用户 kernel（§3.2）；capability 不满足时直接报错。
@@ -1190,9 +1198,9 @@ bucket 声明得到 bucket 空间 → 每个 bucket 构造代表输入 → 加�
 
 ### 10.4 安全与隔离约束
 
-1. **命名空间隔离**：用户 kernel_id 必须带自有命名空间前缀；注册与内置 kernel_id
+1. **命名空间隔离**：用户 kernel_id 必须以字面 `custom/` 为前缀；注册与内置 kernel_id
    同名的 descriptor 直接抛异常，不允许覆盖任何内置实现（包括 reference）。
-2. **auto 默认不生效**：`backend="auto"` 默认只在内置 kernel 中选择；用户 kernel
+2. **auto 默认不生效**：`backend="auto"` 默认在内置与已验证的外部仓 kernel 中选择；用户 kernel
    参与 auto 竞争需要显式开关（环境变量 `FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS=1` 或
    wrapper 参数 `allow_custom=True`），防止未经验证的实现静默进入生产热路径。
 

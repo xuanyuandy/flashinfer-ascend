@@ -26,11 +26,13 @@ class Backend(str, Enum):
 
     ``custom`` 标记的是来源与信任等级而非实现技术——用户用 Ascend C 写的
     kernel 也归类为 custom，调度策略关心"是否经过质量门禁"（§5.2）。
+    ``external`` 表示本仓主动对接并验证的外部仓实现，默认参与 auto。
     """
 
     CANN = "cann"
     ASCENDC = "ascendc"
     TRITON = "triton"
+    EXTERNAL = "external"
     CUSTOM = "custom"
     REFERENCE = "reference"
     # Historical artifact/provider contracts retain their serialized identities.

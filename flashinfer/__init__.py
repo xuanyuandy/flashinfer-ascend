@@ -68,6 +68,7 @@ from .runtime import (
     explain_dispatch,
     get_global_registry,
     register_custom_kernel,
+    register_external_kernel,
 )
 
 __all__ = [
@@ -129,6 +130,7 @@ __all__ = [
     "explain_dispatch",
     "get_global_registry",
     "register_custom_kernel",
+    "register_external_kernel",
     # JIT
     "build_cache_key",
     "toolchain_fingerprint",

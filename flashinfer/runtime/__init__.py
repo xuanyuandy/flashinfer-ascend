@@ -14,6 +14,7 @@ from .registry import (
     KernelRegistry,
     get_global_registry,
     register_custom_kernel,
+    register_external_kernel,
 )
 from .dispatch import (
     CandidateReport,
@@ -53,6 +54,7 @@ __all__ = [
     "explain_dispatch",
     "get_global_registry",
     "register_custom_kernel",
+    "register_external_kernel",
     "ArtifactFormat", "ArtifactKind", "ArtifactRef", "ArtifactVerificationError",
     "CFieldABI", "CPrimitive", "CStructABI", "DeviceCapability", "KernelArgumentABI",
     "KernelArgumentDirection", "KernelArgumentPassing", "KernelBinaryABI",

@@ -2,6 +2,8 @@
 
 - 内置 kernel 在初始化期注册，随后 ``freeze()``——冻结后再注册内置
   kernel 抛错（§10.1：import 后新 kernel 可见期与初始注册期错开）。
+- 经本仓验证的外部仓 kernel 走 ``register_external()``，允许冻结后接入；
+  强制 ``backend=EXTERNAL``，使用外部仓自己的命名空间，默认参与 auto。
 - 自定义 kernel 走 ``register_custom()``，不受冻结限制，但强制
   ``backend=CUSTOM`` 且 ``kernel_id`` 以 ``custom/`` 为命名空间前缀（§10.1）；
   与任何已有 kernel 同名抛错，不允许覆盖（§10.5.1、§12）。
@@ -51,13 +53,39 @@ class KernelRegistry:
         self._frozen = True
 
     def register(self, descriptor: KernelDescriptor) -> None:
-        """注册内置 kernel（仅初始化期）。backend 不得为 CUSTOM。"""
+        """注册内置 kernel（仅初始化期），外部仓与 custom 使用专用入口。"""
         with self._lock:
             if self._frozen:
                 raise RuntimeError("registry 已冻结，内置 kernel 不可再注册")
             if descriptor.backend == Backend.CUSTOM:
                 raise ValueError(
                     "内置 kernel 不得使用 custom backend，请走 register_custom()"
+                )
+            if descriptor.backend == Backend.EXTERNAL:
+                raise ValueError(
+                    "外部仓 kernel 请走 register_external()"
+                )
+            self._insert(descriptor)
+
+    def register_external(self, descriptor: KernelDescriptor) -> None:
+        """接入经本仓验证的外部仓实现，允许冻结后调用并使调度缓存失效。
+
+        kernel_id 使用仓库自有前缀（如 ``vllm-ascend/``），不得占用
+        backend 名称对应的框架保留前缀，尤其是 ``custom/``。
+        """
+        with self._lock:
+            if descriptor.backend != Backend.EXTERNAL:
+                raise ValueError("外部仓 kernel 的 backend 必须为 external")
+            namespace, separator, name = descriptor.kernel_id.partition("/")
+            if not namespace or not separator or not name:
+                raise ValueError(
+                    "外部仓 kernel_id 必须使用仓库自有命名空间前缀，"
+                    "例如 'vllm-ascend/op/kernel'"
+                )
+            if namespace in {backend.value for backend in Backend}:
+                raise ValueError(
+                    "外部仓 kernel_id 不得使用框架保留前缀 %r"
+                    % (namespace + "/")
                 )
             self._insert(descriptor)
 
@@ -74,6 +102,11 @@ class KernelRegistry:
             self._insert(descriptor)
 
     def _insert(self, descriptor: KernelDescriptor) -> None:
+        if (
+            descriptor.backend != Backend.CUSTOM
+            and descriptor.kernel_id.startswith(CUSTOM_KERNEL_PREFIX)
+        ):
+            raise ValueError("custom/ 命名空间仅供 custom backend 使用")
         if descriptor.kernel_id in self._descriptors:
             raise ValueError(
                 "duplicate kernel_id 重复：%s（不允许覆盖，§12）" % descriptor.kernel_id
@@ -174,6 +207,11 @@ def get_global_registry() -> KernelRegistry:
 def register_custom_kernel(descriptor: KernelDescriptor) -> None:
     """用户自定义 kernel 的注册入口（§10.1）。"""
     get_global_registry().register_custom(descriptor)
+
+
+def register_external_kernel(descriptor: KernelDescriptor) -> None:
+    """经本仓验证的外部仓 kernel 接入入口（非用户自定义注册）。"""
+    get_global_registry().register_external(descriptor)
 
 
 def _reset_global_registry_for_testing() -> None:
