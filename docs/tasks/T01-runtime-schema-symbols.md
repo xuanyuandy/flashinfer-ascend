@@ -36,7 +36,7 @@
 > | `8d7037a` | 回头补量化分组校验与 manifest 绑定字段 —— `schema.py` **+5 行** |
 > | `0581b19` | 回头补 workload 版本字段 —— `schema.py` **+3 行** |
 >
-> 对照表其实做了（`work_items/reports/execution/T1-contract-map.json`，15,045 行），
+> 对照表其实做了（`docs/reports/T1-contract-map.json`，15,045 行），
 > 只是没有停下来等确认。**后续任务遇到同类情况，按下面的做法走。**
 
 **列出的 10 个符号是当前能看见的，实际范围更大。**
@@ -147,4 +147,4 @@ pytest --collect-only -q 2>&1 | tail -5
 
 ## 2026-10-21 自动执行记录
 
-见 [T1 报告](../../work_items/reports/execution/T1-report.md) 与 [结构化失败清单](../../work_items/reports/execution/T1-failures.json)。全模块导入和测试收集已解除阻塞；保留 binary/error ABI 历史指纹失败，不将自动验收视为用户验收。
+见 [T1 报告](../reports/T1-report.md) 与 [结构化失败清单](../reports/T1-failures.json)。全模块导入和测试收集已解除阻塞；保留 binary/error ABI 历史指纹失败，不将自动验收视为用户验收。

@@ -1,6 +1,0 @@
-[infer 8d7037a] T1 补齐量化分组校验和 manifest 绑定版本字段
- 6 files changed, 42 insertions(+)
- create mode 100644 work_items/reports/execution/steps/T1-07.before.json.gz
- create mode 100644 work_items/reports/execution/steps/T1-07.patch
- create mode 100644 work_items/reports/execution/steps/T1-schema-followup.log
- create mode 100644 work_items/reports/execution/steps/T2.2-root-commit.log

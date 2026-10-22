@@ -145,7 +145,7 @@ pytest tests/ -q
 - A5 原生算子与 MinP 已实测可用。原生 TopK/TopP 会按索引切并列项；本实现先用 NPU 张量算子按上游阈值过滤，再调原生采样，避免该静默差异。
 - 14 项测试通过，含 FP16/BF16/FP32、并列阈值、indices、无效行、随机分布与本地复现、speculative 前缀和独立接受计数。
 - CUDA Philox 的 seed/offset 流尚未实现，显式报错；随机序列跨硬件不同，已逐条登记 reason。该限制使随机接口标为 intentionally_different，不能宣称完整 RNG drop-in。
-- 日志：`work_items/reports/execution/steps/T2.1-tests-final.log`；账本增量：`T2.1-parity-entries.json`。
+- 验收证据：执行期日志与账本增量（过程产物，未入仓；账本结果已并入 `flashinfer/data/api_parity.json`）。
 
 ## T2.2 首批执行记录（2026-10-21）
 

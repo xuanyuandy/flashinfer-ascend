@@ -1,9 +1,0 @@
-{
-  "recovered_field": "WorkloadSpec.schema_version",
-  "recovered_value": 1,
-  "wire_current": "4fe29f10a3bc5582d41bbf066246302d79c31110e30bfb4df063068c44231c98",
-  "wire_with_frozen_binary_header": "f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352",
-  "expected_wire": "f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352",
-  "workload_contract_matches_frozen_wire": true,
-  "production_fingerprint_override": false
-}

@@ -1,8 +1,0 @@
-.....................                                                    [100%]
-=============================== warnings summary ===============================
-tests/test_attention_cann.py::test_single_fia_gqa_lse_and_layout[64-HND-False-dtype0]
-  /home/dy/projects/flashinfer/tests/test_attention_cann.py:34: UserWarning: Cannot create tensor with interal format while allow_internel_format=False, tensor will be created with base format. (Triggered internally at ../torch_npu/csrc/aten/common/TensorFactories.cpp:437.)
-    actual, lse = call(q.to(npu), k.to(npu), v.to(npu), kv_layout=layout, return_lse=True, **options)
-
--- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
-21 passed, 1 warning in 4.30s

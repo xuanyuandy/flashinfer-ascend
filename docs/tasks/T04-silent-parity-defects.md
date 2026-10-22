@@ -219,5 +219,5 @@ attention 删除 PDL raise，与 norm/activation 统一为显式丢弃的硬件�
 
 `pytest tests/ -q -k "parity or enum or pdl or backend"`：131 通过、869 未选取。
 双账本已通过 `python -m flashinfer parity-check` 校验，六项对应变更、参数降级与删除别名均有记录。
-证据见 [`T5-and-T4-gates.log`](../../work_items/reports/execution/steps/T5-and-T4-gates.log)。
+证据：执行期门禁日志（过程产物，未入仓）。
 全量测试仍有 T1 的三项历史 ABI 指纹失败，未计为 T4 验收通过；用户复核尚未发生。

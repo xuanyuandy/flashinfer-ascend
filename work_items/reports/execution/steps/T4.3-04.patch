@@ -1,9 +1,0 @@
---- a/work_items/scripts/stage_step_files.py
-+++ b/work_items/scripts/stage_step_files.py
-@@ -1,6 +1,5 @@
- """Stage only a recorded step's delta, preserving preexisting working edits."""
- 
--import difflib
- import gzip
- import json
- from pathlib import Path

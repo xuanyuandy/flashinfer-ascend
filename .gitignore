@@ -9,3 +9,7 @@ __pycache__/
 build/
 dist/
 wheelhouse/
+
+# 执行过程产物：日志、步骤 patch、before 快照（38MB，可重新生成）
+# 真正的产物（契约对照表、失败清单、阶段报告）保留在 docs/reports/
+work_items/reports/

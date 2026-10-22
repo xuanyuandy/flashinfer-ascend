@@ -1,5 +1,0 @@
-Ascend950PR_9579
-npu::npu_top_k_top_p_sample(Tensor logits, Tensor top_k, Tensor top_p, Tensor? q=None, float? eps=1e-08, bool? is_need_logits=False, int? top_k_guess=32, Tensor? min_ps=None, int? ks_max=1024, bool? input_is_logits=True, str? post_sample="qSample", Generator? generator=None) -> (Tensor, Tensor)
-plain [[0], [[0.550000011920929, 0.30000001192092896, 0.10000000149011612, 0.05000000074505806]]]
-top_p [[0], [[0.550000011920929, 0.30000001192092896, 0.0, 0.0]]]
-min_p [[0], [[0.550000011920929, 0.30000001192092896, 0.0, 0.0]]]
