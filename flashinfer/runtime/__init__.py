@@ -7,6 +7,7 @@ from .schema import (
     CapabilitySpec,
     CompileMode,
     DispatchError,
+    GraphCapability,
     KernelDescriptor,
     ShapeRange,
 )
@@ -43,6 +44,7 @@ __all__ = [
     "CompileMode",
     "DispatchDecision",
     "DispatchError",
+    "GraphCapability",
     "HardwareSignature",
     "InputSignature",
     "KernelDescriptor",

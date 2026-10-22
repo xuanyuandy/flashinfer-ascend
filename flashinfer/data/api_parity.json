@@ -5883,9 +5883,45 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。T6.3/T6.4 在 capability.shape_ranges 或 physical_layouts 非空时序列化 capability，使规模和物理排布限制进入指纹且可经 manifest 往返；旧记录的序列化与指纹不变。",
+      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。T6.3/T6.4 在 capability.shape_ranges 或 physical_layouts 非空时序列化 capability，使规模和物理排布限制进入指纹且可经 manifest 往返；旧记录的序列化与指纹不变。T6.5 追加 graph_capability: GraphCapability = NOT_CAPTURABLE 与 graph_param_updates: Tuple[str, ...] = ()，未经验证的记录默认不可入图。needs_param_update 必须列出非空、无重复的 kernel 入参符号名，其他性质不得带待更新参数；列表转为不可变元组，顺序不表示 ABI 位置。默认字段不写入 to_dict，非默认声明参与指纹并经 manifest 往返。声明不参与 capability 过滤、auto 选型或排序；参数布局绑定及更新执行由 T11 实现。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.schema.GraphCapability",
+      "local": "flashinfer.runtime.schema.GraphCapability",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.5 三选一的字符串枚举：capture_safe（重放无需干预）、needs_param_update（重放前须改写参数）、not_capturable（留在图外）。从 flashinfer.runtime 导出，仅表达 kernel 自身的静态声明，不代表已有捕获验证或执行能力。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：声明并查询 kernel 的入图性质与待更新参数；固定上游没有本仓 aclgraph 元数据契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.registry.KernelRegistry.graph_requirements",
+      "local": "flashinfer.runtime.registry.KernelRegistry.graph_requirements",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.5 按 kernel_id 返回 (GraphCapability, Tuple[str, ...])，同时交代入图性质和重放前待改写的入参名；未知 ID 抛出与 get 相同的可读 KeyError。查询不调用 runner、不改登记表、不执行捕获/重放/参数更新；T11 将参数名绑定到该 kernel 录制任务的布局后消费。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：声明并查询 kernel 的入图性质与待更新参数；固定上游没有本仓 aclgraph 元数据契约。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",

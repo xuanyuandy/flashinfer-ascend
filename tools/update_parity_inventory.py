@@ -158,6 +158,12 @@ def annotate(entry, upstream):
             kind = "npu_extension"
             reason = "NPU 扩展：查询已解析的执行选择及登记表版本；固定上游没有同名公开属性。"
         elif symbol in {
+            "flashinfer.runtime.schema.GraphCapability",
+            "flashinfer.runtime.registry.KernelRegistry.graph_requirements",
+        }:
+            kind = "npu_extension"
+            reason = "NPU 扩展：声明并查询 kernel 的入图性质与待更新参数；固定上游没有本仓 aclgraph 元数据契约。"
+        elif symbol in {
             "flashinfer.runtime.schema.ArtifactRef",
             "flashinfer.runtime.schema.KernelDescriptor",
             "flashinfer.runtime.schema.SourceRef",

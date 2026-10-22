@@ -15,7 +15,7 @@ import threading
 from dataclasses import dataclass
 from typing import Dict, Iterable, Optional, Tuple
 
-from .schema import Backend, KernelDescriptor
+from .schema import Backend, GraphCapability, KernelDescriptor
 
 CUSTOM_KERNEL_PREFIX = "custom/"
 
@@ -119,6 +119,15 @@ class KernelRegistry:
             return self._descriptors[kernel_id]
         except KeyError:
             raise KeyError("未注册的 kernel_id：%s" % kernel_id)
+
+    def graph_requirements(self, kernel_id: str) -> Tuple[GraphCapability, Tuple[str, ...]]:
+        """返回 ``(入图性质, 待更新入参名元组)``，未知 ID 沿用 get 的 KeyError。
+
+        仅查询静态声明，不代表经过入图验证，不绑定任务句柄或执行参数更新。
+        参数名属于该 kernel；T11 负责将其绑定到录制任务的参数布局。
+        """
+        descriptor = self.get(kernel_id)
+        return descriptor.graph_capability, descriptor.graph_param_updates
 
     def descriptors(self, op: Optional[str] = None) -> Tuple[KernelDescriptor, ...]:
         values: Iterable[KernelDescriptor] = self._descriptors.values()

@@ -50,6 +50,14 @@ class CompileMode(str, Enum):
     NONE = "none"
 
 
+class GraphCapability(str, Enum):
+    """kernel 的入图性质声明，不参与 eager capability 过滤或排序。"""
+
+    CAPTURE_SAFE = "capture_safe"
+    NEEDS_PARAM_UPDATE = "needs_param_update"
+    NOT_CAPTURABLE = "not_capturable"
+
+
 class DispatchError(RuntimeError):
     """无 kernel 满足输入签名与调度策略时抛出（§12），附逐条淘汰原因。"""
 
@@ -845,6 +853,12 @@ class KernelDescriptor:
     ``target_soc`` 是尚无产物时的编译目标；None 表示未指定，已有产物时
     以 ``artifact.target_soc`` 为准。不同 SOC 的产物分别使用唯一 kernel_id
     登记（例如 ``ascendc/op/Ascend910B``），不改变 registry 的身份规则。
+
+    ``graph_capability`` 默认 ``NOT_CAPTURABLE``：未经入图验证的记录不能
+    据此进入图，但仍正常参与 eager 选型。``NEEDS_PARAM_UPDATE`` 必须声明
+    非空的 ``graph_param_updates``，列出重放前须改写的 kernel 入参符号名；
+    元组顺序不表示 ABI 参数位置。参数名到任务参数布局的绑定及更新方法由
+    T11 提供，这里不检查 runner 签名、不执行更新或捕获。
     """
 
     kernel_id: str
@@ -865,6 +879,8 @@ class KernelDescriptor:
     capability_binding: Optional[KernelCapabilityBinding] = None
     source: Optional[SourceRef] = None
     target_soc: Optional[str] = None
+    graph_capability: GraphCapability = GraphCapability.NOT_CAPTURABLE
+    graph_param_updates: Tuple[str, ...] = ()
 
     def __post_init__(self):
         object.__setattr__(self, "backend", Backend(self.backend))
@@ -872,6 +888,32 @@ class KernelDescriptor:
             object.__setattr__(self, "compile_mode", CompileMode(self.compile_mode))
         except (TypeError, ValueError) as exc:
             raise SchemaError("invalid compile_mode") from exc
+        try:
+            graph_capability = GraphCapability(self.graph_capability)
+        except (TypeError, ValueError) as exc:
+            raise SchemaError(
+                "graph_capability must be capture_safe, needs_param_update, or not_capturable"
+            ) from exc
+        object.__setattr__(self, "graph_capability", graph_capability)
+        if not isinstance(self.graph_param_updates, (tuple, list)):
+            raise SchemaError("graph_param_updates must be a list or tuple of parameter names")
+        params = tuple(self.graph_param_updates)
+        if any(
+            not isinstance(name, str) or not name
+            or any(c.isspace() or c == "\0" for c in name)
+            for name in params
+        ):
+            raise SchemaError(
+                "graph_param_updates must contain non-empty parameter names without whitespace or NUL"
+            )
+        if len(set(params)) != len(params):
+            raise SchemaError("graph_param_updates must not repeat a parameter name")
+        if graph_capability == GraphCapability.NEEDS_PARAM_UPDATE:
+            if not params:
+                raise SchemaError("needs_param_update requires non-empty graph_param_updates")
+        elif params:
+            raise SchemaError("graph_param_updates requires graph_capability=needs_param_update")
+        object.__setattr__(self, "graph_param_updates", params)
         if self.capability is None:
             object.__setattr__(self, "capability", CapabilitySpec(op=self.op))
         if not self.op:
@@ -942,6 +984,10 @@ class KernelDescriptor:
             value["target_soc"] = self.target_soc
         if self.compile_mode != CompileMode.NONE:
             value["compile_mode"] = self.compile_mode.value
+        if self.graph_capability != GraphCapability.NOT_CAPTURABLE:
+            value["graph_capability"] = self.graph_capability.value
+        if self.graph_param_updates:
+            value["graph_param_updates"] = list(self.graph_param_updates)
         # 历史记录未序列化 capability；规模或物理排布受限的新记录携带它，
         # 保证限制进入静态身份且可往返，同时不迁移旧记录的指纹。
         if self.capability.shape_ranges or self.capability.physical_layouts:

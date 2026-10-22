@@ -11,6 +11,7 @@ from .schema import (
     Backend,
     CapabilitySpec,
     CompileMode,
+    GraphCapability,
     KernelConstraints,
     KernelCapabilityBinding,
     KernelDescriptor,
@@ -48,6 +49,8 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         "target_soc",
         "compile_mode",
         "capability",
+        "graph_capability",
+        "graph_param_updates",
     }
     if not {"kernel_id", "op", "backend"} <= set(value):
         raise SchemaError("kernel descriptor is missing required fields")
@@ -125,6 +128,8 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         ),
         target_soc=value.get("target_soc"),
         compile_mode=value.get("compile_mode", CompileMode.NONE),
+        graph_capability=value.get("graph_capability", GraphCapability.NOT_CAPTURABLE),
+        graph_param_updates=value.get("graph_param_updates", ()),
         launch_abi=(
             KernelLaunchABI.from_dict(launch_abi_value)
             if launch_abi_value is not None
