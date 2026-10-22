@@ -39,9 +39,15 @@ class ManifestTests(unittest.TestCase):
             "flashinfer.norm.rmsnorm", "flashinfer.sampling.sampling_from_probs",
             "flashinfer.activation.silu_and_mul", "flashinfer.cascade.merge_states",
             "flashinfer.page.append_paged_kv_cache",
+            # T2.3/T2.4 接入后一并纳入已实现集合
+            "flashinfer.rope.apply_rope",
+            "flashinfer.rope.apply_rope_pos_ids",
+            "flashinfer.gemm.mm_bf16",
+            "flashinfer.gemm.SegmentGEMMWrapper",
         ):
             self.assertEqual(statuses[symbol], "functional")
-        self.assertEqual(statuses["flashinfer.rope.apply_rope"], "missing")
+        # 仍未接入的标本：llama3.1 的 rope 变体需要额外的频率平滑，不在 T2.3 范围
+        self.assertEqual(statuses["flashinfer.rope.apply_llama31_rope"], "missing")
         self.assertEqual(manifest.coverage_matrix["status"], "missing_source")
 
     def test_attention_parity_inventory_tracks_single_reference_facades(self):
