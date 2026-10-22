@@ -24,6 +24,66 @@
 
 ---
 
+## ⚠ 范围边界（事后补记，已验证成立）
+
+> **这段是在 T1 已经执行之后补进来的，保留它是因为它预言的事真的发生了。**
+> 本应在动手前先交付「符号与字段对照表」、确认最小修改范围再改代码；
+> 这一步被跳过，结果是 **T1 分三次提交**，后两次都是回头补漏掉的字段：
+>
+> | 提交 | 内容 |
+> |---|---|
+> | `dfdfa4a` | T1 恢复 runtime 契约（47 文件） |
+> | `8d7037a` | 回头补量化分组校验与 manifest 绑定字段 —— `schema.py` **+5 行** |
+> | `0581b19` | 回头补 workload 版本字段 —— `schema.py` **+3 行** |
+>
+> 对照表其实做了（`work_items/reports/execution/T1-contract-map.json`，15,045 行），
+> 只是没有停下来等确认。**后续任务遇到同类情况，按下面的做法走。**
+
+**列出的 10 个符号是当前能看见的，实际范围更大。**
+import 在第一个缺失符号处就中断，后面的还没机会报出来。
+现在按首个错误归类只有 5 类：
+
+| 首个报错 | 阻塞模块数 |
+|---|---|
+| `SchemaError` | 66 |
+| `ArtifactRef` | 2 |
+| `ArtifactFormat` | 2 |
+| `QuantSpec` | 1 |
+| `triton` 未安装（**与 schema 无关，不要当成本任务范围**） | 1 |
+
+补上 `SchemaError` 后，被它挡住的 `ArtifactKind` / `KernelBinaryABI` /
+`KernelLaunchABI` / `KernelConstraints` / `KernelCapabilityBinding` /
+`WorkspaceFormula` 才会浮出来。**所以这是一个迭代发现的过程，不是一次性补齐。**
+
+**CLI 与入口也被阻塞**，不只是库内部：
+
+```
+python -m flashinfer --help   →  ImportError: cannot import name 'SchemaError'
+import flashinfer.cli         →  同上
+import flashinfer.parity      →  同上（从 .runtime.schema 导入）
+```
+
+两条导入路径都要满足：`flashinfer.runtime.schema`（定义）与
+`flashinfer.runtime`（再导出）。
+
+### 本任务的第一个交付物
+
+**不是代码，是一份「符号与字段对照表」**：每个符号的全部使用点 →
+反推出的字段名 / 构造签名 / 是否 frozen。
+**交付后确认最小修改范围，再开始改代码。**
+
+引用量供参考（全部 `定义 0`）：
+
+| 符号 | 引用 | | 符号 | 引用 |
+|---|---|---|---|---|
+| `SchemaError` | 2154 | | `ArtifactFormat` | 25 |
+| `QuantSpec` | 149 | | `ArtifactKind` | 24 |
+| `ArtifactRef` | 36 | | `KernelBinaryABI` | 14 |
+| `KernelLaunchABI` | 12 | | `WorkspaceFormula` | 10 |
+| `KernelConstraints` | 8 | | `KernelCapabilityBinding` | 6 |
+
+---
+
 ## 任务正文
 
 **目标**：让全部 104 个模块可导入、98 个测试文件可收集。
