@@ -5847,9 +5847,27 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T6.2 新增 EXTERNAL='external'，表达本仓主动对接并验证的外部仓身份，默认参与 auto 候选池且不受 FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS 控制。既有 backend 序列化值、reference opt-in、custom opt-in 与启发式排序档位保持不变。",
+      "notes": "T6.2 新增 EXTERNAL='external'，表达本仓主动对接并验证的外部仓身份，默认参与 auto 候选池且不受 FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS 控制。既有 backend 序列化值、reference opt-in、custom opt-in 不变。T7 有意重排默认启发式：external > cann/aclnn > 自研 AOT > 自研 JIT/未声明 AOT > reference。ascendc/triton/custom 按 compile_mode 分档，ascendc_aot/ascendc_jit 按历史 backend 身份分档，9 个 backend 均显式映射。此顺序为可配置的缺省策略，不代表实测性能。通过候选过滤的 tuning 冠军优先，后备链仍按启发式排序；reason 区分实测记录与启发式。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：区分经本仓验证的外部仓实现与需 opt-in 的用户 custom；固定上游没有本仓 runtime 注册身份契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.config.dispatch_order",
+      "local": "flashinfer.config.dispatch_order",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T7 新增 FLASHINFER_NPU_DISPATCH_ORDER，值为 external,cann,aot,jit,reference 五档的完整逗号分隔排列，每档恰好一次，允许两侧空白；默认按此顺序。cann 包括 ACLNN；aot/jit 包括 ascendc/triton 和已 opt-in 的 custom，未声明 AOT 的技术后端归 jit。缺档、重复、未知或空项均抛带变量名、原值及原因的 ValueError。每次读取环境，规范化元组同时用于排序与决策缓存 key。只覆盖 tuning 未命中时的启发式，不改变 backend policy、capability 或 opt-in 过滤。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：允许部署方配置无实测记录时的 dispatch 档位优先顺序；固定上游没有本仓 runtime 排序契约。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",

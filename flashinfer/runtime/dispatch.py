@@ -4,8 +4,9 @@
 - 决策单元是 kernel 不是 backend；backend 是选定 kernel 后附带确定的属性；
 - 显式 ``backend=`` 只缩小候选集，不改变选择算法（§5.3.1）；
 - 显式 ``kernel_id=`` 直接锁定唯一实现，优先级最高（§3.2.2）；
-- 排序先查 tuning 记录（进阶特性，当前恒未命中），未命中落确定性
-  启发式阶梯（§5.4.3）：自研 AOT > CANN > 自研 JIT > reference；
+- 排序先查 tuning 记录（进阶特性，当前恒未命中），冠军须通过上述过滤；
+  未命中落可配置的确定性阶梯：external > CANN/ACLNN > 自研 AOT
+  > 自研 JIT/未声明 AOT > reference。这是默认策略，不代表实测排名；
 - 决策缓存（§5.3.2）：key 覆盖全部可影响决策的输入，含 registry
   注册计数——注册新 kernel 自动使旧决策缓存失效；
 - 同一 workload 下选择结果确定可复现，全部过滤原因可查询（explain_dispatch）。
@@ -18,6 +19,7 @@ from dataclasses import dataclass, replace
 from typing import Dict, Optional, Tuple, Union
 
 from .. import config
+from ..tuning import query_tuning_record
 from .hardware import HardwareSignature
 from .registry import KernelRegistry, get_global_registry
 from .schema import Backend, CompileMode, DispatchError, KernelDescriptor
@@ -47,26 +49,52 @@ class DispatchDecision:
 
 
 _TIER_NAMES = {
-    0: "自研 AOT",
-    1: "CANN 算子",
-    2: "自研 JIT",
-    3: "reference",
+    "external": "已验证外部仓实现",
+    "cann": "CANN / ACLNN 算子",
+    "aot": "自研 AOT",
+    "jit": "自研 JIT / 未声明 AOT",
+    "reference": "reference",
+}
+
+# 每个 Backend 都须显式归类；新增 Backend 时缺项会报错，不静默兜底。
+# None 仅用于明确列出的技术后端，由其 compile_mode 进一步分档。
+_BACKEND_GROUPS = {
+    Backend.CANN: "cann",
+    Backend.ASCENDC: None,
+    Backend.TRITON: None,
+    Backend.EXTERNAL: "external",
+    Backend.CUSTOM: None,
+    Backend.REFERENCE: "reference",
+    Backend.ASCENDC_AOT: "aot",
+    Backend.ASCENDC_JIT: "jit",
+    Backend.ACLNN: "cann",
+}
+_COMPILE_GROUPS = {
+    CompileMode.AOT: "aot",
+    CompileMode.JIT: "jit",
+    CompileMode.NONE: "jit",
 }
 
 
-def _heuristic_tier(descriptor: KernelDescriptor) -> int:
-    """确定性启发式阶梯（§5.4.3）。"""
-    if descriptor.backend == Backend.REFERENCE:
-        return 3
-    if descriptor.backend == Backend.CANN:
-        return 1
-    # 自研（ascendc / triton / custom）：AOT 产物匹配优先于 JIT
-    return 0 if descriptor.compile_mode == CompileMode.AOT else 2
+def _heuristic_group(descriptor: KernelDescriptor) -> str:
+    group = _BACKEND_GROUPS[descriptor.backend]
+    if group is None:
+        return _COMPILE_GROUPS[descriptor.compile_mode]
+    return group
 
 
-def _sort_key(descriptor: KernelDescriptor):
+def _heuristic_tier(
+    descriptor: KernelDescriptor, order: Optional[Tuple[str, ...]] = None,
+) -> int:
+    """可配置的确定性启发式阶梯；历史 backend 按其声明的身份分档。"""
+    if order is None:
+        order = config.dispatch_order()
+    return order.index(_heuristic_group(descriptor))
+
+
+def _sort_key(descriptor: KernelDescriptor, order: Optional[Tuple[str, ...]] = None):
     # 同层 tie-break：priority 高者优先 → kernel_id 字典序兜底（全确定性）
-    return (_heuristic_tier(descriptor), -descriptor.priority, descriptor.kernel_id)
+    return (_heuristic_tier(descriptor, order), -descriptor.priority, descriptor.kernel_id)
 
 
 _decision_cache: Dict[tuple, DispatchDecision] = {}
@@ -84,6 +112,7 @@ def dispatch(
     """按 §5.3 算法选择 kernel。结果确定、可复现、可解释。
 
     ``backend=None`` 时取全局默认 ``FLASHINFER_NPU_BACKEND``（§13）。
+    无可用 tuning 冠军时按 ``FLASHINFER_NPU_DISPATCH_ORDER`` 排序。
     """
     registry = registry or get_global_registry()
     if backend is None:
@@ -104,6 +133,8 @@ def dispatch(
             f"不支持的 backend {backend!r}。{hint}支持的 backend 值：{supported}"
         ) from error
 
+    # 每次读取并验证；快照同时用于缓存 key 与本次排序，避免配置串用。
+    order = config.dispatch_order()
     cache_key = None
     if not config.dispatch_cache_disabled():
         cache_key = (
@@ -114,6 +145,7 @@ def dispatch(
             allow_reference,
             config.allow_custom_kernels(),
             config.jit_disabled(),
+            order,
             registry.revision,
         )
         with _cache_lock:
@@ -122,7 +154,7 @@ def dispatch(
             return replace(cached, cache_hit=True)
 
     decision = _dispatch_uncached(
-        signature, hardware, policy, kernel_id, allow_reference, registry
+        signature, hardware, policy, kernel_id, allow_reference, registry, order
     )
     if cache_key is not None:
         with _cache_lock:
@@ -137,6 +169,7 @@ def _dispatch_uncached(
     kernel_id: Optional[str],
     allow_reference: bool,
     registry: KernelRegistry,
+    order: Tuple[str, ...],
 ) -> DispatchDecision:
     # 显式 kernel_id：直接锁定唯一实现，backend 随之确定（§5.1）。
     # capability 不满足时不静默换 kernel，抛错附原因（§12）。
@@ -217,16 +250,28 @@ def _dispatch_uncached(
             _format_no_candidate(signature, policy, tuple(reports))
         )
 
-    # 4. 排序：tuning 记录优先（进阶特性 §9，当前恒未命中）；
-    #    无记录落确定性启发式（§5.4.3）
-    ordered = sorted(survivors, key=_sort_key)
+    # 4. 查询只发生在 capability/policy 过滤之后，记录不能复活已淘汰的实现。
+    #    tuning 仅给冠军 ID，其余后备仍按同一确定性启发式排序。
+    tuned_kernel_id = query_tuning_record(signature, hardware)
+    ordered = sorted(survivors, key=lambda d: _sort_key(d, order))
     champion = ordered[0]
-    tier = _heuristic_tier(champion)
+    tuned = next((d for d in ordered if d.kernel_id == tuned_kernel_id), None)
+    if tuned is not None:
+        champion = tuned
+        ordered = [tuned] + [d for d in ordered if d.kernel_id != tuned_kernel_id]
+        reason = "实测 tuning 记录命中：kernel_id=%s" % tuned_kernel_id
+    else:
+        tier = _heuristic_tier(champion, order)
+        reason = "确定性启发式 tier %d（%s）" % (
+            tier, _TIER_NAMES[_heuristic_group(champion)],
+        )
+        if tuned_kernel_id is not None:
+            reason += "；tuning 记录 %s 不在当前可用候选中" % tuned_kernel_id
     return DispatchDecision(
         kernel_id=champion.kernel_id,
         backend=champion.backend,
         fallback_chain=tuple(d.kernel_id for d in ordered[1:]),
-        reason="确定性启发式 tier %d（%s）" % (tier, _TIER_NAMES[tier]),
+        reason=reason,
         reports=tuple(reports),
     )
 

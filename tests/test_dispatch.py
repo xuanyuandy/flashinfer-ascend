@@ -20,12 +20,12 @@ _SIG_FP16 = InputSignature(op="attention.decode", dtypes=("float16",))
 _SIG_INT8 = InputSignature(op="attention.decode", dtypes=("int8",))
 
 
-def test_auto_prefers_self_built_aot(decode_registry, npu_hardware):
+def test_auto_prefers_cann_over_self_built_aot(decode_registry, npu_hardware):
     decision = dispatch(_SIG_FP16, npu_hardware, registry=decode_registry)
-    assert decision.kernel_id == "ascendc/attention/decode_v1"
-    assert decision.backend == Backend.ASCENDC
+    assert decision.kernel_id == "cann/attention/decode_aclnn_v1"
+    assert decision.backend == Backend.CANN
     assert decision.fallback_chain == (
-        "cann/attention/decode_aclnn_v1",
+        "ascendc/attention/decode_v1",
         "triton/attention/decode_v1",
     )
 
@@ -120,7 +120,7 @@ def test_custom_kernel_excluded_from_auto_by_default(
 ):
     decode_registry.register_custom(_custom_descriptor())
     decision = dispatch(_SIG_FP16, npu_hardware, registry=decode_registry)
-    assert decision.kernel_id == "ascendc/attention/decode_v1"
+    assert decision.kernel_id == "cann/attention/decode_aclnn_v1"
 
 
 def test_custom_kernel_competes_when_enabled(
@@ -129,8 +129,12 @@ def test_custom_kernel_competes_when_enabled(
     monkeypatch.setenv("FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS", "1")
     decode_registry.register_custom(_custom_descriptor(priority=99))
     decision = dispatch(_SIG_FP16, npu_hardware, registry=decode_registry)
-    # custom 为 AOT（tier 0）且 priority 更高 → 同层胜出
-    assert decision.kernel_id == "custom/attention/decode_mine"
+    # custom 已进入候选池；priority 只决定同档 AOT 的顺序，不越过 CANN。
+    assert decision.kernel_id == "cann/attention/decode_aclnn_v1"
+    assert decision.fallback_chain == (
+        "custom/attention/decode_mine", "ascendc/attention/decode_v1",
+        "triton/attention/decode_v1",
+    )
 
 
 def test_custom_kernel_always_available_via_explicit_kernel_id(

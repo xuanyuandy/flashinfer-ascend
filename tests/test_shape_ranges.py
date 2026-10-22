@@ -142,7 +142,9 @@ def test_dispatch_checks_each_scale_and_includes_both_endpoints(
     decision = dispatch(signature, npu_hardware, registry=shape_registry)
     report = next(r for r in decision.reports if r.kernel_id == _LIMITED)
     assert report.accepted == accepted
-    assert decision.kernel_id == (_LIMITED if accepted else _FALLBACK)
+    # CANN 默认优先于自研 AOT；能力区间仍决定 AOT 能否进入后备链。
+    assert decision.kernel_id == _FALLBACK
+    assert decision.fallback_chain == ((_LIMITED,) if accepted else ())
     expected = () if accepted else (
         f"{constraint.name} {size} 不在支持区间 [{constraint.minimum}, {constraint.maximum}]",
     )
@@ -250,8 +252,9 @@ def test_shape_changes_do_not_reuse_incompatible_cached_decisions(shape_registry
     first = dispatch(inside, npu_hardware, registry=shape_registry)
     second = dispatch(outside, npu_hardware, registry=shape_registry)
     third = dispatch(inside, npu_hardware, registry=shape_registry)
-    assert first.kernel_id == third.kernel_id == _LIMITED
-    assert second.kernel_id == _FALLBACK
+    assert first.kernel_id == second.kernel_id == third.kernel_id == _FALLBACK
+    assert first.fallback_chain == third.fallback_chain == (_LIMITED,)
+    assert second.fallback_chain == ()
     assert not first.cache_hit and not second.cache_hit and third.cache_hit
 
 

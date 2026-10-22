@@ -9,6 +9,7 @@ from __future__ import annotations
 import os
 
 _DEFAULT_CACHE_ROOT = os.path.join("~", ".cache", "flashinfer")
+_DEFAULT_DISPATCH_ORDER = ("external", "cann", "aot", "jit", "reference")
 
 
 def cache_dir() -> str:
@@ -38,6 +39,38 @@ def dispatch_cache_disabled() -> bool:
     return os.environ.get("FLASHINFER_NPU_DISABLE_DISPATCH_CACHE", "0") == "1"
 
 
+def dispatch_order() -> tuple[str, ...]:
+    """无 tuning 冠军时的档位顺序，按优先到后备排列。
+
+    ``FLASHINFER_NPU_DISPATCH_ORDER`` 必须是 external,cann,aot,jit,reference
+    的完整逗号分隔排列，每档恰好一次；允许分隔符两侧空白。
+    cann 包含 ACLNN；aot/jit 包含自研及已 opt-in 的 custom，未声明
+    AOT 的自研归 jit。非法值抛 ValueError，不缓存环境变量。
+    """
+    name = "FLASHINFER_NPU_DISPATCH_ORDER"
+    raw = os.environ.get(name)
+    if raw is None:
+        return _DEFAULT_DISPATCH_ORDER
+    order = tuple(item.strip() for item in raw.split(","))
+    unknown = sorted(set(order) - set(_DEFAULT_DISPATCH_ORDER))
+    missing = sorted(set(_DEFAULT_DISPATCH_ORDER) - set(order))
+    duplicates = sorted(item for item in set(order) if order.count(item) > 1)
+    if unknown or missing or duplicates:
+        details = []
+        if unknown:
+            details.append(f"未知档位 {unknown!r}")
+        if missing:
+            details.append(f"缺少档位 {missing!r}")
+        if duplicates:
+            details.append(f"重复档位 {duplicates!r}")
+        raise ValueError(
+            f"{name}={raw!r} 无效：{'；'.join(details)}。"
+            "须将 external,cann,aot,jit,reference 按优先顺序完整排列，"
+            "逗号分隔且每档恰好一次。"
+        )
+    return order
+
+
 def allow_custom_kernels() -> bool:
     """允许自定义 kernel 参与 auto 竞争（§10.5.2）。
 
@@ -63,5 +96,6 @@ def format_config() -> str:
     return "\n".join(f"{name}: {value}" for name, value in (
         ("cache_dir", cache_dir()), ("backend", default_backend()),
         ("jit_disabled", jit_disabled()), ("jit_cache_size", jit_cache_size()),
+        ("dispatch_order", ",".join(dispatch_order())),
         ("tuning_dir", tuning_dir()), ("online_tuning", online_tuning_enabled()),
     ))

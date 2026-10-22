@@ -180,8 +180,9 @@ def test_physical_layout_changes_partition_dispatch_cache(physical_registry, npu
     second = dispatch(nz, npu_hardware, registry=physical_registry)
     unknown = dispatch(_signature(), npu_hardware, registry=physical_registry)
     again = dispatch(nd, npu_hardware, registry=physical_registry)
-    assert first.kernel_id == again.kernel_id == _LIMITED
-    assert second.kernel_id == unknown.kernel_id == _FALLBACK
+    assert first.kernel_id == again.kernel_id == second.kernel_id == unknown.kernel_id == _FALLBACK
+    assert first.fallback_chain == again.fallback_chain == (_LIMITED,)
+    assert second.fallback_chain == unknown.fallback_chain == ()
     assert not first.cache_hit and not second.cache_hit and not unknown.cache_hit
     assert again.cache_hit
 
