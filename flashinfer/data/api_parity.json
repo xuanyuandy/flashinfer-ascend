@@ -788,7 +788,7 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "合并两段 KV 的注意力输出与 logsumexp；backend=cann(npu_attention_update update_type=1, Ascend910B)/reference；上游 CUDA kernel 同式",
+      "notes": "合并两段 KV 的注意力输出与 logsumexp；backend=cann(npu_attention_update update_type=1, Ascend910B/Ascend950)/reference；上游 CUDA kernel 同式",
       "reason": "现有双状态 merge_state 使用自然对数 LSE，上游 state.cuh 的 attention/cascade 契约使用 log2。按不扩大修复范围的约定保留原行为并明确登记；新 merge_states 按上游 log2 实现。",
       "api_kind": "upstream",
       "upstream_source": {
@@ -2557,7 +2557,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "仅 causal；workspace_buffer/is_cuda_graph_compatible 接受并忽略；batch_offsets_* 显式报错；backend=cann(npu_fused_infer_attention_score paged 分支, Ascend910B)/reference",
+      "notes": "仅 causal；workspace_buffer/is_cuda_graph_compatible 接受并忽略；batch_offsets_* 显式报错；backend=cann(npu_fused_infer_attention_score paged 分支, Ascend910B/Ascend950)/reference",
       "api_kind": "upstream",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -2980,7 +2980,7 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "仅 reference（CPU 反量化 fp32，128-block scale 展开）；同 per-tensor 版硬件说明；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_block_scale_moe，不再暴露不兼容的前缀别名",
+      "notes": "backend=cann(Ascend950 FP8 grouped GEMM，128-block scale 折算，中间激活动态量化回 FP8)/reference(CPU 反量化 fp32)；910B 硬件说明同 per-tensor 版；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_block_scale_moe，不再暴露不兼容的前缀别名",
       "reason": "已删除不兼容的前缀别名。NPU 计算接口的参数顺序、选项与返回值不同于固定上游，不能以别名声称 drop-in；使用账本 local 字段指向的 NPU 原接口。",
       "api_kind": "upstream",
       "upstream_source": {
@@ -3032,7 +3032,7 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P1",
-      "notes": "仅 reference（CPU 反量化 fp32）；910B 无 fp8 GEMM 算子，950 特性在 910B 只保证注册/调度链路可用；tile_tokens_dim 为 SM100 调度参数接受并忽略；路由语义见 RoutingMethodType；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_per_tensor_scale_moe，不再暴露不兼容的前缀别名",
+      "notes": "backend=cann(Ascend950 FP8 grouped GEMM 级联，中间激活动态量化回 FP8)/reference(CPU 反量化 fp32)；910B 无 fp8 GEMM 算子，reference 需显式 opt-in；tile_tokens_dim 为 SM100 调度参数接受并忽略；路由语义见 RoutingMethodType；NPU 无 TRT-LLM 概念，主名去前缀为 fp8_per_tensor_scale_moe，不再暴露不兼容的前缀别名",
       "reason": "已删除不兼容的前缀别名。NPU 计算接口的参数顺序、选项与返回值不同于固定上游，不能以别名声称 drop-in；使用账本 local 字段指向的 NPU 原接口。",
       "api_kind": "upstream",
       "upstream_source": {
@@ -3644,7 +3644,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*weight；enable_pdl 接受并忽略；backend=cann(aclnn, Ascend910B)/reference",
+      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*weight；enable_pdl 接受并忽略；backend=cann(aclnn, Ascend910B/Ascend950)/reference",
       "parameters": {
         "enable_pdl": {
           "semantic_status": "compatible",
@@ -3844,7 +3844,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*(weight+1)；CANN 无对应算子（npu_add_rms_norm 乘 gamma 而非 gamma+1），默认走 triton 自定义 kernel；backend=triton(Ascend910B)/reference",
+      "notes": "原地语义与上游一致：residual+=input 后 input=norm(residual)*(weight+1)；CANN 无对应算子（npu_add_rms_norm 乘 gamma 而非 gamma+1），默认走 triton 自定义 kernel；backend=triton(Ascend910B/Ascend950)/reference",
       "parameters": {
         "enable_pdl": {
           "semantic_status": "compatible",
@@ -3874,7 +3874,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "缩放因子 weight+1（Gemma 约定）；enable_pdl 接受并忽略；backend=cann(npu_gemma_rms_norm, Ascend910B)/reference",
+      "notes": "缩放因子 weight+1（Gemma 约定）；enable_pdl 接受并忽略；backend=cann(npu_gemma_rms_norm, Ascend910B/Ascend950)/reference",
       "parameters": {
         "enable_pdl": {
           "semantic_status": "compatible",
@@ -3907,7 +3907,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "上游 v0.6.0 起提供；参数名 gemma/beta 与上游一致；backend=cann(npu_layer_norm_eval, Ascend910B)/reference",
+      "notes": "上游 v0.6.0 起提供；参数名 gemma/beta 与上游一致；backend=cann(torch.nn.functional.layer_norm ACLNN 路径, Ascend910B/Ascend950)/reference",
       "api_kind": "upstream",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -3958,7 +3958,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "enable_pdl 为 NVIDIA PDL 专属参数，NPU 无对应机制，接受并忽略；backend=cann(aclnn, Ascend910B)/reference",
+      "notes": "enable_pdl 为 NVIDIA PDL 专属参数，NPU 无对应机制，接受并忽略；backend=cann(aclnn, Ascend910B/Ascend950)/reference",
       "parameters": {
         "enable_pdl": {
           "semantic_status": "compatible",
@@ -5764,7 +5764,7 @@
       "semantic_status": "compatible",
       "implementation_status": "functional",
       "priority": "P0",
-      "notes": "原地语义与上游一致；cos_sin_cache 须 float32（同上游校验）；backend=cann(npu_rotary_mul rotary_mode=half/interleave, Ascend910B)/reference",
+      "notes": "原地语义与上游一致；cos_sin_cache 须 float32（同上游校验）；backend=cann(npu_rotary_mul rotary_mode=half/interleave, Ascend910B/Ascend950)/reference",
       "api_kind": "upstream",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
