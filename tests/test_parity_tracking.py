@@ -42,7 +42,7 @@ def test_parameter_semantics_and_extra_source_evidence_survive_round_trip():
     # Refreshing the declaration inventory must also keep a subsequently supplied
     # coverage-matrix row, even when the local interface is not implemented yet.
     import ast
-    from work_items.scripts.update_parity_inventory import annotate
+    from tools.update_parity_inventory import annotate
 
     class Source:
         def resolve(self, symbol):

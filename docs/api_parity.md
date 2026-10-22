@@ -61,7 +61,7 @@ python -m flashinfer parity-check --require-complete
 Reproduce the declaration inventory without importing the CUDA project:
 
 ```bash
-python work_items/scripts/update_parity_inventory.py --upstream /path/to/flashinfer-ori
+python tools/update_parity_inventory.py --upstream /path/to/flashinfer-ori
 ```
 
 The script reads the pinned Git object regardless of the upstream working tree's

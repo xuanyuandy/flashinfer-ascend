@@ -51,7 +51,7 @@ torch.compile/meta 等仍归后续 T8～T11，入口对未支持功能明确报�
 source /usr/local/Ascend/cann/set_env.sh
 source /root/miniforge3/etc/profile.d/conda.sh
 conda activate /root/miniforge3/envs/flashinfer-a5
-python work_items/scripts/check_imports.py
+python tools/check_imports.py
 python -m pytest --collect-only -q
 python -m pytest tests/ -q --tb=short
 python -m flashinfer parity-check

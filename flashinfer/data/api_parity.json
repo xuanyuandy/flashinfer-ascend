@@ -48,7 +48,7 @@
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.activation.gelu_tanh_and_mul",
@@ -90,7 +90,7 @@
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.activation.silu_and_mul",
@@ -132,7 +132,7 @@
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.activation.silu_and_mul_scaled_nvfp4_experts_quantize",
@@ -807,7 +807,7 @@
       "cann_operators": [
         "npu_attention_update"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.cascade.merge_state_in_place",
@@ -866,7 +866,7 @@
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.comm.cuda_ipc.CudaRTLibrary",
@@ -2220,7 +2220,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.begin_forward",
@@ -2289,7 +2289,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.forward_return_lse",
@@ -2473,7 +2473,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.use_tensor_cores",
@@ -2575,7 +2575,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.fast_decode_plan",
@@ -2700,7 +2700,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.single_decode_with_kv_cache_with_jit_module",
@@ -2851,7 +2851,7 @@
       "cann_operators": [
         "npu_grouped_matmul"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.fused_moe.reorder_rows_for_gated_act_gemm",
@@ -2999,7 +2999,7 @@
       "cann_operators": [
         "npu_grouped_matmul"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.fused_moe.trtllm_fp8_block_scale_routed_moe",
@@ -3051,7 +3051,7 @@
       "cann_operators": [
         "npu_grouped_matmul"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.fused_moe.trtllm_fp8_per_tensor_scale_routed_moe",
@@ -3198,7 +3198,7 @@
       "cann_operators": [
         "npu_grouped_matmul"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.gemm.bmm_mxfp8",
@@ -3249,7 +3249,7 @@
       "cann_operators": [
         "npu_grouped_matmul"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.gemm.mm_bf16",
@@ -3668,7 +3668,7 @@
       "cann_operators": [
         "npu_add_rms_norm"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.norm.fused_add_rmsnorm_fp8_block_quant",
@@ -3898,7 +3898,7 @@
       "cann_operators": [
         "npu_gemma_rms_norm"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.norm.layernorm",
@@ -3925,7 +3925,7 @@
       "cann_operators": [
         "aten.layer_norm (PrivateUse1/ACLNN)"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.norm.layernorm_quant",
@@ -3982,7 +3982,7 @@
       "cann_operators": [
         "npu_rms_norm"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.norm.rmsnorm_quant",
@@ -4042,7 +4042,7 @@
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.page.append_paged_mla_kv_cache",
@@ -4215,7 +4215,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.begin_forward",
@@ -4286,7 +4286,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.forward_return_lse",
@@ -4463,7 +4463,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
@@ -4518,7 +4518,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.begin_forward",
@@ -4587,7 +4587,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.forward_return_lse",
@@ -4740,7 +4740,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.single_prefill_with_kv_cache",
@@ -4769,7 +4769,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.single_prefill_with_kv_cache_return_lse",
@@ -5782,7 +5782,7 @@
       "cann_operators": [
         "npu_rotary_mul"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.chain_speculative_sampling",
@@ -5822,7 +5822,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.min_p_sampling_from_probs",
@@ -5862,7 +5862,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.sampling_from_logits",
@@ -5902,7 +5902,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.sampling_from_probs",
@@ -5942,7 +5942,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.softmax",
@@ -6004,7 +6004,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.top_k_renorm_probs",
@@ -6042,7 +6042,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.top_k_sampling_from_probs",
@@ -6082,7 +6082,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.top_k_top_p_sampling_from_logits",
@@ -6146,7 +6146,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.top_p_renorm_probs",
@@ -6184,7 +6184,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sampling.top_p_sampling_from_probs",
@@ -6224,7 +6224,7 @@
       },
       "api_kind": "upstream",
       "local_status": "functional",
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.sparse.BlockSparseAttentionWrapper",
