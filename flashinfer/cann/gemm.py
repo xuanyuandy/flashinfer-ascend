@@ -8,9 +8,8 @@ fp8 输入路径（与 cann/moe.py 的 fp8 级联同源）：
   scale 按块折算累加（与 fp8_block_scale_moe 的 ``_fp8_block_gmm``
   同构）。全程 fp8 计算，无 bf16 中转。
 
-950 真机待确认点（同 moe fp8 级联）：``npu_grouped_matmul`` 是否直接
-接受 fp8 e4m3/e5m2 输入以及输出 dtype 推断规则；若 e5m2 不支持需从
-``_SUPPORTED_DTYPES`` 剔除。
+FP8 使用 Tensor group_list 与堆叠的专家权重进入 ACLNN 新接口；单位
+scale 保留原始 FP8 点积，显式输出 fp32 后再应用调用方的 scale。
 """
 
 from __future__ import annotations
@@ -33,14 +32,29 @@ def _fp8_grouped_gemm(x8: Any, weight_list: list, group_list: list) -> Any:
     import torch
     import torch_npu
 
+    # List[int] group_list 会走旧接口，不支持 A5 FP8。量化接口要求显式
+    # scale；fp32 输出避免原始点积在外部缩放前溢出或再次量化到 FP8。
+    # CANN Stack 尚不支持 FP8；以等宽 uint8 搬运，保留每个 FP8 位模式。
+    weights = torch.stack([w.view(torch.uint8) for w in weight_list]).view(
+        weight_list[0].dtype
+    )
+    groups = torch.tensor(group_list, dtype=torch.int64, device=x8.device)
     y_list = torch_npu.npu_grouped_matmul(
         [x8],
-        weight_list,
-        group_list=group_list,
-        split_item=1,
+        [weights],
+        scale=[
+            torch.ones(
+                len(weight_list), weights.shape[-1], dtype=torch.float32,
+                device=x8.device,
+            )
+        ],
+        per_token_scale=[torch.ones(x8.shape[0], dtype=torch.float32, device=x8.device)],
+        group_list=groups,
+        split_item=3,
         group_type=0,
+        output_dtype=torch.float32,
     )
-    return torch.cat(list(y_list), dim=0)
+    return y_list[0]
 
 
 def _bmm_fp8_cann(

@@ -7,9 +7,8 @@
 - ``fused_moe``：非量化 fused MoE，dispatch 到
   cann（npu_grouped_matmul）/ reference；
 - ``fp8_per_tensor_scale_moe`` / ``fp8_block_scale_moe``：
-  fp8 MoE（SM100 特性），910B 无 fp8 GEMM 算子，仅注册 reference kernel
-  （CPU 反量化 fp32 计算），保证注册/调度/门面链路可用（用户口径：950
-  特性在 910B 只保证编译通过）。
+  A5（Ascend950）走 CANN FP8 grouped GEMM 级联；910B 无 fp8 GEMM
+  算子，需显式选择 reference kernel（CPU 反量化 fp32 计算）。
 
 命名说明（对标账本登记 intentionally_different）：
 上游接口名中的 ``cutlass_`` / ``trtllm_`` 前缀是 NVIDIA 专用后端库

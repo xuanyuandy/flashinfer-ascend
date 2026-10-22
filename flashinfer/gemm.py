@@ -5,7 +5,7 @@
 - ``gemm_fp8_nt_groupwise``：fp8 分组 scale NT 布局矩阵乘。
 
 硬件支持说明（§12 验收口径）：
-fp8 矩阵乘在 CANN 中仅 950 代际（Atlas A3）具备原生算子；910B 上
+fp8 矩阵乘在 CANN 中仅 950 代际（A5）具备原生算子；910B 上
 ``npu_quant_matmul`` 仅支持 int8/int4，且 torch float8 张量无法物化到
 NPU。因此 CANN kernel 限定 950 注册（``npu_grouped_matmul`` fp8 路径，
 见 cann/gemm.py），910B 环境 auto 无候选、可显式 opt-in reference

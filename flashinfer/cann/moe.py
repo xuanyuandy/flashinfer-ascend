@@ -102,13 +102,20 @@ def _cluster_tokens(
 
     top_k = token_selected_experts.shape[1]
     flat_e = token_selected_experts.reshape(-1).long()  # (S*topk,)
-    x_rep = input.repeat_interleave(top_k, dim=0)  # (S*topk, H)
+    # FP8 的 repeat_interleave / index 尚未实现；等宽字节视图只搬运
+    # 位模式，不反量化、不经过 bf16，GEMM 输入仍为原始 FP8。
+    is_fp8 = input.dtype in (torch.float8_e4m3fn, torch.float8_e5m2)
+    storage = input.view(torch.uint8) if is_fp8 else input
+    x_rep = storage.repeat_interleave(top_k, dim=0)  # (S*topk, H)
     order = torch.argsort(flat_e, stable=True)
     counts = torch.bincount(flat_e.cpu(), minlength=num_experts)
-    group_list = counts.cumsum(0).tolist()  # CANN 本版本要求 python list
+    group_list = counts.cumsum(0).tolist()  # 非量化兼容路径保留 list；FP8 内部物化 Tensor
     inverse = torch.empty_like(order)
     inverse[order] = torch.arange(order.numel(), device=order.device)
-    return x_rep[order].contiguous(), inverse, group_list, flat_e[order], order
+    x_sorted = x_rep[order].contiguous()
+    if is_fp8:
+        x_sorted = x_sorted.view(input.dtype)
+    return x_sorted, inverse, group_list, flat_e[order], order
 
 
 def _aggregate_expert_output(
@@ -213,20 +220,12 @@ def _fp8_gmm(x8: Any, weight_list_t: list, group_list: list) -> Any:
     x8 为按专家聚簇排列的 (rows, k) fp8；weight_list_t 为逐专家 (k, n)
     转置权重（fp8）；输出按专家拼接的 (rows, n)。
 
-    950 验证点：若本 CANN 版本的 npu_grouped_matmul 不直接接受 fp8 输入
-    （或输出 dtype 推断不符合预期），需切换为对应 aclnn fp8 形态。
+    与 GEMM 共用 Tensor group_list、单位 scale 和 fp32 输出的 ACLNN
+    FP8 路径，保持外部 scale 折算前的点积精度与动态范围。
     """
-    import torch
-    import torch_npu
+    from .gemm import _fp8_grouped_gemm
 
-    y_list = torch_npu.npu_grouped_matmul(
-        [x8],
-        weight_list_t,
-        group_list=group_list,
-        split_item=1,
-        group_type=0,
-    )
-    return torch.cat(list(y_list), dim=0)
+    return _fp8_grouped_gemm(x8, weight_list_t, group_list)
 
 
 def _fp8_quant_per_row(h: Any) -> Any:
