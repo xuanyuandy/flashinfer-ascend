@@ -8,6 +8,7 @@ from .schema import (
     CompileMode,
     DispatchError,
     KernelDescriptor,
+    ShapeRange,
 )
 from .registry import (
     CUSTOM_KERNEL_PREFIX,
@@ -47,6 +48,7 @@ __all__ = [
     "KernelDescriptor",
     "KernelRegistry",
     "Plan",
+    "ShapeRange",
     "build_signature",
     "clear_dispatch_cache",
     "current_hardware",

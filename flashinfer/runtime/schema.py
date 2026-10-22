@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 import hashlib
@@ -644,11 +645,41 @@ class KernelBinaryABI(_Record):
 
 
 @dataclass(frozen=True)
-class CapabilitySpec:
+class ShapeRange(_Record):
+    """某个张量轴上的非负整数闭区间；``name`` 用于可读的淘汰原因。
+
+    ``tensor_index`` 按 ``build_signature`` 的张量参数顺序从 0 编号，
+    ``axis`` 支持 Python 负索引。例如 ``ShapeRange("head_dim", 0, -1, 64, 128)``
+    约束第一个张量的最后一维；page_size / seq_len 等由登记者按实际布局指定轴，
+    不根据 op 或维度名称猜测布局。``minimum == maximum`` 表示仅支持一个值。
+    """
+
+    name: str
+    tensor_index: int
+    axis: int
+    minimum: int
+    maximum: int
+
+    def __post_init__(self):
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise SchemaError("shape range name must be non-empty")
+        for name in ("tensor_index", "axis", "minimum", "maximum"):
+            if type(getattr(self, name)) is not int:
+                raise SchemaError(f"shape range {name} must be an integer")
+        if self.tensor_index < 0:
+            raise SchemaError("shape range tensor_index must be non-negative")
+        if self.minimum < 0 or self.maximum < self.minimum:
+            raise SchemaError("shape range requires 0 <= minimum <= maximum")
+
+
+@dataclass(frozen=True)
+class CapabilitySpec(_Record):
     """kernel 的能力声明：能对哪些 (输入签名 × 硬件签名) 执行。
 
     空集合表示"不限制"。``specializations`` 逐项给出允许值集合——
     签名中出现的键若声明了允许值则必须命中，未声明的键不受限。
+    ``shape_ranges`` 独立声明张量各轴的闭区间，所有区间必须同时满足；
+    声明的张量或轴缺失时淘汰，不把未知规模当作支持。
     """
 
     op: str
@@ -657,6 +688,48 @@ class CapabilitySpec:
     soc_models: Tuple[str, ...] = ()
     min_aicore: int = 0
     specializations: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
+    shape_ranges: Tuple[ShapeRange, ...] = ()
+
+    def __post_init__(self):
+        try:
+            ranges = tuple(self.shape_ranges)
+        except TypeError as exc:
+            raise SchemaError("shape_ranges must contain ShapeRange values") from exc
+        if any(not isinstance(r, ShapeRange) for r in ranges):
+            raise SchemaError("shape_ranges must contain ShapeRange values")
+        axes = [(r.tensor_index, r.axis) for r in ranges]
+        if len(set(axes)) != len(axes):
+            raise SchemaError("shape_ranges must not repeat a tensor axis")
+        object.__setattr__(self, "shape_ranges", tuple(sorted(
+            ranges, key=lambda r: (r.tensor_index, r.axis)
+        )))
+
+    def to_dict(self):
+        value = super().to_dict()
+        # 默认不限制，保留旧能力声明的序列化形式与指纹。
+        if not self.shape_ranges:
+            value.pop("shape_ranges")
+        return value
+
+    @classmethod
+    def from_dict(cls, value):
+        if (not isinstance(value, Mapping) or "op" not in value
+                or not set(value) <= {f.name for f in fields(cls)}):
+            raise SchemaError("CapabilitySpec fields do not match schema")
+        values = dict(value)
+        try:
+            for name in ("dtypes", "layouts", "soc_models"):
+                values[name] = tuple(values.get(name, ()))
+            values["specializations"] = tuple(
+                (key, tuple(allowed)) for key, allowed
+                in values.get("specializations", ())
+            )
+            values["shape_ranges"] = tuple(
+                ShapeRange.from_dict(r) for r in values.get("shape_ranges", ())
+            )
+            return cls(**values)
+        except (TypeError, ValueError) as exc:
+            raise SchemaError(str(exc)) from exc
 
     def unsupported_reasons(
         self, signature: InputSignature, hardware: HardwareSignature
@@ -695,6 +768,26 @@ class CapabilitySpec:
             if allowed is not None and value not in allowed:
                 reasons.append(
                     "特化参数 %s=%s 不在允许集 %s" % (key, value, sorted(allowed))
+                )
+        for bound in self.shape_ranges:
+            interval = "[%d, %d]" % (bound.minimum, bound.maximum)
+            if bound.tensor_index >= len(signature.shapes):
+                reasons.append(
+                    "%s 缺少输入张量 %d 的 shape，无法检查支持区间 %s"
+                    % (bound.name, bound.tensor_index, interval)
+                )
+                continue
+            shape = signature.shapes[bound.tensor_index]
+            if not -len(shape) <= bound.axis < len(shape):
+                reasons.append(
+                    "%s 的输入张量 %d 无轴 %d（shape=%s），无法检查支持区间 %s"
+                    % (bound.name, bound.tensor_index, bound.axis, shape, interval)
+                )
+                continue
+            size = shape[bound.axis]
+            if not bound.minimum <= size <= bound.maximum:
+                reasons.append(
+                    "%s %d 不在支持区间 %s" % (bound.name, size, interval)
                 )
         return tuple(reasons)
 
@@ -812,6 +905,10 @@ class KernelDescriptor:
             value["target_soc"] = self.target_soc
         if self.compile_mode != CompileMode.NONE:
             value["compile_mode"] = self.compile_mode.value
+        # 历史记录未序列化 capability；仅规模受限的新记录携带它，
+        # 保证区间进入静态身份且可往返，同时不迁移旧记录的指纹。
+        if self.capability.shape_ranges:
+            value["capability"] = self.capability.to_dict()
         return value
 
     @property

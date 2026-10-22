@@ -9,6 +9,7 @@ from typing import Any, Dict, Iterable, Mapping, Tuple, Union
 from .schema import (
     ArtifactRef,
     Backend,
+    CapabilitySpec,
     CompileMode,
     KernelConstraints,
     KernelCapabilityBinding,
@@ -46,11 +47,17 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         "source",
         "target_soc",
         "compile_mode",
+        "capability",
     }
     if not {"kernel_id", "op", "backend"} <= set(value):
         raise SchemaError("kernel descriptor is missing required fields")
     if not set(value) <= allowed_fields:
         raise SchemaError("kernel descriptor contains unknown fields")
+    capability = None
+    if "capability" in value:
+        capability = CapabilitySpec.from_dict(value["capability"])
+        if capability.op != value["op"]:
+            raise SchemaError("capability op does not match kernel descriptor op")
     constraints_data = dict(value.get("constraints", {}))
     constraints = KernelConstraints(
         supported_socs=tuple(constraints_data.get("supported_socs", ())),
@@ -102,6 +109,7 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         kernel_id=str(value["kernel_id"]),
         op=str(value["op"]),
         backend=Backend(value["backend"]),
+        capability=capability,
         constraints=constraints,
         workspace=workspace,
         int_workspace=int_workspace,

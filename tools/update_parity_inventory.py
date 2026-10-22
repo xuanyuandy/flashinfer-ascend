@@ -164,6 +164,12 @@ def annotate(entry, upstream):
         }:
             kind = "npu_extension"
             reason = "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。"
+        elif symbol in {
+            "flashinfer.runtime.schema.CapabilitySpec",
+            "flashinfer.runtime.schema.ShapeRange",
+        }:
+            kind = "npu_extension"
+            reason = "NPU 扩展：在 dispatch 选型阶段声明并解释 kernel 的输入规模限制；固定上游没有本仓 runtime 能力区间契约。"
         elif symbol.endswith(".end_forward") and any(symbol.startswith(c + ".") for c in ATTENTION_CLASSES):
             kind = "compatibility_extension"
             reason = "保留旧版 end_forward 空操作供历史调用兼容；指定上游提交已无该方法，不计入其覆盖分母。"

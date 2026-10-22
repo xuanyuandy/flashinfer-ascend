@@ -5883,7 +5883,7 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。",
+      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。T6.3 仅在 capability.shape_ranges 非空时序列化 capability，使规模限制进入指纹且可经 manifest 往返；旧记录的序列化与指纹不变。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
       "local_status": "framework",
@@ -5904,6 +5904,42 @@
       "notes": "T6.1 新增不可变源码引用：language: str、locator: str（包内规范相对 POSIX 路径）、digest: str（源码内容的小写 SHA-256）、schema_version: int = 1；同时从 flashinfer.runtime 导出。校验元数据并支持 JSON 往返，构造不访问文件、不触发编译。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.schema.ShapeRange",
+      "local": "flashinfer.runtime.schema.ShapeRange",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.3 不可变的张量轴规模闭区间：name、tensor_index（从 0 编号）、axis（支持负索引）、minimum、maximum；要求 0 <= minimum <= maximum，两个端点均包含。使用 InputSignature.shapes 中的实际大小，不猜测 op/layout 的语义；name 用于可读淘汰原因。同时从 flashinfer.runtime 导出。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：在 dispatch 选型阶段声明并解释 kernel 的输入规模限制；固定上游没有本仓 runtime 能力区间契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.schema.CapabilitySpec",
+      "local": "flashinfer.runtime.schema.CapabilitySpec",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.3 新增 shape_ranges: Tuple[ShapeRange, ...] = ()，与枚举型 specializations 独立，所有区间取交集。默认不限制且不写入 to_dict；非默认区间支持 JSON 往返与稳定指纹。dispatch 的自动选择、显式 kernel_id 及 explain_dispatch 共用 unsupported_reasons；对应张量或轴缺失时明确淘汰。build_signature 已提取完整 shapes，无需新增签名字段或读取张量数据。不提供调优数据库、bucket 或排序规则。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：在 dispatch 选型阶段声明并解释 kernel 的输入规模限制；固定上游没有本仓 runtime 能力区间契约。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
