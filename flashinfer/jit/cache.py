@@ -1,13 +1,14 @@
-"""Pure JIT cache identity and resolution decisions.
-
-No file is read, written, compiled, or loaded here.  Providers will later
-materialize verified records behind this contract.
-"""
+"""JIT cache identities, pure decisions, and an explicitly used disk store."""
 
 from __future__ import annotations
 
 import hashlib
 import json
+import os
+import shutil
+import tempfile
+import uuid
+from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -72,6 +73,7 @@ class JitCacheRecord:
         if self.artifact.kind != ArtifactKind.FILE or self.artifact.format not in {
             ArtifactFormat.ASCENDC_OBJECT,
             ArtifactFormat.SHARED_LIBRARY,
+            ArtifactFormat.TRITON_NPUBIN,
         }:
             raise SchemaError("JIT cache record must identify a compiled file artifact")
 
@@ -130,8 +132,8 @@ class JitBuildStore(Protocol):
     partial build. Lock ownership must survive replacement of the destination.
     Cache roots, staging roots and the read-only package root are separate.
 
-    No filesystem implementation, lock, rename or eviction is installed here.
-    JitCacheIndex below is only the existing in-memory metadata index.
+    DiskJitBuildStore implements this contract. JitCacheIndex remains a pure
+    in-memory metadata index; importing either creates no cache directories.
     """
 
     def lookup(self, spec: JitSpec) -> Optional[JitCacheRecord]:
@@ -158,23 +160,37 @@ class JitCacheIndex:
 
     def __init__(self, records: Iterable[JitCacheRecord] = ()) -> None:
         self._records: Dict[str, JitCacheRecord] = {}
+        self._paths: Dict[str, str] = {}
         self._lock = RLock()
         for record in records:
             self.publish(record)
 
-    def publish(self, record: JitCacheRecord) -> JitCacheRecord:
+    def publish(self, record: JitCacheRecord, *, artifact_path: Optional[Path] = None) -> JitCacheRecord:
         if not isinstance(record, JitCacheRecord):
             raise TypeError("JIT cache accepts JitCacheRecord")
         with self._lock:
+            if artifact_path is not None:
+                path = str(artifact_path)
+            else:
+                path = None
             existing = self._records.get(record.spec_name)
             if existing is not None:
                 if existing.fingerprint != record.fingerprint:
                     raise SchemaError(
                         "conflicting JIT cache record for %r" % record.spec_name
                     )
+                if path is not None:
+                    self._paths[record.spec_fingerprint] = path
                 return existing
             self._records[record.spec_name] = record
+            if path is not None:
+                self._paths[record.spec_fingerprint] = path
             return record
+
+    def artifact_path(self, spec: JitSpec) -> Optional[str]:
+        """Return an explicitly recorded resolved path, without filesystem I/O."""
+        with self._lock:
+            return self._paths.get(spec.fingerprint)
 
     def lookup(self, spec: JitSpec) -> Optional[JitCacheRecord]:
         if not isinstance(spec, JitSpec):
@@ -191,6 +207,188 @@ class JitCacheIndex:
         with self._lock:
             values = tuple(self._records.values())
         return tuple(sorted(values, key=lambda item: item.spec_name))
+
+
+class DiskJitBuildStore:
+    """Local POSIX cache: flock, private staging, immutable generations.
+
+    A published key is an atomically replaced symlink to a complete generation.
+    The stable lock lives outside that link. Old generations remain available
+    to readers holding a verified path when a corrupt key is rebuilt.
+    Construction performs no I/O. Cleanup/eviction is deliberately explicit.
+    """
+
+    def __init__(self, root: Optional[Path] = None, *, namespace: Optional[str] = None) -> None:
+        base = Path(root) if root is not None else Path(os.environ.get(
+            "FLASHINFER_NPU_CACHE_DIR", "~/.cache/flashinfer")).expanduser()
+        self.root = base.absolute() / "jit"
+        if namespace is not None:
+            if not namespace or any(c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" for c in namespace):
+                raise SchemaError("invalid user JIT cache namespace")
+            self.root = self.root / "user" / namespace
+        self._directories: Dict[str, Path] = {}
+        self._mutex = RLock()
+
+    def _key_path(self, fingerprint: str) -> Path:
+        return self.root / fingerprint[:2] / fingerprint
+
+    def _unit(self, spec: JitSpec) -> None:
+        if not isinstance(spec, JitSpec) or not spec.is_compilation_unit:
+            raise SchemaError("disk builds require a JIT compilation unit")
+        reserved = {"manifest.json", "build.log", "request.json", "source.py", "triton.json", "triton-cache"}
+        if Path(spec.output_path).parts[0] in reserved:
+            raise SchemaError("output_path collides with a reserved build path")
+
+    @staticmethod
+    def _inventory(directory: Path) -> Dict[str, Any]:
+        result = {}
+        for path in sorted(directory.rglob("*")):
+            if path.is_symlink():
+                raise SchemaError("build output must not contain symlinks: %s" % path)
+            if path.is_file() and path not in {directory / "manifest.json", directory / "build.log"}:
+                payload = path.read_bytes()
+                result[path.relative_to(directory).as_posix()] = {
+                    "digest": hashlib.sha256(payload).hexdigest(), "size": len(payload),
+                }
+        return result
+
+    def _read(self, directory: Path, *, spec: Optional[JitSpec] = None,
+              record: Optional[JitCacheRecord] = None) -> JitCacheRecord:
+        directory = directory.resolve(strict=True)
+        if not directory.is_relative_to((self.root / ".objects").resolve()):
+            raise SchemaError("published JIT cache generation escapes object root")
+        value = json.loads((directory / "manifest.json").read_text())
+        if set(value) != {"schema_version", "spec", "files", "record"} or value["schema_version"] != 1:
+            raise SchemaError("invalid JIT build manifest schema")
+        published_spec = JitSpec.from_dict(value["spec"])
+        published = JitCacheRecord.from_dict(value["record"])
+        published.validate_spec(published_spec)
+        if spec is not None:
+            published.validate_spec(spec)
+        if record is not None and published != record:
+            raise SchemaError("JIT cache record changed before load")
+        metadata = {"spec": value["spec"], "files": value["files"]}
+        if _canonical_hash(metadata) != published.build_metadata_fingerprint:
+            raise SchemaError("JIT build manifest digest mismatch")
+        if self._inventory(directory) != value["files"]:
+            raise SchemaError("JIT cache file inventory mismatch")
+        published.artifact.verify_file(directory)
+        with self._mutex:
+            self._directories[published.fingerprint] = directory
+        return published
+
+    def lookup(self, spec: JitSpec) -> Optional[JitCacheRecord]:
+        self._unit(spec)
+        try:
+            return self._read(self._key_path(spec.fingerprint), spec=spec)
+        except (OSError, ValueError, TypeError, KeyError):
+            # A corrupt/missing published manifest is a miss by the 18A contract.
+            return None
+
+    def directory(self, record: JitCacheRecord) -> Path:
+        with self._mutex:
+            directory = self._directories.get(record.fingerprint)
+        if directory is None:
+            directory = self._key_path(record.spec_fingerprint).resolve(strict=True)
+        self._read(directory, record=record)
+        return directory
+
+    def artifact_path(self, record: JitCacheRecord) -> Path:
+        return self.directory(record) / record.artifact.locator
+
+    @contextmanager
+    def lock(self, spec: JitSpec):
+        import fcntl
+
+        self._unit(spec)
+        directory = self.root / ".locks"
+        directory.mkdir(parents=True, exist_ok=True)
+        # Never unlink this inode; replacement of a published key cannot split it.
+        with (directory / (spec.fingerprint + ".lock")).open("a+b") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            try:
+                yield
+            finally:
+                fcntl.flock(handle, fcntl.LOCK_UN)
+
+    @contextmanager
+    def staging(self, spec: JitSpec):
+        self._unit(spec)
+        parent = self.root / ".staging"
+        parent.mkdir(parents=True, exist_ok=True)
+        directory = Path(tempfile.mkdtemp(prefix=spec.fingerprint + "-", dir=parent))
+        try:
+            yield directory
+        except BaseException as error:
+            source = directory / "build.log"
+            if source.is_file():
+                logs = self.root / ".logs"
+                logs.mkdir(parents=True, exist_ok=True)
+                log_path = logs / (directory.name + ".log")
+                shutil.copyfile(source, log_path)
+                from .errors import JitBuildError
+
+                if isinstance(error, JitBuildError):
+                    error.log_path = log_path
+            raise
+        finally:
+            shutil.rmtree(directory, ignore_errors=True)
+
+    def publish(self, spec: JitSpec, staging_directory: Path,
+                artifact: ArtifactRef) -> JitCacheRecord:
+        self._unit(spec)
+        directory = Path(staging_directory).resolve(strict=True)
+        if directory.parent != (self.root / ".staging").resolve():
+            raise SchemaError("publication requires this store's private staging directory")
+        artifact.verify_file(directory)
+        files = self._inventory(directory)
+        metadata = {"spec": spec.to_dict(), "files": files}
+        record = JitCacheRecord(spec.name, spec.fingerprint, spec.environment_fingerprint,
+            artifact, spec.generator_id, _canonical_hash(metadata))
+        record.validate_spec(spec)
+        manifest = dict(schema_version=1, record=record.to_dict(), **metadata)
+        (directory / "manifest.json").write_text(json.dumps(manifest, sort_keys=True), encoding="utf-8")
+        # Flush the whole generation before exposing its pointer.
+        for path in directory.rglob("*"):
+            if path.is_file():
+                with path.open("rb") as handle:
+                    os.fsync(handle.fileno())
+        for path in sorted((p for p in directory.rglob("*") if p.is_dir()), reverse=True):
+            self._fsync_directory(path)
+        objects = self.root / ".objects"
+        objects.mkdir(parents=True, exist_ok=True)
+        generation = objects / (spec.fingerprint + "-" + uuid.uuid4().hex)
+        os.rename(directory, generation)
+        self._fsync_directory(generation)
+        self._fsync_directory(objects)
+        target = self._key_path(spec.fingerprint)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        pointer = target.parent / (".publish-" + uuid.uuid4().hex)
+        try:
+            pointer.symlink_to(os.path.relpath(generation, target.parent), target_is_directory=True)
+            # A foreign/legacy directory is never a valid generation pointer.
+            # Quarantine it under the key lock before installing the new link.
+            if target.is_dir() and not target.is_symlink():
+                os.rename(target, objects / ("quarantine-" + uuid.uuid4().hex))
+            os.replace(pointer, target)
+            self._fsync_directory(target.parent)
+            self._fsync_directory(self.root)
+        finally:
+            pointer.unlink(missing_ok=True)
+        with self._mutex:
+            self._directories[record.fingerprint] = generation
+        return record
+
+    @staticmethod
+    def _fsync_directory(directory: Path) -> None:
+        descriptor = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+
+jit_cache_index = JitCacheIndex()
 
 
 class JitResolutionState(str, Enum):
@@ -290,6 +488,8 @@ def require_jit_cache_hit(resolution: JitResolution) -> None:
 __all__ = [
     "JIT_CACHE_SCHEMA_VERSION",
     "JitCacheIndex",
+    "DiskJitBuildStore",
+    "jit_cache_index",
     "JitBuildStore",
     "JitCacheRecord",
     "JitResolution",

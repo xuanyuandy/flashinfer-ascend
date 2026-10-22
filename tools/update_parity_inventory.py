@@ -166,9 +166,17 @@ def annotate(entry, upstream):
             "flashinfer.jit.status.JitArtifactState",
             "flashinfer.jit.status.JitArtifactStatus",
             "flashinfer.jit.status.describe_artifact",
+            "flashinfer.jit.build.build_and_load",
+            "flashinfer.jit.cache.DiskJitBuildStore",
+            "flashinfer.jit.cache.jit_cache_index",
+            "flashinfer.jit.loading.DefaultJitModuleLoader",
+            "flashinfer.jit.errors.JitBuildError",
+            "flashinfer.jit.errors.JitCompilationError",
+            "flashinfer.jit.errors.JitLoadError",
+            "flashinfer.jit.errors.JitSymbolError",
         }:
             kind = "npu_extension"
-            reason = "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。"
+            reason = "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。"
         elif symbol in {
             "flashinfer.runtime.schema.GraphCapability",
             "flashinfer.runtime.registry.KernelRegistry.graph_requirements",

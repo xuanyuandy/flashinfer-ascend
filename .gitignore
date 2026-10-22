@@ -9,4 +9,8 @@ __pycache__/
 build/
 dist/
 wheelhouse/
+.cache/
+.triton/
+flashinfer-cache/
+*.npubin
 __pycache__/

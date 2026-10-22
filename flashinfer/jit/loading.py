@@ -1,22 +1,27 @@
-"""Injected JIT module loading and exact exported-symbol receipts.
-
-This module defines the framework boundary corresponding to FlashInfer's
-``JitSpec.load`` result.  It deliberately installs no dynamic-library loader
-and never calls an exported symbol.
-"""
+"""JIT loading protocol, receipts, and lazy Triton/host library loading."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import re
+import os
+import sys
+import traceback
+import uuid
+from collections import OrderedDict
+from pathlib import Path, PurePosixPath
+from threading import RLock
+from types import SimpleNamespace
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Protocol, Tuple, runtime_checkable
 
-from flashinfer.runtime import SchemaError
+from flashinfer.runtime import ArtifactFormat, ArtifactRef, SchemaError
 
 from .artifacts import JitArtifactVerification
-from .cache import JitCacheRecord
+from .cache import DiskJitBuildStore, JitCacheRecord
+from .errors import JitLoadError, JitSymbolError
+from ._elf import elf_symbols
 
 
 JIT_MODULE_LOAD_VERSION = 1
@@ -197,10 +202,220 @@ class JitModuleLoader(Protocol):
         """Load and resolve exact symbols; never called by the model user."""
 
 
+def _relative_file(directory: Path, locator: str) -> Path:
+    path = PurePosixPath(locator)
+    if (path.is_absolute() or ".." in path.parts or str(path) != locator
+            or "\\" in locator or locator == "."):
+        raise SchemaError("invalid Triton metadata path: %r" % locator)
+    resolved = (directory / locator).resolve(strict=True)
+    if not resolved.is_relative_to(directory.resolve()):
+        raise SchemaError("Triton metadata path escapes artifact root")
+    return resolved
+
+
+def _triton_files(directory: Path, artifact: ArtifactRef, spec_fingerprint: str):
+    data = json.loads((directory / "triton.json").read_text())
+    if (data["schema_version"] != 1 or data["spec_fingerprint"] != spec_fingerprint
+            or data["entry_point"] != artifact.entry_point):
+        raise SchemaError("Triton load metadata does not bind the compilation unit")
+    group = {name: str(_relative_file(directory, path))
+             for name, path in data["metadata_group"].items()}
+    metadata_paths = [path for name, path in group.items() if name.endswith(".json")]
+    binary_paths = [path for name, path in group.items() if name.endswith(".npubin")]
+    if len(metadata_paths) != 1 or len(binary_paths) != 1:
+        raise SchemaError("Triton metadata must identify exactly one declared npubin and metadata file")
+    artifact.verify_bytes(Path(binary_paths[0]).read_bytes())
+    metadata = json.loads(Path(metadata_paths[0]).read_text())
+    if (metadata["name"] != artifact.entry_point or metadata["kernel_name"] != artifact.entry_point
+            or metadata["hash"] != data["hash"] or metadata["target"] != data["target"]):
+        raise SchemaError("Triton compiler metadata entry/hash/target mismatch")
+    for name in ("npu_utils", "launcher"):
+        path = _relative_file(directory, data[name])
+        # These are CPU Python extensions, unlike the device npubin.
+        if path.read_bytes()[:4] != b"\x7fELF":
+            raise SchemaError("Triton %s is not an ELF extension" % name)
+    return data, group
+
+
+_triton_load_lock = RLock()
+
+
+class _TritonExecutable:
+    """Keep Triton's CompiledKernel/extensions alive and supply its stream ABI."""
+
+    def __init__(self, kernel, extensions, data, device):
+        self.kernel = kernel
+        self.extensions = extensions
+        self.data = data
+        self.device = device
+
+    def __getitem__(self, grid):
+        grid = tuple(grid)
+        if not 1 <= len(grid) <= 3 or any(not isinstance(n, int) or n <= 0 for n in grid):
+            raise ValueError("Triton launch grid must contain 1 to 3 positive integers")
+        grid = grid + (1,) * (3 - len(grid))
+
+        def launch(*args, stream=None):
+            import torch
+
+            if torch.npu.current_device() != self.device:
+                raise RuntimeError("Triton module must launch on its loaded NPU device")
+            constants = self.data["constexprs"]
+            runtime_names = [name for name in self.data["arg_names"] if name not in constants]
+            if len(args) != len(runtime_names):
+                raise TypeError("Triton entry expects runtime arguments %s" % runtime_names)
+            values = dict(zip(runtime_names, args))
+            values.update(constants)
+            if stream is None:
+                stream = torch.npu.current_stream(self.device).npu_stream
+            return self.kernel[grid](*(values[name] for name in self.data["arg_names"]), stream=stream)
+
+        return launch
+
+
+class DefaultJitModuleLoader:
+    """Load npubin through Triton's prebuilt runtime, or an explicit host .so.
+
+    The Triton adapter targets the experimentally verified triton-ascend 3.6
+    CompiledKernel ABI. It restores compiler metadata and prebuilt launchers;
+    it never imports the original kernel source or invokes a compiler.
+    """
+
+    loader_id = "flashinfer.native"
+    loader_version = "1"
+
+    def __init__(self, store: DiskJitBuildStore, *, max_entries: int = 128) -> None:
+        if not isinstance(store, DiskJitBuildStore):
+            raise TypeError("default loader requires DiskJitBuildStore")
+        if max_entries < 1:
+            raise ValueError("max_entries must be positive")
+        self.store = store
+        self.max_entries = max_entries
+        self._loaded = OrderedDict()
+        self._lock = RLock()
+        self._generation = 0
+
+    def _load_triton(self, directory, record):
+        import importlib.util
+        import torch
+        import torch_npu
+        import triton
+        from triton.compiler.compiler import CompiledKernel
+        from triton.backends.ascend.driver import wrap_handle_tensordesc
+
+        data, group = _triton_files(directory, record.artifact, record.spec_fingerprint)
+        versions = {"triton": triton.__version__, "torch": torch.__version__,
+                    "torch_npu": torch_npu.__version__, "python_abi": sys.implementation.cache_tag}
+        if data["versions"] != versions or not triton.__version__.startswith("3.6."):
+            raise RuntimeError("Triton runtime ABI/version mismatch: built=%r, current=%r" % (data["versions"], versions))
+        device = torch.npu.current_device()
+        if torch.npu.get_device_name(device) != data["target"]["arch"]:
+            raise RuntimeError("Triton target differs from the current NPU device")
+        symbols = elf_symbols((directory / record.artifact.locator).read_bytes(), machine=0x1029, elf_type=2)
+        if record.artifact.entry_point not in symbols:
+            raise LookupError("device ELF has no defined symbol %r" % record.artifact.entry_point)
+        # CompiledKernel accepts a launch-source description; compilation and
+        # the original Python source are deliberately absent on a disk hit.
+        source = SimpleNamespace(signature=data["signature"], constants=data["constexprs"])
+        kernel = CompiledKernel(source, group, data["hash"])
+
+        def extension(name, path):
+            module_spec = importlib.util.spec_from_file_location(name, path)
+            module = importlib.util.module_from_spec(module_spec)
+            module_spec.loader.exec_module(module)
+            return module
+
+        # This Triton launcher's module initializer locates npu_utils relative
+        # to TRITON_CACHE_DIR. Once imported it retains function pointers; launch
+        # does not consult this environment variable. Serialize this short scope.
+        with _triton_load_lock:
+            previous = os.environ.get("TRITON_CACHE_DIR")
+            try:
+                os.environ["TRITON_CACHE_DIR"] = str(directory / "triton-cache")
+                utils = extension("npu_utils", str(_relative_file(directory, data["npu_utils"])))
+                launcher = extension("__triton_launcher", str(_relative_file(directory, data["launcher"])))
+            finally:
+                if previous is None:
+                    os.environ.pop("TRITON_CACHE_DIR", None)
+                else:
+                    os.environ["TRITON_CACHE_DIR"] = previous
+        handles = utils.load_kernel_binary(kernel.metadata.kernel_name, kernel.kernel,
+                                          kernel.metadata.shared, device, kernel.metadata.mix_mode)
+        kernel.module, kernel.function, kernel.n_regs, kernel.n_spills, kernel.n_max_threads = handles
+        if not kernel.module or not kernel.function:
+            raise LookupError("Triton runtime did not resolve device symbol %r" % record.artifact.entry_point)
+        signature = {index: data["signature"][name] for index, name in enumerate(data["arg_names"])}
+        kernel._run = wrap_handle_tensordesc(launcher.launch, signature)
+        return _TritonExecutable(kernel, (utils, launcher), data, device), device
+
+    def load(self, record, verification, required_entry_points):
+        verification.validate_record(record)
+        required = tuple(required_entry_points)
+        if not required or any(not _SYMBOL.fullmatch(name) for name in required) or len(set(required)) != len(required):
+            raise SchemaError("required JIT entry points are invalid")
+        directory = None
+        kernel_id = record.spec_name
+        try:
+            directory = self.store.directory(record)
+            kernel_id = json.loads((directory / "manifest.json").read_text())["spec"]["kernel_id"]
+            record.artifact.verify_file(directory)
+            device = None
+            if record.artifact.format == ArtifactFormat.TRITON_NPUBIN:
+                import torch
+                import torch_npu
+
+                device = torch.npu.current_device()
+            key = (record.fingerprint, verification.fingerprint, required, device)
+            with self._lock:
+                if key in self._loaded:
+                    self._loaded.move_to_end(key)
+                    return self._loaded[key]
+                if record.artifact.entry_point not in required:
+                    raise LookupError("artifact entry %r does not match required symbols %r"
+                                      % (record.artifact.entry_point, required))
+                if record.artifact.format == ArtifactFormat.TRITON_NPUBIN:
+                    if required != (record.artifact.entry_point,):
+                        raise LookupError("a Triton unit exports exactly its declared device entry")
+                    opaque, _ = self._load_triton(directory, record)
+                elif record.artifact.format == ArtifactFormat.SHARED_LIBRARY:
+                    import ctypes
+
+                    opaque = ctypes.CDLL(str(directory / record.artifact.locator))
+                    for name in required:
+                        try:
+                            getattr(opaque, name)
+                        except AttributeError as error:
+                            raise LookupError("shared library has no symbol %r" % name) from error
+                else:
+                    raise RuntimeError("no default loader for artifact format %s" % record.artifact.format.value)
+                self._generation += 1
+                token = "%s:%s:%d:%s" % (record.fingerprint, os.getpid(), self._generation, device)
+                receipt = JitModuleLoadReceipt(record.spec_name, record.spec_fingerprint,
+                    record.fingerprint, verification.fingerprint, record.artifact.fingerprint,
+                    self.loader_id, self.loader_version, token, self._generation,
+                    tuple(JitResolvedSymbol(name, token + ":" + name) for name in required))
+                receipt.validate(record, verification, required)
+                loaded = JitLoadedModule(receipt, opaque)
+                self._loaded[key] = loaded
+                while len(self._loaded) > self.max_entries:
+                    self._loaded.popitem(last=False)
+                return loaded
+        except Exception as error:
+            logs = self.store.root / ".logs"
+            logs.mkdir(parents=True, exist_ok=True)
+            log_path = logs / (record.spec_fingerprint + "-load-" + uuid.uuid4().hex + ".log")
+            log_path.write_text(traceback.format_exc(), encoding="utf-8")
+            error_type = JitSymbolError if isinstance(error, LookupError) else JitLoadError
+            raise error_type("%s; artifact=%s; required=%r" % (error, directory, required),
+                kernel_id=kernel_id, spec_fingerprint=record.spec_fingerprint,
+                log_path=log_path) from error
+
+
 __all__ = [
     "JIT_MODULE_LOAD_VERSION",
     "JitLoadedModule",
     "JitModuleLoadReceipt",
     "JitModuleLoader",
     "JitResolvedSymbol",
+    "DefaultJitModuleLoader",
 ]

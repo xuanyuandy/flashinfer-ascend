@@ -6879,7 +6879,7 @@
       "priority": "P2",
       "notes": "T18A 在现有不可变配方上追加 kernel_id/source: SourceRef/output_path，与唯一 entry_points 组成编译单元；编译选项、环境和特化指纹进入身份。旧 Attention 配方的序列化与指纹不变。期望路径不冒充具有 digest/size 的 ArtifactRef。",
       "api_kind": "upstream",
-      "reason": "NPU 有意不同：复用本仓 SourceRef/ArtifactRef 的纯声明与 kernel 映射；上游 JitSpec 的真实 build_and_load 与磁盘状态查询在本仓等待 T18B，旧 Attention 声明身份保持兼容。",
+      "reason": "NPU 有意不同：保留 SourceRef/ArtifactRef 的不可变声明及旧 Attention 身份；T18B 以独立 build_and_load 入口执行编译和装载，声明与状态查询继续保持纯操作。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -6904,7 +6904,7 @@
       "priority": "P2",
       "notes": "T18A 保留幂等登记与同名漂移拒绝，新增 specs_for_kernel 查询全部显式绑定的编译单元；不推测旧配方所属 kernel，不改 KernelRegistry。",
       "api_kind": "upstream",
-      "reason": "NPU 有意不同：复用本仓 SourceRef/ArtifactRef 的纯声明与 kernel 映射；上游 JitSpec 的真实 build_and_load 与磁盘状态查询在本仓等待 T18B，旧 Attention 声明身份保持兼容。",
+      "reason": "NPU 有意不同：保留 SourceRef/ArtifactRef 的不可变声明及旧 Attention 身份；T18B 以独立 build_and_load 入口执行编译和装载，声明与状态查询继续保持纯操作。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -6929,7 +6929,7 @@
       "priority": "P2",
       "notes": "T18A 保留现有声明构造入口，支持显式 kernel_id/SourceRef/output_path；无编译或装载副作用。",
       "api_kind": "upstream",
-      "reason": "NPU 有意不同：复用本仓 SourceRef/ArtifactRef 的纯声明与 kernel 映射；上游 JitSpec 的真实 build_and_load 与磁盘状态查询在本仓等待 T18B，旧 Attention 声明身份保持兼容。",
+      "reason": "NPU 有意不同：保留 SourceRef/ArtifactRef 的不可变声明及旧 Attention 身份；T18B 以独立 build_and_load 入口执行编译和装载，声明与状态查询继续保持纯操作。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -6952,9 +6952,9 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T18A 两钩子协议：declare 生成 JitSpec；compile 只负责在统一层 staging 根内写出声明产物。缓存、文件锁、原子发布、字节验证、装载和登记由统一层负责；编译协议默认显式抛等待 18B 的 NotImplementedError。",
+      "notes": "保留 T18A declare/compile 两钩子：编译器仅向独立 staging 写输出；统一层验证、加锁、原子发布和装载。协议自身不安装编译器。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -6968,12 +6968,12 @@
       "local": "flashinfer.jit.backends.TritonBackend",
       "upstream_kind": "stable",
       "semantic_status": "intentionally_different",
-      "implementation_status": "framework",
+      "implementation_status": "functional",
       "priority": "P2",
-      "notes": "T18A 实现 Triton 的 SourceRef 声明生成，不 import triton 或 kernel 源码；compile 显式抛等待 18B 的 NotImplementedError，不推测 Triton 原生产物格式与装载 ABI。",
+      "notes": "T18B 使用独立 Python 子进程调用 Triton ASTSource/compile；核验 SourceRef 摘要和目标 SOC，显式 signature/constexprs/options 进入 spec 指纹。产出 NPU ELF、元数据和预编译 Python launcher；导入/声明不探测工具链。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
-      "local_status": "framework",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
@@ -6988,9 +6988,9 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T18A 实现 Ascend C 的 SourceRef 声明生成，不探测或调用 CANN 编译器；compile 显式抛等待 18B 的 NotImplementedError。",
+      "notes": "纯声明保持兼容。A5 实测 bisheng/ccec 可编设备 ELF；host 包装和 launch ABI 尚未接入，compile 继续显式 NotImplementedError，不伪造产物。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7008,7 +7008,7 @@
       "priority": "P2",
       "notes": "T18A 统一入口调用后端声明钩子，校验 kernel/source/SOC/选项/路径/符号与请求一致后登记 JitSpec；只读 KernelRegistry，支持自定义两钩子后端，无 dispatch 分支。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7024,9 +7024,9 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T18A 仅定义 lookup/lock/staging/publish 协议：锁下二次检查、独立 staging 根、完整产物与 manifest 的原子发布。默认方法均显式抛等待 18B 的 NotImplementedError；无磁盘缓存、文件锁、原子替换或淘汰实现。",
+      "notes": "T18A 四钩子协议保持不变；T18B 的 DiskJitBuildStore 提供 flock、独立 staging、文件集合校验、完整 manifest 与原子指针发布。协议默认方法仍显式未实现。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7044,7 +7044,7 @@
       "priority": "P2",
       "notes": "T18A 查询状态：unknown_kernel/undeclared/source_only/declared/artifact_recorded/builtin；未声明执行体的现有记录返回未知编译状态，不报错。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7062,7 +7062,7 @@
       "priority": "P2",
       "notes": "T18A 单条 kernel/产物/入口映射快照，复用 SourceRef 与 ArtifactRef，分开期望与已记录路径。is_compiled 表示已登记的编译身份，不证明文件存在、字节有效、ABI 或符号已验证；无元数据时为 None。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7078,9 +7078,153 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T18A 返回 kernel 全部特化/环境声明的不可变状态元组；可消费精确绑定的内存缓存记录。未关联到特化的 descriptor 产物另列，不把任意同路径产物归给某特化。查询不生成声明、不读文件、不编译、不装载。",
+      "notes": "只读 kernel/全部声明/产物/符号映射；默认消费统一构建的内存登记，报告实际绝对路径。无记录时保留 18A 相对 locator，不访问磁盘或探测编译器。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.build.build_and_load",
+      "local": "flashinfer.jit.build.build_and_load",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "显式统一入口：完整 spec 指纹查缓存，flock 锁下二次检查，staging 编译、ELF/符号/文件校验、原子发布、验证并装载。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.cache.DiskJitBuildStore",
+      "local": "flashinfer.jit.cache.DiskJitBuildStore",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "实现四钩子协议；稳定外置 flock，私有 staging，不可变 generation 和原子 symlink 替换；manifest 校验全文件 SHA-256/size，损坏重编译，失败日志保留。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.cache.jit_cache_index",
+      "local": "flashinfer.jit.cache.jit_cache_index",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "进程内编译身份/实际路径登记；初始化无 I/O，供只读 describe_artifact 消费。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.loading.DefaultJitModuleLoader",
+      "local": "flashinfer.jit.loading.DefaultJitModuleLoader",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "按真实格式装载：Triton npubin 复用 CompiledKernel 与已编译 Python runtime 扩展，显式 host .so 使用 ctypes；按 device/记录保留 LRU，失败/缺符号分别报错。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.errors.JitBuildError",
+      "local": "flashinfer.jit.errors.JitBuildError",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "构建错误基类，携带 kernel/spec、命令、返回码和可保留的日志路径。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.errors.JitCompilationError",
+      "local": "flashinfer.jit.errors.JitCompilationError",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "源码/编译失败的可定位错误。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.errors.JitLoadError",
+      "local": "flashinfer.jit.errors.JitLoadError",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "产物/运行时装载失败的可定位错误。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.errors.JitSymbolError",
+      "local": "flashinfer.jit.errors.JitSymbolError",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "缺少设备/host 入口符号的独立错误类型。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",

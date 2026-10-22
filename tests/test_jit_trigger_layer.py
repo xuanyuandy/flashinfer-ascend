@@ -191,12 +191,23 @@ def test_declaration_needs_source_and_target_and_checks_backend():
         declare(backend=AscendCBackend())
 
 
-@pytest.mark.parametrize("backend", [TritonBackend(), AscendCBackend()])
-def test_compiler_placeholders_fail_explicitly_without_writing(backend, tmp_path):
+def test_ascendc_remains_explicitly_unimplemented_without_writing(tmp_path):
+    backend = AscendCBackend()
     spec = declare(descriptor(backend.backend_id), backend)
     with pytest.raises(NotImplementedError, match=backend.backend_id + r".*18B"):
         backend.compile(spec, build_directory=tmp_path)
     assert list(tmp_path.iterdir()) == []
+
+
+def test_triton_rejects_missing_executable_options_with_a_readable_log(tmp_path):
+    from flashinfer.jit import JitCompilationError
+
+    backend = TritonBackend()
+    with pytest.raises(JitCompilationError, match="signature/constexprs/options") as caught:
+        backend.compile(declare(), build_directory=tmp_path)
+    assert caught.value.log_path == tmp_path / "build.log"
+    assert caught.value.log_path.is_file()
+    assert "flashinfer.jit._triton_compile" in str(caught.value)
 
 
 def test_new_backend_needs_only_the_two_hooks():
@@ -438,9 +449,11 @@ def test_import_selection_and_declarations_with_no_optional_dependencies_or_comp
 import importlib.abc
 import json
 import shutil
+import subprocess
 import sys
 
 attempts = []
+compiler_probes = []
 class NoCompilerPackages(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
         if fullname.split('.')[0] in {'triton', 'torch', 'torch_npu', 'cann'}:
@@ -448,6 +461,12 @@ class NoCompilerPackages(importlib.abc.MetaPathFinder):
             raise ModuleNotFoundError('optional dependency blocked: ' + fullname)
 sys.meta_path.insert(0, NoCompilerPackages())
 sys.path.insert(0, ROOT)
+original_which = shutil.which
+def forbidden_probe(*args, **kwargs):
+    compiler_probes.append(str(args))
+    raise AssertionError('compiler discovery/subprocess during import or selection')
+shutil.which = forbidden_probe
+subprocess.Popen = forbidden_probe
 import flashinfer
 from flashinfer.jit import (AscendCBackend, JitSpecRegistry, TritonBackend,
                            declare_kernel, describe_artifact)
@@ -473,8 +492,11 @@ for language, implementation in [('triton', TritonBackend()), ('ascendc', Ascend
         environment_fingerprint='b' * 64, specialization_fingerprint='c' * 64)
     assert spec.source is d.source
 assert attempts == [], attempts
+assert compiler_probes == [], compiler_probes
+shutil.which = original_which
 assert all(shutil.which(name) is None for name in ('bisheng', 'ccec', 'ascendc'))
 print(json.dumps({'records': len(selected), 'optional_import_attempts': attempts,
+                  'compiler_probe_attempts': compiler_probes,
                   'compiler_paths': {n: shutil.which(n) for n in ('bisheng', 'ccec', 'ascendc')},
                   'selected_gemma': selected[[d.kernel_id for d in registry.descriptors()].index(
                       'triton/norm/gemma_fused_add_rmsnorm_v1')]}))
@@ -484,8 +506,10 @@ print(json.dumps({'records': len(selected), 'optional_import_attempts': attempts
     env["PATH"] = ""
     completed = subprocess.run([sys.executable, "-S", "-c", code], check=True,
                                capture_output=True, text=True, env=env)
+    print(completed.stdout.strip())
     assert json.loads(completed.stdout) == {
         "records": 79, "optional_import_attempts": [],
+        "compiler_probe_attempts": [],
         "compiler_paths": {"bisheng": None, "ccec": None, "ascendc": None},
         "selected_gemma": "triton/norm/gemma_fused_add_rmsnorm_v1",
     }
@@ -508,8 +532,16 @@ def test_new_interfaces_are_tracked_in_reproducible_parity_ledger():
         for name in names:
             entry = entries["flashinfer.jit." + module + "." + name]
             assert entry.api_kind == "npu_extension"
-            assert entry.implementation_status == "framework"
+            assert entry.implementation_status == ("functional" if name == "TritonBackend" else "framework")
             assert ParityEntry.from_dict(annotate(entry.to_dict(), NoUpstreamExtension())) == entry
+    for symbol in (
+        "build.build_and_load", "cache.DiskJitBuildStore", "cache.jit_cache_index",
+        "loading.DefaultJitModuleLoader", "errors.JitBuildError", "errors.JitCompilationError",
+        "errors.JitLoadError", "errors.JitSymbolError",
+    ):
+        entry = entries["flashinfer.jit." + symbol]
+        assert entry.api_kind == "npu_extension"
+        assert ParityEntry.from_dict(annotate(entry.to_dict(), NoUpstreamExtension())) == entry
     for name in ("JitSpec", "JitSpecRegistry", "gen_jit_spec"):
         entry = entries["flashinfer.jit.core." + name]
         assert entry.semantic_status == "intentionally_different"

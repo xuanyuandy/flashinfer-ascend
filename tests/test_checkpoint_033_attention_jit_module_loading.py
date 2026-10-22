@@ -229,7 +229,9 @@ class AttentionJitModuleLoadingCheckpointTests(unittest.TestCase):
             parameters = inspect.signature(callable_value).parameters
             self.assertNotIn("module", parameters)
             self.assertNotIn("jit", parameters)
-        self.assertFalse(hasattr(flashinfer.jit, "build_and_load"))
+        # T18B adds an explicit compiler-integration entry; Attention plan/run
+        # still have no user-controlled module handle or JIT switch.
+        self.assertTrue(callable(flashinfer.jit.build_and_load))
         self.assertFalse(hasattr(flashinfer.jit, "default_module_loader"))
 
 

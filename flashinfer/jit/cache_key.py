@@ -1,8 +1,9 @@
-"""JIT cache key（设计文档 §8.1）。
+"""Legacy input/hardware/toolchain helper (not a complete build identity).
 
 key = sha256( 输入签名 × 硬件签名 × 工具链指纹 )。
 host 环境无工具链时对应项为 ``"none"``——key 依然稳定，
 满足 §14.1 单测要求（相同输入必同 key，任一组成变化必不同 key）。
+T18B 的磁盘缓存使用 JitSpec.fingerprint，覆盖 kernel/source/options 等维度。
 """
 
 from __future__ import annotations
@@ -47,7 +48,7 @@ def build_cache_key(
     hardware: HardwareSignature,
     toolchain: Optional[str] = None,
 ) -> str:
-    """构建磁盘 / 内存缓存的唯一索引（§8.1 五元组的 sha256）。"""
+    """旧的输入侧指纹；真实编译缓存必须使用完整的 JitSpec.fingerprint。"""
     payload = {
         "input": signature.to_dict(),
         "hardware": {

@@ -14,7 +14,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from flashinfer.runtime import ArtifactKind, ArtifactRef, Backend, KernelRegistry, SourceRef
 
-from .cache import JitCacheIndex
+from .cache import JitCacheIndex, jit_cache_index
 from .core import JitSpecRegistry, jit_spec_registry
 
 
@@ -93,6 +93,8 @@ def describe_artifact(
         registry = get_global_registry()
     if spec_registry is None:
         spec_registry = jit_spec_registry
+    if cache is None:
+        cache = jit_cache_index
     if cache is not None and not isinstance(cache, JitCacheIndex):
         raise TypeError("cache must be JitCacheIndex or None")
     try:
@@ -113,7 +115,7 @@ def describe_artifact(
             kernel_id, True, descriptor.backend,
             JitArtifactState.ARTIFACT_RECORDED if artifact is not None else JitArtifactState.DECLARED,
             artifact is not None, spec.source, spec.target_soc, artifact,
-            artifact.locator if artifact is not None else None,
+            (cache.artifact_path(spec) or artifact.locator) if artifact is not None else None,
             spec.output_path, spec.entry_points[0], spec.compile_options,
             spec.name, spec.fingerprint,
             ("compiled artifact identity recorded for this spec; filesystem and symbols not checked"

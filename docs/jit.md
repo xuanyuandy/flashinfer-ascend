@@ -1,8 +1,36 @@
-# JIT 声明与状态查询（T18A）
+# JIT 声明、惰性编译与装载（T18A / T18B）
 
-`flashinfer.jit` 的编译单元沿用 `JitSpec`。本阶段只构造元数据、登记声明和
-查询映射；Triton / Ascend C 编译钩子均抛出说明等待 T18B 的
-`NotImplementedError`。导入、登记、选型和查询无需 Triton、torch 或 CANN 编译器。
+`flashinfer.jit` 的编译单元沿用 `JitSpec`。声明、登记、选型和查询仍无需
+Triton、torch 或 CANN 编译器。只有显式调用 `build_and_load()` 才进入
+编译 / 装载路径。Triton 已在 A5 上完成真实编译和执行；Ascend C 继续显式
+`NotImplementedError`，容器有可用设备编译器，但 host 包装和 launch ABI 尚未接入。
+
+## A5 实测产物先于装载设计
+
+2026-10-22，Python 3.11、Triton 3.6.0、Ascend950PR_9579，最小 `add_one`：
+
+| 文件 | 实际格式 / 用途 |
+|---|---|
+| `add_one.source` | 文本，带源码位置的初始 IR，并非原 Python 文件 |
+| `add_one.ttir` | 文本，Triton IR |
+| `add_one.ttadapter` | 文本，Ascend 适配 IR |
+| `add_one.mlirbc` | MLIR bytecode，开头 `ML ef 52` |
+| `add_one.bcmlir` | 文本，解码 / 转换后的 MLIR |
+| `add_one.npubin` | ELF64 little endian，EXEC，NPU machine `0x1029` |
+| `add_one.json` | JSON，目标、kernel_name、shared、mix_mode、编译选项等 |
+| `__grp__add_one.json` | JSON，Triton 的缓存文件集合索引（含绝对路径） |
+| `npu_utils.so` | x86-64 ELF shared object，Python `PyInit_npu_utils` 扩展 |
+| `launcher_cxx11abi1.cpython-311-x86_64-linux-gnu.so` | x86-64 Python `PyInit___triton_launcher` 扩展 |
+| `lock/<hash>.lock` | launcher 编译锁，0 字节 |
+
+设备 ELF 的已定义 GLOBAL FUNC 是 `add_one`，元数据 `name/kernel_name` 也为
+`add_one`。两个 CPU `.so` 是运行时辅助扩展，不导出可用 ctypes 调用的设备
+kernel。最小 kernel 已执行、误差为 0；调用方无需额外 device linking，
+工具链已通过 `-cce-link-aicore-ll-module .../libdevice.10.bc` 处理 libdevice。
+这只证明本次独立 kernel 的链路，不承诺任意跨模块设备符号链接。
+
+因此新增 `ArtifactFormat.TRITON_NPUBIN`，不将 NPU ELF 标成 shared_library。
+详细原始清单、命令与验收结果见 [T18B 实测报告](reports/T18B-report.md)。
 
 ## 编译单元
 
@@ -24,7 +52,8 @@ descriptor 身份、包版本和生成器版本纳入身份。不从本机探测
 是产物根内规范的相对 POSIX 路径；根目录由统一层在 T18B 解析。
 它只是期望位置，不带虚构的 digest 或 size。编译结果经统一层验证后才能
 生成现有的 `ArtifactRef`，其中的 locator、target_soc、entry_point 与声明对应。
-本阶段没有新增与 `SourceRef` / `ArtifactRef` 平行的溯源模型。
+没有新增与 `SourceRef` / `ArtifactRef` 平行的溯源模型。声明输出可使用 `.bin`
+等任意后缀；格式由验证后的实际字节确定，Triton 原生文件名另行保存供其加载器使用。
 
 旧 Attention 配方继续使用现有 `source_artifacts`，三个新字段不写入其 JSON，
 原有指纹不变。新编译单元使用 `SourceRef`，不混用旧的源码产物字段。
@@ -32,7 +61,8 @@ descriptor 身份、包版本和生成器版本纳入身份。不从本机探测
 
 原有 `build_cache_key()` 仍只覆盖输入签名、硬件与工具链。新单元的完整构建
 身份是 `spec.fingerprint`；T18B 的磁盘缓存需要使用这一完整身份，不能只用
-旧 helper 的结果，否则会遗漏 kernel / source / options 等维度。
+旧 helper 的结果，否则会遗漏 kernel / source / options 等维度。T18B 磁盘路径、
+锁和 manifest 全部使用 `spec.fingerprint`；旧 helper 只保留兼容用途。
 
 ## 两个后端钩子
 
@@ -52,8 +82,8 @@ def compile(spec: JitSpec, *, build_directory: Path) -> None: ...
 
 新后端实现这两个方法和 `backend_id`，交给同一个 `declare_kernel()` 即可；
 不需要在 dispatch 增加分支。声明阶段不读文件、不导入 kernel 源码、不编译。
-`compile` 的正常返回只表示编译器调用结束，统一层仍必须验证输出；内置
-占位实现始终抛错。编译器只能向统一层提供的 staging 根写出声明产物，不能
+`compile` 的正常返回只表示编译器调用结束，统一层仍必须验证输出。Triton
+提供真实实现，Ascend C 保留显式未实现。编译器只能向统一层提供的 staging 根写出声明产物，不能
 自行管理缓存、发布、装载或登记。
 
 `TritonBackend` 接受 `language="triton"`；`AscendCBackend` 接受
@@ -97,8 +127,8 @@ describe_artifact(
 ) -> Tuple[JitArtifactStatus, ...]
 ```
 
-默认查询全局 KernelRegistry / JitSpecRegistry；`cache` 可提供已有的
-`JitCacheIndex` 内存记录。函数不生成声明、不探测文件、不调用任何编译器、
+默认查询全局 KernelRegistry / JitSpecRegistry / `jit_cache_index`；`cache` 可提供
+独立的 `JitCacheIndex` 内存记录。函数不生成声明、不探测文件、不调用任何编译器、
 字节读取器或装载器。每个特化 / 环境声明各一行；descriptor 中没有绑定到
 具体声明的产物单独列一行，避免根据相同路径猜测编译成功。
 
@@ -119,16 +149,113 @@ compile_options、spec_name、spec_fingerprint 和 reason。SourceRef / Artifact
 这里的 `is_compiled` 只描述已登记的编译身份。`artifact_recorded` 不证明文件
 仍存在、字节有效、ABI 可用或符号已解析；这些由 T18B 的读取、校验和装载
 流程负责。期望路径不放进 `artifact_path`，编译声明不构造假的 ArtifactRef。
+统一入口完成编译验证后即登记身份（装载失败也如实反映已编译）；`artifact_path`
+报告所登记的 generation 内绝对路径。旧的纯内存 fixture 无实际路径时仍返回
+`ArtifactRef.locator`。查询不扫描磁盘；新进程先通过显式构建 / cache-only 入口
+恢复记录后再查询，不因磁盘上恰好存在同名文件而宣称成功。
 
-## T18B 的落点
+## 显式编译与装载
 
-`JitBuildStore` 只定义 `lookup / lock / staging / publish`。统一层应执行
-查询 → 锁 → 锁下二次查询 → staging 编译 → 验证 → 产物和 manifest 原子发布。
-锁的身份必须在目的目录被替换时仍然有效。协议没有安装文件锁、磁盘缓存、
-原子 rename 或淘汰逻辑。现有 `JitModuleLoader` 继续承担装载协议；尚无默认装载器。
+```python
+from flashinfer.jit import DiskJitBuildStore, JitCacheIndex, build_and_load
 
-以下细节需要在真实编译中验证后再定：Triton 产物格式及元数据文件集合、编译参数
-与特化的转换、device linking 要求、CANN 编译 / 链接命令与导出包装、原生符号到加载器及 launch ABI
-的绑定、构建日志 / 错误结果结构。当前声明中的入口是调用者的期望入口，
-没有保证它已被某个真实编译器导出。不能据此假设 Triton 产物是可用 ctypes
-装载的共享库。
+# spec 来自 declare_kernel；必须提供真实 SourceRef 摘要与显式构建身份。
+store = DiskJitBuildStore()  # 只构造配置，不访问磁盘
+cache = JitCacheIndex()
+module = build_and_load(spec, backend=backend, store=store, cache=cache)
+module.opaque_module[(rows,)](x, residual, weight, hidden, eps)
+```
+
+可直接运行的真实声明见 `examples/jit_a5.py`，复用 `_norm_kernels.py` 的
+Gemma fused RMSNorm。没有修改内置 79 条 descriptor、capability 或 dispatch，
+也没有自动给旧 Attention 配方赋予可执行 ABI。
+
+`TritonBackend(source_root=..., python_executable=...)` 默认使用包目录和当前
+Python。源码为单个独立的、可信的 Python 模块，声明的入口必须是该模块中的
+`@triton.jit` 函数，且实际导出的 `name/kernel_name` 和设备符号必须相同。
+源码读取、SHA-256 校验和快照仅发生在显式编译时，声明时不导入源码。
+源码的额外文件依赖尚无打包支持，不得将未指纹化的外部源码当作同一构建身份。
+
+Triton `compile_options` 采用三个显式 JSON 对象字符串：
+
+```python
+compile_options = (
+    'signature={"x_ptr":"*fp32","r_ptr":"*fp32","w_ptr":"*fp32","hidden":"i32","eps":"fp32"}',
+    'constexprs={"BLOCK":128}',
+    'options={"num_warps":32}',
+)
+```
+
+`signature` 必填，另外两项默认空对象。runtime signature 与 constexprs 必须
+完整且不重叠地覆盖函数参数；constexprs 必须精确匹配 `tl.constexpr`。
+launcher 按函数形参顺序生成，JSON key 的顺序不会改变参数 ABI。
+不把 `-O3` 等字符串猜成另一套参数语义，不推断 dtype / shape / constexpr。
+声明阶段仍保留原始选项顺序；不支持的选项在编译边界明确报错。
+Triton 生成器版本为 3，区别于 18A 的纯声明生成器版本 1。
+
+worker 在私有 `TRITON_CACHE_DIR` 调 `triton.compile(ASTSource(...))`，并预编译
+两个 CPU runtime 扩展、解析设备入口，不执行 kernel。父进程校验 ELF 类型、
+machine、已定义符号及元数据，再以 `ArtifactRef` 记录声明位置的 NPU ELF。
+原生 metadata group 保留相对路径，丢弃 Triton 含 staging 绝对路径的 group 索引。
+快照通过固定的源码内容路径与 worker 内 linecache 提供给 `@triton.jit`，避免随机
+staging 路径进入 IR。另经重复实编确认 `.mlirbc` 字节不稳定，而文本 IR
+和 npubin 相同；它不是装载输入，故编译结束后丢弃该中间文件。其余持久文件全部
+进入 manifest，重建保持不可变 `JitCacheIndex` 的原有冲突检查，不放宽身份语义。
+
+`DefaultJitModuleLoader` 实现原有 `JitModuleLoader` 协议：Triton 分支恢复
+`CompiledKernel`，通过已编译的 `npu_utils.load_kernel_binary` 和 Python launcher
+装载 / 执行，绝不再次编译设备 kernel 或 launcher。无需重新导入原 kernel 源码。
+CPU `.so` 使用 Python extension loader；只有显式 shared_library 走 `ctypes.CDLL`。
+实际缓存复用已在新进程禁止所有 subprocess 的条件下验证。
+Triton 适配器依赖 3.6 的运行时 ABI，检查 triton/torch/torch_npu/Python ABI 和实际设备；
+不同版本明确报错，需要重新编译 / 适配。加载器返回带精确符号的现有 receipt，
+并按记录与 NPU device 保留进程内 LRU。调用方持有模块后，launch 不查磁盘 / 编译。
+
+## 缓存、锁和原子发布
+
+`JitBuildStore` 的四个钩子及 `JitCacheRecord.validate_spec` 语义保持不变。
+`DiskJitBuildStore` 是其 POSIX 实现，统一入口使用它作为本地字节来源：
+
+```text
+${FLASHINFER_NPU_CACHE_DIR:-~/.cache/flashinfer}/jit/
+  .locks/<完整 spec.fingerprint>.lock
+  .staging/<key>-<私有随机后缀>/
+  .objects/<key>-<generation>/
+    <spec.output_path>          # 声明位置的真实 NPU ELF / CPU .so
+    triton.json                # 相对 native group、launch ABI、版本
+    triton-cache/...           # 原生 IR / JSON / npubin / runtime .so
+    source.py, request.json, build.log
+    manifest.json              # 完整 spec、record、文件 size / SHA-256
+  <key[:2]>/<完整 key> -> ../../.objects/<key>-<generation>
+  .logs/<key>-...log            # 失败后仍可定位的日志
+```
+
+查询 → `flock` → 锁下二次查询 → 私有 staging 编译 → 验证 → 写完整 manifest →
+fsync → rename 到不可变 generation → 原子 `os.replace` 发布 generation 指针。
+锁文件永不随目的目录替换或删除，两个进程 / 线程只会有一个编译者。
+manifest 和全部产物先完成，再发布同一个指针，读者看到完整代或未命中。
+损坏缓存按 18A 合约视为 miss，在锁下重建；加载前重新核对 spec / 文件集合 /
+所有文件的 size、digest，拒绝 symlink 输出及路径逃逸。
+旧 generation 保留，保证正在读取旧路径的进程不会因发布而丢失文件。
+失败 staging 清理，编译日志移到 `.logs`，异常里的日志位置同步更新。
+
+默认包目录只读；缓存、staging、产物分离。用户 kernel 可显式使用
+`DiskJitBuildStore(root, namespace="company")`，物理落到 `jit/user/company/`。
+该参数不自动推断，接入者应为用户源码指定隔离 store。缓存淘汰 / 旧 generation
+清理不在本次实现中。只使用支持 `flock` 和原子 rename/symlink 替换的本地 POSIX 文件系统。
+
+`JitCompilationPolicy.CACHE_ONLY/DISABLED` 禁止 miss 编译，仍可加载已验证的缓存。
+默认策略读取 `FLASHINFER_NPU_JIT_DISABLE`，不影响纯 import / 声明 / 查询。
+
+## 失败边界与待接入部分
+
+`JitCompilationError` 给出 kernel、完整 spec、worker 命令、返回码、错误摘要和
+持久日志。`JitLoadError` 表示字节 / 环境 / 动态装载失败，`JitSymbolError` 单独
+表示入口未导出 / 未解析；二者保存 traceback 日志。Python API 装载没有进程返回码，
+此时 `returncode=None`，不会虚构编译命令或成功产物。
+
+Ascend C 实测 `bisheng` / `ccec` 均可启动，最小设备源码可编成 machine `0x1029`
+的 relocatable ELF。没有名为 `ascendc` 的 CLI。可用设备编译器不等于已有可用的
+host wrapper / launch ABI：本次不生成未经执行验证的 Ascend C 装载路径。
+跨模块 device linking、自动源码依赖追踪、运行时 ABI 跨版本适配，以及把旧 Attention
+配方接到真实 kernel，均保留为显式待做项；无需用户确认即可使用已经完成的 Triton 路径。

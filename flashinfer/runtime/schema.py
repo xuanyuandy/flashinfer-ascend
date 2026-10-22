@@ -286,6 +286,7 @@ class ArtifactKind(str, Enum):
 class ArtifactFormat(str, Enum):
     ASCENDC_OBJECT = "ascendc_object"
     SHARED_LIBRARY = "shared_library"
+    TRITON_NPUBIN = "triton_npubin"
     ASCENDC_SOURCE = "ascendc_source"
     ACLNN_BUILTIN = "aclnn_builtin"
 
@@ -320,6 +321,7 @@ class ArtifactRef(_Record):
         expected = {
             ArtifactFormat.ASCENDC_OBJECT: ArtifactKind.FILE,
             ArtifactFormat.SHARED_LIBRARY: ArtifactKind.FILE,
+            ArtifactFormat.TRITON_NPUBIN: ArtifactKind.FILE,
             ArtifactFormat.ASCENDC_SOURCE: ArtifactKind.JIT_SOURCE,
             ArtifactFormat.ACLNN_BUILTIN: ArtifactKind.BUILTIN,
         }[self.format]
