@@ -10,8 +10,11 @@ import hashlib
 import json
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from threading import RLock
-from typing import Any, Dict, Iterable, Mapping, Optional, Tuple
+from typing import (
+    Any, ContextManager, Dict, Iterable, Mapping, Optional, Protocol, Tuple, runtime_checkable,
+)
 
 from flashinfer.runtime import (
     ArtifactFormat,
@@ -109,6 +112,45 @@ class JitCacheRecord:
             or self.artifact.target_soc != spec.target_soc
         ):
             raise SchemaError("JIT cache record does not bind the requested spec")
+        if spec.is_compilation_unit and (
+            self.artifact.locator != spec.output_path
+            or self.artifact.entry_point != spec.entry_points[0]
+        ):
+            raise SchemaError("JIT cache artifact does not match declared output path and entry point")
+
+
+@runtime_checkable
+class JitBuildStore(Protocol):
+    """T18B's disk-cache boundary, independent of the compiler backend.
+
+    The unified orchestrator looks up a validated manifest, acquires the
+    per-identity lock on a miss, looks up again under that lock, then builds
+    in a private staging root. ``publish`` must atomically publish the complete
+    artifact and manifest after verification. Readers must never observe a
+    partial build. Lock ownership must survive replacement of the destination.
+    Cache roots, staging roots and the read-only package root are separate.
+
+    No filesystem implementation, lock, rename or eviction is installed here.
+    JitCacheIndex below is only the existing in-memory metadata index.
+    """
+
+    def lookup(self, spec: JitSpec) -> Optional[JitCacheRecord]:
+        """Read and validate a published manifest; corruption is a miss."""
+        raise NotImplementedError("JIT disk-cache lookup awaits T18B")
+
+    def lock(self, spec: JitSpec) -> ContextManager[None]:
+        """Acquire a lock for the full build identity, not a backend-wide lock."""
+        raise NotImplementedError("JIT file locking awaits T18B")
+
+    def staging(self, spec: JitSpec) -> ContextManager[Path]:
+        """Provide a private root for spec.output_path; clean up on failure."""
+        raise NotImplementedError("JIT staging-directory management awaits T18B")
+
+    def publish(
+        self, spec: JitSpec, staging_directory: Path, artifact: ArtifactRef,
+    ) -> JitCacheRecord:
+        """Publish verified bytes and matching manifest atomically under lock."""
+        raise NotImplementedError("JIT atomic publication awaits T18B")
 
 
 class JitCacheIndex:
@@ -248,6 +290,7 @@ def require_jit_cache_hit(resolution: JitResolution) -> None:
 __all__ = [
     "JIT_CACHE_SCHEMA_VERSION",
     "JitCacheIndex",
+    "JitBuildStore",
     "JitCacheRecord",
     "JitResolution",
     "JitResolutionState",

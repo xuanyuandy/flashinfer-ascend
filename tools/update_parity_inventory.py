@@ -158,6 +158,18 @@ def annotate(entry, upstream):
             kind = "npu_extension"
             reason = "NPU 扩展：查询已解析的执行选择及登记表版本；固定上游没有同名公开属性。"
         elif symbol in {
+            "flashinfer.jit.backends.JitBackend",
+            "flashinfer.jit.backends.TritonBackend",
+            "flashinfer.jit.backends.AscendCBackend",
+            "flashinfer.jit.backends.declare_kernel",
+            "flashinfer.jit.cache.JitBuildStore",
+            "flashinfer.jit.status.JitArtifactState",
+            "flashinfer.jit.status.JitArtifactStatus",
+            "flashinfer.jit.status.describe_artifact",
+        }:
+            kind = "npu_extension"
+            reason = "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。"
+        elif symbol in {
             "flashinfer.runtime.schema.GraphCapability",
             "flashinfer.runtime.registry.KernelRegistry.graph_requirements",
         }:

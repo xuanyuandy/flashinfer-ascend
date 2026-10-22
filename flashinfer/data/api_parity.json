@@ -6869,6 +6869,225 @@
       },
       "cann_coverage": "unverified",
       "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.core.JitSpec",
+      "local": "flashinfer.jit.core.JitSpec",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 在现有不可变配方上追加 kernel_id/source: SourceRef/output_path，与唯一 entry_points 组成编译单元；编译选项、环境和特化指纹进入身份。旧 Attention 配方的序列化与指纹不变。期望路径不冒充具有 digest/size 的 ArtifactRef。",
+      "api_kind": "upstream",
+      "reason": "NPU 有意不同：复用本仓 SourceRef/ArtifactRef 的纯声明与 kernel 映射；上游 JitSpec 的真实 build_and_load 与磁盘状态查询在本仓等待 T18B，旧 Attention 声明身份保持兼容。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": [],
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/jit/core.py",
+        "line": 259,
+        "sha256": "f56ff6bf9561834362303d4c5b7a80018466babbfdf2f8f73775b1af0746b687",
+        "declaration": "flashinfer.jit.core.JitSpec"
+      }
+    },
+    {
+      "upstream": "flashinfer.jit.core.JitSpecRegistry",
+      "local": "flashinfer.jit.core.JitSpecRegistry",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 保留幂等登记与同名漂移拒绝，新增 specs_for_kernel 查询全部显式绑定的编译单元；不推测旧配方所属 kernel，不改 KernelRegistry。",
+      "api_kind": "upstream",
+      "reason": "NPU 有意不同：复用本仓 SourceRef/ArtifactRef 的纯声明与 kernel 映射；上游 JitSpec 的真实 build_and_load 与磁盘状态查询在本仓等待 T18B，旧 Attention 声明身份保持兼容。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": [],
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/jit/core.py",
+        "line": 195,
+        "sha256": "f56ff6bf9561834362303d4c5b7a80018466babbfdf2f8f73775b1af0746b687",
+        "declaration": "flashinfer.jit.core.JitSpecRegistry"
+      }
+    },
+    {
+      "upstream": "flashinfer.jit.core.gen_jit_spec",
+      "local": "flashinfer.jit.core.gen_jit_spec",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 保留现有声明构造入口，支持显式 kernel_id/SourceRef/output_path；无编译或装载副作用。",
+      "api_kind": "upstream",
+      "reason": "NPU 有意不同：复用本仓 SourceRef/ArtifactRef 的纯声明与 kernel 映射；上游 JitSpec 的真实 build_and_load 与磁盘状态查询在本仓等待 T18B，旧 Attention 声明身份保持兼容。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": [],
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/jit/core.py",
+        "line": 698,
+        "sha256": "f56ff6bf9561834362303d4c5b7a80018466babbfdf2f8f73775b1af0746b687",
+        "declaration": "flashinfer.jit.core.gen_jit_spec"
+      }
+    },
+    {
+      "upstream": "flashinfer.jit.backends.JitBackend",
+      "local": "flashinfer.jit.backends.JitBackend",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 两钩子协议：declare 生成 JitSpec；compile 只负责在统一层 staging 根内写出声明产物。缓存、文件锁、原子发布、字节验证、装载和登记由统一层负责；编译协议默认显式抛等待 18B 的 NotImplementedError。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.backends.TritonBackend",
+      "local": "flashinfer.jit.backends.TritonBackend",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 实现 Triton 的 SourceRef 声明生成，不 import triton 或 kernel 源码；compile 显式抛等待 18B 的 NotImplementedError，不推测 Triton 原生产物格式与装载 ABI。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.backends.AscendCBackend",
+      "local": "flashinfer.jit.backends.AscendCBackend",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 实现 Ascend C 的 SourceRef 声明生成，不探测或调用 CANN 编译器；compile 显式抛等待 18B 的 NotImplementedError。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.backends.declare_kernel",
+      "local": "flashinfer.jit.backends.declare_kernel",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 统一入口调用后端声明钩子，校验 kernel/source/SOC/选项/路径/符号与请求一致后登记 JitSpec；只读 KernelRegistry，支持自定义两钩子后端，无 dispatch 分支。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.cache.JitBuildStore",
+      "local": "flashinfer.jit.cache.JitBuildStore",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 仅定义 lookup/lock/staging/publish 协议：锁下二次检查、独立 staging 根、完整产物与 manifest 的原子发布。默认方法均显式抛等待 18B 的 NotImplementedError；无磁盘缓存、文件锁、原子替换或淘汰实现。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.status.JitArtifactState",
+      "local": "flashinfer.jit.status.JitArtifactState",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 查询状态：unknown_kernel/undeclared/source_only/declared/artifact_recorded/builtin；未声明执行体的现有记录返回未知编译状态，不报错。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.status.JitArtifactStatus",
+      "local": "flashinfer.jit.status.JitArtifactStatus",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 单条 kernel/产物/入口映射快照，复用 SourceRef 与 ArtifactRef，分开期望与已记录路径。is_compiled 表示已登记的编译身份，不证明文件存在、字节有效、ABI 或符号已验证；无元数据时为 None。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.status.describe_artifact",
+      "local": "flashinfer.jit.status.describe_artifact",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T18A 返回 kernel 全部特化/环境声明的不可变状态元组；可消费精确绑定的内存缓存记录。未关联到特化的 descriptor 产物另列，不把任意同路径产物归给某特化。查询不生成声明、不读文件、不编译、不装载。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：统一 SourceRef 编译声明、两钩子后端协议与 kernel/产物/符号只读映射；真实编译、装载及磁盘缓存等待 T18B。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
     }
   ],
   "coverage_matrix": {
