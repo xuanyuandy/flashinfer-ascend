@@ -3093,13 +3093,15 @@
         "sha256": "f4e336eadb8454a2234b4755933c161a8e078352cc603010958b5337916b4cc3",
         "declaration": "flashinfer.gemm.gemm_base.SegmentGEMMWrapper"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_grouped_matmul"
+      ]
     },
     {
       "upstream": "flashinfer.gemm.SegmentGEMMWrapper.reset_workspace_buffer",
@@ -3117,12 +3119,12 @@
         "sha256": "f4e336eadb8454a2234b4755933c161a8e078352cc603010958b5337916b4cc3",
         "declaration": "flashinfer.gemm.gemm_base.SegmentGEMMWrapper.reset_workspace_buffer"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
+      "cann_coverage": "not_applicable",
       "cann_operators": [],
       "reason": "昇腾算子自管 workspace，上游的显式 workspace 缓冲在此无对应语义"
     },
@@ -3142,13 +3144,15 @@
         "sha256": "f4e336eadb8454a2234b4755933c161a8e078352cc603010958b5337916b4cc3",
         "declaration": "flashinfer.gemm.gemm_base.SegmentGEMMWrapper.run"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_grouped_matmul"
+      ]
     },
     {
       "upstream": "flashinfer.gemm.bmm_bf16",
@@ -3166,13 +3170,15 @@
         "sha256": "f4e336eadb8454a2234b4755933c161a8e078352cc603010958b5337916b4cc3",
         "declaration": "flashinfer.gemm.gemm_base.bmm_bf16"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "bmm"
+      ]
     },
     {
       "upstream": "flashinfer.gemm.bmm_fp8",
@@ -3268,13 +3274,15 @@
         "sha256": "f4e336eadb8454a2234b4755933c161a8e078352cc603010958b5337916b4cc3",
         "declaration": "flashinfer.gemm.gemm_base.mm_bf16"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "matmul"
+      ]
     },
     {
       "upstream": "flashinfer.gemm.mm_bf16_fp4",
@@ -5654,13 +5662,15 @@
         "sha256": "217916d22a56c5ff82eff595199d30c807a15df61527e2cec4fa16af651a1ffa",
         "declaration": "flashinfer.rope.apply_rope"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": [],
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_rotary_mul"
+      ],
       "notes": "backend=cann(npu_rotary_mul, Ascend910B/Ascend950)/reference；频率按上游 pos_enc.cuh plain-rope 分支 freq=theta**(-2j/rotary_dim)/rope_scale；T2.3 接入"
     },
     {
@@ -5679,13 +5689,15 @@
         "sha256": "217916d22a56c5ff82eff595199d30c807a15df61527e2cec4fa16af651a1ffa",
         "declaration": "flashinfer.rope.apply_rope_inplace"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_rotary_mul"
+      ]
     },
     {
       "upstream": "flashinfer.rope.apply_rope_pos_ids",
@@ -5703,13 +5715,15 @@
         "sha256": "217916d22a56c5ff82eff595199d30c807a15df61527e2cec4fa16af651a1ffa",
         "declaration": "flashinfer.rope.apply_rope_pos_ids"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_rotary_mul"
+      ]
     },
     {
       "upstream": "flashinfer.rope.apply_rope_pos_ids_inplace",
@@ -5727,13 +5741,15 @@
         "sha256": "217916d22a56c5ff82eff595199d30c807a15df61527e2cec4fa16af651a1ffa",
         "declaration": "flashinfer.rope.apply_rope_pos_ids_inplace"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_rotary_mul"
+      ]
     },
     {
       "upstream": "flashinfer.rope.apply_rope_with_cos_sin_cache",
@@ -5751,13 +5767,15 @@
         "sha256": "217916d22a56c5ff82eff595199d30c807a15df61527e2cec4fa16af651a1ffa",
         "declaration": "flashinfer.rope.apply_rope_with_cos_sin_cache"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_rotary_mul"
+      ]
     },
     {
       "upstream": "flashinfer.rope.apply_rope_with_cos_sin_cache_inplace",
