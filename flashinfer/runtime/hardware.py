@@ -32,7 +32,14 @@ _cache_lock = threading.Lock()
 _cached: Optional[HardwareSignature] = None
 
 # 探测只精确到系列型号（§4.1），更细的 SKU 差异由 aicore_count 承担
-_SOC_PREFIXES = ("Ascend910B", "Ascend910C", "Ascend310P", "Ascend910", "Ascend310")
+_SOC_PREFIXES = (
+    "Ascend950",  # A5：Ascend950PR / Ascend950DT 共用系列签名
+    "Ascend910B",
+    "Ascend910C",
+    "Ascend310P",
+    "Ascend910",
+    "Ascend310",
+)
 
 
 def _normalize_soc_model(device_name: str) -> str:
