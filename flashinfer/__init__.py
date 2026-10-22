@@ -32,7 +32,14 @@ from .norm import (
     layernorm,
     rmsnorm,
 )
-from .rope import apply_rope_with_cos_sin_cache_inplace
+from .rope import (
+    apply_rope,
+    apply_rope_inplace,
+    apply_rope_pos_ids,
+    apply_rope_pos_ids_inplace,
+    apply_rope_with_cos_sin_cache,
+    apply_rope_with_cos_sin_cache_inplace,
+)
 from .prefill import (
     single_prefill_with_kv_cache, single_prefill_with_kv_cache_with_jit_module,
     BatchPrefillWithPagedKVCacheWrapper, BatchPrefillWithRaggedKVCacheWrapper,
@@ -94,6 +101,11 @@ __all__ = [
     "gemma_rmsnorm",
     "gemma_fused_add_rmsnorm",
     "layernorm",
+    "apply_rope",
+    "apply_rope_inplace",
+    "apply_rope_pos_ids",
+    "apply_rope_pos_ids_inplace",
+    "apply_rope_with_cos_sin_cache",
     "apply_rope_with_cos_sin_cache_inplace",
     # runtime 契约
     "Backend",

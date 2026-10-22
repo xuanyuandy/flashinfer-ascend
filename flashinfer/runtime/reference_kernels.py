@@ -149,7 +149,7 @@ def reference_layernorm(
         out.copy_(y.to(out.dtype))
 
 
-def reference_apply_rope_with_cos_sin_cache(
+def reference_apply_rope_with_cos_sin_cache_inplace(
     positions: Any,
     query: Any,
     key: Any,
@@ -185,6 +185,65 @@ def reference_apply_rope_with_cos_sin_cache(
                     [xe * cos - xo * sin, xo * cos + xe * sin], dim=-1
                 ).flatten(-2)
             t3[..., :rotary_dim].copy_(rot.to(t.dtype))
+
+
+def _reference_rope_core(
+    q: Any, k: Any, pos_ids: Any, rotary_dim, interleave: bool,
+    rope_scale: float, rope_theta: float, inplace: bool,
+):
+    """``(nnz, heads, head_dim)`` 布局 RoPE 的 float64 参考实现。
+
+    频率按上游 ``pos_enc.cuh`` 的 plain-rope 分支（smooth=0）：
+    ``freq[j] = rope_theta ** (-2j / rotary_dim) / rope_scale``。
+    ``interleave=True`` 旋转偶/奇维，``False`` 旋转前后半——注意与
+    ``is_neox`` 取值相反。
+    """
+    torch = _require_torch()
+    rd = int(rotary_dim) if rotary_dim is not None else int(q.shape[-1])
+    half = rd // 2
+    with torch.no_grad():
+        j = torch.arange(0, rd, 2, device=pos_ids.device, dtype=torch.float64)
+        inv_freq = torch.pow(
+            torch.tensor(float(rope_theta), dtype=torch.float64, device=pos_ids.device),
+            -j / rd,
+        ) / float(rope_scale)
+        angle = pos_ids.to(torch.float64).unsqueeze(-1) * inv_freq  # (nnz, rd/2)
+        cos = angle.cos().unsqueeze(1)  # (nnz, 1, rd/2)
+        sin = angle.sin().unsqueeze(1)
+        outs = []
+        for t in (q, k):
+            dst = t if inplace else t.clone()
+            x = dst[..., :rd].double()
+            if interleave:
+                xe, xo = x[..., 0::2], x[..., 1::2]
+                rot = torch.stack(
+                    [xe * cos - xo * sin, xo * cos + xe * sin], dim=-1
+                ).flatten(-2)
+            else:
+                x1, x2 = x[..., :half], x[..., half:]
+                rot = torch.cat([x1 * cos - x2 * sin, x2 * cos + x1 * sin], dim=-1)
+            dst[..., :rd].copy_(rot.to(t.dtype))
+            outs.append(dst)
+    return None if inplace else (outs[0], outs[1])
+
+
+def reference_apply_rope_pos_ids_inplace(q, k, pos_ids, rotary_dim, interleave, rope_scale, rope_theta):
+    """``apply_rope_pos_ids_inplace`` 参考实现。"""
+    return _reference_rope_core(q, k, pos_ids, rotary_dim, interleave, rope_scale, rope_theta, True)
+
+
+def reference_apply_rope_pos_ids(q, k, pos_ids, rotary_dim, interleave, rope_scale, rope_theta):
+    """``apply_rope_pos_ids`` 参考实现（非原地）。"""
+    return _reference_rope_core(q, k, pos_ids, rotary_dim, interleave, rope_scale, rope_theta, False)
+
+
+def reference_apply_rope_with_cos_sin_cache(positions, query, key, head_size, cos_sin_cache, is_neox):
+    """``apply_rope_with_cos_sin_cache`` 参考实现（非原地）。"""
+    q_out, k_out = query.clone(), key.clone()
+    reference_apply_rope_with_cos_sin_cache_inplace(
+        positions, q_out, k_out, head_size, cos_sin_cache, is_neox
+    )
+    return q_out, k_out
 
 
 def reference_cudnn_batch_decode(
@@ -619,7 +678,42 @@ def builtin_descriptors() -> Tuple[KernelDescriptor, ...]:
             capability=CapabilitySpec(
                 op="rope.apply_rope_with_cos_sin_cache_inplace"
             ),
+            runner=reference_apply_rope_with_cos_sin_cache_inplace,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/rope/apply_rope_with_cos_sin_cache_out_v1",
+            backend=Backend.REFERENCE,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="rope.apply_rope_with_cos_sin_cache"),
             runner=reference_apply_rope_with_cos_sin_cache,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/rope/apply_rope_pos_ids_inplace_v1",
+            backend=Backend.REFERENCE,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="rope.apply_rope_pos_ids_inplace"),
+            runner=reference_apply_rope_pos_ids_inplace,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/rope/apply_rope_pos_ids_v1",
+            backend=Backend.REFERENCE,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="rope.apply_rope_pos_ids"),
+            runner=reference_apply_rope_pos_ids,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/rope/apply_rope_inplace_v1",
+            backend=Backend.REFERENCE,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="rope.apply_rope_inplace"),
+            runner=reference_apply_rope_pos_ids_inplace,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/rope/apply_rope_v1",
+            backend=Backend.REFERENCE,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="rope.apply_rope"),
+            runner=reference_apply_rope_pos_ids,
         ),
         KernelDescriptor(
             kernel_id="reference/decode/cudnn_batch_decode_v1",
