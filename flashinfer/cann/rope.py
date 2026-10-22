@@ -18,7 +18,7 @@ from ..runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescrip
 # 数值验证后锁定；positions 为 int32/int64、cos_sin_cache 为 float32，
 # 一并列入声明（capability 检查覆盖签名全部 dtype）
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "float32", "int32", "int64")
-_SUPPORTED_SOCS = ("Ascend910B",)
+_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
 
 
 def _apply_rope_cos_sin_cache_aclnn(

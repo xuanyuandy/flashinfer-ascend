@@ -18,7 +18,7 @@ from ..runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescrip
 
 # v 支持 fp16/bf16/fp32（算子声明集）；s fp32 一并列入
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "float32")
-_SUPPORTED_SOCS = ("Ascend910B",)
+_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
 
 
 def _merge_state_attention_update(

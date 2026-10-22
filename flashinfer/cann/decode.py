@@ -18,7 +18,7 @@ from ..runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescrip
 # q/k/v 支持 fp16/bf16（FIA 声明集）；block_tables int32、
 # actual_seq_lens_kv int32/int64 一并列入（capability 检查覆盖签名全部 dtype）
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "int32", "int64")
-_SUPPORTED_SOCS = ("Ascend910B",)
+_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
 
 
 def _cudnn_batch_decode_fia(

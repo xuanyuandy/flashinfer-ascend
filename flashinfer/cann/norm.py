@@ -17,9 +17,9 @@ from typing import Any, Tuple
 
 from ..runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescriptor
 
-# 已验证支持集（910B3 + CANN 9.0 实测）；扩展前先补数值验证（§11 声明须属实）
+# 已验证支持集：910B 与 950；扩展前先补数值验证（§11 声明须属实）
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "float32")
-_SUPPORTED_SOCS = ("Ascend910B",)
+_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
 
 
 def _rmsnorm_aclnn(out: Any, input: Any, weight: Any, eps: float) -> None:
@@ -51,9 +51,10 @@ def _gemma_rmsnorm_aclnn(out: Any, input: Any, weight: Any, eps: float) -> None:
 def _layernorm_aclnn(
     out: Any, input: Any, weight: Any, bias: Any, eps: float
 ) -> None:
-    import torch_npu
+    import torch.nn.functional as F
 
-    y = torch_npu.npu_layer_norm_eval(
+    # npu_layer_norm_eval 仅有旧式实现；A5 要求 ACLNN 路径。
+    y = F.layer_norm(
         input, [input.shape[-1]], weight=weight, bias=bias, eps=eps
     )
     out.copy_(y)

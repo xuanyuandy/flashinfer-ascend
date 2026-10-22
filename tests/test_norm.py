@@ -69,7 +69,7 @@ class TestNormRegistration:
     def test_cann_descriptors_declare_verified_support_set(self):
         descriptor = finpu.get_global_registry().get(RMSNORM_ID_CANN)
         assert descriptor.backend == Backend.CANN
-        assert descriptor.capability.soc_models == ("Ascend910B",)
+        assert descriptor.capability.soc_models == ("Ascend910B", "Ascend950")
         assert set(descriptor.capability.dtypes) == {
             "float16",
             "bfloat16",
@@ -269,7 +269,7 @@ class TestNormNumerics:
     def test_auto_dispatch_picks_cann_on_npu(self):
         self._require_npu()
         hardware = finpu.current_hardware()
-        assert hardware.soc_model == "Ascend910B"
+        assert hardware.soc_model in ("Ascend910B", "Ascend950")
         assert finpu.dispatch(_rmsnorm_sig(), hardware).kernel_id == (
             RMSNORM_ID_CANN
         )

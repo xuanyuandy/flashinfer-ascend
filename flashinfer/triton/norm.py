@@ -13,7 +13,7 @@ from ..runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescrip
 
 # 数值验证后锁定（fp32 累计，最后一维归一化）
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "float32")
-_SUPPORTED_SOCS = ("Ascend910B",)
+_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
 
 
 def _gemma_fused_add_rmsnorm_triton(
