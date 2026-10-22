@@ -134,15 +134,16 @@ class RegistryTests(unittest.TestCase):
 
     def test_auto_dispatch_does_not_silently_choose_reference(self):
         selected = self.registry.select(self.workload, self.capability)
-        self.assertEqual(selected.kernel_id, self.aot.kernel_id)
+        # T7 的默认 CANN/ACLNN 档位优先于自研 AOT，与 tensor dispatch 一致。
+        self.assertEqual(selected.kernel_id, self.aclnn.kernel_id)
 
     def test_tuning_record_overrides_heuristic_priority(self):
         selected = self.registry.select(
             self.workload,
             self.capability,
-            tuned_kernel_ids=(self.aclnn.kernel_id,),
+            tuned_kernel_ids=(self.aot.kernel_id,),
         )
-        self.assertEqual(selected.kernel_id, self.aclnn.kernel_id)
+        self.assertEqual(selected.kernel_id, self.aot.kernel_id)
 
     def test_forced_backend_is_honored(self):
         selected = self.registry.select(
@@ -170,7 +171,9 @@ class RegistryTests(unittest.TestCase):
         self.assertTrue(any("missing features" in reason for reason in reports[0].reasons))
 
     def test_plan_fingerprints_and_aligns_workspace(self):
-        plan = build_plan(self.registry, self.workload, self.capability)
+        plan = build_plan(
+            self.registry, self.workload, self.capability, backend=Backend.ASCENDC_AOT
+        )
         self.assertEqual(plan.kernel_id, self.aot.kernel_id)
         self.assertEqual(plan.workspace_bytes, 64)
         self.assertEqual(plan.int_workspace_bytes, 0)

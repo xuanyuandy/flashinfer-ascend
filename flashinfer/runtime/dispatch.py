@@ -173,6 +173,8 @@ def _dispatch_uncached(
 ) -> DispatchDecision:
     # 显式 kernel_id：直接锁定唯一实现，backend 随之确定（§5.1）。
     # capability 不满足时不静默换 kernel，抛错附原因（§12）。
+    # 此覆盖分支按既有契约跳过 auto opt-in/JIT/排序；manifest select()
+    # 没有 kernel_id 覆盖入口，backend= 仍走普通候选过滤。
     if kernel_id is not None:
         try:
             descriptor = registry.get(kernel_id)
@@ -226,6 +228,9 @@ def _dispatch_uncached(
             )
         # 2/3. capability 过滤：语义（dtype/layout/特化参数/张量规模区间）
         #      + 二进制（SoC/AI Core 数），M0 统一由 CapabilitySpec 承担
+        # manifest select() 另保留 KernelConstraints：整组 dtype/layout、
+        # 设备 features/supported_dtypes、QuantSpec 与确定性要求。这里的
+        # InputSignature/HardwareSignature 无完整对应字段，不反推 WorkloadSpec。
         reasons.extend(
             descriptor.capability.unsupported_reasons(signature, hardware)
         )

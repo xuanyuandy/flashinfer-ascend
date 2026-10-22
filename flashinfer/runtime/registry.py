@@ -12,10 +12,13 @@
 from __future__ import annotations
 
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Dict, Iterable, Optional, Tuple
 
-from .schema import Backend, GraphCapability, KernelDescriptor
+from .. import config
+from .hardware import HardwareSignature
+from .schema import Backend, CompileMode, GraphCapability, KernelDescriptor
+from .signature import InputSignature
 
 CUSTOM_KERNEL_PREFIX = "custom/"
 
@@ -136,11 +139,42 @@ class KernelRegistry:
         return tuple(sorted(values, key=lambda d: d.kernel_id))
 
     def explain(self, workload, capability):
-        """Report manifest constraints without importing or executing a provider."""
+        """Report input compatibility without importing or executing a provider.
+
+        This remains policy-free: backend/custom/reference/JIT opt-ins and
+        ordering belong to select(), unlike explain_dispatch's decision trace.
+        """
+        # Typed workload fields are authoritative if attributes repeat a name.
+        # Keep other duplicate attributes: the predicate must check every value,
+        # just as it does for InputSignature.specializations.
+        specializations = tuple(
+            (key, value) for key, value in workload.attributes
+            if key not in ("causal", "pos_encoding", "deterministic")
+        ) + (
+            ("causal", str(workload.causal)),
+            ("pos_encoding", str(workload.pos_encoding)),
+            ("deterministic", str(workload.deterministic)),
+        )
+        signature = InputSignature(
+            workload.op, dtypes=workload.dtypes, layouts=workload.layouts,
+            specializations=specializations,
+        )
+        hardware = HardwareSignature(
+            soc_model=capability.soc_version, aicore_count=capability.ai_core_count,
+        )
+        # WorkloadSpec's flat static_dims/dynamic_bounds have no tensor/axis
+        # mapping for ShapeRange. It also has no per-input physical_layouts;
+        # logical layouts and QuantSpec's storage layout cannot supply ND/NZ.
+        # Exclude only these tensor-only checks, preserving historical manifest
+        # behavior. All shared CapabilitySpec checks use the existing predicate.
+        # Manifest constraints additionally express whole dtype/layout tuples,
+        # device features, quantization and determinism; keep them alongside it.
         return tuple(
             CompatibilityReport(
                 d.kernel_id,
                 d.constraints.unsupported_reasons(workload, capability)
+                + replace(d.capability, shape_ranges=(), physical_layouts=())
+                .unsupported_reasons(signature, hardware)
                 + d.unsupported_target_reasons(capability.soc_version),
             )
             for d in self.descriptors(workload.op)
@@ -151,11 +185,25 @@ class KernelRegistry:
         """Select a manifest descriptor for the existing build_plan API.
 
         Tensor frontends continue to use runtime.dispatch; this path consumes
-        WorkloadSpec/DeviceCapability, as required by manifest clients.
-        """
-        from .dispatch import DispatchError
+        WorkloadSpec/DeviceCapability, as required by manifest clients. Shared
+        selection policies and T7 tiers match dispatch. With backend=None the
+        global default applies; explicit 'auto' bypasses that default.
 
-        policy = None if backend in (None, "auto") else Backend(backend)
+        tuned_kernel_ids is the manifest caller's ranking, applied only after
+        filtering. query_tuning_record requires full InputSignature (including
+        tensor shapes/physical layouts) and HardwareSignature (including UB);
+        the partial view in explain() is not a valid database lookup key.
+        This API returns a descriptor, without dispatch's explicit kernel_id
+        override, fallback chain or decision cache. Every call re-reads policy.
+        """
+        from .dispatch import DispatchError, _sort_key
+
+        if backend is None:
+            backend = config.default_backend()
+        policy = None if backend == "auto" else Backend(backend)
+        order = config.dispatch_order()
+        allow_custom = config.allow_custom_kernels()
+        jit_disabled = config.jit_disabled()
         candidates = []
         rejected = []
         for report in self.explain(workload, capability):
@@ -163,8 +211,16 @@ class KernelRegistry:
             reasons = list(report.reasons)
             if policy is not None and descriptor.backend != policy:
                 reasons.append("forced backend does not match")
-            if descriptor.backend == Backend.REFERENCE and not allow_reference:
+            elif (policy is None and descriptor.backend == Backend.CUSTOM
+                  and not allow_custom):
+                reasons.append(
+                    "custom requires FLASHINFER_NPU_ALLOW_CUSTOM_KERNELS=1 in auto"
+                )
+            if (descriptor.backend == Backend.REFERENCE and not allow_reference
+                    and policy != Backend.REFERENCE):
                 reasons.append("reference requires explicit opt-in")
+            if descriptor.compile_mode == CompileMode.JIT and jit_disabled:
+                reasons.append("JIT disabled (FLASHINFER_NPU_JIT_DISABLE=1)")
             if reasons:
                 rejected.append(f"{descriptor.kernel_id}: {', '.join(reasons)}")
             else:
@@ -174,9 +230,7 @@ class KernelRegistry:
         tuning = {kernel_id: i for i, kernel_id in enumerate(tuned_kernel_ids)}
         return min(candidates, key=lambda d: (
             tuning.get(d.kernel_id, len(tuning)),
-            d.backend == Backend.REFERENCE,
-            -d.priority,
-            d.kernel_id,
+            *_sort_key(d, order),
         ))
 
 
