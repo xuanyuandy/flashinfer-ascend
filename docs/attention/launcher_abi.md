@@ -142,7 +142,7 @@ null descriptor 和 `component_count=0`，避免 optional 参数组合改变函�
 `logits_soft_cap`、flags 和 zero reserved。存在对应 per-head auxiliary scale tensor 时，由其
 提供逐 head 值并替代同名 scalar；两者不相乘。scalar 仍是显式、可审计的 fallback，而不是
 Python 默认值猜测。Host role/shape/access 校验和 POD byte 物化见
-[`attention_launch_binding.md`](attention_launch_binding.md)。
+[`launch_binding.md`](launch_binding.md)。
 
 ### 3.5 `FlashInferNpuAttentionPlanHeaderV1`
 
@@ -163,7 +163,7 @@ Python 默认值猜测。Host role/shape/access 校验和 POD byte 物化见
 | 144 | `reserved` | `uint8_t[16]` |
 
 header 后的 canonical config/directory/section 格式见
-[`attention_plan_metadata_wire.md`](attention_plan_metadata_wire.md)。
+[`plan_metadata_wire.md`](plan_metadata_wire.md)。
 
 ## 4. Error ABI
 
@@ -207,9 +207,9 @@ effective address alignment、bounds 和 writable 权限。`AttentionLaunchLease
 missing/extra role、TensorView 不一致、stream 不一致或 execution identity 不一致。KV/aux 的
 TensorView descriptor 数组拥有独立 Host component-table lease，不能从某个 NPU tensor 地址
 推断。Host descriptor lease 与 device tensor lease 的内存域拆分，以及最终 13 参数 packet 见
-[`attention_launch_packet.md`](attention_launch_packet.md)。
+[`launch_packet.md`](launch_packet.md)。
 同步 error code、completion event、`submit_unknown` 与 resolved-symbol lifetime 的 provider
-协议见 [`attention_launcher_provider.md`](attention_launcher_provider.md)。
+协议见 [`launcher_provider.md`](launcher_provider.md)。
 
 同 allocator 的 byte interval 若重叠且任一 view 可写，launch 必须在提交前拒绝。图执行只
 接受 `persistent`/`capture` lease；`run` lifetime 不能被提升为图地址稳定证据。

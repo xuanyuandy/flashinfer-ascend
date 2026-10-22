@@ -199,7 +199,7 @@ provider 合同必须覆盖：
 runtime teardown issuer、fork 策略、event query 和异步错误注入证据。
 
 成功 provider lifecycle 可以由
-[`AttentionAccuracyExecutionBinding`](attention_accuracy.md) 与 passing accuracy result 连接。
+[`AttentionAccuracyExecutionBinding`](accuracy.md) 与 passing accuracy result 连接。
 该 binding 要求 packet/launcher/probe/submit/completion/event/stream/protocol trace 身份一致，
 但 `result_origin` 仍只是 runner 声明；没有可信 attestation 时不能把 synthetic binding
 当作真实设备 correctness evidence。

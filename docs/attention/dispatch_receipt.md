@@ -28,7 +28,7 @@ flowchart LR
 Receipt 不是签名、安全 token 或运行成功证据。它是版本化、可序列化、可重新计算 fingerprint 的 plan-time 决策记录；消费它之前仍要用当前 plan/profile/descriptor/environment 重新验证。
 
 设备执行后的数值结果不能回写或扩写 receipt。通过 correctness budget 的 candidate 由
-[`AttentionAccuracyDispatchBinding`](attention_accuracy.md) 作为独立 post-dispatch 记录
+[`AttentionAccuracyDispatchBinding`](accuracy.md) 作为独立 post-dispatch 记录
 绑定到 receipt；该 binding 重新验证整条 authority chain，但不会反过来授权 kernel dispatch。
 
 ## 2. 选择顺序
@@ -103,5 +103,5 @@ synthetic functional profile 和 kernel 只能作为 framework fixture。Package
 `profiles=[]` 和 `kernels=[]` 时，不存在任何可 dispatch 的 Ascend Attention backend。
 
 Artifact/ABI 细节见
-[`attention_kernel_artifact.md`](attention_kernel_artifact.md) 和
-[`attention_launcher_abi.md`](attention_launcher_abi.md)。
+[`kernel_artifact.md`](kernel_artifact.md) 和
+[`launcher_abi.md`](launcher_abi.md)。

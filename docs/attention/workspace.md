@@ -144,9 +144,9 @@ generation；未来 caller-managed 路径在 lease/completion binding 接通前�
 workspace formula。Dispatch receipt 固定两者各自的 required bytes 和 alignment；execution
 identity builder 要求它们与 `AttentionWorkspaceContract` 及实际 TensorView 分别精确匹配，
 禁止只比较总字节数。详见
-[`attention_dispatch_receipt.md`](attention_dispatch_receipt.md)。
+[`dispatch_receipt.md`](dispatch_receipt.md)。
 
 Workspace、持久 graph metadata、tensor ABI 与 plan 的联合复用规则见
-[`attention_execution_identity.md`](attention_execution_identity.md)。
+[`execution_identity.md`](execution_identity.md)。
 具体地址、allocation generation、stream 和 completion event 规则见
-[`attention_launcher_abi.md`](attention_launcher_abi.md)。
+[`launcher_abi.md`](launcher_abi.md)。

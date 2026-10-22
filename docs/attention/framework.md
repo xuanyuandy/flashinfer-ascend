@@ -69,41 +69,41 @@ flowchart TB
 PyTorch functional 实现或昇腾设备实现，而上层 metadata 不随 backend 改写。
 
 公共 API facade 的签名与参数归属设计见
-[`attention_frontend_contract.md`](attention_frontend_contract.md)。
+[`frontend_contract.md`](frontend_contract.md)。
 量化 KV 的 shape、scale、zero-point 与 INT4 packing 契约见
-[`attention_quantization.md`](attention_quantization.md)。
+[`quantization.md`](quantization.md)。
 小型 correctness case 的版本化 JSON 和 replay 契约见
-[`attention_trace.md`](attention_trace.md)。
+[`trace.md`](trace.md)。
 JIT/provider 状态、stream 与资源 owner 的独立协议 trace 见
-[`attention_protocol_trace.md`](attention_protocol_trace.md)。
+[`protocol_trace.md`](protocol_trace.md)。
 Caller-owned workspace 的容量与生命周期见
-[`attention_workspace.md`](attention_workspace.md)。
+[`workspace.md`](workspace.md)。
 Plan、准入、workspace、tensor ABI 与未来 kernel binding 的联合复用 guard 见
-[`attention_execution_identity.md`](attention_execution_identity.md)。
+[`execution_identity.md`](execution_identity.md)。
 Stride/storage/alias/device/stream 的 adapter 目标契约见
-[`attention_tensor_contract.md`](attention_tensor_contract.md)。
+[`tensor_contract.md`](tensor_contract.md)。
 可选 Torch metadata adapter 的映射规则和真实运行时门禁见
-[`attention_torch_adapter.md`](attention_torch_adapter.md)。
+[`torch_adapter.md`](torch_adapter.md)。
 NaN/Inf/零支持 softmax 与 metadata admission limits 分别见
-[`attention_numerics.md`](attention_numerics.md) 和
-[`attention_resource_limits.md`](attention_resource_limits.md)。
+[`numerics.md`](numerics.md) 和
+[`resource_limits.md`](resource_limits.md)。
 未来 backend 的精确环境、完整 QuantSpec rule 与 conformance evidence 见
-[`attention_capability_profile.md`](attention_capability_profile.md)。
+[`capability_profile.md`](capability_profile.md)。
 Plan/profile/evidence/kernel 的可复核选择结果见
-[`attention_dispatch_receipt.md`](attention_dispatch_receipt.md)。
+[`dispatch_receipt.md`](dispatch_receipt.md)。
 Kernel artifact provenance 与 launch ABI 见
-[`attention_kernel_artifact.md`](attention_kernel_artifact.md)；冻结的 C POD/error ABI 与地址租约见
-[`attention_launcher_abi.md`](attention_launcher_abi.md)。
+[`kernel_artifact.md`](kernel_artifact.md)；冻结的 C POD/error ABI 与地址租约见
+[`launcher_abi.md`](launcher_abi.md)。
 六种 mode 的 canonical plan payload 见
-[`attention_plan_metadata_wire.md`](attention_plan_metadata_wire.md)。
+[`plan_metadata_wire.md`](plan_metadata_wire.md)。
 Auxiliary role、run-options 与 TensorView/KV/aux POD 物化见
-[`attention_launch_binding.md`](attention_launch_binding.md)。
+[`launch_binding.md`](launch_binding.md)。
 完整 Host/device lease ownership 与 13 参数提交记录见
-[`attention_launch_packet.md`](attention_launch_packet.md)。
+[`launch_packet.md`](launch_packet.md)。
 Artifact verification、resolved symbol、provider error/event 与 unload 生命周期见
-[`attention_launcher_provider.md`](attention_launcher_provider.md)。
+[`launcher_provider.md`](launcher_provider.md)。
 外部 trace/corpus 的 pre-construction JSON 资源门禁见
-[`attention_json_envelope.md`](attention_json_envelope.md)。
+[`json_envelope.md`](json_envelope.md)。
 
 ## 3. 上游 API 映射
 
@@ -333,7 +333,7 @@ reset、graph property、Host structural capture identity 与 lifecycle alias。
 可选 Torch adapter 只把 tensor metadata 转成 framework contract，没有 functional executor；
 因此不表示 Torch frontend 或 NPU backend 已经可运行。packaged kernel manifest 和默认 runtime
 registry 均不启用 Attention NPU implementation。具体状态以
-[`support_matrix.md`](support_matrix.md) 和运行时 registry 为准。
+[`support_matrix.md`](../support_matrix.md) 和运行时 registry 为准。
 
 ## 14. 扩展顺序
 

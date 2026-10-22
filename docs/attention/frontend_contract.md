@@ -195,7 +195,7 @@ symbol resolution 或 runtime launch；真实 JIT 必须进入 artifact/provider
 JIT call 与 provider launch 的 lifecycle 不写入数值 correctness trace。独立的
 `AttentionProtocolTrace` v1 分别限制同步 `prepared -> invoked -> completed/failed_sync -> released`
 和异步 submit/recovery/completion/quiescence 状态图，并冻结 stream 与 resource-owner fingerprint；
-详见 [`attention_protocol_trace.md`](attention_protocol_trace.md)。
+详见 [`protocol_trace.md`](protocol_trace.md)。
 两个 injected-JIT 入口保持上游签名不变；显式进入 `capture_attention_protocol()` 后，内部自动记录
 成功/异常 path，默认未 capture 时没有全局 recorder 或行为变化。
 
@@ -217,7 +217,7 @@ JIT call 与 provider launch 的 lifecycle 不写入数值 correctness trace。�
 这些语义。batch plan 可在不改变签名的前提下将 `QuantSpec` 对象传给
 `kv_data_type`；这是类型层扩展，不是 upstream exact parity。完整 shape、axis、group、
 zero-point 与 INT4 packing 约定见
-[`attention_quantization.md`](attention_quantization.md)。
+[`quantization.md`](quantization.md)。
 
 Provider 路径沿用每个上游调用的 KV 参数形态：paged/mixed 的单一 cache 参数接收
 `AttentionOperatorQuantizedKVInput`；single prefill/decode 与 ragged prefill 的分离
@@ -228,7 +228,7 @@ callable、module 或执行句柄。
 
 真实 tensor frontend 统一映射到 `TensorView`/`QuantizedTensorView`，必须保留 stride、
 storage bounds、alignment、alias identity 和 current stream；详见
-[`attention_tensor_contract.md`](attention_tensor_contract.md)。Adapter 不允许静默
+[`tensor_contract.md`](tensor_contract.md)。Adapter 不允许静默
 contiguous/cast/layout transform。
 
 ## 8. Frontend 接受条件

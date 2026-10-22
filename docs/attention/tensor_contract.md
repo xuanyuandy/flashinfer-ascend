@@ -96,7 +96,7 @@ storage shape 和 scale shape 调用与 Host reference 相同的
 - asymmetric zero-point 与 scale shape 相同、dtype 为 int32；
 - storage、scale、zero-point 同 device 且互不 alias；
 - 非逻辑 physical layout 必须携带已注册 descriptor；storage/scale/zero shape、padding 与 alignment
-  由 [`attention_quant_physical_layout.md`](attention_quant_physical_layout.md) 推导，不能猜测。
+  由 [`quant_physical_layout.md`](quant_physical_layout.md) 推导，不能猜测。
 
 ## 5. KVCacheView
 
@@ -172,4 +172,4 @@ facade 仍由相同 reference tensor 构造器和 plan validator覆盖，后续�
 launch materialization 仍会明确拒绝；必须通过版本化 ABI 扩展接入，不能只靠物理 shape 猜测。
 
 具体映射、拒绝路径、stream/lifetime 边界和验收顺序见
-[`attention_torch_adapter.md`](attention_torch_adapter.md)。
+[`torch_adapter.md`](torch_adapter.md)。

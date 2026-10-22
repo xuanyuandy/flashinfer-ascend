@@ -61,11 +61,11 @@ int_workspace, int_workspace_nbytes, stream
 `KernelBinaryABI` 进一步冻结 C calling convention、`int32` error return、64-bit pointer/value、
 参数方向/nullability/alignment、POD layout 和 error code。逻辑与 binary 参数顺序、mutation
 set、opaque stream 必须精确一致。Attention v1 的 POD 与地址租约详见
-[`attention_launcher_abi.md`](attention_launcher_abi.md)。
+[`launcher_abi.md`](launcher_abi.md)。
 从这些合同生成完整 13 参数记录、区分 Host descriptor 与 NPU tensor memory domain 的规则见
-[`attention_launch_packet.md`](attention_launch_packet.md)。
+[`launch_packet.md`](launch_packet.md)。
 Artifact bytes/builtin contract 验证、provider probe、resolved symbol 和 unload 引用生命周期见
-[`attention_launcher_provider.md`](attention_launcher_provider.md)。
+[`launcher_provider.md`](launcher_provider.md)。
 
 ## 4. 与 capability 和 dispatch 的绑定
 

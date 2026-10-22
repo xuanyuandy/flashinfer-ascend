@@ -6,7 +6,7 @@
 > 仓库范围：当前只建设 Attention 框架层，不包含 NPU kernel 实现，也不把
 > Host 合同解释为可用的 Ascend 算子。GEMM、MoE、sampling 等其他能力域不在
 > 本阶段范围。Attention 细化设计见
-> `docs/attention_framework.md`。
+> `docs/attention/framework.md`。
 
 ## 1. 摘要
 
@@ -238,10 +238,10 @@ Descriptor 来自代码注册或构建生成的 manifest，不允许通过 impor
 Kernel manifest v3 禁止裸 artifact 路径；非 reference descriptor 必须同时携带带
 digest/size/target/build identity 的 `ArtifactRef`、版本化逻辑 `KernelLaunchABI` 和冻结
 C primitive/POD/error contract 的 `KernelBinaryABI`。内容与 ABI 规则见
-[`attention_kernel_artifact.md`](attention_kernel_artifact.md) 和
-[`attention_launcher_abi.md`](attention_launcher_abi.md)。
+[`attention/kernel_artifact.md`](attention/kernel_artifact.md) 和
+[`attention/launcher_abi.md`](attention/launcher_abi.md)。
 六种 Attention mode 的 canonical plan payload 见
-[`attention_plan_metadata_wire.md`](attention_plan_metadata_wire.md)。
+[`attention/plan_metadata_wire.md`](attention/plan_metadata_wire.md)。
 
 Attention 不能把 float/int workspace 合并成一个总量；两条 formula 分别进入 descriptor
 fingerprint、dispatch receipt 和 execution identity validation。
@@ -254,7 +254,7 @@ environment、profile/rule/evidence、kernel descriptor 和 float/int workspace 
 任何一层变化都必须重新 dispatch；receipt 不能作为无需复核的授权 token。当前 Host 实现只
 验证这条选择链，不加载设备 artifact。Receipt 还分别固定 artifact、logical launch ABI 与
 binary ABI fingerprint。详见
-[`attention_dispatch_receipt.md`](attention_dispatch_receipt.md)。
+[`attention/dispatch_receipt.md`](attention/dispatch_receipt.md)。
 
 ### 6.4 Plan
 
@@ -349,11 +349,11 @@ alias 和 backend contiguous policy 校验。Adapter 不允许隐式 `.contiguou
 transform；任何 materialization 都是显式 plan operation，并计入 workspace/trace。
 
 当前可执行 Host contract 见
-[`attention_tensor_contract.md`](attention_tensor_contract.md)。
+[`attention/tensor_contract.md`](attention/tensor_contract.md)。
 执行复用不能只比较数学 workload；plan/admission、numerics、workspace binding、持久 graph
 resources、tensor ABI/access policy 以及未来 capability/kernel evidence 组成版本化联合 identity。
 当前 Host wrapper 只发布 `host_contract` structural record，不声称设备 graph 已被创建；完整规则见
-[`attention_execution_identity.md`](attention_execution_identity.md)。
+[`attention/execution_identity.md`](attention/execution_identity.md)。
 
 ### 8.3 内核族
 

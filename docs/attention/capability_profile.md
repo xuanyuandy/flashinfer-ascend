@@ -50,9 +50,9 @@ binding 失效并要求重新审核。
 通过双向 validator 仍只是 manifest 完整性。运行时还必须调用
 `select_attention_dispatch()`，把具体 framework plan、观察到的 environment、重新验证的
 evidence 和最终 kernel 固化为 `AttentionDispatchReceipt`。完整流程见
-[`attention_dispatch_receipt.md`](attention_dispatch_receipt.md)。
+[`dispatch_receipt.md`](dispatch_receipt.md)。
 制品内容身份和 entry-point 参数协议见
-[`attention_kernel_artifact.md`](attention_kernel_artifact.md)。
+[`kernel_artifact.md`](kernel_artifact.md)。
 
 ## 2. Exact runtime environment
 
@@ -113,7 +113,7 @@ coverage policy v4 重跑上述 evidence/rule 交叉验证；仅仅填写一个�
 
 ## 5. 当前诚实状态
 
-packaged [`attention_capabilities.json`](../flashinfer/data/attention_capabilities.json)
+packaged [`attention_capabilities.json`](../../flashinfer/data/attention_capabilities.json)
 有效但 `profiles=[]`。CLI：
 
 ```bash

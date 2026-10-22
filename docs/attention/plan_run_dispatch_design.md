@@ -300,7 +300,7 @@ identity participate in the active-plan receipt.
 
 The repository supplies these framework contracts but does not install a source
 generator, compiler, filesystem cache or production NPU module loader by
-default. See [Attention JIT framework](attention_jit_framework.md).
+default. See [Attention JIT framework](jit_framework.md).
 
 ## 12. Active plan
 

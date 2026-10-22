@@ -29,7 +29,7 @@
 
 恢复 `QuantSpec` 分组的 `group_size` 必填校验、manifest 要求的 capability binding 版本，以及 `WorkloadSpec.schema_version=1`。
 最后一项由冻结 wire 反推验证：只在诊断副本中替换已知错误的 binary header 后，补齐 workload 版本即可得到原始冻结 wire 的完整 SHA-256；未修改运行期指纹或测试断言。
-证据为 [`T1-workload-version-recovery.json`](T1-workload-version-recovery.json)。
+证据为 `T1-workload-version-recovery.json`（过程产物，未入仓）。
 
 当前工作区全量回归 997 通过、3 失败（[`steps/P1-full-after-workload.log`](steps/P1-full-after-workload.log)）。
 仍失败的是 binary ABI v1、binary ABI v2 和由其 header 派生的 wire 指纹；error ABI 单独检查也尚未匹配。

@@ -85,57 +85,57 @@ includes host-side framework contracts; the repository does not yet contain
 runnable custom Ascend C kernels.
 
 The Attention-specific framework contract is documented in
-[`docs/attention_framework.md`](docs/attention_framework.md).
+[`docs/attention/framework.md`](docs/attention/framework.md).
 The FlashInfer-aligned wrapper-owned plan/run lifecycle and the boundary for
 future CANN/flash-attention-npu provider selection are documented in
-[`docs/attention_plan_run_dispatch_design.md`](docs/attention_plan_run_dispatch_design.md).
+[`docs/attention/plan_run_dispatch_design.md`](docs/attention/plan_run_dispatch_design.md).
 The executable Host contract for INT8/UINT8/packed-INT4 KV Cache is documented
-in [`docs/attention_quantization.md`](docs/attention_quantization.md).
+in [`docs/attention/quantization.md`](docs/attention/quantization.md).
 Versioned correctness trace and replay semantics are documented in
-[`docs/attention_trace.md`](docs/attention_trace.md).
+[`docs/attention/trace.md`](docs/attention/trace.md).
 The separate lifecycle/stream/resource-ownership trace schema for injected JIT
 and provider routes is documented in
-[`docs/attention_protocol_trace.md`](docs/attention_protocol_trace.md).
+[`docs/attention/protocol_trace.md`](docs/attention/protocol_trace.md).
 Workspace capacity/query/lifecycle semantics are documented in
-[`docs/attention_workspace.md`](docs/attention_workspace.md).
+[`docs/attention/workspace.md`](docs/attention/workspace.md).
 The joint plan/workspace/tensor/capability identity used to guard execution
 reuse is documented in
-[`docs/attention_execution_identity.md`](docs/attention_execution_identity.md).
+[`docs/attention/execution_identity.md`](docs/attention/execution_identity.md).
 The framework-independent tensor/stride/alias/stream adapter target is in
-[`docs/attention_tensor_contract.md`](docs/attention_tensor_contract.md).
+[`docs/attention/tensor_contract.md`](docs/attention/tensor_contract.md).
 The optional metadata-only Torch adapter and its explicit runtime verification
 boundary are documented in
-[`docs/attention_torch_adapter.md`](docs/attention_torch_adapter.md).
+[`docs/attention/torch_adapter.md`](docs/attention/torch_adapter.md).
 The versioned exceptional-value and metadata admission policies are in
-[`docs/attention_numerics.md`](docs/attention_numerics.md) and
-[`docs/attention_resource_limits.md`](docs/attention_resource_limits.md).
+[`docs/attention/numerics.md`](docs/attention/numerics.md) and
+[`docs/attention/resource_limits.md`](docs/attention/resource_limits.md).
 The evidence-bearing backend support declaration and dispatch gate are defined
-in [`docs/attention_capability_profile.md`](docs/attention_capability_profile.md).
+in [`docs/attention/capability_profile.md`](docs/attention/capability_profile.md).
 The revalidatable plan-to-profile-to-kernel selection record is specified in
-[`docs/attention_dispatch_receipt.md`](docs/attention_dispatch_receipt.md).
+[`docs/attention/dispatch_receipt.md`](docs/attention/dispatch_receipt.md).
 Structured kernel provenance and launcher ABI requirements are documented in
-[`docs/attention_kernel_artifact.md`](docs/attention_kernel_artifact.md).
+[`docs/attention/kernel_artifact.md`](docs/attention/kernel_artifact.md).
 The frozen Attention C/POD/error ABI and address-generation/event lease state
 machine are specified in
-[`docs/attention_launcher_abi.md`](docs/attention_launcher_abi.md).
+[`docs/attention/launcher_abi.md`](docs/attention/launcher_abi.md).
 The canonical six-mode CSR/page-table plan metadata wire format is documented
-in [`docs/attention_plan_metadata_wire.md`](docs/attention_plan_metadata_wire.md).
+in [`docs/attention/plan_metadata_wire.md`](docs/attention/plan_metadata_wire.md).
 The validated auxiliary/run-options contract and TensorView/KV/aux POD
 materialization path are documented in
-[`docs/attention_launch_binding.md`](docs/attention_launch_binding.md).
+[`docs/attention/launch_binding.md`](docs/attention/launch_binding.md).
 The ownership-complete Host/device lease model and canonical 13-argument
 submission record are documented in
-[`docs/attention_launch_packet.md`](docs/attention_launch_packet.md).
+[`docs/attention/launch_packet.md`](docs/attention/launch_packet.md).
 The Host-only artifact verification, symbol resolution, provider submission,
 completion-event, and unload lifecycle are documented in
-[`docs/attention_launcher_provider.md`](docs/attention_launcher_provider.md).
+[`docs/attention/launcher_provider.md`](docs/attention/launcher_provider.md).
 The two single-request injected-JIT compatibility entries model upstream scratch,
 output/LSE allocation and argument ordering only; they do not compile or load an
 Ascend artifact and remain `framework` parity.
 The independent FlashInfer-style JIT framework package—immutable specs,
 registry, explicit environment, cache identity and Attention specialization—is
 documented in
-[`docs/attention_jit_framework.md`](docs/attention_jit_framework.md). It is
+[`docs/attention/jit_framework.md`](docs/attention/jit_framework.md). It is
 Host-only and deliberately exposes no compiler or default dynamic loader. An internally
 selected `ascendc_jit` route must now produce an exact cache-hit binding during
 wrapper `plan()`, then reverify the selected artifact bytes through an injected
@@ -146,18 +146,18 @@ binds the same module, exact package callable and executor. All identities are
 frozen into the active plan and revalidated by `run()` before any provider
 executor may be called.
 Untrusted trace/corpus decoding limits are specified in
-[`docs/attention_json_envelope.md`](docs/attention_json_envelope.md).
+[`docs/attention/json_envelope.md`](docs/attention/json_envelope.md).
 Independent quantization-drift and future backend-error budgets are specified
-in [`docs/attention_accuracy.md`](docs/attention_accuracy.md), with a replayable
+in [`docs/attention/accuracy.md`](docs/attention/accuracy.md), with a replayable
 paired accuracy corpus.
 Explicit quantized storage/scale/zero-point blocking, padding, layout catalogs,
 and non-executing converter plans are specified in
-[`docs/attention_quant_physical_layout.md`](docs/attention_quant_physical_layout.md).
+[`docs/attention/quant_physical_layout.md`](docs/attention/quant_physical_layout.md).
 The two single-request APIs, the three paged/ragged batch wrappers and mixed
 `BatchAttention` share the same internal provider-selection policy while
 keeping Host reference execution explicit. Their public contract and remaining
 capability boundaries are documented in
-[`docs/attention_frontend_contract.md`](docs/attention_frontend_contract.md).
+[`docs/attention/frontend_contract.md`](docs/attention/frontend_contract.md).
 
 ## Development checks
 

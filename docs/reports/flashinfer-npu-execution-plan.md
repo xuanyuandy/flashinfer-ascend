@@ -2,12 +2,12 @@
 
 状态：**按任务版本 `b8ba29b` 持续执行 P0/P1；操作与验证逐步留痕。**
 
-任务与进度的唯一来源为 [`../docs/TASKS.md`](../docs/TASKS.md)
+任务与进度的唯一来源为 [`../TASKS.md`](../TASKS.md)
 及其链接的 20 份 [`../docs/tasks/`](../docs/tasks/) 工作单。
 本文件只细化实施边界与验收路径，不另维护一份任务状态。
-最初收到的原文保留为 [历史快照](flashinfer-npu-task-list.md)。
-原代码基线证据：[reports/pre-t1-baseline.json](reports/pre-t1-baseline.json)；
-此次任务核对：[reports/task-reconciliation-b8ba29b.json](reports/task-reconciliation-b8ba29b.json)。
+最初收到的原文保留为 历史快照（过程产物，未入仓）。
+原代码基线证据：reports/pre-t1-baseline.json（过程产物，未入仓）；
+此次任务核对：reports/task-reconciliation-b8ba29b.json（过程产物，未入仓）。
 
 本次 pull 只增加任务文档，未改实现和测试。20 份任务正文均可在原始
 工作单中逐字找到；新增内容是执行序号、单文件工作单、进度框与验收记录模板。

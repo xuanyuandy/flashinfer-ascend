@@ -32,15 +32,15 @@
    接口对标、CANN / Ascend C / Triton 多 backend 调度、AOT/JIT 双模式与
    kernel 缓存（cache key 含 `ASCEND_RT_VISIBLE_DEVICES`）、tuning 机制与
    自定义 kernel 接入。
-3. [`attention_framework.md`](attention_framework.md)：Attention 范围、模式和核心语义。
-4. [`attention_frontend_contract.md`](attention_frontend_contract.md)：公开 API 与参数归属。
-5. [`attention_plan_run_dispatch_design.md`](attention_plan_run_dispatch_design.md)：wrapper
+3. [`attention/framework.md`](attention/framework.md)：Attention 范围、模式和核心语义。
+4. [`attention/frontend_contract.md`](attention/frontend_contract.md)：公开 API 与参数归属。
+5. [`attention/plan_run_dispatch_design.md`](attention/plan_run_dispatch_design.md)：wrapper
    持有的 `plan()` / `run()` 生命周期与自动 provider 选择。
-6. [`attention_quantization.md`](attention_quantization.md)：量化 KV Cache 语义。
-7. [`attention_workspace.md`](attention_workspace.md)：workspace 查询、容量和所有权。
-8. [`attention_capability_profile.md`](attention_capability_profile.md) 与
+6. [`attention/quantization.md`](attention/quantization.md)：量化 KV Cache 语义。
+7. [`attention/workspace.md`](attention/workspace.md)：workspace 查询、容量和所有权。
+8. [`attention/capability_profile.md`](attention/capability_profile.md) 与
    [`support_matrix.md`](support_matrix.md)：外部算子包进入可执行路由前必须满足的能力声明。
-9. [`attention_jit_framework.md`](attention_jit_framework.md)：JIT 目录、缓存身份与加载边界。
+9. [`attention/jit_framework.md`](attention/jit_framework.md)：JIT 目录、缓存身份与加载边界。
 
 其余文件细化 trace、数值、tensor、artifact、ABI、launch 和 execution identity 等独立契约。
 

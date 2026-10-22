@@ -112,12 +112,12 @@ identity 合同必须覆盖：
 3. 真实图 API 对动态 metadata 更新、异步错误传播和销毁顺序的验证。
 
 Dispatch receipt 的选择和审计规则见
-[`attention_dispatch_receipt.md`](attention_dispatch_receipt.md)。
+[`dispatch_receipt.md`](dispatch_receipt.md)。
 二进制 ABI 与租约状态机见
-[`attention_launcher_abi.md`](attention_launcher_abi.md)。
+[`launcher_abi.md`](launcher_abi.md)。
 辅助张量和 POD 物化规则见
-[`attention_launch_binding.md`](attention_launch_binding.md)。
+[`launch_binding.md`](launch_binding.md)。
 Identity、dispatch、Host/device lease 和最终参数的完整汇总见
-[`attention_launch_packet.md`](attention_launch_packet.md)。
+[`launch_packet.md`](launch_packet.md)。
 
 在这些证据存在前，本契约只证明框架能拒绝已知不兼容复用，不证明任何 NPU 图执行能力。

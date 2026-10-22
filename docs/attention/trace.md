@@ -87,7 +87,7 @@ python3 -m flashinfer attention-replay case.json --atol 1e-6 --rtol 1e-6
 可选 `--no-validate` 只执行而不比较已记录 oracle；它不能作为 correctness gate。
 库 API 与 CLI 默认都通过 JSON envelope 拒绝大于 16 MiB 的内容，可用 `--max-bytes`
 进一步收紧。完整 depth/node/array/string/tensor/case limits 见
-[`attention_json_envelope.md`](attention_json_envelope.md)。
+[`json_envelope.md`](json_envelope.md)。
 
 安全边界：
 

@@ -108,7 +108,7 @@ launch lease 约束。
 一个 address binding，拒绝 missing、extra、view mismatch、stream mismatch 或 identity mismatch。
 component-table Host lease 独立于 TensorView device lease，因为它描述 C launcher 读取的
 descriptor 数组 allocation。完整 13 参数 ownership 汇总见
-[`attention_launch_packet.md`](attention_launch_packet.md)。
+[`launch_packet.md`](launch_packet.md)。
 
 ## 7. 合同边界
 

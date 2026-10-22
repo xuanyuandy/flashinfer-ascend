@@ -1,6 +1,6 @@
 # P0 / P1 执行交付记录
 
-执行范围为用户授权的前两个阶段。依据 [`docs/TASKS.md`](../../../docs/TASKS.md)，
+执行范围为用户授权的前两个阶段。依据 [`docs/TASKS.md`](../TASKS.md)，
 按 T1 → T3 → T2 → T4 → T5 推进。实现与自动验收已留痕，用户尚未逐项复核。
 
 ## 当前结果
@@ -9,7 +9,7 @@
 | --- | --- | --- |
 | 包模块导入 | 119 个，0 失败 | [imports](steps/P1-final-imports.log) |
 | 测试收集 | 1000 项，0 错误 | [collect](steps/P1-final-collect.log) |
-| 全量测试 | 997 通过、3 失败、0 跳过 | [完整输出](steps/P1-full-after-workload.log)、[JUnit](P1-after-workload.xml)、[失败清单](P1-remaining-failures.json) |
+| 全量测试 | 997 通过、3 失败、0 跳过 | [完整输出](steps/P1-full-after-workload.log)、[JUnit](P1-after-workload.xml)、失败清单（过程产物，未入仓） |
 | parity / enum / pdl / backend 门禁 | 131 通过 | [门禁输出](steps/T5-and-T4-gates.log) |
 | 原有 A5 smoke | 23 项数值检查通过 | [smoke](steps/P1-final-A5-smoke.log) |
 | 双账本完整性 | 退出码 0；覆盖状态仍 incomplete | [安装包验证](steps/T5-installed-final.log) |
@@ -42,7 +42,7 @@ torch.compile/meta 等仍归后续 T8～T11，入口对未支持功能明确报�
 4. **后续阶段**：P2 及以后尚未启动，按已约定范围先交付 P0/P1 当前结果，再依据证据继续；未把未知项标成完成。
 
 冻结 wire 的复查恢复了 `WorkloadSpec.schema_version=1`。
-[诊断证据](T1-workload-version-recovery.json) 表明，补齐该字段后，诊断副本使用历史 binary header 即能复原原始 wire 哈希。
+诊断证据（过程产物，未入仓） 表明，补齐该字段后，诊断副本使用历史 binary header 即能复原原始 wire 哈希。
 该替换只用于定位，生产序列化和原冻结断言保持真实计算结果；剩余失败仍完整保留。
 
 ## 复现

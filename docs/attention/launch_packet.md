@@ -147,5 +147,5 @@ launch packet 合同必须覆盖：
 4. completion event 将 device/必要 Host lease 保留到异步完成。
 
 上述 artifact/symbol/provider/error/event 生命周期现已由 Host-only 协议冻结，见
-[`attention_launcher_provider.md`](attention_launcher_provider.md)；该协议当前仍只使用 fake
+[`launcher_provider.md`](launcher_provider.md)；该协议当前仍只使用 fake
 provider，不改变本节的“无真实 runtime”边界。

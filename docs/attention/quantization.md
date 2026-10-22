@@ -162,7 +162,7 @@ decode/GQA/QK-VO 不同维度，以及以下两类 mixed 联合门禁：
 window 组合只在内部 plan/reference contract 中验证，避免产生伪 upstream parity。
 
 量化准确度 v1 使用 paired dense/quantized trace 区分量化误差与未来 backend 执行误差，
-详见 [`attention_accuracy.md`](attention_accuracy.md)。Accuracy policy 必须区分精确量化、
+详见 [`accuracy.md`](accuracy.md)。Accuracy policy 必须区分精确量化、
 有损量化、奇数维 packed INT4 和必须拒绝的非有限值或 overflow，不在文档中维护具体
 case 清单或执行结果。
 
