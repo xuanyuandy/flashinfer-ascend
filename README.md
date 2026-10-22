@@ -5,11 +5,21 @@ software stack. It follows FlashInfer's API domains and plan/run execution
 model while implementing kernels for Ascend AI Core rather than translating
 CUDA kernels.
 
-The active development track is currently limited to the framework layer of
-FlashInfer-compatible Attention: single/batch prefill and decode, paged/ragged
-KV metadata, mixed `BatchAttention`, plan/run semantics, and a zero-dependency
-scalar reference oracle for small conformance cases. No NPU kernel code is
-being developed in this phase.
+For runnable A5 (Ascend950) CANN/Triton operators, environment setup and a map
+of the current code, see [`docs/a5.md`](docs/a5.md). From an initialized CANN
+shell, the quick start is:
+
+```bash
+conda env create -f environment-a5.yml
+conda activate flashinfer-a5
+python examples/a5_smoke.py
+```
+
+The FlashInfer-compatible Attention framework track covers single/batch
+prefill and decode, paged/ragged KV metadata, mixed `BatchAttention`, plan/run
+semantics, and a zero-dependency
+scalar reference oracle for small conformance cases. Its provider and artifact
+contracts are separate from the runnable operator backends described above.
 
 The intended public lifecycle matches FlashInfer: users call `plan()` once and
 then call `run()` without passing a plan or provider handle. Provider selection,
@@ -70,9 +80,9 @@ binding; neither public input exposes a provider plan or callable handle.
 
 The documentation map and content policy are in
 [`docs/README.md`](docs/README.md). The authoritative design is in
-[`docs/architecture.md`](docs/architecture.md). The current repository is a
-Phase 0 host-side architecture skeleton; it does not yet contain runnable
-Ascend C kernels.
+[`docs/architecture.md`](docs/architecture.md). The Attention architecture
+includes host-side framework contracts; the repository does not yet contain
+runnable custom Ascend C kernels.
 
 The Attention-specific framework contract is documented in
 [`docs/attention_framework.md`](docs/attention_framework.md).

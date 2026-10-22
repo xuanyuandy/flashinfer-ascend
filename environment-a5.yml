@@ -1,0 +1,29 @@
+name: flashinfer-a5
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      - --extra-index-url https://download.pytorch.org/whl/cpu
+      - --extra-index-url https://mirrors.huaweicloud.com/ascend/repos/pypi
+      - torch==2.10.0+cpu
+      - torch-npu==2.10.0.post7
+      - triton-ascend==3.6.0
+      - numpy==1.26.4
+      - setuptools>=61,<81
+      - pyyaml
+      - pytest>=8.3.2,<9
+      - ninja
+      # Dependencies of the Python tools exposed by CANN set_env.sh.
+      - pandas>=2.2,<2.3
+      - matplotlib
+      - loguru
+      - pydantic
+      - plotly
+      - absl-py
+      - argparse
+      - msguard
+      - opentelemetry-exporter-otlp-proto-grpc==1.33.1
+      - opentelemetry-exporter-otlp-proto-http==1.33.1
+      - -e .
