@@ -16,7 +16,7 @@ from .decode import (
 )
 from .cascade import merge_state, merge_states
 from .page import append_paged_kv_cache
-from .gemm import bmm_fp8, gemm_fp8_nt_groupwise
+from .gemm import SegmentGEMMWrapper, bmm_bf16, bmm_fp8, mm_bf16, gemm_fp8_nt_groupwise
 from .fused_moe import (
     RoutingMethodType,
     fp8_block_scale_moe,
@@ -84,7 +84,10 @@ __all__ = [
     "top_k_mask_logits", "chain_speculative_sampling",
     "single_decode_with_kv_cache",
     "cudnn_batch_decode_with_kv_cache",
+    "SegmentGEMMWrapper",
+    "bmm_bf16",
     "bmm_fp8",
+    "mm_bf16",
     "gemm_fp8_nt_groupwise",
     "RoutingMethodType",
     "reorder_rows_for_gated_act_gemm",

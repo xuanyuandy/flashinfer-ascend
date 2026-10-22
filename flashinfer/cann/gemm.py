@@ -21,6 +21,8 @@ from ..runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescrip
 # A/B 为 fp8（e4m3/e5m2），scale 为 fp32
 _SUPPORTED_DTYPES = ("float8_e4m3fn", "float8_e5m2", "float32")
 _SUPPORTED_SOCS = ("Ascend950",)
+# bf16/分段 GEMM 不依赖 fp8 算子，910B 与 950 均可用
+_GENERAL_SOCS = ("Ascend910B", "Ascend950")
 
 
 def _fp8_grouped_gemm(x8: Any, weight_list: list, group_list: list) -> Any:
@@ -111,6 +113,62 @@ def _gemm_fp8_nt_groupwise_cann(
     return out
 
 
+def _mm_bf16_cann(a, b, bias, out, out_dtype):
+    """``(m,k) @ (k,n) -> (m,n)``；bias 形状 (n,)，按上游语义广播相加。"""
+    import torch
+
+    y = torch.matmul(a, b)
+    if bias is not None:
+        y = y + bias
+    y = y.to(out_dtype)
+    if out is None:
+        return y
+    out.copy_(y)
+    return out
+
+
+def _bmm_bf16_cann(A, B, out, out_dtype):
+    """``(b,m,k) @ (b,k,n) -> (b,m,n)``。"""
+    import torch
+
+    y = torch.bmm(A, B).to(out_dtype)
+    if out is None:
+        return y
+    out.copy_(y)
+    return out
+
+
+def _segment_gemm_cann(x, weights, seg_indptr, weight_indices, weight_column_major, out):
+    """分段 GEMM：``y[i] = x[i] @ W[weight_indices[i]]``，走 npu_grouped_matmul。
+
+    ``seg_indptr`` 为含前导 0 的累加和；group_list 取其尾部（每段结束位置），
+    与 npu_grouped_matmul 的 group_type=0 语义一致。
+    """
+    import torch
+    import torch_npu
+
+    idx = seg_indptr.to(torch.int64)
+    group_list = idx[1:].to(torch.int64)
+    n_groups = int(group_list.numel())
+    sel = (
+        weight_indices.to(torch.int64)
+        if weight_indices is not None
+        else torch.arange(n_groups, device=x.device, dtype=torch.int64)
+    )
+    w = weights.index_select(0, sel)
+    if weight_column_major:
+        # 上游 column major 是 (num_weights, d_out, d_in)，转成 (num_weights, d_in, d_out)
+        w = w.transpose(-1, -2)
+    w = w.contiguous()
+    y = torch_npu.npu_grouped_matmul(
+        [x], [w], group_list=group_list, split_item=3, group_type=0
+    )[0]
+    if out is None:
+        return y
+    out.copy_(y)
+    return out
+
+
 def gemm_descriptors() -> Tuple[KernelDescriptor, ...]:
     """CANN gemm 注册表。"""
     return (
@@ -135,5 +193,36 @@ def gemm_descriptors() -> Tuple[KernelDescriptor, ...]:
                 soc_models=_SUPPORTED_SOCS,
             ),
             runner=_gemm_fp8_nt_groupwise_cann,
+        ),
+        KernelDescriptor(
+            kernel_id="cann/gemm/mm_bf16_v1",
+            backend=Backend.CANN,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(
+                op="gemm.mm_bf16", dtypes=("bfloat16", "float16", "float32"),
+                soc_models=_GENERAL_SOCS,
+            ),
+            runner=_mm_bf16_cann,
+        ),
+        KernelDescriptor(
+            kernel_id="cann/gemm/bmm_bf16_v1",
+            backend=Backend.CANN,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(
+                op="gemm.bmm_bf16", dtypes=("bfloat16", "float16", "float32"),
+                soc_models=_GENERAL_SOCS,
+            ),
+            runner=_bmm_bf16_cann,
+        ),
+        KernelDescriptor(
+            kernel_id="cann/gemm/segment_gemm_v1",
+            backend=Backend.CANN,
+            compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(
+                op="gemm.segment_gemm",
+                dtypes=("bfloat16", "float16", "float32", "int32", "int64"),
+                soc_models=_GENERAL_SOCS,
+            ),
+            runner=_segment_gemm_cann,
         ),
     )

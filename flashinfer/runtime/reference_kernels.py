@@ -246,6 +246,51 @@ def reference_apply_rope_with_cos_sin_cache(positions, query, key, head_size, co
     return q_out, k_out
 
 
+def reference_mm_bf16(a, b, bias, out, out_dtype):
+    """``mm_bf16`` float64 参考实现。"""
+    torch = _require_torch()
+    with torch.no_grad():
+        y = torch.matmul(a.double(), b.double())
+        if bias is not None:
+            y = y + bias.double()
+    y = y.to(out_dtype)
+    if out is None:
+        return y
+    out.copy_(y)
+    return out
+
+
+def reference_bmm_bf16(A, B, out, out_dtype):
+    """``bmm_bf16`` float64 参考实现。"""
+    torch = _require_torch()
+    with torch.no_grad():
+        y = torch.bmm(A.double(), B.double()).to(out_dtype)
+    if out is None:
+        return y
+    out.copy_(y)
+    return out
+
+
+def reference_segment_gemm(x, weights, seg_indptr, weight_indices, weight_column_major, out):
+    """分段 GEMM float64 参考实现：逐段取权重做矩阵乘。"""
+    torch = _require_torch()
+    idx = seg_indptr.to(torch.int64).tolist()
+    n_seg = len(idx) - 1
+    with torch.no_grad():
+        parts = []
+        for i in range(n_seg):
+            w_i = int(weight_indices[i]) if weight_indices is not None else i
+            w = weights[w_i].double()
+            if weight_column_major:
+                w = w.transpose(-1, -2)
+            parts.append(torch.matmul(x[idx[i]:idx[i + 1]].double(), w))
+        y = torch.cat(parts, dim=0).to(x.dtype)
+    if out is None:
+        return y
+    out.copy_(y)
+    return out
+
+
 def reference_cudnn_batch_decode(
     q: Any,
     k_cache: Any,
@@ -670,6 +715,24 @@ def builtin_descriptors() -> Tuple[KernelDescriptor, ...]:
             compile_mode=CompileMode.NONE,
             capability=CapabilitySpec(op="norm.layernorm"),
             runner=reference_layernorm,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/gemm/mm_bf16_v1",
+            backend=Backend.REFERENCE, compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="gemm.mm_bf16"),
+            runner=reference_mm_bf16,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/gemm/bmm_bf16_v1",
+            backend=Backend.REFERENCE, compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="gemm.bmm_bf16"),
+            runner=reference_bmm_bf16,
+        ),
+        KernelDescriptor(
+            kernel_id="reference/gemm/segment_gemm_v1",
+            backend=Backend.REFERENCE, compile_mode=CompileMode.NONE,
+            capability=CapabilitySpec(op="gemm.segment_gemm"),
+            runner=reference_segment_gemm,
         ),
         KernelDescriptor(
             kernel_id="reference/rope/apply_rope_with_cos_sin_cache_v1",

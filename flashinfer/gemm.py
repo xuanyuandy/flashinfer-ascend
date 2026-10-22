@@ -177,3 +177,108 @@ def gemm_fp8_nt_groupwise(
         out,
     )
     return out
+
+
+_OP_MM_BF16 = "gemm.mm_bf16"
+_OP_BMM_BF16 = "gemm.bmm_bf16"
+_OP_SEGMENT_GEMM = "gemm.segment_gemm"
+
+
+def _run(op, tensors, specializations, args, backend, kernel_id):
+    signature = build_signature(op, tensors, specializations=specializations)
+    decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
+    from .norm import _run_selected
+
+    return _run_selected(decision.kernel_id, *args)
+
+
+def mm_bf16(
+    a, b, bias=None, pdl: bool = False, out=None, out_dtype=None,
+    backend: Union[str, Backend, None] = "auto", *, kernel_id: Optional[str] = None,
+):
+    """bf16 矩阵乘（对标 flashinfer.gemm.mm_bf16）。
+
+    ``a`` shape ``(m, k)`` row-major；``b`` shape ``(k, n)`` column-major；
+    ``bias`` shape ``(n,)``，可选；返回 ``(m, n)``。
+
+    Notes
+    -----
+    - ``pdl`` 是 NVIDIA Programmatic Dependent Launch 专属参数，昇腾无对应
+      硬件能力，接受并忽略——与上游在非 CUDA 设备上 ``device_support_pdl``
+      返回 False 的行为一致。
+    - ``backend`` 的默认值由上游的 ``"cudnn"`` 改为 ``"auto"``（账本登记
+      intentionally_different）：``"cudnn"`` 是 CUDA 专有后端名，在昇腾上
+      没有对应物，保留该默认会让每次调用都失败。传入上游后端名会得到
+      带迁移指引的报错。
+    """
+    import torch
+
+    out_dtype = out_dtype if out_dtype is not None else torch.bfloat16
+    del pdl  # 昇腾无 PDL；仅为签名级 drop-in 兼容保留
+    return _run(
+        _OP_MM_BF16, tuple(t for t in (a, b, bias) if t is not None), {},
+        (a, b, bias, out, out_dtype), backend, kernel_id,
+    )
+
+
+def bmm_bf16(
+    A, B, out=None, out_dtype=None,
+    backend: Union[str, Backend, None] = "auto", *, kernel_id: Optional[str] = None,
+):
+    """批量 bf16 矩阵乘（对标 flashinfer.gemm.bmm_bf16）。
+
+    ``A`` shape ``(b, m, k)``，``B`` shape ``(b, k, n)``，返回 ``(b, m, n)``。
+    ``backend`` 默认值同 :func:`mm_bf16` 的说明。
+    """
+    import torch
+
+    out_dtype = out_dtype if out_dtype is not None else torch.bfloat16
+    return _run(_OP_BMM_BF16, (A, B), {}, (A, B, out, out_dtype), backend, kernel_id)
+
+
+class SegmentGEMMWrapper:
+    """分段 GEMM（对标 flashinfer.gemm.SegmentGEMMWrapper）。
+
+    对一组按段切分的 token 各自乘以不同的权重矩阵：
+    ``y[i] = x[i] @ W[weight_indices[i]]``。底层走 CANN 的
+    ``npu_grouped_matmul``（group_type=0）。
+    """
+
+    def __init__(self, float_workspace_buffer=None, backend: str = "auto"):
+        """``float_workspace_buffer`` 接受并忽略——昇腾侧 workspace 由算子
+        自行管理，保留参数位以兼容上游构造方式。"""
+        self._workspace = float_workspace_buffer
+        self._backend = backend
+
+    def reset_workspace_buffer(self, float_workspace_buffer=None, int_workspace_buffer=None) -> None:
+        """重设 workspace（对标上游同名方法；昇腾侧仅记录，不参与计算）。"""
+        self._workspace = float_workspace_buffer
+
+    def run(
+        self, x, weights, batch_size: int, weight_column_major: bool,
+        out=None, seg_lens=None, seg_indptr=None, weight_indices=None,
+        *, backend: Union[str, Backend, None] = None, kernel_id: Optional[str] = None,
+    ):
+        """执行分段 GEMM。
+
+        ``seg_lens`` 与 ``seg_indptr`` 给其一即可：后者是前者的累加和并以 0 开头。
+        ``x`` shape ``(sum(seg_lens), d_in)``；``weights`` shape
+        ``(num_weights, d_in, d_out)``，``weight_column_major=True`` 时为
+        ``(num_weights, d_out, d_in)``。返回 ``(sum(seg_lens), d_out)``。
+        """
+        import torch
+
+        if seg_indptr is None:
+            if seg_lens is None:
+                raise ValueError("seg_lens 与 seg_indptr 必须给其一")
+            zero = torch.zeros(1, dtype=torch.int64, device=seg_lens.device)
+            seg_indptr = torch.cat([zero, seg_lens.to(torch.int64).cumsum(0)])
+        tensors = tuple(
+            t for t in (x, weights, seg_indptr, weight_indices) if t is not None
+        )
+        return _run(
+            _OP_SEGMENT_GEMM, tensors,
+            {"weight_column_major": bool(weight_column_major)},
+            (x, weights, seg_indptr, weight_indices, bool(weight_column_major), out),
+            backend if backend is not None else self._backend, kernel_id,
+        )
