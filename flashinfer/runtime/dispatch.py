@@ -145,7 +145,10 @@ def _dispatch_uncached(
             descriptor = registry.get(kernel_id)
         except KeyError as exc:
             raise DispatchError(str(exc)) from exc
-        reasons = descriptor.capability.unsupported_reasons(signature, hardware)
+        reasons = (
+            descriptor.capability.unsupported_reasons(signature, hardware)
+            + descriptor.unsupported_target_reasons(hardware.soc_model)
+        )
         reports = (
             CandidateReport(kernel_id, descriptor.backend, not reasons, reasons),
         )
@@ -193,6 +196,7 @@ def _dispatch_uncached(
         reasons.extend(
             descriptor.capability.unsupported_reasons(signature, hardware)
         )
+        reasons.extend(descriptor.unsupported_target_reasons(hardware.soc_model))
         # JIT 全局禁用（§13）：仅 AOT / CANN 可用
         if (
             descriptor.compile_mode == CompileMode.JIT

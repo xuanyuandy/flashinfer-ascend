@@ -96,7 +96,11 @@ class KernelRegistry:
     def explain(self, workload, capability):
         """Report manifest constraints without importing or executing a provider."""
         return tuple(
-            CompatibilityReport(d.kernel_id, d.constraints.unsupported_reasons(workload, capability))
+            CompatibilityReport(
+                d.kernel_id,
+                d.constraints.unsupported_reasons(workload, capability)
+                + d.unsupported_target_reasons(capability.soc_version),
+            )
             for d in self.descriptors(workload.op)
         )
 

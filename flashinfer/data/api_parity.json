@@ -5805,6 +5805,60 @@
       "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
+      "upstream": "flashinfer.runtime.schema.ArtifactRef",
+      "local": "flashinfer.runtime.schema.ArtifactRef",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.1 复用既有 kind/format/locator/digest/target_soc/build_id；追加 entry_point: Optional[str] = None。旧记录可继续从 KernelLaunchABI.entry_point 提供入口，默认值不改变旧产物序列化与指纹。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.schema.KernelDescriptor",
+      "local": "flashinfer.runtime.schema.KernelDescriptor",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.schema.SourceRef",
+      "local": "flashinfer.runtime.schema.SourceRef",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.1 新增不可变源码引用：language: str、locator: str（包内规范相对 POSIX 路径）、digest: str（源码内容的小写 SHA-256）、schema_version: int = 1；同时从 flashinfer.runtime 导出。校验元数据并支持 JSON 往返，构造不访问文件、不触发编译。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
       "upstream": "flashinfer.sampling.chain_speculative_sampling",
       "local": "flashinfer.sampling.chain_speculative_sampling",
       "upstream_kind": "stable",

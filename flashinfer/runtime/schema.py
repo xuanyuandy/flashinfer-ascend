@@ -281,6 +281,8 @@ class ArtifactFormat(str, Enum):
 
 @dataclass(frozen=True)
 class ArtifactRef(_Record):
+    """产物溯源；旧记录的入口仍可由 ``KernelLaunchABI.entry_point`` 提供。"""
+
     kind: ArtifactKind
     format: ArtifactFormat
     locator: str
@@ -289,6 +291,7 @@ class ArtifactRef(_Record):
     build_id: str
     size_bytes: Optional[int] = None
     schema_version: int = 1
+    entry_point: Optional[str] = None
 
     def __post_init__(self):
         object.__setattr__(self, "kind", ArtifactKind(self.kind))
@@ -298,6 +301,11 @@ class ArtifactRef(_Record):
         _hash_field("artifact digest", self.digest)
         if not self.target_soc or not self.build_id or not self.locator:
             raise SchemaError("artifact target_soc, build_id and locator required")
+        if self.entry_point is not None and (
+            not isinstance(self.entry_point, str) or not self.entry_point
+            or any(c.isspace() or c == "\0" for c in self.entry_point)
+        ):
+            raise SchemaError("artifact entry_point must be a non-empty symbol")
         expected = {
             ArtifactFormat.ASCENDC_OBJECT: ArtifactKind.FILE,
             ArtifactFormat.SHARED_LIBRARY: ArtifactKind.FILE,
@@ -317,6 +325,19 @@ class ArtifactRef(_Record):
             if self.size_bytes is None or self.size_bytes < 0:
                 raise SchemaError("artifact requires non-negative size")
 
+    def to_dict(self):
+        value = super().to_dict()
+        # 保留 T1 恢复的旧记录序列化形式与指纹。
+        if self.entry_point is None:
+            value.pop("entry_point")
+        return value
+
+    @classmethod
+    def from_dict(cls, value):
+        values = dict(value)
+        values.setdefault("entry_point", None)
+        return super().from_dict(values)
+
     def verify_bytes(self, payload):
         if self.kind == ArtifactKind.BUILTIN:
             raise ArtifactVerificationError("builtin provider has no file bytes")
@@ -335,6 +356,35 @@ class ArtifactRef(_Record):
         except OSError as exc:
             raise ArtifactVerificationError(str(exc)) from exc
         return target
+
+
+@dataclass(frozen=True)
+class SourceRef(_Record):
+    """源码引用：语言、包内相对 POSIX 路径与文件内容的 SHA-256。
+
+    语言使用非空标识字符串（如 ``ascendc`` / ``triton`` / ``c++``），
+    不在静态 schema 中限制将来可接入的编译器。SOC 是 descriptor 的编译维度，
+    同一份源码可以对应多个 SOC 的记录。构造引用不读取文件或触发编译。
+    """
+
+    language: str
+    locator: str
+    digest: str
+    schema_version: int = 1
+
+    def __post_init__(self):
+        if self.schema_version != 1:
+            raise SchemaError("unsupported source schema_version")
+        if (not isinstance(self.language, str) or not self.language
+                or any(c.isspace() or c == "\0" for c in self.language)):
+            raise SchemaError("source language must be a non-empty identifier")
+        _hash_field("source digest", self.digest)
+        if not isinstance(self.locator, str) or not self.locator or "\0" in self.locator:
+            raise SchemaError("source locator must be a normalized relative POSIX path")
+        path = PurePosixPath(self.locator)
+        if (path.is_absolute() or "\\" in self.locator or ".." in path.parts
+                or self.locator == "." or str(path) != self.locator):
+            raise SchemaError("source locator must be a normalized relative POSIX path")
 
 
 @dataclass(frozen=True)
@@ -658,6 +708,11 @@ class KernelDescriptor:
 
     ``priority`` 用于确定性启发式的同层 tie-break（维护者声明，
     新版本号优先，§5.4.3）。
+
+    ``artifact`` 指向已编译产物，``source`` 指向可编译源码，允许两者并存。
+    ``target_soc`` 是尚无产物时的编译目标；None 表示未指定，已有产物时
+    以 ``artifact.target_soc`` 为准。不同 SOC 的产物分别使用唯一 kernel_id
+    登记（例如 ``ascendc/op/Ascend910B``），不改变 registry 的身份规则。
     """
 
     kernel_id: str
@@ -676,15 +731,33 @@ class KernelDescriptor:
     op_schema_version: int = 1
     tiling_schema_version: int = 1
     capability_binding: Optional[KernelCapabilityBinding] = None
+    source: Optional[SourceRef] = None
+    target_soc: Optional[str] = None
 
     def __post_init__(self):
         object.__setattr__(self, "backend", Backend(self.backend))
+        try:
+            object.__setattr__(self, "compile_mode", CompileMode(self.compile_mode))
+        except (TypeError, ValueError) as exc:
+            raise SchemaError("invalid compile_mode") from exc
         if self.capability is None:
             object.__setattr__(self, "capability", CapabilitySpec(op=self.op))
         if not self.op:
             object.__setattr__(self, "op", self.capability.op)
         if not self.kernel_id or not self.op:
             raise SchemaError("kernel_id and op must be non-empty")
+        if self.source is not None and not isinstance(self.source, SourceRef):
+            raise SchemaError("source must be SourceRef or None")
+        if self.artifact is not None and not isinstance(self.artifact, ArtifactRef):
+            raise SchemaError("artifact must be ArtifactRef or None")
+        if self.target_soc is not None and (
+            not isinstance(self.target_soc, str) or not self.target_soc
+            or any(c.isspace() or c == "\0" for c in self.target_soc)
+        ):
+            raise SchemaError("target_soc must be a non-empty SOC identifier or None")
+        if (self.artifact is not None and self.target_soc is not None
+                and self.target_soc != self.artifact.target_soc):
+            raise SchemaError("target_soc does not match artifact target_soc")
         formats = {
             Backend.ASCENDC_AOT: (ArtifactFormat.ASCENDC_OBJECT, ArtifactFormat.SHARED_LIBRARY),
             Backend.ASCENDC_JIT: (ArtifactFormat.ASCENDC_SOURCE,),
@@ -704,15 +777,40 @@ class KernelDescriptor:
             v is not None for v in (self.artifact, self.launch_abi, self.binary_abi)
         ):
             raise SchemaError("reference kernel cannot declare artifact or launch ABI")
+        if self.artifact is not None:
+            if self.launch_abi is not None and not isinstance(self.launch_abi, KernelLaunchABI):
+                raise SchemaError("launch_abi must be KernelLaunchABI or None")
+            if self.artifact.entry_point is None and self.launch_abi is None:
+                raise SchemaError("artifact requires entry_point or KernelLaunchABI")
+            if (self.artifact.entry_point is not None and self.launch_abi is not None
+                    and self.artifact.entry_point != self.launch_abi.entry_point):
+                raise SchemaError("artifact entry_point does not match launch ABI")
+
+    def unsupported_target_reasons(self, soc_model: str) -> Tuple[str, ...]:
+        """编译目标必须匹配设备；capability 的宽支持集不能放宽产物目标。"""
+        target = self.artifact.target_soc if self.artifact is not None else self.target_soc
+        if target is not None and target != soc_model:
+            return ("target SoC %s does not match device SoC %s" % (target, soc_model),)
+        return ()
 
     def to_dict(self):
-        return {
+        value = {
             name: _json_value(getattr(self, name)) for name in (
                 "kernel_id", "op", "backend", "constraints", "workspace", "int_workspace",
                 "artifact", "launch_abi", "binary_abi", "priority", "op_schema_version",
                 "tiling_schema_version", "capability_binding",
             )
         }
+        if self.artifact is not None:
+            value["artifact"] = self.artifact.to_dict()
+        # 新的默认字段不写入旧记录，避免无关的指纹迁移。
+        if self.source is not None:
+            value["source"] = self.source.to_dict()
+        if self.target_soc is not None:
+            value["target_soc"] = self.target_soc
+        if self.compile_mode != CompileMode.NONE:
+            value["compile_mode"] = self.compile_mode.value
+        return value
 
     @property
     def fingerprint(self):

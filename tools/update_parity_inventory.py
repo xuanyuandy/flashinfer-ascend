@@ -157,6 +157,13 @@ def annotate(entry, upstream):
         if symbol.endswith(".plan_selection"):
             kind = "npu_extension"
             reason = "NPU 扩展：查询已解析的执行选择及登记表版本；固定上游没有同名公开属性。"
+        elif symbol in {
+            "flashinfer.runtime.schema.ArtifactRef",
+            "flashinfer.runtime.schema.KernelDescriptor",
+            "flashinfer.runtime.schema.SourceRef",
+        }:
+            kind = "npu_extension"
+            reason = "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。"
         elif symbol.endswith(".end_forward") and any(symbol.startswith(c + ".") for c in ATTENTION_CLASSES):
             kind = "compatibility_extension"
             reason = "保留旧版 end_forward 空操作供历史调用兼容；指定上游提交已无该方法，不计入其覆盖分母。"

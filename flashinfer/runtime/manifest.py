@@ -9,12 +9,14 @@ from typing import Any, Dict, Iterable, Mapping, Tuple, Union
 from .schema import (
     ArtifactRef,
     Backend,
+    CompileMode,
     KernelConstraints,
     KernelCapabilityBinding,
     KernelDescriptor,
     KernelBinaryABI,
     KernelLaunchABI,
     SchemaError,
+    SourceRef,
     WorkspaceFormula,
 )
 
@@ -41,6 +43,9 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         "op_schema_version",
         "tiling_schema_version",
         "capability_binding",
+        "source",
+        "target_soc",
+        "compile_mode",
     }
     if not {"kernel_id", "op", "backend"} <= set(value):
         raise SchemaError("kernel descriptor is missing required fields")
@@ -84,6 +89,9 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
     artifact_value = value.get("artifact")
     if artifact_value is not None and not isinstance(artifact_value, Mapping):
         raise SchemaError("artifact must be an object or null")
+    source_value = value.get("source")
+    if source_value is not None and not isinstance(source_value, Mapping):
+        raise SchemaError("source must be an object or null")
     launch_abi_value = value.get("launch_abi")
     if launch_abi_value is not None and not isinstance(launch_abi_value, Mapping):
         raise SchemaError("launch_abi must be an object or null")
@@ -102,6 +110,13 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
             if artifact_value is not None
             else None
         ),
+        source=(
+            SourceRef.from_dict(source_value)
+            if source_value is not None
+            else None
+        ),
+        target_soc=value.get("target_soc"),
+        compile_mode=value.get("compile_mode", CompileMode.NONE),
         launch_abi=(
             KernelLaunchABI.from_dict(launch_abi_value)
             if launch_abi_value is not None

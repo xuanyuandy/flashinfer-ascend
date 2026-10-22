@@ -28,7 +28,7 @@ from .schema import (
     CFieldABI, CPrimitive, CStructABI, DeviceCapability, KernelArgumentABI,
     KernelArgumentDirection, KernelArgumentPassing, KernelBinaryABI,
     KernelCapabilityBinding, KernelConstraints, KernelErrorABI, KernelErrorCodeABI,
-    KernelLaunchABI, QuantSpec, SchemaError, WorkloadSpec, WorkspaceFormula,
+    KernelLaunchABI, QuantSpec, SchemaError, SourceRef, WorkloadSpec, WorkspaceFormula,
 )
 from .manifest import load_kernel_manifest
 from .plan import build_plan
@@ -57,6 +57,6 @@ __all__ = [
     "CFieldABI", "CPrimitive", "CStructABI", "DeviceCapability", "KernelArgumentABI",
     "KernelArgumentDirection", "KernelArgumentPassing", "KernelBinaryABI",
     "KernelCapabilityBinding", "KernelConstraints", "KernelErrorABI", "KernelErrorCodeABI",
-    "KernelLaunchABI", "QuantSpec", "SchemaError", "WorkloadSpec", "WorkspaceFormula",
+    "KernelLaunchABI", "QuantSpec", "SchemaError", "SourceRef", "WorkloadSpec", "WorkspaceFormula",
     "load_kernel_manifest", "build_plan",
 ]
