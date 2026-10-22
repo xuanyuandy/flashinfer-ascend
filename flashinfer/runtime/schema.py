@@ -680,6 +680,9 @@ class CapabilitySpec(_Record):
     签名中出现的键若声明了允许值则必须命中，未声明的键不受限。
     ``shape_ranges`` 独立声明张量各轴的闭区间，所有区间必须同时满足；
     声明的张量或轴缺失时淘汰，不把未知规模当作支持。
+    ``physical_layouts`` 是所有张量输入允许的物理排布集合，仅支持 ND / NZ
+    （NZ 精确对应 FRACTAL_NZ，不合并其他分形格式）；非空时未知排布也淘汰。
+    它与 NHD / HND 等逻辑 ``layouts`` 独立，不执行排布转换。
     """
 
     op: str
@@ -689,8 +692,19 @@ class CapabilitySpec(_Record):
     min_aicore: int = 0
     specializations: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
     shape_ranges: Tuple[ShapeRange, ...] = ()
+    physical_layouts: Tuple[str, ...] = ()
 
     def __post_init__(self):
+        try:
+            layouts = tuple(self.physical_layouts)
+        except TypeError as exc:
+            raise SchemaError("physical_layouts must contain ND / NZ values") from exc
+        if isinstance(self.physical_layouts, str) or any(
+            not isinstance(layout, str) or layout not in ("ND", "NZ")
+            for layout in layouts
+        ):
+            raise SchemaError("physical_layouts must contain ND / NZ values")
+        object.__setattr__(self, "physical_layouts", tuple(sorted(set(layouts))))
         try:
             ranges = tuple(self.shape_ranges)
         except TypeError as exc:
@@ -709,6 +723,8 @@ class CapabilitySpec(_Record):
         # 默认不限制，保留旧能力声明的序列化形式与指纹。
         if not self.shape_ranges:
             value.pop("shape_ranges")
+        if not self.physical_layouts:
+            value.pop("physical_layouts")
         return value
 
     @classmethod
@@ -751,6 +767,27 @@ class CapabilitySpec(_Record):
                 if layout and layout not in self.layouts:
                     reasons.append(
                         "layout %s 不在支持集 %s" % (layout, sorted(self.layouts))
+                    )
+        if self.physical_layouts:
+            allowed = sorted(self.physical_layouts)
+            tensor_count = max(
+                len(signature.dtypes), len(signature.shapes), len(signature.layouts),
+                len(signature.physical_layouts),
+            )
+            if not tensor_count:
+                reasons.append("缺少输入张量的物理排布，无法检查支持集 %s" % allowed)
+            for index in range(tensor_count):
+                layout = (
+                    signature.physical_layouts[index]
+                    if index < len(signature.physical_layouts) else ""
+                )
+                if not layout:
+                    reasons.append(
+                        "输入张量 %d 物理排布未知，无法检查支持集 %s" % (index, allowed)
+                    )
+                elif layout not in self.physical_layouts:
+                    reasons.append(
+                        "输入张量 %d 物理排布 %s 不在支持集 %s" % (index, layout, allowed)
                     )
         if self.soc_models and hardware.soc_model not in self.soc_models:
             reasons.append(
@@ -905,9 +942,9 @@ class KernelDescriptor:
             value["target_soc"] = self.target_soc
         if self.compile_mode != CompileMode.NONE:
             value["compile_mode"] = self.compile_mode.value
-        # 历史记录未序列化 capability；仅规模受限的新记录携带它，
-        # 保证区间进入静态身份且可往返，同时不迁移旧记录的指纹。
-        if self.capability.shape_ranges:
+        # 历史记录未序列化 capability；规模或物理排布受限的新记录携带它，
+        # 保证限制进入静态身份且可往返，同时不迁移旧记录的指纹。
+        if self.capability.shape_ranges or self.capability.physical_layouts:
             value["capability"] = self.capability.to_dict()
         return value
 

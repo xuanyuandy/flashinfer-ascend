@@ -5883,7 +5883,7 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。T6.3 仅在 capability.shape_ranges 非空时序列化 capability，使规模限制进入指纹且可经 manifest 往返；旧记录的序列化与指纹不变。",
+      "notes": "T6.1 复用 artifact: Optional[ArtifactRef] = None；追加 source: Optional[SourceRef] = None 和 target_soc: Optional[str] = None。target_soc 为源码编译维度，已有产物时必须与 artifact.target_soc 一致；不同 SOC 使用不同 kernel_id 分别登记。序列化保留非默认 compile_mode，选择时校验实际编译目标。仅提供静态契约，不宣称编译或加载能力。T6.3/T6.4 在 capability.shape_ranges 或 physical_layouts 非空时序列化 capability，使规模和物理排布限制进入指纹且可经 manifest 往返；旧记录的序列化与指纹不变。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：登记 Ascend 执行体、源码及 SOC 编译目标；固定上游没有本仓 runtime 静态契约。",
       "local_status": "framework",
@@ -5937,9 +5937,63 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "framework",
       "priority": "P2",
-      "notes": "T6.3 新增 shape_ranges: Tuple[ShapeRange, ...] = ()，与枚举型 specializations 独立，所有区间取交集。默认不限制且不写入 to_dict；非默认区间支持 JSON 往返与稳定指纹。dispatch 的自动选择、显式 kernel_id 及 explain_dispatch 共用 unsupported_reasons；对应张量或轴缺失时明确淘汰。build_signature 已提取完整 shapes，无需新增签名字段或读取张量数据。不提供调优数据库、bucket 或排序规则。",
+      "notes": "T6.3 新增 shape_ranges: Tuple[ShapeRange, ...] = ()，与枚举型 specializations 独立，所有区间取交集。默认不限制且不写入 to_dict；非默认区间支持 JSON 往返与稳定指纹。dispatch 的自动选择、显式 kernel_id 及 explain_dispatch 共用 unsupported_reasons；对应张量或轴缺失时明确淘汰。T6.4 新增 physical_layouts: Tuple[str, ...] = ()，是所有输入张量允许的物理排布集合，仅接受 ND / NZ（NZ 精确对应 FRACTAL_NZ=29，不合并 C0 变体或其他分形格式），与 NHD/HND 等逻辑 layouts 独立。默认不限制、不序列化；声明后每个输入都须已知且命中，否则给出带张量索引的可读原因。集合规范化，非默认值进入指纹并支持 manifest 往返。不实现排布转换、tiling 或排序变化。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：在 dispatch 选型阶段声明并解释 kernel 的输入规模限制；固定上游没有本仓 runtime 能力区间契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.hardware.HardwareSignature",
+      "local": "flashinfer.runtime.hardware.HardwareSignature",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.4 在 soc_model / aicore_count 后追加 ub_size_bytes: int = 0，表示每个 Vector Core 可用 UB 字节容量；0 表示未知，拒绝负数和非整数。保持 frozen、可哈希，新字段参与 dispatch 缓存 key。_probe 确认 NPU 可用后，经可选的 CANN Python ACL acl.rt.get_device_info(0, 204) 查询（ACL_DEV_ATTR_UBUF_PER_VECTOR_CORE）；缺 torch_npu / ACL、接口不可用、查询失败均安全降级，UB 失败不丢弃已有 SoC 和核数。不根据 SoC 硬编码容量，不计算 tiling。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：固定上游没有本仓 Ascend 硬件签名及 UB 探测契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.signature.InputSignature",
+      "local": "flashinfer.runtime.signature.InputSignature",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.4 追加 physical_layouts: Tuple[str, ...] = ()，按张量参数顺序记录 ND / NZ，空串表示未知；全未知规范化为空元组，默认不写入 to_dict。保持 frozen、可哈希，已知排布参与 dispatch 缓存 key。手工构造签名的调用方需提供真实排布；未提供时仅满足未声明排布限制的 kernel，不把逻辑 layouts 或连续 stride 当作 NPU 物理排布。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：固定上游没有本仓运行时输入签名及 Ascend 物理排布查询契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.signature.build_signature",
+      "local": "flashinfer.runtime.signature.build_signature",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T6.4 对 NPU 张量惰性调用实测 API torch_npu.get_npu_format，兼容整数和 Format(IntEnum) 返回值：2 映射 ND，29 映射 NZ。其他 CANN 格式（含 NCHW、FRACTAL_Z、NZ_C0 变体）、非 NPU 张量、缺 torch_npu 或查询异常均保持未知。host 假张量只需 dtype / shape 协议；不执行 npu_format_cast，也不读写张量数据。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：固定上游没有本仓运行时输入签名及 Ascend 物理排布查询契约。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",

@@ -1,11 +1,11 @@
 """硬件签名与探测（设计文档 §4）。
 
-签名只保留 **SoC 系列型号 + AI Core 数量**两个字段（§4.1）：
+签名保留 **SoC 系列型号 + AI Core 数量 + 每核 UB 字节容量**：
 同系列不同 SKU（如 910B1 / 910B4）靠 aicore_count 区分；
 软件栈版本（CANN / 驱动）由环境校验承担，不进签名（§4.4）；
 ``ASCEND_RT_VISIBLE_DEVICES`` 只影响可见卡数，不进签名（§4.2）。
 
-无 NPU 环境（host 开发机）时降级为 ``unknown / 0``——
+无 NPU 环境（host 开发机）时降级为 ``unknown / 0 / 0``——
 dispatch 决策、cache key 依然可运行（§14.1 host 单测的前提）。
 """
 
@@ -22,6 +22,11 @@ class HardwareSignature:
 
     soc_model: str = "unknown"  # 系列型号，如 "Ascend910B"；unknown 表示无 NPU
     aicore_count: int = 0       # 0 表示未知
+    ub_size_bytes: int = 0      # 每个 Vector Core 可用 UB 容量，0 表示未知
+
+    def __post_init__(self) -> None:
+        if type(self.ub_size_bytes) is not int or self.ub_size_bytes < 0:
+            raise ValueError("ub_size_bytes must be a non-negative integer (0 means unknown)")
 
     @property
     def is_npu_available(self) -> bool:
@@ -51,8 +56,26 @@ def _normalize_soc_model(device_name: str) -> str:
     return name or "unknown"
 
 
+def _probe_ub_size_bytes(device: int) -> int:
+    """可选的 CANN Python ACL 查询；缺库、旧运行时或设备不支持时返回 0。
+
+    ``acl/acl_rt.h`` 定义 ACL_DEV_ATTR_UBUF_PER_VECTOR_CORE = 204，单位 Byte。
+    torch_npu 的 device properties 未暴露 UB，不用 HBM / L2 容量替代。
+    不初始化或切换设备；由已确认 NPU 可用的 ``_probe`` 调用。
+    """
+    try:
+        import acl
+
+        size, status = acl.rt.get_device_info(device, 204)
+        if status == 0 and type(size) is int and size > 0:
+            return size
+    except Exception:
+        pass
+    return 0
+
+
 def _probe() -> HardwareSignature:
-    """通过 torch_npu 探测硬件；任何一步失败都降级为 unknown，不抛错。"""
+    """通过 torch_npu / 可选 ACL 探测；失败项保留未知值，不抛错。"""
     try:
         import torch
         import torch_npu  # noqa: F401
@@ -68,7 +91,9 @@ def _probe() -> HardwareSignature:
             aicore = int(getattr(props, "multi_processor_count", 0))
         except Exception:
             pass
-        return HardwareSignature(soc_model=soc, aicore_count=aicore)
+        return HardwareSignature(
+            soc_model=soc, aicore_count=aicore, ub_size_bytes=_probe_ub_size_bytes(0),
+        )
     except Exception:
         return HardwareSignature()
 

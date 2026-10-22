@@ -170,6 +170,15 @@ def annotate(entry, upstream):
         }:
             kind = "npu_extension"
             reason = "NPU 扩展：在 dispatch 选型阶段声明并解释 kernel 的输入规模限制；固定上游没有本仓 runtime 能力区间契约。"
+        elif symbol == "flashinfer.runtime.hardware.HardwareSignature":
+            kind = "npu_extension"
+            reason = "NPU 扩展：固定上游没有本仓 Ascend 硬件签名及 UB 探测契约。"
+        elif symbol in {
+            "flashinfer.runtime.signature.InputSignature",
+            "flashinfer.runtime.signature.build_signature",
+        }:
+            kind = "npu_extension"
+            reason = "NPU 扩展：固定上游没有本仓运行时输入签名及 Ascend 物理排布查询契约。"
         elif symbol.endswith(".end_forward") and any(symbol.startswith(c + ".") for c in ATTENTION_CLASSES):
             kind = "compatibility_extension"
             reason = "保留旧版 end_forward 空操作供历史调用兼容；指定上游提交已无该方法，不计入其覆盖分母。"
