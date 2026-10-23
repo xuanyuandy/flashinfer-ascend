@@ -230,7 +230,17 @@ def annotate(entry, upstream):
             "flashinfer.jit.errors.JitSymbolError",
         }:
             kind = "npu_extension"
-            reason = "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。"
+            reason = ("NPU 扩展：T13-I 实现惰性 Ascend C host_shared JIT；CATLASS 为固定 submodule 的按需头文件依赖，13-II 的 AOT/op-package 尚未实现。"
+                      if symbol == "flashinfer.jit.backends.AscendCBackend" else
+                      "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。")
+        elif symbol in {
+            "flashinfer.jit.recipe.BuildRecipe", "flashinfer.jit.recipe.BuildDependency",
+            "flashinfer.jit.recipe.ResolvedBuildRecipe", "flashinfer.jit.recipe.AscendCBuildConfig",
+            "flashinfer.jit.recipe.load_build_recipes", "flashinfer.jit.recipe.resolve_build_recipe",
+            "flashinfer.jit.ascendc.AscendCToolchain",
+        }:
+            kind = "npu_extension"
+            reason = "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。"
         elif symbol in {
             "flashinfer.runtime.schema.GraphCapability",
             "flashinfer.runtime.registry.KernelRegistry.graph_requirements",

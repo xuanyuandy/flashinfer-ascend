@@ -1,0 +1,128 @@
+[
+  {
+    "recipe_id": "matmul_probe",
+    "version": 1,
+    "kernel_id": "ascendc/t13/matmul_probe/native/Ascend950",
+    "implementation": "native",
+    "target_soc": "Ascend950",
+    "npu_arch": "dav-3510",
+    "source": {
+      "language": "ascendc",
+      "locator": "kernels/ascendc/matmul_probe/native.cpp",
+      "digest": "60ddf697c6893c96bdbbb4b31cdb83f50a6e5074df6843a2f98edf9b05d576f7",
+      "schema_version": 1
+    },
+    "sources": [
+      {
+        "language": "ascendc",
+        "locator": "kernels/ascendc/matmul_probe/native.cpp",
+        "digest": "60ddf697c6893c96bdbbb4b31cdb83f50a6e5074df6843a2f98edf9b05d576f7",
+        "schema_version": 1
+      }
+    ],
+    "headers": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
+        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/launch/matmul_probe.inc",
+        "digest": "d58b3a4c8d5100a75a0f352cf28271f52801c2214710db2c88a9bb6d3028d39e",
+        "schema_version": 1
+      }
+    ],
+    "include_dirs": [
+      "csrc/include",
+      "csrc/launch"
+    ],
+    "dependencies": [],
+    "definitions": [],
+    "compile_options": [
+      "-O2"
+    ],
+    "link_options": [],
+    "device_entry": "fi_matmul_probe_native_device_v1",
+    "host_entry": "fi_matmul_probe_v1",
+    "launch_abi": "fi.matmul_probe.v1",
+    "tiling_mode": "none",
+    "tiling_schema_version": 1,
+    "block_dim": 1,
+    "workspace_bytes": 0,
+    "task_type": "aic_only",
+    "sync_policy": "compiler_default",
+    "toolchain": "ascendc",
+    "output_kind": "host_shared",
+    "output_adapter": "ascendc.host_shared.v1",
+    "schema_version": 1
+  },
+  {
+    "recipe_id": "matmul_probe",
+    "version": 1,
+    "kernel_id": "ascendc/t13/matmul_probe/catlass/Ascend950",
+    "implementation": "catlass",
+    "target_soc": "Ascend950",
+    "npu_arch": "dav-3510",
+    "source": {
+      "language": "ascendc",
+      "locator": "kernels/ascendc/matmul_probe/catlass.cpp",
+      "digest": "eea8bf0e9a4c4d878d9786709ff2e561ebc185de462ee4ce612784417621bc3e",
+      "schema_version": 1
+    },
+    "sources": [
+      {
+        "language": "ascendc",
+        "locator": "kernels/ascendc/matmul_probe/catlass.cpp",
+        "digest": "eea8bf0e9a4c4d878d9786709ff2e561ebc185de462ee4ce612784417621bc3e",
+        "schema_version": 1
+      }
+    ],
+    "headers": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
+        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/launch/matmul_probe.inc",
+        "digest": "d58b3a4c8d5100a75a0f352cf28271f52801c2214710db2c88a9bb6d3028d39e",
+        "schema_version": 1
+      }
+    ],
+    "include_dirs": [
+      "csrc/include",
+      "csrc/launch"
+    ],
+    "dependencies": [
+      {
+        "name": "catlass",
+        "revision": "41bf90da655bba3c66d0acd7e00abe33960ecfd6",
+        "include_dir": "include"
+      }
+    ],
+    "definitions": [
+      "CATLASS_ARCH=3510"
+    ],
+    "compile_options": [
+      "-O2"
+    ],
+    "link_options": [],
+    "device_entry": "fi_matmul_probe_catlass_device_v1",
+    "host_entry": "fi_matmul_probe_v1",
+    "launch_abi": "fi.matmul_probe.v1",
+    "tiling_mode": "none",
+    "tiling_schema_version": 1,
+    "block_dim": 1,
+    "workspace_bytes": 0,
+    "task_type": "aic_only",
+    "sync_policy": "compiler_default",
+    "toolchain": "ascendc",
+    "output_kind": "host_shared",
+    "output_adapter": "ascendc.host_shared.v1",
+    "schema_version": 1
+  }
+]

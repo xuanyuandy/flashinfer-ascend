@@ -17,3 +17,14 @@ flashinfer-cache/
 !flashinfer/tuning/data/*/measurements.sqlite3
 *.npubin
 __pycache__/
+# Ascend C scratch and outputs belong in DiskJitBuildStore, never source control.
+*.so
+*.so.*
+*.o
+*.a
+*.run
+*.log
+CMakeCache.txt
+CMakeFiles/
+cmake-build-*/
+packages/

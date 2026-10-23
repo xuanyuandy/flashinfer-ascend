@@ -7010,7 +7010,7 @@
       "priority": "P2",
       "notes": "保留 T18A declare/compile 两钩子：编译器仅向独立 staging 写输出；统一层验证、加锁、原子发布和装载。协议自身不安装编译器。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7028,7 +7028,7 @@
       "priority": "P2",
       "notes": "T18B 使用独立 Python 子进程调用 Triton ASTSource/compile；核验 SourceRef 摘要和目标 SOC，显式 signature/constexprs/options 进入 spec 指纹。产出 NPU ELF、元数据和预编译 Python launcher；导入/声明不探测工具链。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7042,12 +7042,12 @@
       "local": "flashinfer.jit.backends.AscendCBackend",
       "upstream_kind": "stable",
       "semantic_status": "intentionally_different",
-      "implementation_status": "framework",
+      "implementation_status": "functional",
       "priority": "P2",
-      "notes": "纯声明保持兼容。A5 实测 bisheng/ccec 可编设备 ELF；host 包装和 launch ABI 尚未接入，compile 继续显式 NotImplementedError，不伪造产物。",
+      "notes": "T13-I 将冻结 BuildRecipe 绑定到 JitSpec 完整身份，统一 CANN ASC host_shared driver 编译原生与可选 CATLASS 配方；复用 T18B store 的锁、staging、ELF 验证、原子发布和 CDLL loader。仅 A5/CANN 9.2 的固定 FP32 GEMM 已真机验证；无配方/工具链显式失败。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
-      "local_status": "framework",
+      "reason": "NPU 扩展：T13-I 实现惰性 Ascend C host_shared JIT；CATLASS 为固定 submodule 的按需头文件依赖，13-II 的 AOT/op-package 尚未实现。",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
@@ -7064,7 +7064,7 @@
       "priority": "P2",
       "notes": "T18A 统一入口调用后端声明钩子，校验 kernel/source/SOC/选项/路径/符号与请求一致后登记 JitSpec；只读 KernelRegistry，支持自定义两钩子后端，无 dispatch 分支。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7082,7 +7082,7 @@
       "priority": "P2",
       "notes": "T18A 四钩子协议保持不变；T18B 的 DiskJitBuildStore 提供 flock、独立 staging、文件集合校验、完整 manifest 与原子指针发布。协议默认方法仍显式未实现。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7100,7 +7100,7 @@
       "priority": "P2",
       "notes": "T18A 查询状态：unknown_kernel/undeclared/source_only/declared/artifact_recorded/builtin；未声明执行体的现有记录返回未知编译状态，不报错。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7118,7 +7118,7 @@
       "priority": "P2",
       "notes": "T18A 单条 kernel/产物/入口映射快照，复用 SourceRef 与 ArtifactRef，分开期望与已记录路径。is_compiled 表示已登记的编译身份，不证明文件存在、字节有效、ABI 或符号已验证；无元数据时为 None。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7136,7 +7136,7 @@
       "priority": "P2",
       "notes": "只读 kernel/全部声明/产物/符号映射；默认消费统一构建的内存登记，报告实际绝对路径。无记录时保留 18A 相对 locator，不访问磁盘或探测编译器。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7154,7 +7154,7 @@
       "priority": "P2",
       "notes": "显式统一入口：完整 spec 指纹查缓存，flock 锁下二次检查，staging 编译、ELF/符号/文件校验、原子发布、验证并装载。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7172,7 +7172,7 @@
       "priority": "P2",
       "notes": "实现四钩子协议；稳定外置 flock，私有 staging，不可变 generation 和原子 symlink 替换；manifest 校验全文件 SHA-256/size，损坏重编译，失败日志保留。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7190,7 +7190,7 @@
       "priority": "P2",
       "notes": "进程内编译身份/实际路径登记；初始化无 I/O，供只读 describe_artifact 消费。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7208,7 +7208,7 @@
       "priority": "P2",
       "notes": "按真实格式装载：Triton npubin 复用 CompiledKernel 与已编译 Python runtime 扩展，显式 host .so 使用 ctypes；按 device/记录保留 LRU，失败/缺符号分别报错。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7226,7 +7226,7 @@
       "priority": "P2",
       "notes": "构建错误基类，携带 kernel/spec、命令、返回码和可保留的日志路径。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7244,7 +7244,7 @@
       "priority": "P2",
       "notes": "源码/编译失败的可定位错误。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7262,7 +7262,7 @@
       "priority": "P2",
       "notes": "产物/运行时装载失败的可定位错误。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7280,7 +7280,7 @@
       "priority": "P2",
       "notes": "缺少设备/host 入口符号的独立错误类型。",
       "api_kind": "npu_extension",
-      "reason": "NPU 扩展：T18B 在纯声明协议上接入 Triton npubin 编译/装载、完整 spec 指纹磁盘缓存及只读映射；Ascend C host 包装与 launch ABI 仍显式未实现。",
+      "reason": "NPU 扩展：T18B 实现统一磁盘缓存及 Triton 编译/装载；T13-I 在同一缓存与 loader 上实现 Ascend C host_shared，AOT/op-package 留给 13-II。",
       "local_status": "framework",
       "consumers": {
         "vllm": "unverified",
@@ -7716,6 +7716,132 @@
       "api_kind": "npu_extension",
       "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
       "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.recipe.BuildRecipe",
+      "local": "flashinfer.jit.recipe.BuildRecipe",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "不可变配方：source 闭包、变体、依赖版本、flags、device/host entry、launch/tiling/task/sync 协议与 host_shared adapter 统一进入构建身份。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.recipe.BuildDependency",
+      "local": "flashinfer.jit.recipe.BuildDependency",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "按配方声明的固定 Git 依赖；原生配方不含 CATLASS。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.recipe.ResolvedBuildRecipe",
+      "local": "flashinfer.jit.recipe.ResolvedBuildRecipe",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "显式解析得到的 source/CMake/依赖实际内容与工具链摘要；绝对根目录用于定位，不代替内容身份。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.recipe.AscendCBuildConfig",
+      "local": "flashinfer.jit.recipe.AscendCBuildConfig",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "默认 native，可按 recipe_id 覆盖；仅选择已声明变体，缺失或歧义报错，无失败后静默换实现。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.recipe.load_build_recipes",
+      "local": "flashinfer.jit.recipe.load_build_recipes",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "仅显式调用时读取 JSON 配方；import/auto 不读构建 manifest 或探测工具链。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.recipe.resolve_build_recipe",
+      "local": "flashinfer.jit.recipe.resolve_build_recipe",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "核验选中配方的 SourceRef、依赖固定 commit 和完整 include 树实际内容；native 不读取 CATLASS，也不运行 Git。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.ascendc.AscendCToolchain",
+      "local": "flashinfer.jit.ascendc.AscendCToolchain",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "仅显式 discover 时探测 CANN bisheng/CMake/host C++，记录实际版本、binary、CANN 配置与 host ABI；不由 import、descriptor、auto 或纯声明触发。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"

@@ -7,6 +7,7 @@ and registration. Optional compiler packages are imported only by a build worker
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 import hashlib
 import json
@@ -195,20 +196,69 @@ class TritonBackend(_SourceBackend):
 
 
 class AscendCBackend(_SourceBackend):
-    """Declare Ascend C units without locating or invoking the CANN compiler."""
+    """One Ascend C driver for frozen native/CATLASS host_shared recipes.
+
+    Construction and declaration perform no I/O. Resolve the selected recipe
+    explicitly, then supply it and its toolchain. Legacy pure declarations are
+    retained, but compiling one without a bound recipe raises a build error.
+    """
 
     backend_id = "ascendc"
+    generator_version = "2"
     descriptor_backends = (
         Backend.ASCENDC, Backend.ASCENDC_AOT, Backend.ASCENDC_JIT,
         Backend.CUSTOM, Backend.EXTERNAL,
     )
 
+    def __init__(self, *, recipes=(), toolchain=None):
+        from .recipe import ResolvedBuildRecipe
+
+        self._recipes = {}
+        for resolved in recipes:
+            if not isinstance(resolved, ResolvedBuildRecipe):
+                raise TypeError("AscendCBackend recipes must be frozen ResolvedBuildRecipe")
+            if resolved.recipe.kernel_id in self._recipes:
+                raise SchemaError("duplicate Ascend C recipe kernel_id")
+            self._recipes[resolved.recipe.kernel_id] = resolved
+        self.toolchain = toolchain
+
+    def declare(self, descriptor, **kwargs):
+        spec = super().declare(descriptor, **kwargs)
+        resolved = self._recipes.get(descriptor.kernel_id)
+        if resolved is None:
+            if self._recipes:
+                raise SchemaError("no frozen Ascend C recipe for " + descriptor.kernel_id)
+            return spec
+        recipe = resolved.recipe
+        recipe.validate_descriptor(descriptor)
+        if (spec.environment_fingerprint != resolved.toolchain_fingerprint
+                or self.toolchain is None or self.toolchain.fingerprint != resolved.toolchain_fingerprint):
+            raise SchemaError("Ascend C declaration must bind the resolved toolchain identity")
+        if spec.entry_points != (recipe.host_entry,) or not spec.output_path.endswith(".so"):
+            raise SchemaError("host_shared recipe requires its declared host entry and .so output")
+        # Include paths/definitions must be represented by recipe inputs, not
+        # injected as untracked external files through a command-line override.
+        for option in spec.compile_options + recipe.compile_options + recipe.link_options:
+            if option.startswith(("-I", "-D", "-U", "-include", "-isystem", "-iquote", "@", "--npu-arch")):
+                raise SchemaError("declare includes/definitions/architecture in BuildRecipe: " + option)
+        bindings = spec.input_fingerprints + (("build_recipe", recipe.fingerprint),
+                                              ("resolved_recipe", resolved.fingerprint))
+        return replace(spec, name="kernel." + _canonical_hash(dict(base=spec.fingerprint,
+                       resolved_recipe=resolved.fingerprint)), input_fingerprints=bindings)
+
     def compile(self, spec: JitSpec, *, build_directory: Path) -> None:
-        raise NotImplementedError(
-            "ascendc compilation/loading remains unimplemented in T18B: bisheng/ccec "
-            "can produce a device ELF, but a host wrapper and launch ABI have not "
-            "been integrated or validated. No artifact was built or loaded."
-        )
+        from .ascendc import compile_host_shared
+
+        resolved = self._recipes.get(spec.kernel_id)
+        if resolved is None or self.toolchain is None:
+            directory = Path(build_directory)
+            directory.mkdir(parents=True, exist_ok=True)
+            log = directory / "build.log"
+            message = "ascendc compilation requires an explicitly resolved BuildRecipe and CANN toolchain"
+            log.write_text(message + "\n", encoding="utf-8")
+            raise JitCompilationError(message, kernel_id=spec.kernel_id or spec.name,
+                spec_fingerprint=spec.fingerprint, log_path=log)
+        compile_host_shared(spec, resolved, self.toolchain, build_directory)
 
 
 def _compile_options(options: Tuple[str, ...]) -> Tuple[str, ...]:

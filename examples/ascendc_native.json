@@ -1,0 +1,5 @@
+{
+  "implementation": "native",
+  "output_kind": "host_shared",
+  "target_soc": "Ascend950"
+}

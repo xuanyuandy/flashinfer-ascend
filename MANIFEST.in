@@ -1,0 +1,2 @@
+recursive-include csrc CMakeLists.txt *.cmake *.json *.h *.inc *.cpp
+recursive-include kernels/ascendc *.cpp *.h *.inc

@@ -1,9 +1,10 @@
-# JIT 声明、惰性编译与装载（T18A / T18B）
+# JIT 声明、惰性编译与装载（T18A / T18B / T13-I）
 
 `flashinfer.jit` 的编译单元沿用 `JitSpec`。声明、登记、选型和查询仍无需
 Triton、torch 或 CANN 编译器。只有显式调用 `build_and_load()` 才进入
-编译 / 装载路径。Triton 已在 A5 上完成真实编译和执行；Ascend C 继续显式
-`NotImplementedError`，容器有可用设备编译器，但 host 包装和 launch ABI 尚未接入。
+编译 / 装载路径。Triton 与 Ascend C host_shared 均已在 A5 上完成真实编译和执行。
+Ascend C 的工具链发现与配方解析也是显式操作，不由 import、auto 或纯声明触发。
+JIT 主产物为 host `.so`；AOT 的标准 op-package 留给 T13-II。
 
 ## A5 实测产物先于装载设计
 
@@ -83,7 +84,7 @@ def compile(spec: JitSpec, *, build_directory: Path) -> None: ...
 新后端实现这两个方法和 `backend_id`，交给同一个 `declare_kernel()` 即可；
 不需要在 dispatch 增加分支。声明阶段不读文件、不导入 kernel 源码、不编译。
 `compile` 的正常返回只表示编译器调用结束，统一层仍必须验证输出。Triton
-提供真实实现，Ascend C 保留显式未实现。编译器只能向统一层提供的 staging 根写出声明产物，不能
+与 Ascend C 均提供真实实现。编译器只能向统一层提供的 staging 根写出声明产物，不能
 自行管理缓存、发布、装载或登记。
 
 `TritonBackend` 接受 `language="triton"`；`AscendCBackend` 接受
@@ -254,8 +255,89 @@ manifest 和全部产物先完成，再发布同一个指针，读者看到完�
 表示入口未导出 / 未解析；二者保存 traceback 日志。Python API 装载没有进程返回码，
 此时 `returncode=None`，不会虚构编译命令或成功产物。
 
-Ascend C 实测 `bisheng` / `ccec` 均可启动，最小设备源码可编成 machine `0x1029`
-的 relocatable ELF。没有名为 `ascendc` 的 CLI。可用设备编译器不等于已有可用的
-host wrapper / launch ABI：本次不生成未经执行验证的 Ascend C 装载路径。
-跨模块 device linking、自动源码依赖追踪、运行时 ABI 跨版本适配，以及把旧 Attention
-配方接到真实 kernel，均保留为显式待做项；无需用户确认即可使用已经完成的 Triton 路径。
+Ascend C 使用 `bisheng` 和 CANN ASC CMake，host wrapper 与 device binary 一起链接为
+host `ET_DYN`。不把 NPU relocatable `.o` 交给 CDLL。跨模块 device linking、运行时
+ABI 跨版本适配，以及把旧 Attention 配方接到真实 kernel，仍需各自实现和验证。
+
+## Ascend C BuildRecipe（T13-I）
+
+`csrc/recipes/matmul_probe.json` 声明两个独立 kernel_id 的配方，语言均为 `ascendc`。
+这两个是新增的固定 FP32 GEMM **测试记录**，示例只在独立 KernelRegistry 显式登记；
+既有全局 79 条记录、选型、graph capability 与证据门禁均未改变。该 probe 不提供生产 GEMM 性能承诺。
+
+`BuildRecipe` 的完整字段分组如下：
+
+| 字段 | 作用 |
+|---|---|
+| `schema_version, recipe_id, version, kernel_id` | 配方及执行体身份 |
+| `toolchain, implementation, target_soc, npu_arch` | 同一个 Ascend C 后端的 native/CATLASS 变体及精确目标 |
+| `source, sources, headers, include_dirs` | 主 SourceRef、所有编译单元与本仓头文件的内容摘要；include 根只是定位 |
+| `dependencies` | `BuildDependency(name, revision, include_dir)`；CATLASS 固定 commit，native 为空 |
+| `definitions, compile_options, link_options, sync_policy` | 有序 flags 和同步约定，不能从全局 CPATH 注入依赖 |
+| `device_entry, host_entry, launch_abi, task_type` | 设备入口、宿主 C 入口、ABI id 和 kernel 类型 |
+| `tiling_mode, tiling_schema_version, block_dim, workspace_bytes` | tiling/launch 协议；v1 实现固定参数、无 buffer/workspace 的 AIC-only |
+| `output_kind, output_adapter` | 本次只支持 `host_shared / ascendc.host_shared.v1`，其他组合明确失败 |
+
+新增 kernel 须提供自己的 device 源码、host launcher、完整 source/header 摘要、上述配方，
+以及 source/target/launch ABI/tiling 版本匹配的 KernelDescriptor。变体使用不同具体
+kernel_id / SourceRef；配置只选择已经存在的变体，不修改已选 descriptor 或失败后换实现。
+主 SourceRef 和额外文件都在编译前重新校验；仅显式列出的文件会被快照到编译目录，
+因此遗漏本仓 include 会直接编译失败，不能悄悄读工作树中的未声明文件。
+
+统一路径为：
+
+```text
+AscendCBuildConfig.select -> 选中 BuildRecipe
+AscendCToolchain.discover + resolve_build_recipe -> 冻结工具链/实际依赖内容
+AscendCBackend(recipes=(resolved,), toolchain=toolchain)
+declare_kernel -> JitSpec -> build_and_load -> 原有 ELF verifier / CDLL loader
+```
+
+`resolve_build_recipe` 校验固定 Git commit，并散列实际 include 树，脏 header 也改变
+身份；native 根本不读取 CATLASS 路径或运行 Git。只有选中 CATLASS 变体才需要手动
+`git submodule update --init -- 3rdparty/catlass`，不由 Python 下载依赖。
+`AscendCBuildConfig` 默认 native，支持 `overrides=((recipe_id, implementation), ...)`；
+JSON 文件的 overrides 使用同名对象。找不到变体或出现歧义均明确报错。
+
+配方摘要与解析结果摘要分别进入 `JitSpec.input_fingerprints` 的 `build_recipe` 和
+`resolved_recipe`，同时保留 descriptor、包版本、环境、目标、特化、入口、flags、输出路径身份。
+解析结果覆盖 CMake 输入和实际依赖内容；工具链身份覆盖 bisheng/CMake/host C++ 的版本与
+binary、CANN 版本/构建配置、host ABI 和 driver。编译钩子只消费这份冻结结果，不再读取实现选择配置。
+
+同一个 `csrc/CMakeLists.txt` / `cmake/HostShared.cmake` 消费 sources/includes/definitions；
+没有 CATLASS 分支、独立编译器、缓存或 loader。CMake scratch（含临时头文件副本）在
+编译结束后清理，只发布 `kernel.so`、`ascendc-recipe.json`、`build.log` 与原有 manifest。
+锁、二次查询、staging、全文件校验、原子发布、失败日志和加载 receipt 全部复用 T18B。
+
+重放本次 A5 验证（先配置 CANN 环境，Python 固定如下）：
+
+```bash
+PY=/root/miniforge3/envs/flashinfer-a5/bin/python
+E=/root/.cache/flashinfer/t13-i-evidence
+git submodule deinit -f -- 3rdparty/catlass
+rmdir 3rdparty/catlass
+test ! -e 3rdparty/catlass
+env -u CPATH -u CPLUS_INCLUDE_PATH "$PY" examples/ascendc_jit_a5.py \
+  --config examples/ascendc_native.json --cache-dir "$E/no-catlass"
+git submodule update --init --no-fetch -- 3rdparty/catlass
+"$PY" examples/ascendc_jit_a5.py \
+  --config examples/ascendc_catlass.json --cache-dir "$E/no-catlass"
+```
+
+两份配置文件只有 `implementation` 不同，脚本及源码无需编辑。两边首次均输出
+`disk_cache_hit: False`、`LOAD_OK: shared_library entry: fi_matmul_probe_v1`，
+256 个输出逐项等于独立 CPU GEMM，`max_abs_error: 0.0`，前八值均为
+`[-1.0, 9.0, -1.0, 4.0, -11.0, -1.0, 9.0, -1.0]`。输出预填 NaN，空 launch 不能通过检查。
+生成器给设备符号使用各自唯一名字，宿主遵守同一个四指针 C ABI。
+
+`--cache-only` 从示例保存的 JitSpec 重载；该模式禁止 subprocess/compile，既不发现
+编译器，也不需要源码或 CATLASS。wheel/sdist 仅携带本仓自己的 CMake、配方、源码和
+launcher；构建 Python 分发包不会运行设备编译器。安装后的源码位于
+`flashinfer/data/build/{csrc,kernels/ascendc}`，可用 `--source-root` 显式覆盖，
+CATLASS 可用 `--catlass-root` 指向调用者初始化的固定 Git checkout。
+
+验证范围仅 CANN 9.2 beta.2 / A5 / FP32 16×16×16 / AIC-only / 固定 tiling，
+尚未验证 A2/A3/310P、动态 shape、mixed task、workspace、性能或图捕获。
+13-II 已确定 AOT 主产物为标准 op-package；实施前还需固定 package manifest、
+完整多文件清单与 digest、vendor/版本/SOC 布局、ACLNN/tiling ABI、build-only 导出，
+以及安装或搜索路径与同进程多版本隔离规则。不能用现有单文件 ArtifactRef 冒充包完成。

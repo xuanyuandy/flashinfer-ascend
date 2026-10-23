@@ -191,12 +191,15 @@ def test_declaration_needs_source_and_target_and_checks_backend():
         declare(backend=AscendCBackend())
 
 
-def test_ascendc_remains_explicitly_unimplemented_without_writing(tmp_path):
+def test_ascendc_legacy_declaration_requires_a_resolved_recipe_to_compile(tmp_path):
+    from flashinfer.jit import JitCompilationError
+
     backend = AscendCBackend()
     spec = declare(descriptor(backend.backend_id), backend)
-    with pytest.raises(NotImplementedError, match=backend.backend_id + r".*18B"):
+    with pytest.raises(JitCompilationError, match="explicitly resolved BuildRecipe") as caught:
         backend.compile(spec, build_directory=tmp_path)
-    assert list(tmp_path.iterdir()) == []
+    assert caught.value.log_path == tmp_path / "build.log"
+    assert caught.value.log_path.is_file()
 
 
 def test_triton_rejects_missing_executable_options_with_a_readable_log(tmp_path):
@@ -532,7 +535,7 @@ def test_new_interfaces_are_tracked_in_reproducible_parity_ledger():
         for name in names:
             entry = entries["flashinfer.jit." + module + "." + name]
             assert entry.api_kind == "npu_extension"
-            assert entry.implementation_status == ("functional" if name == "TritonBackend" else "framework")
+            assert entry.implementation_status == ("functional" if name in {"TritonBackend", "AscendCBackend"} else "framework")
             assert ParityEntry.from_dict(annotate(entry.to_dict(), NoUpstreamExtension())) == entry
     for symbol in (
         "build.build_and_load", "cache.DiskJitBuildStore", "cache.jit_cache_index",
