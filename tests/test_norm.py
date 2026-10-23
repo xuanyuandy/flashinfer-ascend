@@ -490,6 +490,7 @@ class TestGemmaNormNumerics:
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
+    @pytest.mark.real_compile
     def test_gemma_fused_add_rmsnorm_triton_npu_vs_fp64(self, dtype, atol):
         """M1 验收口径：Triton 自定义 kernel 与 fp64 参考数值一致。"""
         self._require_npu()
@@ -514,6 +515,7 @@ class TestGemmaNormNumerics:
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
+    @pytest.mark.real_compile
     def test_gemma_fused_triton_vs_reference_consistency(self, dtype, atol):
         """跨 backend 一致性：Triton 与 reference 同输入结果一致。"""
         self._require_npu()

@@ -25,3 +25,6 @@ flashinfer = ["data/*.json", "data/kernels/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "real_compile: invokes a real compiler or builds/loads real compiled artifacts on disk (including JIT compilation on cache misses)",
+]

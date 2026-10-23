@@ -94,6 +94,7 @@ def request_in_process(spec_dict, library, counter, root, ready, start, results)
         results.put(("error", str(error)))
 
 
+@pytest.mark.real_compile
 def test_two_processes_compile_once_and_both_load_correct_bytes(tmp_path, native_library):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     assert isinstance(store, JitBuildStore)
@@ -121,6 +122,7 @@ def test_two_processes_compile_once_and_both_load_correct_bytes(tmp_path, native
             assert worker.exitcode == 0
 
 
+@pytest.mark.real_compile
 def test_two_threads_share_one_build_and_loaded_module(tmp_path, native_library):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     cache = JitCacheIndex()
@@ -135,6 +137,7 @@ def test_two_threads_share_one_build_and_loaded_module(tmp_path, native_library)
     assert list((store.root / ".staging").iterdir()) == []
 
 
+@pytest.mark.real_compile
 def test_status_records_real_path_and_symbol_without_query_io(tmp_path, native_library, monkeypatch):
     backend, spec, store, registry, specs = unit(tmp_path, native_library)
     cache = JitCacheIndex()
@@ -155,6 +158,7 @@ def test_status_records_real_path_and_symbol_without_query_io(tmp_path, native_l
 
 
 @pytest.mark.parametrize("corrupt", ["artifact", "manifest", "auxiliary"])
+@pytest.mark.real_compile
 def test_corruption_rebuilds_atomically_and_retains_old_generation(tmp_path, native_library, corrupt):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     build_and_load(spec, backend=backend, store=store, cache=JitCacheIndex())
@@ -176,6 +180,7 @@ def test_corruption_rebuilds_atomically_and_retains_old_generation(tmp_path, nat
     assert store.directory(store.lookup(spec)) != old_directory
 
 
+@pytest.mark.real_compile
 def test_no_reader_sees_a_partial_generation_and_lock_inode_survives_publish(tmp_path, native_library):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     from flashinfer.jit.build import _verify_output
@@ -200,6 +205,7 @@ def test_no_reader_sees_a_partial_generation_and_lock_inode_survives_publish(tmp
     {"specialization_fingerprint": sha("other specialization")},
     {"environment_fingerprint": sha("other compiler")}, {"target_soc": "other_target"},
 ])
+@pytest.mark.real_compile
 def test_full_spec_identity_drives_disk_cache(tmp_path, native_library, changes, monkeypatch):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     def forbidden(*args, **kwargs):
@@ -212,6 +218,7 @@ def test_full_spec_identity_drives_disk_cache(tmp_path, native_library, changes,
 
 
 @pytest.mark.parametrize("policy", [JitCompilationPolicy.CACHE_ONLY, JitCompilationPolicy.DISABLED])
+@pytest.mark.real_compile
 def test_compilation_policy_blocks_miss_but_allows_verified_hit(tmp_path, native_library, policy):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     with pytest.raises(MissingJITCacheError, match=policy.value):
@@ -264,6 +271,7 @@ def test_nonzero_compiler_return_code_and_stderr_survive_staging_cleanup(tmp_pat
     assert store.lookup(spec) is None
 
 
+@pytest.mark.real_compile
 def test_missing_symbol_is_distinct_from_load_failure(tmp_path, native_library):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     build_and_load(spec, backend=backend, store=store, cache=JitCacheIndex())
@@ -284,6 +292,7 @@ def test_missing_symbol_is_distinct_from_load_failure(tmp_path, native_library):
     assert failed.value.log_path.is_file()
 
 
+@pytest.mark.real_compile
 def test_missing_compiled_symbol_never_publishes(tmp_path, native_library):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     spec = replace(spec, entry_points=("missing_entry",))
@@ -292,6 +301,7 @@ def test_missing_compiled_symbol_never_publishes(tmp_path, native_library):
     assert store.lookup(spec) is None
 
 
+@pytest.mark.real_compile
 def test_publication_failure_keeps_the_previous_complete_generation(tmp_path, native_library, monkeypatch):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     build_and_load(spec, backend=backend, store=store, cache=JitCacheIndex())
@@ -312,6 +322,7 @@ def test_publication_failure_keeps_the_previous_complete_generation(tmp_path, na
     assert not list((store.root / spec.fingerprint[:2]).glob(".publish-*"))
 
 
+@pytest.mark.real_compile
 def test_foreign_directory_at_a_key_is_quarantined_before_rebuild(tmp_path, native_library):
     backend, spec, store, _, _ = unit(tmp_path, native_library)
     target = store.root / spec.fingerprint[:2] / spec.fingerprint

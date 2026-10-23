@@ -27,6 +27,9 @@
 运行 A5 上已有的 CANN/Triton 算子及了解当前源码布局，先阅读
 [`a5.md`](a5.md)。
 
+本地日常测试、CI / 提交前全量测试及新增编译类测试的标记规则，见
+[`testing.md`](testing.md)。
+
 1. [`architecture.md`](architecture.md)：总体目标、分层和架构决策。
 2. [`framework_design.md`](framework_design.md)：新仓框架设计——`flashinfer.xx`
    接口对标、CANN / Ascend C / Triton 多 backend 调度、AOT/JIT 双模式与
