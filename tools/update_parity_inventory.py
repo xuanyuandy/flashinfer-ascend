@@ -160,6 +160,25 @@ class Upstream:
                                 yield symbol + "." + child.name
 
 
+def annotate_attention_workspace(entry):
+    """Refresh only T10 evidence, also usable without rebuilding the inventory."""
+    symbol = entry["upstream"]
+    if not any(symbol == c or symbol.startswith(c + ".") for c in ATTENTION_CLASSES):
+        return entry
+    if symbol.endswith(".workspace_size"):
+        entry.update(implementation_status="framework", local_status="framework",
+                     notes="Host reference 和外部 provider 的只读 workspace 查询保留；原生 CANN 显式查询返回 FIA v1 最大字节数，不发布 plan、不写固定 buffer，非图 plan 不执行最大查询。")
+    reason = entry.get("reason", "")
+    reason = reason.replace("最大 workspace 与重放期动态长度/tiling 更新待 T10/T11", "最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11")
+    reason = reason.replace("原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11", "原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11")
+    if "reason" in entry:
+        entry["reason"] = reason
+    if symbol in ATTENTION_CLASSES:
+        entry["notes"] = (entry.get("notes", "").split(" use_max_workspace", 1)[0]
+                          + " use_max_workspace=False 为 NPU 扩展的仅关键字参数；显式开启且 use_cuda_graph=True 时，plan 查询 FIA v1 最大字节容量并校验调用方固定 workspace，run 透传同一地址；默认关闭以保留内存代价，未实现的 T11 tiling 更新不在此保证内。")
+    return entry
+
+
 def annotate(entry, upstream):
     symbol = entry["upstream"]
     resolved = upstream.resolve(symbol)
@@ -263,9 +282,7 @@ def annotate(entry, upstream):
     if symbol.endswith(".is_cuda_graph_enabled") or symbol.endswith(".use_tensor_cores"):
         entry.update(local=symbol, semantic_status="compatible", reason="",
                      notes="保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。")
-    if symbol.endswith(".workspace_size") and any(symbol.startswith(c + ".") for c in ATTENTION_CLASSES):
-        entry.update(implementation_status="framework", local_status="framework",
-                     notes="Host reference 和外部 provider 的只读 workspace 查询可执行；原生 CANN 最大 workspace 尚待 T10，当前显式报错。")
+    annotate_attention_workspace(entry)
     if symbol == "flashinfer.fused_moe.RoutingMethodType":
         entry.update(upstream_alias_of="flashinfer.tllm_enums.RoutingMethodType",
                      notes="兼容导入路径；唯一枚举定义为 flashinfer.tllm_enums.RoutingMethodType，11 个成员的值与固定上游一致。")

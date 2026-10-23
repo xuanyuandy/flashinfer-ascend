@@ -2201,8 +2201,8 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 与重放期动态长度/tiling 更新待 T10/T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
-      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
+      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
+      "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。 use_max_workspace=False 为 NPU 扩展的仅关键字参数；显式开启且 use_cuda_graph=True 时，plan 查询 FIA v1 最大字节容量并校验调用方固定 workspace，run 透传同一地址；默认关闭以保留内存代价，未实现的 T11 tiling 更新不在此保证内。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
         "path": "flashinfer/decode.py",
@@ -2270,7 +2270,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 与重放期动态长度/tiling 更新待 T10/T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
+      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
       "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -2348,7 +2348,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 与重放期动态长度/tiling 更新待 T10/T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
+      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
       "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -2398,7 +2398,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 与重放期动态长度/tiling 更新待 T10/T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
+      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
       "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -2448,7 +2448,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 与重放期动态长度/tiling 更新待 T10/T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
+      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
       "notes": "indptr/indices/last_page_len 真正决定 KV 寻址；q_len_per_req 支持 1 与多 token，后者按因果执行且要求 use_tensor_cores=True。Host/provider 路由保留，workspace query 不改写已发布计划。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -2508,8 +2508,8 @@
       "implementation_status": "framework",
       "priority": "P0",
       "backend": "cann",
-      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 与重放期动态长度/tiling 更新待 T10/T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
-      "notes": "Host reference 和外部 provider 的只读 workspace 查询可执行；原生 CANN 最大 workspace 尚待 T10，当前显式报错。",
+      "reason": "公开 plan 分页参数与 eager reset/forward 对齐；CANN 为按请求 FIA 组合。图模式已接入 plan 固定 buffer 与冻结校验；最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；split-K/特殊位置与量化执行等未支持能力明确报错。",
+      "notes": "Host reference 和外部 provider 的只读 workspace 查询保留；原生 CANN 显式查询返回 FIA v1 最大字节数，不发布 plan、不写固定 buffer，非图 plan 不执行最大查询。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
         "path": "flashinfer/decode.py",
@@ -4228,8 +4228,8 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
-      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。 use_max_workspace=False 为 NPU 扩展的仅关键字参数；显式开启且 use_cuda_graph=True 时，plan 查询 FIA v1 最大字节容量并校验调用方固定 workspace，run 透传同一地址；默认关闭以保留内存代价，未实现的 T11 tiling 更新不在此保证内。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
         "path": "flashinfer/prefill.py",
@@ -4299,7 +4299,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4377,7 +4377,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4444,7 +4444,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4470,7 +4470,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4505,8 +4505,8 @@
       "implementation_status": "framework",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
-      "notes": "Host reference 和外部 provider 的只读 workspace 查询可执行；原生 CANN 最大 workspace 尚待 T10，当前显式报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "notes": "Host reference 和外部 provider 的只读 workspace 查询保留；原生 CANN 显式查询返回 FIA v1 最大字节数，不发布 plan、不写固定 buffer，非图 plan 不执行最大查询。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
         "path": "flashinfer/prefill.py",
@@ -4531,8 +4531,8 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
-      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。 use_max_workspace=False 为 NPU 扩展的仅关键字参数；显式开启且 use_cuda_graph=True 时，plan 查询 FIA v1 最大字节容量并校验调用方固定 workspace，run 透传同一地址；默认关闭以保留内存代价，未实现的 T11 tiling 更新不在此保证内。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
         "path": "flashinfer/prefill.py",
@@ -4600,7 +4600,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4678,7 +4678,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4721,7 +4721,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -4747,7 +4747,7 @@
       "implementation_status": "functional",
       "priority": "P0",
       "backend": "cann",
-      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 和重放期动态长度/tiling 更新待 T10/T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
+      "reason": "CANN 为按请求收集 KV 的 FIA 组合实现；use_cuda_graph 已接入 plan 固定 buffer 与冻结校验。原生最大 workspace 已由 use_max_workspace 显式接入；重放期动态长度/tiling 更新待 T11；特殊位置编码/soft-cap/JIT 变体与 split-K 控制未支持时明确报错。",
       "notes": "真实 A5 支持分页与末页、ragged 分段、GQA、NHD/HND、out/LSE；按固定提交支持 lse_base=log2/ln 与 lse_layout=NH/HN。外部 provider 与 Host reference 保留。",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",

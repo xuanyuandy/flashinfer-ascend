@@ -95,6 +95,8 @@ class BatchPrefillWithPagedKVCacheWrapper(PublicBatchWrapper):
 
     plan() runs outside capture. The first successful graph plan freezes the
     execution choices; aclgraph capture/replay belongs to the caller.
+    use_max_workspace=True queries FIA's maximum in graph plan() and checks
+    the caller's fixed byte workspace. The default False preserves memory use.
     """
 
     def __init__(
@@ -113,6 +115,8 @@ class BatchPrefillWithPagedKVCacheWrapper(PublicBatchWrapper):
         jit_kwargs: Optional[Dict[str, Any]] = None,
         variant_owns_mask: bool = False,
         max_total_num_rows: Optional[int] = None,
+        *,
+        use_max_workspace: bool = False,
     ) -> None:
         self._init_facade(AttentionMode.BATCH_PREFILL_PAGED, locals())
 
@@ -245,7 +249,7 @@ class BatchPrefillWithPagedKVCacheWrapper(PublicBatchWrapper):
 
 
 class BatchPrefillWithRaggedKVCacheWrapper(PublicBatchWrapper):
-    """Ragged prefill with the same fixed-buffer graph plan contract as paged prefill."""
+    """Ragged prefill with paged prefill's graph and use_max_workspace contracts."""
 
     def __init__(
         self,
@@ -260,6 +264,8 @@ class BatchPrefillWithRaggedKVCacheWrapper(PublicBatchWrapper):
         jit_args: Optional[List[Any]] = None,
         jit_kwargs: Optional[Dict[str, Any]] = None,
         variant_owns_mask: bool = False,
+        *,
+        use_max_workspace: bool = False,
     ) -> None:
         self._init_facade(AttentionMode.BATCH_PREFILL_RAGGED, locals())
 

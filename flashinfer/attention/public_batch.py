@@ -26,7 +26,7 @@ from .schema import (
     AttentionMode, AttentionPlanSpec, CustomMaskSpec, KVLayout,
     PagedKVMetadata, PagedPrefillMetadata, RaggedKVMetadata,
 )
-from .workspace import AttentionWorkspaceContract, WorkspaceRequirementUnknownError
+from .workspace import AttentionWorkspaceContract
 
 
 def _real_tensor(value):
@@ -44,6 +44,9 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
         if values.get("variant_owns_mask") or values.get("jit_args") is not None or values.get("jit_kwargs") is not None:
             raise NotImplementedError("custom JIT variants are not implemented by the batch facade")
         graph = bool(values["use_cuda_graph"])
+        self._use_max_workspace = bool(values.get("use_max_workspace", False))
+        self._native_workspace_query_only = False
+        self._native_max_workspace_key = None
         if mode == AttentionMode.BATCH_PREFILL_PAGED:
             names = ("qo_indptr_buf", "paged_kv_indptr_buf", "paged_kv_indices_buf", "paged_kv_last_page_len_buf")
             fixed = values.get("qo_indptr_buf")
@@ -108,6 +111,8 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             self._session = AttentionFrameworkSession(mode, graph_enabled=graph, fixed_batch_size=fixed_batch_size)
             self._float_workspace_buffer = workspace
             self._int_workspace_buffer = torch.empty(0, dtype=torch.uint8, device=workspace.device)
+            self._graph_workspace_bindings = tuple(self._graph_buffer_binding(value) for value in
+                                                   (workspace, self._int_workspace_buffer))
             self._workspace_contract = AttentionWorkspaceContract(
                 "cann", str(workspace.device), workspace.numel(), 0, graph_enabled=graph,
             )
@@ -392,12 +397,18 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
                 self._validate_graph_inputs(graph_inputs)
                 if self._fixed_block_tables is not None and self._graph_buffer_binding(self._fixed_block_tables) != self._fixed_block_table_binding:
                     raise AttentionStateError("fixed block_tables address/shape/dtype/device changed")
+            workspace, workspace_key = self._prepare_native_workspace(candidate)
+            if self._native_workspace_query_only:
+                self._workspace_contract = workspace
+                return
+            if self.is_graph_enabled:
                 self._copy_graph_inputs(graph_inputs, non_blocking=non_blocking)
                 if block_tables is not None and self._fixed_block_tables is not None:
                     self._fixed_block_tables.copy_(block_tables, non_blocking=non_blocking)
             self._session.commit_prepared_plan(candidate)
             self._native_decision = decision
-            self._workspace_contract = self._workspace_contract.bind_plan(candidate.generation)
+            self._workspace_contract = workspace
+            self._native_max_workspace_key = workspace_key
             self._graph_plan_state = graph_state
             if self.is_graph_enabled and block_tables is not None and self._fixed_block_tables is None:
                 self._fixed_block_tables = block_tables
@@ -417,6 +428,45 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
         self._commit_plan(spec, metadata, mask_data)
         if self.is_graph_enabled:
             self._graph_plan_state = graph_state
+
+    def _validate_native_workspace_binding(self):
+        bindings = tuple(self._graph_buffer_binding(value) for value in
+                         (self._float_workspace_buffer, self._int_workspace_buffer))
+        if bindings != self._graph_workspace_bindings:
+            raise AttentionStateError("fixed graph workspace address/shape/dtype/device cannot change")
+
+    def _prepare_native_workspace(self, candidate):
+        """Bind requirements through T9's existing caller-owned workspace contract."""
+        if not self._native_workspace_query_only and not (self.is_graph_enabled and self._use_max_workspace):
+            return self._workspace_contract.bind_plan(candidate.generation), None
+        if not self._native_workspace_query_only:
+            self._validate_native_workspace_binding()
+            # torch_npu's .out kernel passes storage().data(), not data_ptr().
+            # A sliced workspace would therefore write before the bound view.
+            if not self._float_workspace_buffer.is_contiguous() or self._float_workspace_buffer.storage_offset() != 0:
+                raise SchemaError("CANN maximum workspace must be contiguous with storage_offset=0")
+        from flashinfer.cann.attention import maximum_workspace_bytes
+
+        spec, metadata = candidate.spec, candidate.metadata
+        if self._mode == AttentionMode.BATCH_DECODE_PAGED:
+            query_lengths = (spec.q_len_per_req,) * metadata.batch_size
+            kv_lengths = metadata.sequence_lengths
+        else:
+            query_lengths = metadata.qo_lengths
+            kv_lengths = (metadata.paged_kv.sequence_lengths if isinstance(metadata, PagedPrefillMetadata)
+                          else metadata.kv_lengths)
+        # The vendor maximum covers changing KV sequence lengths. Re-query on
+        # other changes allowed by T9, without freezing any additional dimension
+        # or replacing storage. LSE on/off and all requests share one byte buffer.
+        key = (spec.q_dtype, spec.kv_dtype, spec.num_qo_heads, spec.num_kv_heads,
+               spec.head_dim_qk, spec.head_dim_vo, spec.sm_scale,
+               spec.effective_causal or spec.window_left >= 0 or spec.custom_mask is not None,
+               tuple(sorted(set(query_lengths))))
+        required = (self._workspace_contract.required_float_bytes if key == self._native_max_workspace_key
+                    else maximum_workspace_bytes(spec, query_lengths, kv_lengths, device=self._workspace_contract.device))
+        return self._workspace_contract.bind_requirements(
+            required_float_bytes=required, required_int_bytes=0, plan_generation=candidate.generation,
+        ), key
 
     def _run_facade(self, q, kv, values):
         values = dict(values)
@@ -547,6 +597,10 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
         plan = self.plan_state
         spec, metadata = plan.spec, plan.metadata
         self._workspace_contract.validate_run(device=str(q.device), plan_generation=plan.generation)
+        workspace_options = {}
+        if self.is_graph_enabled and self._use_max_workspace:
+            self._validate_native_workspace_binding()
+            workspace_options["workspace"] = self._float_workspace_buffer
         if tuple(q.shape) != plan._expected_query_shape() or str(q.dtype).removeprefix("torch.") != spec.q_dtype:
             raise SchemaError("q shape/dtype does not match the plan")
         if self._mode == AttentionMode.BATCH_PREFILL_RAGGED:
@@ -608,7 +662,7 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
                 q[start:end], key, val, causal=spec.effective_causal,
                 scale_q=q_scale, k_scale=k_scale, v_scale=v_scale,
                 o_dtype=spec.o_dtype, sm_scale=spec.sm_scale, window_left=spec.window_left,
-                return_lse=return_lse, **mask_options,
+                return_lse=return_lse, **mask_options, **workspace_options,
             )
             if return_lse:
                 output, lse = result
@@ -624,7 +678,17 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
 
     def _workspace_query(self, values):
         if self._native_backend:
-            raise WorkspaceRequirementUnknownError("CANN maximum workspace query is not connected yet (T10)")
+            # Explicit queries return the native maximum even for an eager
+            # wrapper. No fixed metadata, active plan, or freeze state is written.
+            probe = copy(self)
+            probe._session = copy(self._session)
+            probe._native_workspace_query_only = True
+            probe._native_max_workspace_key = None
+            probe._workspace_contract = replace(self._workspace_contract, float_capacity_bytes=(1 << 63) - 1)
+            values = {k: v for k, v in values.items() if k != "self"}
+            values.setdefault("non_blocking", True)
+            probe.plan(**values)
+            return probe.workspace_contract.required_sizes
         values = {k: v for k, v in values.items() if k != "self"}
         if self._operator_runtime is not None:
             probe = self._provider_workspace_query_probe()

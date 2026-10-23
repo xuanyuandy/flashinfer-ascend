@@ -47,8 +47,12 @@ class BatchFrontendSignatureTests(unittest.TestCase):
                 'jit_kwargs',
                 'variant_owns_mask',
                 'max_total_num_rows',
+                'use_max_workspace',
             ],
         )
+        extension = inspect.signature(BatchPrefillWithPagedKVCacheWrapper).parameters['use_max_workspace']
+        self.assertEqual(extension.kind, inspect.Parameter.KEYWORD_ONLY)
+        self.assertIs(extension.default, False)
         self.assertEqual(
             list(
                 inspect.signature(
@@ -147,6 +151,7 @@ class BatchFrontendSignatureTests(unittest.TestCase):
                 'jit_args',
                 'jit_kwargs',
                 'variant_owns_mask',
+                'use_max_workspace',
             ],
         )
         self.assertEqual(
@@ -155,9 +160,15 @@ class BatchFrontendSignatureTests(unittest.TestCase):
                 "float_workspace_buffer", "kv_layout", "use_cuda_graph",
                 "use_tensor_cores", "paged_kv_indptr_buffer",
                 "paged_kv_indices_buffer", "paged_kv_last_page_len_buffer",
-                "backend", "jit_args",
+                "backend", "jit_args", "use_max_workspace",
             ],
         )
+        # The NPU workspace opt-in is recorded in the parity ledger; preserve
+        # every upstream positional parameter and require the extension by name.
+        for wrapper in (BatchPrefillWithRaggedKVCacheWrapper, BatchDecodeWithPagedKVCacheWrapper):
+            extension = inspect.signature(wrapper).parameters['use_max_workspace']
+            self.assertEqual(extension.kind, inspect.Parameter.KEYWORD_ONLY)
+            self.assertIs(extension.default, False)
         self.assertEqual(
             list(
                 inspect.signature(

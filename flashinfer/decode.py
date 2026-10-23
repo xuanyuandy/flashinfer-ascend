@@ -76,8 +76,9 @@ class BatchDecodeWithPagedKVCacheWrapper(PublicBatchWrapper):
 
     plan() runs outside capture and copies into the fixed buffers. Its first
     successful graph plan freezes the execution choices; the caller owns
-    aclgraph capture/replay. Maximum workspace and tiling updates are separate
-    backend contracts, not guarantees supplied by this flag.
+    aclgraph capture/replay. Set use_max_workspace=True to query FIA's maximum
+    in plan() and use the caller's fixed byte workspace in run(). It defaults
+    to False to preserve existing memory use; tiling updates remain separate.
     """
 
     def __init__(
@@ -91,6 +92,8 @@ class BatchDecodeWithPagedKVCacheWrapper(PublicBatchWrapper):
         paged_kv_last_page_len_buffer: Optional[torch.Tensor] = None,
         backend: str = "auto",
         jit_args: Optional[List[Any]] = None,
+        *,
+        use_max_workspace: bool = False,
     ) -> None:
         self._init_facade(AttentionMode.BATCH_DECODE_PAGED, locals())
 

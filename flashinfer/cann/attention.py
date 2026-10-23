@@ -30,7 +30,8 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
                     o_dtype=None, custom_mask=None, packed_custom_mask=None,
                     sm_scale=None, window_left=-1, logits_soft_cap=None,
                     rope_scale=None, rope_theta=None,
-                    use_fp16_qk_reduction=False, return_lse=False):
+                    use_fp16_qk_reduction=False, return_lse=False,
+                    workspace=None):
     import math
     import torch
 
@@ -101,16 +102,26 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
         if native:
             import torch_npu
 
-            result, natural_lse = torch_npu.npu_fused_infer_attention_score(
-                # A5/CANN 9.2 BNSD masked GQA writes incomplete LSE rows.
-                # BSND is verified by probe_attention_lse.py and keeps KV shared.
-                q1.to(q.dtype).unsqueeze(0).contiguous(),
-                k1.to(k.dtype).unsqueeze(0).contiguous(),
-                v1.to(v.dtype).unsqueeze(0).contiguous(),
+            # A5/CANN 9.2 BNSD masked GQA writes incomplete LSE rows.
+            # BSND is verified by probe_attention_lse.py and keeps KV shared.
+            query = q1.to(q.dtype).unsqueeze(0).contiguous()
+            key = k1.to(k.dtype).unsqueeze(0).contiguous()
+            value = v1.to(v.dtype).unsqueeze(0).contiguous()
+            options = dict(
                 atten_mask=None if allowed is None else (~allowed)[None, None].contiguous(),
                 num_heads=h, num_key_value_heads=hk, input_layout="BSND",
                 scale=scale, softmax_lse_flag=bool(return_lse),
             )
+            if workspace is None:
+                result, natural_lse = torch_npu.npu_fused_infer_attention_score(query, key, value, **options)
+            else:
+                outputs = torch_npu._npu_fused_infer_attention_score_infer_output(
+                    query, value, input_layout="BSND", num_heads=h,
+                    num_key_value_heads=hk, softmax_lse_flag=bool(return_lse),
+                )
+                result, natural_lse = torch_npu.npu_fused_infer_attention_score.out(
+                    query, key, value, workspace=workspace, out=list(outputs), **options,
+                )
             output = result.squeeze(0).to(out_dtype)
             lse = natural_lse.reshape(h, sq).transpose(0, 1) / math.log(2) if return_lse else None
         else:
@@ -134,6 +145,40 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
         if return_lse:
             lse = lse.squeeze(0)
     return (output, lse.contiguous()) if return_lse else output
+
+
+def maximum_workspace_bytes(spec, query_lengths, kv_lengths, *, device):
+    """Query the real v1 BSND composite, outside capture, including both LSE modes.
+
+    torch_npu returns an allocated tensor in query.dtype, NOT a byte count.
+    Only its byte capacity is retained: the caller-owned workspace already
+    bound by the public wrapper supplies the persistent storage. Prototypes
+    use real contiguous shapes; the query performs CANN tiling/stride checks.
+    """
+    import torch
+    import torch_npu
+
+    required = 0
+    # Requests execute sequentially, so their workspace is shared (max, not sum).
+    shapes = {(max(1, q), max(1, k)) for q, k in zip(query_lengths, kv_lengths)}
+    for sq, sk in sorted(shapes):
+        query = torch.empty((1, sq, spec.num_qo_heads, spec.head_dim_qk),
+                            dtype=getattr(torch, spec.q_dtype), device=device)
+        key = torch.empty((1, sk, spec.num_kv_heads, spec.head_dim_qk),
+                          dtype=getattr(torch, spec.kv_dtype), device=device)
+        value = torch.empty((1, sk, spec.num_kv_heads, spec.head_dim_vo),
+                            dtype=key.dtype, device=device)
+        masked = spec.effective_causal or spec.window_left >= 0 or spec.custom_mask is not None
+        mask = torch.empty((1, 1, sq, sk), dtype=torch.bool, device=device) if masked else None
+        for return_lse in (False, True):
+            workspace = torch_npu._npu_fused_infer_attention_score_get_max_workspace(
+                query, key, value, atten_mask=mask,
+                num_heads=spec.num_qo_heads, num_key_value_heads=spec.num_kv_heads,
+                input_layout="BSND", scale=spec.sm_scale, softmax_lse_flag=return_lse,
+            )
+            required = max(required, workspace.numel() * workspace.element_size())
+            del workspace
+    return required
 
 
 def _batch_run(wrapper, q, *kv, **options):
