@@ -6,7 +6,7 @@
 | **执行序号** | 6 / 20 |
 | **依赖** | T1 |
 | **规模** | 大 |
-| **状态** | `未开始` |
+| **状态** | `已完成` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -136,7 +136,7 @@ pytest tests/ -q
 
 ## 完成时填写
 
-- **实际改动**：
-- **验收结果**：
-- **遗留问题**（不要顺手改，记在这里）：
-- **提交**：`T6 <标题>`
+- **实际改动**：T6.1 执行体字段（ArtifactRef.entry_point / SourceRef / target_soc，to_dict 保旧指纹）；T6.2 外部仓身份与 register_external；T6.3 ShapeRange 规模区间（闭区间）；T6.4 physical_layouts 只认 ND(2)/NZ(29)、HardwareSignature.ub_size_bytes；T6.5 GraphCapability 与 graph_param_updates
+- **验收结果**：逐子项验收通过；79 条记录 auto 选型逐条不变；A5 实测 UB=221184（ACL 属性 204）
+- **遗留问题**（不要顺手改，记在这里）：UB 探测在部分上下文返回 0，已由 unknown 不作通配兜底（见 T20B）
+- **提交**：`a12742d` 等 T6.1~T6.5 系列提交

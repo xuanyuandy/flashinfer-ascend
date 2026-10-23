@@ -143,9 +143,9 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 > **四件事里有三件卡在同一个地方**：登记表能描述的东西太少。
 > 这不是某个功能的缺陷，是公共地基的缺陷。
 
-- [ ] **[T6](tasks/T06-registry-fields.md)** · 给登记表加 5 类字段  
+- [x] **[T6](tasks/T06-registry-fields.md)** · 给登记表加 5 类字段  
   <sub>依赖 T1 · 规模 大 · 执行序号 6</sub>
-- [ ] **[T7](tasks/T07-dispatch-ordering.md)** · 重做 dispatch 排序规则  
+- [x] **[T7](tasks/T07-dispatch-ordering.md)** · 重做 dispatch 排序规则  
   <sub>依赖 T6.1 T6.2 · 规模 小 · 执行序号 7</sub>
 
 ### P2+ · 选型与编译的分层
@@ -153,12 +153,24 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 > 这三条补的是「JIT 编译一整套」和「选取性能最优实现」这两个诉求里
 > **前面阶段没覆盖到**的部分。T6 加的是**字段**，这里加的是**分层结构**。
 
-- [ ] **[T18](tasks/T18-jit-trigger-layer.md)** · 统一的多后端 JIT 触发层  
+- [x] **[T18](tasks/T18-jit-trigger-layer.md)** · 统一的多后端 JIT 触发层  
   <sub>依赖 T1 T6.1 · 规模 大 · 执行序号 8</sub>
-- [ ] **[T19](tasks/T19-two-level-dispatch.md)** · 把 dispatch 拆成两级  
+- [x] **[T19](tasks/T19-two-level-dispatch.md)** · 把 dispatch 拆成两级  
   <sub>依赖 T6.3 T6.4 T18 · 规模 大 · 执行序号 9</sub>
-- [ ] **[T20](tasks/T20-perf-data-pipeline.md)** · 性能数据链路  
+- [x] **[T20](tasks/T20-perf-data-pipeline.md)** · 性能数据链路  
   <sub>依赖 T19 · 规模 大 · 执行序号 10</sub>
+
+### 计划外完成（执行中发现的真实缺陷与工程改进）
+
+> 这些不在原清单里，是执行 T6~T20 时发现并单独立项修掉的。
+> 每条都有可复现的证据，提交信息里记了复现方式。
+
+- [x] **修复 `KernelRegistry.select()` 与 dispatch 的策略执行不一致** · `fd94304`
+  <sub>2 处真实绕过：自定义 kernel 的 opt-in 被defeat；capability（dtype/layout/SoC/核数/特化参数）在 select() 侧完全没检查，910B-only kernel 可在 Ascend950 上被选中</sub>
+- [x] **测试按「是否真实调用编译器」分组（`real_compile`）** · `0bf3e90`
+  <sub>依据审计钩子记录的真实编译器调用，非文件名或耗时；默认行为不变</sub>
+- [x] **修复决策缓存跨 registry 串用** · `dd73c9b`
+  <sub>缓存 key 缺 registry 身份，新建 registry 的 revision 同为 1 时撞 key，registry B 会返回 B 中不存在的 kernel。既有缺陷，在基线提交上同样复现</sub>
 
 ### P3 · 图模式 aclgraph
 

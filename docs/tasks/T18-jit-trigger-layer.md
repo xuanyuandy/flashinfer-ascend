@@ -6,7 +6,7 @@
 | **执行序号** | 8 / 20 |
 | **依赖** | T1 T6.1 |
 | **规模** | 大 |
-| **状态** | `未开始` |
+| **状态** | `已完成` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,7 +14,7 @@
 
 ## 进度
 
-- [ ] 完成并通过验收
+- [x] 完成并通过验收
 
 ---
 
@@ -75,7 +75,7 @@ pytest tests/ -q -k "jit"
 
 ## 完成时填写
 
-- **实际改动**：
-- **验收结果**：
-- **遗留问题**（不要顺手改，记在这里）：
-- **提交**：`T18 <标题>`
+- **实际改动**：拆 18A/18B。18A：统一声明层（JitSpec 复用 ArtifactRef/SourceRef）、后端钩子协议、kernel↔产物↔符号三元映射可查询。18B：接通真实编译与装载、JitBuildStore（flock + 锁下二次检查 + staging + 原子发布到不可变 generation）、缓存 key 改用完整 spec.fingerprint
+- **验收结果**：本仓第一次自己编出并跑通一个 kernel：gemma_fused_add_rmsnorm max_abs_error=9.5e-07、residual 精确相等；缓存二次命中同一产物；两个真实进程并发只编译一次（generation=1、build.log=1）；空 PATH + 拦截 triton 仍可 import 并选型
+- **遗留问题**（不要顺手改，记在这里）：Ascend C 的 host wrapper 与 launch ABI 未集成，钩子仍显式抛 NotImplementedError（留给 T13）
+- **提交**：`1c89ca3`（18A）、`8362e94`（18B）
