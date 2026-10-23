@@ -52,7 +52,7 @@
 | **P2** | T6 → T7 | 扩展登记表并调整调度规则 |
 | **P2+** | T18 → T19 → T20 | 打通编译加载、两级选择和性能数据 |
 | **P3** | T8 → T9 → T10 → T11 → T12 | 注册/meta、图契约、workspace、参数更新 |
-| **P4** | T13 → T14 → T15 → T16 | 搬构建框架、注册层，再逐个下沉算子 |
+| **P4** | T13 → T14 → T15 → T16 | 建本仓编译链路与注册层，再挑选并剥离语义地下沉算子 |
 | **P5** | T17 | 把 Attention 收敛到统一架构 |
 
 ---
@@ -196,7 +196,7 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 > **终态**：vllm-ascend 从「自己持有 66 个 CANN 算子调用点 + 一套算子工程 + 8 份入图补丁」
 > 变成**只调本仓接口**；本仓从「对标用的壳」变成**真正持有实现的那一层**。
 
-- [ ] **[T13](tasks/T13-csrc-build-framework.md)** · 搬 vllm-ascend 的 csrc 编译框架  
+- [ ] **[T13](tasks/T13-csrc-build-framework.md)** · 建立本仓自己的 Ascend C 编译链路（catlass 作为 3rdparty）  
   <sub>依赖 T6.1 · 规模 大 · 执行序号 16</sub>
 - [ ] **[T14](tasks/T14-op-registration-layer.md)** · 搬运算子注册层  
   <sub>依赖 T8 T13 · 规模 中 · 执行序号 17</sub>
