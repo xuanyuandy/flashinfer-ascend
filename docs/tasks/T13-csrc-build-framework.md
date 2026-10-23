@@ -6,7 +6,7 @@
 | **执行序号** | 16 / 20 |
 | **依赖** | T6.1 |
 | **规模** | 大 |
-| **状态** | `未开始` |
+| **状态** | `已完成` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,7 +14,7 @@
 
 ## 进度
 
-- [ ] 完成并通过验收
+- [x] 完成并通过验收
 
 ---
 
@@ -110,7 +110,7 @@ catlass 在 vllm-ascend csrc 中仅 **9 个文件、2 个子目录**（attention
 
 ## 完成时填写
 
-- **实际改动**：
-- **验收结果**：
-- **遗留问题**（不要顺手改，记在这里）：
-- **提交**：`T13 <标题>`
+- **实际改动**：分析 + 两次实现。分析阶段产出 `docs/ascendc_build_design.md`（830 行）。13-I：`BuildRecipe` 配方契约、本仓自己的 Ascend C 源码与构建集成（`csrc/`、`kernels/ascendc/`）、JIT → host_shared 链路、catlass 作为可选 3rdparty submodule。13-II：`output_kind` 增加 `op_package`，AOT → 标准 op-package 经 aclnn 调用，同一套配方与 `DiskJitBuildStore` 驱动两条路，未新开缓存。
+- **验收结果**：1679 → 1723 passed / 3 failed；79/79 选型与指纹逐条不变。两条「可被证伪」的验证均由验收方独立复跑：(1) 亲手 deinit + `rm -rf` 删除 catlass 并隔离 include 环境变量后，native 变体仍真编真跑、`max_abs_error 0.0`，而要求 catlass 变体时给出可读 `SchemaError` 且不静默降级；(2) 在私有 mount namespace 里 tmpfs 覆盖 CANN 全部四个编译器目录后，JIT 按预期失败、AOT 的 native 与 catlass 两组经 aclnn 入口返回 0 且 `max_abs_error 0.0`——同一环境下 JIT 死而 AOT 活。切换只靠配置：两份配置逐字节只差 `"implementation"` 一行。
+- **遗留问题**（不要顺手改，记在这里）：本机只有 A5，其余 SOC（910b1 / 910_9391 / 310p1）未实测；任意 CATLASS example 原样接入仍需入口适配（原始 `DeviceGemm(Params)` 不是统一 C 签名）。
+- **提交**：`3ab4a9e`（分析）、`3fce2c3`（13-I）、`7c63422`（13-II）

@@ -196,9 +196,9 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 > **终态**：vllm-ascend 从「自己持有 66 个 CANN 算子调用点 + 一套算子工程 + 8 份入图补丁」
 > 变成**只调本仓接口**；本仓从「对标用的壳」变成**真正持有实现的那一层**。
 
-- [ ] **[T13](tasks/T13-csrc-build-framework.md)** · 建立本仓自己的 Ascend C 编译链路（catlass 作为 3rdparty）  
+- [x] **[T13](tasks/T13-csrc-build-framework.md)** · 建立本仓自己的 Ascend C 编译链路（catlass 作为 3rdparty）  
   <sub>依赖 T6.1 · 规模 大 · 执行序号 16</sub>
-- [ ] **[T14](tasks/T14-op-registration-layer.md)** · 搬运算子注册层  
+- [ ] **[T14](tasks/T14-op-registration-layer.md)** · 扩展本仓注册层并补 meta 实现  
   <sub>依赖 T8 T13 · 规模 中 · 执行序号 17</sub>
 - [ ] **[T15](tasks/T15-sink-generic-ops.md)** · 下沉通用计算算子  
   <sub>依赖 T13 T14 · 规模 大 · 执行序号 18</sub>
