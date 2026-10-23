@@ -286,6 +286,7 @@ class ArtifactKind(str, Enum):
 
 class ArtifactFormat(str, Enum):
     ASCENDC_OBJECT = "ascendc_object"
+    ASCENDC_OP_PACKAGE = "ascendc_op_package"
     SHARED_LIBRARY = "shared_library"
     TRITON_NPUBIN = "triton_npubin"
     ASCENDC_SOURCE = "ascendc_source"
@@ -321,6 +322,7 @@ class ArtifactRef(_Record):
             raise SchemaError("artifact entry_point must be a non-empty symbol")
         expected = {
             ArtifactFormat.ASCENDC_OBJECT: ArtifactKind.FILE,
+            ArtifactFormat.ASCENDC_OP_PACKAGE: ArtifactKind.FILE,
             ArtifactFormat.SHARED_LIBRARY: ArtifactKind.FILE,
             ArtifactFormat.TRITON_NPUBIN: ArtifactKind.FILE,
             ArtifactFormat.ASCENDC_SOURCE: ArtifactKind.JIT_SOURCE,
@@ -1015,7 +1017,8 @@ class KernelDescriptor:
                 and self.target_soc != self.artifact.target_soc):
             raise SchemaError("target_soc does not match artifact target_soc")
         formats = {
-            Backend.ASCENDC_AOT: (ArtifactFormat.ASCENDC_OBJECT, ArtifactFormat.SHARED_LIBRARY),
+            Backend.ASCENDC_AOT: (ArtifactFormat.ASCENDC_OBJECT, ArtifactFormat.SHARED_LIBRARY,
+                                 ArtifactFormat.ASCENDC_OP_PACKAGE),
             Backend.ASCENDC_JIT: (ArtifactFormat.ASCENDC_SOURCE,),
             Backend.ACLNN: (ArtifactFormat.ACLNN_BUILTIN,),
         }

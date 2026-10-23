@@ -7044,7 +7044,7 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P2",
-      "notes": "T13-I 将冻结 BuildRecipe 绑定到 JitSpec 完整身份，统一 CANN ASC host_shared driver 编译原生与可选 CATLASS 配方；复用 T18B store 的锁、staging、ELF 验证、原子发布和 CDLL loader。仅 A5/CANN 9.2 的固定 FP32 GEMM 已真机验证；无配方/工具链显式失败。",
+      "notes": "T13-I/II 统一 native/CATLASS BuildRecipe 驱动。host_shared 使用 CANN ASC shared build；op_package 使用标准 npu_op_* API 与 binary package target；共用 T18B 锁、staging、验证与原子发布，不由 import/auto 触发。",
       "api_kind": "npu_extension",
       "reason": "NPU 扩展：T13-I 实现惰性 Ascend C host_shared JIT；CATLASS 为固定 submodule 的按需头文件依赖，13-II 的 AOT/op-package 尚未实现。",
       "local_status": "functional",
@@ -7730,9 +7730,9 @@
       "semantic_status": "intentionally_different",
       "implementation_status": "functional",
       "priority": "P2",
-      "notes": "不可变配方：source 闭包、变体、依赖版本、flags、device/host entry、launch/tiling/task/sync 协议与 host_shared adapter 统一进入构建身份。",
+      "notes": "不可变配方；host_shared/op_package 是同一配方的产物维度。源码闭包、host 注册、vendor/op type、依赖、flags、ABI/tiling/task/sync 与 adapter 一同绑定 JitSpec；复用 T18B store。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7750,7 +7750,7 @@
       "priority": "P2",
       "notes": "按配方声明的固定 Git 依赖；原生配方不含 CATLASS。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7768,7 +7768,7 @@
       "priority": "P2",
       "notes": "显式解析得到的 source/CMake/依赖实际内容与工具链摘要；绝对根目录用于定位，不代替内容身份。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7786,7 +7786,7 @@
       "priority": "P2",
       "notes": "默认 native，可按 recipe_id 覆盖；仅选择已声明变体，缺失或歧义报错，无失败后静默换实现。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7804,7 +7804,7 @@
       "priority": "P2",
       "notes": "仅显式调用时读取 JSON 配方；import/auto 不读构建 manifest 或探测工具链。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7822,7 +7822,7 @@
       "priority": "P2",
       "notes": "核验选中配方的 SourceRef、依赖固定 commit 和完整 include 树实际内容；native 不读取 CATLASS，也不运行 Git。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
@@ -7840,7 +7840,79 @@
       "priority": "P2",
       "notes": "仅显式 discover 时探测 CANN bisheng/CMake/host C++，记录实际版本、binary、CANN 配置与 host ABI；不由 import、descriptor、auto 或纯声明触发。",
       "api_kind": "npu_extension",
-      "reason": "T13-I NPU 构建扩展；没有上游同名兼容承诺。只支持 JIT/host_shared，AOT/op-package 留给 13-II。",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.aot.build.compile_and_package",
+      "local": "flashinfer.aot.build.compile_and_package",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "发版期按 SOC 选同一 BuildRecipe，复用 AscendCBackend 与 DiskJitBuildStore 的 build-only 操作；不要求构建机有 NPU，不运行 .run。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.aot.build.export_op_package",
+      "local": "flashinfer.aot.build.export_op_package",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "将已完整校验的 store generation 导出为发行副本，保留同一个 manifest/inventory，去掉构建日志；没有第二套缓存。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.op_package.OpPackageModule",
+      "local": "flashinfer.jit.op_package.OpPackageModule",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "ACLNN 两阶段固定探针调用契约：aclTensor* -> workspace/executor -> stream launch；逐阶段检查错误，调用方拥有 ACL 资源。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
+      "local_status": "functional",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.jit.op_package.load_op_package",
+      "local": "flashinfer.jit.op_package.load_op_package",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P2",
+      "notes": "只读校验标准 vendor 树、host ET_DYN、NPU ET_EXEC、binary_info_config 与完整文件摘要后，设置进程 vendor 路径并装载 ACLNN；不发现或调用编译器，拒绝同进程换包。",
+      "api_kind": "npu_extension",
+      "reason": "T13-I/II 本仓 NPU 构建扩展；没有上游同名兼容承诺。",
       "local_status": "functional",
       "consumers": {
         "vllm": "unverified",

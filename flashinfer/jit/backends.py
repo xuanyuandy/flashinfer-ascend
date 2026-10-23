@@ -196,7 +196,7 @@ class TritonBackend(_SourceBackend):
 
 
 class AscendCBackend(_SourceBackend):
-    """One Ascend C driver for frozen native/CATLASS host_shared recipes.
+    """One Ascend C driver for native/CATLASS host_shared and op_package recipes.
 
     Construction and declaration perform no I/O. Resolve the selected recipe
     explicitly, then supply it and its toolchain. Legacy pure declarations are
@@ -234,8 +234,12 @@ class AscendCBackend(_SourceBackend):
         if (spec.environment_fingerprint != resolved.toolchain_fingerprint
                 or self.toolchain is None or self.toolchain.fingerprint != resolved.toolchain_fingerprint):
             raise SchemaError("Ascend C declaration must bind the resolved toolchain identity")
-        if spec.entry_points != (recipe.host_entry,) or not spec.output_path.endswith(".so"):
+        if spec.entry_points != (recipe.host_entry,):
+            raise SchemaError("Ascend C recipe requires its declared host entry")
+        if recipe.output_kind == "host_shared" and not spec.output_path.endswith(".so"):
             raise SchemaError("host_shared recipe requires its declared host entry and .so output")
+        if recipe.output_kind == "op_package" and spec.output_path != "op-package.json":
+            raise SchemaError("op_package requires the op-package.json manifest output")
         # Include paths/definitions must be represented by recipe inputs, not
         # injected as untracked external files through a command-line override.
         for option in spec.compile_options + recipe.compile_options + recipe.link_options:
@@ -243,11 +247,13 @@ class AscendCBackend(_SourceBackend):
                 raise SchemaError("declare includes/definitions/architecture in BuildRecipe: " + option)
         bindings = spec.input_fingerprints + (("build_recipe", recipe.fingerprint),
                                               ("resolved_recipe", resolved.fingerprint))
+        if recipe.output_kind == "op_package":
+            bindings += (("output_adapter", _canonical_hash(recipe.output_adapter)),)
         return replace(spec, name="kernel." + _canonical_hash(dict(base=spec.fingerprint,
                        resolved_recipe=resolved.fingerprint)), input_fingerprints=bindings)
 
     def compile(self, spec: JitSpec, *, build_directory: Path) -> None:
-        from .ascendc import compile_host_shared
+        from .ascendc import compile_recipe
 
         resolved = self._recipes.get(spec.kernel_id)
         if resolved is None or self.toolchain is None:
@@ -258,7 +264,7 @@ class AscendCBackend(_SourceBackend):
             log.write_text(message + "\n", encoding="utf-8")
             raise JitCompilationError(message, kernel_id=spec.kernel_id or spec.name,
                 spec_fingerprint=spec.fingerprint, log_path=log)
-        compile_host_shared(spec, resolved, self.toolchain, build_directory)
+        compile_recipe(spec, resolved, self.toolchain, build_directory)
 
 
 def _compile_options(options: Tuple[str, ...]) -> Tuple[str, ...]:

@@ -29,7 +29,16 @@ def _verify_output(spec: JitSpec, directory: Path) -> ArtifactRef:
     if not path.is_relative_to(directory.resolve()):
         raise SchemaError("compiled output escapes staging root")
     payload = path.read_bytes()
-    if spec.source.language == "triton":
+    adapter = dict(spec.input_fingerprints).get("output_adapter")
+    if adapter is not None:
+        from .op_package import OP_PACKAGE_ADAPTER_HASH, verify_op_package
+
+        if spec.generator_id != "ascendc" or adapter != OP_PACKAGE_ADAPTER_HASH:
+            raise SchemaError("unknown output adapter")
+        verify_op_package(directory, spec)
+        format = ArtifactFormat.ASCENDC_OP_PACKAGE
+        symbols = spec.entry_points  # verified against the package's host ELF
+    elif spec.source.language == "triton":
         format = ArtifactFormat.TRITON_NPUBIN
         symbols = elf_symbols(payload, machine=0x1029, elf_type=2)
     else:
@@ -49,31 +58,17 @@ def _verify_output(spec: JitSpec, directory: Path) -> ArtifactRef:
     return artifact
 
 
-def build_and_load(
-    spec: JitSpec, *, backend: JitBackend, store: Optional[DiskJitBuildStore] = None,
-    loader: Optional[JitModuleLoader] = None, cache: Optional[JitCacheIndex] = None,
+def _build_record(
+    spec: JitSpec, *, backend: JitBackend, store: DiskJitBuildStore,
     policy: Optional[JitCompilationPolicy] = None,
 ):
-    """Build only on a disk miss, under a per-spec lock, then load verified bytes.
-
-    The default store and loader are lazy. The disk store also supplies the
-    checked local byte reader; the four-hook JitBuildStore protocol is unchanged.
-    Neither declaration, status queries nor dispatch invokes this function.
-    """
+    """The single build/verify/publish path, also used by release-time AOT."""
     if not isinstance(spec, JitSpec) or not spec.is_compilation_unit:
         raise SchemaError("build_and_load requires a JIT compilation unit")
     if not isinstance(backend, JitBackend) or backend.backend_id != spec.generator_id:
         raise SchemaError("compiler backend does not match JIT spec generator")
-    if store is None:
-        store = DiskJitBuildStore()
     if not isinstance(store, DiskJitBuildStore):
         raise TypeError("build_and_load requires DiskJitBuildStore")
-    if cache is not None and not isinstance(cache, JitCacheIndex):
-        raise TypeError("cache must be JitCacheIndex")
-    if loader is not None and not isinstance(loader, JitModuleLoader):
-        raise TypeError("loader must implement JitModuleLoader")
-    if cache is None:
-        cache = jit_cache_index
     if policy is None:
         policy = (JitCompilationPolicy.DISABLED if os.environ.get("FLASHINFER_NPU_JIT_DISABLE", "0") == "1"
                   else JitCompilationPolicy.ENABLED)
@@ -108,6 +103,27 @@ def build_and_load(
                         raise JitCompilationError(str(error), kernel_id=spec.kernel_id,
                             spec_fingerprint=spec.fingerprint, log_path=log_path) from error
     record.validate_spec(spec)
+    return record
+
+
+def build_and_load(
+    spec: JitSpec, *, backend: JitBackend, store: Optional[DiskJitBuildStore] = None,
+    loader: Optional[JitModuleLoader] = None, cache: Optional[JitCacheIndex] = None,
+    policy: Optional[JitCompilationPolicy] = None,
+):
+    """Build on a disk miss under the shared store lock, then load verified bytes.
+
+    Neither declaration, status queries nor dispatch invokes this function.
+    """
+    if cache is not None and not isinstance(cache, JitCacheIndex):
+        raise TypeError("cache must be JitCacheIndex")
+    if loader is not None and not isinstance(loader, JitModuleLoader):
+        raise TypeError("loader must implement JitModuleLoader")
+    if store is None:
+        store = DiskJitBuildStore()
+    if cache is None:
+        cache = jit_cache_index
+    record = _build_record(spec, backend=backend, store=store, policy=policy)
     path = store.artifact_path(record)
     verification = verify_jit_cache_record_payload(record, path.read_bytes(), verifier_id="flashinfer.disk")
     # Compilation is recorded independently of successful loading. A symbol or

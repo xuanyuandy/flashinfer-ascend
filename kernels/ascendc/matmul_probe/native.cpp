@@ -1,9 +1,11 @@
 // Correctness probe for the build/launch contract, not a production GEMM.
 #include "kernel_operator.h"
+#include "flashinfer_ascend/probe_tiling.h"
 
 extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
     GM_ADDR a, GM_ADDR b, GM_ADDR c, GM_ADDR workspace, GM_ADDR tiling) {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIC_ONLY);
+    FI_PROBE_CHECK_TILING();
     auto pa = reinterpret_cast<__gm__ float *>(a);
     auto pb = reinterpret_cast<__gm__ float *>(b);
     auto pc = reinterpret_cast<__gm__ float *>(c);

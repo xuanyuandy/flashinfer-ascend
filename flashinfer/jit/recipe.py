@@ -84,6 +84,9 @@ class BuildRecipe:
     output_kind: str = "host_shared"
     output_adapter: str = "ascendc.host_shared.v1"
     schema_version: int = 1
+    host_sources: Tuple[SourceRef, ...] = ()
+    package_vendor: Optional[str] = None
+    package_op_type: Optional[str] = None
 
     def __post_init__(self):
         if self.schema_version != 1 or type(self.version) is not int or self.version < 1:
@@ -94,12 +97,21 @@ class BuildRecipe:
                 raise SchemaError("invalid recipe " + name)
         if self.implementation not in {"native", "catlass"} or self.toolchain != "ascendc":
             raise SchemaError("recipe requires native/catlass Ascend C implementation")
-        # 13-II must define its own package manifest and loader, not reinterpret a .so.
-        if self.output_kind != "host_shared" or self.output_adapter != "ascendc.host_shared.v1":
-            raise SchemaError("13-I supports only host_shared / ascendc.host_shared.v1")
-        for name in ("sources", "headers", "dependencies"):
+        if (self.output_kind, self.output_adapter) not in {
+                ("host_shared", "ascendc.host_shared.v1"),
+                ("op_package", "ascendc.op_package.v1")}:
+            raise SchemaError("unsupported Ascend C output kind/adapter")
+        if self.output_kind == "host_shared":
+            if self.host_sources or self.package_vendor is not None or self.package_op_type is not None:
+                raise SchemaError("host_shared cannot declare an op-package contract")
+        elif (not self.host_sources or not isinstance(self.package_vendor, str)
+              or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", self.package_vendor)
+              or not isinstance(self.package_op_type, str) or not _SYMBOL.fullmatch(self.package_op_type)
+              or self.host_entry != "aclnn" + self.package_op_type):
+            raise SchemaError("op_package requires host sources, vendor and matching ACLNN op type/entry")
+        for name in ("sources", "headers", "host_sources", "dependencies"):
             object.__setattr__(self, name, tuple(getattr(self, name)))
-        refs = self.sources + self.headers
+        refs = self.sources + self.headers + self.host_sources
         if (not isinstance(self.source, SourceRef) or self.source not in self.sources
                 or any(not isinstance(r, SourceRef) or r.language != "ascendc" for r in refs)
                 or len({r.locator for r in refs}) != len(refs)):
@@ -119,17 +131,22 @@ class BuildRecipe:
             raise SchemaError("invalid/reserved recipe definition")
         if any(not _SYMBOL.fullmatch(getattr(self, n)) for n in ("host_entry", "device_entry")):
             raise SchemaError("recipe entries must be C symbols")
-        if (self.tiling_mode != "none" or self.tiling_schema_version != 1
+        expected_tiling = "none" if self.output_kind == "host_shared" else "fixed"
+        if (self.tiling_mode != expected_tiling or self.tiling_schema_version != 1
                 or type(self.block_dim) is not int or self.block_dim < 1
                 or self.workspace_bytes != 0 or self.task_type != "aic_only"
                 or self.sync_policy != "compiler_default"):
-            raise SchemaError("host_shared.v1 supports explicit fixed tiling, AIC-only, no workspace")
+            raise SchemaError("Ascend C v1 supports explicit fixed tiling, AIC-only, no workspace")
 
     def to_dict(self):
         value = asdict(self)
         value["source"] = self.source.to_dict()
-        for name in ("sources", "headers"):
+        for name in ("sources", "headers", "host_sources"):
             value[name] = [r.to_dict() for r in getattr(self, name)]
+        # Preserve the 13-I serialization/fingerprints for host_shared recipes.
+        if self.output_kind == "host_shared":
+            for name in ("host_sources", "package_vendor", "package_op_type"):
+                value.pop(name)
         return value
 
     @classmethod
@@ -139,6 +156,7 @@ class BuildRecipe:
             data["source"] = SourceRef.from_dict(data["source"])
             for name in ("sources", "headers"):
                 data[name] = tuple(SourceRef.from_dict(r) for r in data[name])
+            data["host_sources"] = tuple(SourceRef.from_dict(r) for r in data.get("host_sources", ()))
             data["dependencies"] = tuple(BuildDependency(**d) for d in data["dependencies"])
             return cls(**data)
         except (KeyError, TypeError, ValueError) as error:
@@ -175,7 +193,7 @@ class AscendCBuildConfig:
         except TypeError as error:
             raise SchemaError("invalid Ascend C build overrides") from error
         if (self.implementation not in {"native", "catlass"}
-                or self.output_kind != "host_shared"
+                or self.output_kind not in {"host_shared", "op_package"}
                 or not isinstance(self.target_soc, str) or not self.target_soc
                 or any(len(p) != 2 or not isinstance(p[0], str) or not p[0]
                        or p[1] not in {"native", "catlass"} for p in pairs)
@@ -262,8 +280,9 @@ class ResolvedBuildRecipe:
         object.__setattr__(self, "dependencies", dependencies)
         _sha256("toolchain_fingerprint", self.toolchain_fingerprint)
         files = tuple((_path(p), _sha256("build input digest", h)) for p, h in self.build_files)
-        if {p for p, _ in files} != {"csrc/CMakeLists.txt", "csrc/cmake/HostShared.cmake"} or len(files) != 2:
-            raise SchemaError("resolved recipe must bind both host_shared CMake inputs")
+        expected = _build_inputs(self.recipe)
+        if {p for p, _ in files} != set(expected) or len(files) != len(expected):
+            raise SchemaError("resolved recipe must bind all output adapter CMake inputs")
         object.__setattr__(self, "build_files", files)
 
     def to_dict(self):
@@ -273,6 +292,13 @@ class ResolvedBuildRecipe:
     @property
     def fingerprint(self):
         return _canonical_hash(self.to_dict())
+
+
+def _build_inputs(recipe):
+    if recipe.output_kind == "host_shared":
+        return ("csrc/CMakeLists.txt", "csrc/cmake/HostShared.cmake")
+    return ("csrc/CMakeLists.txt", "csrc/cmake/OpPackage.cmake",
+            "csrc/op_package/host/CMakeLists.txt", "csrc/op_package/kernel/CMakeLists.txt")
 
 
 def resolve_build_recipe(recipe: BuildRecipe, *, source_root: Path,
@@ -285,7 +311,7 @@ def resolve_build_recipe(recipe: BuildRecipe, *, source_root: Path,
     import subprocess
 
     root = Path(source_root).resolve(strict=True)
-    for ref in recipe.sources + recipe.headers:
+    for ref in recipe.sources + recipe.headers + recipe.host_sources:
         _source_bytes(root, ref)
     dependencies = []
     for declaration in recipe.dependencies:
@@ -300,8 +326,7 @@ def resolve_build_recipe(recipe: BuildRecipe, *, source_root: Path,
             raise SchemaError("dependency %s revision mismatch: expected %s, got %s"
                               % (declaration.name, declaration.revision, revision))
         dependencies.append(ResolvedDependency(declaration, location, digest))
-    build_files = tuple((p, hashlib.sha256((root / p).read_bytes()).hexdigest()) for p in (
-        "csrc/CMakeLists.txt", "csrc/cmake/HostShared.cmake"))
+    build_files = tuple((p, hashlib.sha256((root / p).read_bytes()).hexdigest()) for p in _build_inputs(recipe))
     return ResolvedBuildRecipe(recipe, root, tuple(dependencies), toolchain_fingerprint, build_files)
 
 

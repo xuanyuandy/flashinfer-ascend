@@ -27,7 +27,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @pytest.fixture
 def recipes():
-    return load_build_recipes(ROOT / "csrc/recipes/matmul_probe.json")
+    return tuple(r for r in load_build_recipes(ROOT / "csrc/recipes/matmul_probe.json")
+                 if r.output_kind == "host_shared")
 
 
 def toolchain():

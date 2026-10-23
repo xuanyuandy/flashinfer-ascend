@@ -72,6 +72,7 @@ class JitCacheRecord:
             raise TypeError("JIT cache artifact must be ArtifactRef")
         if self.artifact.kind != ArtifactKind.FILE or self.artifact.format not in {
             ArtifactFormat.ASCENDC_OBJECT,
+            ArtifactFormat.ASCENDC_OP_PACKAGE,
             ArtifactFormat.SHARED_LIBRARY,
             ArtifactFormat.TRITON_NPUBIN,
         }:
@@ -209,6 +210,32 @@ class JitCacheIndex:
         return tuple(sorted(values, key=lambda item: item.spec_name))
 
 
+def verify_build_directory(directory: Path, *, spec=None, record=None) -> JitCacheRecord:
+    """Same immutable manifest verification for cache and read-only releases.
+
+    This reader owns no cache and writes nothing. Release exports retain the
+    exact store manifest; compiler discovery and dependency resolution are absent.
+    """
+    directory = Path(directory).resolve(strict=True)
+    value = json.loads((directory / "manifest.json").read_text())
+    if set(value) != {"schema_version", "spec", "files", "record"} or value["schema_version"] != 1:
+        raise SchemaError("invalid JIT build manifest schema")
+    published_spec = JitSpec.from_dict(value["spec"])
+    published = JitCacheRecord.from_dict(value["record"])
+    published.validate_spec(published_spec)
+    if spec is not None:
+        published.validate_spec(spec)
+    if record is not None and published != record:
+        raise SchemaError("JIT cache record changed before load")
+    metadata = {"spec": value["spec"], "files": value["files"]}
+    if _canonical_hash(metadata) != published.build_metadata_fingerprint:
+        raise SchemaError("JIT build manifest digest mismatch")
+    if DiskJitBuildStore._inventory(directory) != value["files"]:
+        raise SchemaError("JIT cache file inventory mismatch")
+    published.artifact.verify_file(directory)
+    return published
+
+
 class DiskJitBuildStore:
     """Local POSIX cache: flock, private staging, immutable generations.
 
@@ -257,22 +284,7 @@ class DiskJitBuildStore:
         directory = directory.resolve(strict=True)
         if not directory.is_relative_to((self.root / ".objects").resolve()):
             raise SchemaError("published JIT cache generation escapes object root")
-        value = json.loads((directory / "manifest.json").read_text())
-        if set(value) != {"schema_version", "spec", "files", "record"} or value["schema_version"] != 1:
-            raise SchemaError("invalid JIT build manifest schema")
-        published_spec = JitSpec.from_dict(value["spec"])
-        published = JitCacheRecord.from_dict(value["record"])
-        published.validate_spec(published_spec)
-        if spec is not None:
-            published.validate_spec(spec)
-        if record is not None and published != record:
-            raise SchemaError("JIT cache record changed before load")
-        metadata = {"spec": value["spec"], "files": value["files"]}
-        if _canonical_hash(metadata) != published.build_metadata_fingerprint:
-            raise SchemaError("JIT build manifest digest mismatch")
-        if self._inventory(directory) != value["files"]:
-            raise SchemaError("JIT cache file inventory mismatch")
-        published.artifact.verify_file(directory)
+        published = verify_build_directory(directory, spec=spec, record=record)
         with self._mutex:
             self._directories[published.fingerprint] = directory
         return published

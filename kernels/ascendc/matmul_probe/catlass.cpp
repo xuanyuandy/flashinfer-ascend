@@ -12,6 +12,7 @@
 #include "catlass/gemm/gemm_type.hpp"
 #include "catlass/layout/layout.hpp"
 #include "tla/layout.hpp"
+#include "flashinfer_ascend/probe_tiling.h"
 
 using namespace Catlass;
 using namespace tla;
@@ -27,6 +28,7 @@ using Kernel = Gemm::Kernel::BasicMatmulTla<Mmad, void, Scheduler>;
 extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
     GM_ADDR a, GM_ADDR b, GM_ADDR c, GM_ADDR workspace, GM_ADDR tiling) {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIC_ONLY);
+    FI_PROBE_CHECK_TILING();
     auto la = tla::MakeLayout<float, Tag>(16u, 16u);
     auto lb = tla::MakeLayout<float, Tag>(16u, 16u);
     auto lc = tla::MakeLayout<float, Tag>(16u, 16u);

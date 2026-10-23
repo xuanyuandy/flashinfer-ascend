@@ -1,4 +1,4 @@
-"""Explicit CANN discovery and the shared host_shared compiler driver.
+"""Explicit CANN discovery and the shared BuildRecipe compiler driver.
 
 There is no SDK probing at module scope, backend construction or dispatch.
 """
@@ -29,8 +29,17 @@ def _digest(path):
 def _cann_identity(root):
     files = list((root / "share/info").glob("*/version.info"))
     files += list((root / "compiler/tikcpp/ascendc_kernel_cmake").rglob("*.cmake"))
+    files += list((root / "compiler/tikcpp/ascendc_kernel_cmake").rglob("*.py"))
+    files += list((root / "compiler/tikcpp/ascendc_kernel_cmake").rglob("*.sh"))
     files += [root / "lib64/cmake/asc-config.cmake"]
+    if (root / "tools/opbuild/op_build").is_file():
+        files += [root / "tools/opbuild/op_build"]
     return _canonical_hash({p.relative_to(root).as_posix(): _digest(p) for p in sorted(files)})
+
+
+def _driver_identity():
+    root = Path(__file__).parent
+    return _canonical_hash({p: _digest(root / p) for p in ("ascendc.py", "op_package.py")})
 
 
 @dataclass(frozen=True)
@@ -66,7 +75,7 @@ class AscendCToolchain:
         identity["cann"] = _cann_identity(root)
         identity["host_abi"] = _canonical_hash(dict(machine=platform.machine(),
             python_abi=sys.implementation.cache_tag, libc=platform.libc_ver()))
-        identity["driver"] = _digest(__file__)
+        identity["driver"] = _driver_identity()
         return cls(root, compiler, Path(cmake), Path(host), tuple(sorted(identity.items())))
 
     @property
@@ -78,7 +87,7 @@ class AscendCToolchain:
         for name, path in (("bisheng", self.compiler), ("cmake", self.cmake), ("host_cxx", self.host_compiler)):
             if _digest(path) != identity[name + "_binary"]:
                 raise SchemaError("Ascend C toolchain changed after resolution: " + name)
-        if _cann_identity(self.cann_root) != identity["cann"] or _digest(__file__) != identity["driver"]:
+        if _cann_identity(self.cann_root) != identity["cann"] or _driver_identity() != identity["driver"]:
             raise SchemaError("CANN configuration or compiler driver changed after resolution")
 
 
@@ -90,7 +99,7 @@ def _cmake_value(value):
     return "[" + marker + "[" + str(value) + "]" + marker + "]"
 
 
-def compile_host_shared(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolchain, directory: Path):
+def compile_recipe(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolchain, directory: Path):
     """Compile either implementation from a frozen recipe; owns no cache or loader."""
     recipe = resolved.recipe
     directory = Path(directory).resolve()
@@ -107,13 +116,22 @@ def compile_host_shared(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCT
                 or spec.environment_fingerprint != toolchain.fingerprint
                 or resolved.toolchain_fingerprint != toolchain.fingerprint):
             raise SchemaError("Ascend C spec does not bind the frozen recipe/toolchain")
-        if (recipe.target_soc, recipe.npu_arch) != ("Ascend950", "dav-3510"):
-            raise SchemaError("host_shared.v1 currently validates only Ascend950 / dav-3510")
+        if recipe.output_kind == "host_shared":
+            if (recipe.target_soc, recipe.npu_arch) != ("Ascend950", "dav-3510"):
+                raise SchemaError("host_shared.v1 currently validates only Ascend950 / dav-3510")
+        else:
+            from .op_package import package_target
+
+            compute_unit, architecture = package_target(recipe.target_soc)
+            if architecture != recipe.npu_arch:
+                raise SchemaError("op-package target_soc/npu_arch mismatch")
+            if len(recipe.sources) != 1:
+                raise SchemaError("op_package.v1 requires one device translation unit")
         toolchain.validate()
         scratch.mkdir()
         inputs = scratch / "inputs"
         inputs.mkdir()
-        for ref in recipe.sources + recipe.headers:
+        for ref in recipe.sources + recipe.headers + recipe.host_sources:
             path = inputs / ref.locator
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(_source_bytes(resolved.source_root, ref))
@@ -137,10 +155,20 @@ def compile_host_shared(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCT
         definitions = list(recipe.definitions) + [
             "FI_DEVICE_ENTRY=" + recipe.device_entry, "FI_HOST_ENTRY=" + recipe.host_entry,
             "FI_BLOCK_DIM=" + str(recipe.block_dim)]
+        options = list(recipe.compile_options) + list(spec.compile_options)
+        if recipe.output_kind == "host_shared":
+            options.insert(0, "--npu-arch=" + recipe.npu_arch)
+        else:
+            definitions += ["FI_OP_PACKAGE=1", "FI_PACKAGE_OP_TYPE=" + recipe.package_op_type,
+                            "FI_COMPUTE_UNIT=" + compute_unit]
         variables = dict(FI_SOURCES=[inputs / s.locator for s in recipe.sources], FI_INCLUDES=includes,
                          FI_DEFINITIONS=definitions,
-                         FI_COMPILE_OPTIONS=["--npu-arch=" + recipe.npu_arch, *recipe.compile_options, *spec.compile_options],
+                         FI_COMPILE_OPTIONS=options, FI_OUTPUT_KIND=[recipe.output_kind],
                          FI_LINK_OPTIONS=recipe.link_options, FI_OUTPUT=[directory / spec.output_path])
+        if recipe.output_kind == "op_package":
+            variables.update(FI_HOST_SOURCES=[inputs / s.locator for s in recipe.host_sources],
+                FI_PACKAGE_VENDOR=[recipe.package_vendor], FI_PACKAGE_OP_TYPE=[recipe.package_op_type],
+                FI_INPUT_ROOT=[inputs])
         request = scratch / "recipe.cmake"
         request.write_text("\n".join("set(%s %s)" % (k, " ".join(_cmake_value(v) for v in values))
                                      for k, values in variables.items()) + "\n", encoding="utf-8")
@@ -161,6 +189,14 @@ def compile_host_shared(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCT
              "-DCMAKE_CXX_COMPILER=" + str(toolchain.host_compiler), "-DCMAKE_BUILD_TYPE=Release"],
             [str(toolchain.cmake), "--build", str(scratch / "cmake"), "--verbose", "-j2"],
         ]
+        if recipe.output_kind == "op_package":
+            commands[0] += ["-DASCEND_CANN_PACKAGE_PATH=" + str(toolchain.cann_root),
+                "-DASCEND_COMPUTE_UNIT=" + compute_unit, "-DASCEND_PYTHON_EXECUTABLE=" + sys.executable,
+                "-DENABLE_SOURCE_PACKAGE=OFF", "-DENABLE_BINARY_PACKAGE=ON",
+                "-DASCEND_SKIP_FAILED_COMPUTE_UNIT=OFF", "-Dvendor_name=" + recipe.package_vendor,
+                "-DCMAKE_INSTALL_PREFIX=" + str(scratch / "cmake")]
+            commands.append([str(toolchain.cmake), "--build", str(scratch / "cmake"),
+                             "--target", "binary", "package", "--verbose", "-j2"])
         with log_path.open("w", encoding="utf-8") as log:
             for command in commands:
                 log.write("command: " + json.dumps(command) + "\n")
@@ -171,6 +207,10 @@ def compile_host_shared(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCT
                     raise JitCompilationError(log_path.read_text(errors="replace")[-6000:],
                         kernel_id=spec.kernel_id, spec_fingerprint=spec.fingerprint,
                         command=command, returncode=result.returncode, log_path=log_path)
+        if recipe.output_kind == "op_package":
+            from .op_package import collect_package
+
+            collect_package(spec, recipe, scratch / "cmake", directory)
         # Keep a small auditable receipt. CMake trees can contain symlinks and
         # third-party headers; they are private scratch, never store payloads.
         stable_commands = []

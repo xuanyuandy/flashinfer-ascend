@@ -386,6 +386,12 @@ class DefaultJitModuleLoader:
                             getattr(opaque, name)
                         except AttributeError as error:
                             raise LookupError("shared library has no symbol %r" % name) from error
+                elif record.artifact.format == ArtifactFormat.ASCENDC_OP_PACKAGE:
+                    from .op_package import load_op_package
+
+                    opaque = load_op_package(directory, target_soc=record.artifact.target_soc)
+                    if required != (opaque.recipe.host_entry,):
+                        raise LookupError("op-package ACLNN entry does not match required symbol")
                 else:
                     raise RuntimeError("no default loader for artifact format %s" % record.artifact.format.value)
                 self._generation += 1
