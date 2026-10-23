@@ -232,174 +232,182 @@ wrapper.run(...)    # O(1)：校验 + 已缓存 kernel handle 的异步 launch
 
 ### 3.4 图模式支持
 
-flashinfer 的定位是**提供可被图框架捕获的算子**，而非自行实现图编译。
-图编译由模型框架（vLLM、SGLang 等）调度，flashinfer 负责让算子满足图捕获的技术要求。
+本节按 T9/T10/T11B 已交付的代码与验证描述当前 aclgraph 契约。§15 的 M5、
+§16 第 9/10 项仍保留旧的 GE / 动态 tiling 设想，不作为当前已实现能力的依据。
+**本仓不捕获图，只负责让自己的算子可以被调用方捕获；可捕获范围必须逐条有证据。**
 
-#### 3.4.1 图模式的技术要求
+#### 3.4.1 路线选择：aclgraph
 
-模型框架（如 torchair / GE）捕获算子时，要求算子提供：
+P3 选择 aclgraph 的 capture/replay 路线，与 vllm-ascend 的默认运行时图路径一致。
+上游通过 `torch.npu.NPUGraph` 捕获并重放设备任务，见
+[vllm-ascend Graph Mode Guide](https://docs.vllm.ai/projects/ascend/en/main/user_guide/feature_guide/graph_mode.html)。
+torchair 的退出时间线也已明确：v0.11.0rc1（2025-11-10）宣布弃用，早期截止计划为
+最晚 2026 Q1；后续弃用公告指定 v0.12.0rc1 移除，该版（2025-12-13）的版本说明
+确认已移除，并要求改用 aclgraph。见上游
+[版本说明](https://docs.vllm.ai/projects/ascend/en/v0.13.0/user_guide/release_notes.html)。
+这里的 2026 Q1 是历史截止计划，不表示当前仍有 torchair 支持承诺。
 
-| 能力 | 说明 | flashinfer 职责 |
+旧设计的“torchair / GE 在图执行期通过 host 回调每 step 重算 tiling 和 workspace”
+不能作为 aclgraph 的实现机制：设备图 replay 不重新执行 Python forward、plan 或
+dispatch，也不会自动重跑 host 侧参数推导。T11 的办法是在 **replay 之前**显式更新
+已录制任务的参数，而非往 replay 中加入 host 回调。真实测试捕获一次、同图重放十次，
+期间 forward 调用增量为 0，见
+[T11B 报告](reports/T11B-report.md) 与
+[capture/replay 测试](../tests/test_replay_param_npu.py)。
+
+#### 3.4.2 责任划分与调用生命周期
+
+责任边界沿用 [P3 工作单的责任表](tasks/T12-rewrite-design-3-4.md)：
+
+| 动作 | 调用方（如 vllm-ascend） | 本仓 |
 | --- | --- | --- |
-| **meta 注册（shape 推导）** | 给定输入 shape，推导输出 shape，构图时 GE 用 | 框架统一封装，kernel 作者提供 lambda |
-| **动态 tiling（host 回调）** | 图执行期每 step 重算 tiling + workspace size | 框架注册第一段接口为 GE 回调 |
-| **kernel 选择固化** | 构图期选定 kernel，图执行期不再进 Python 调度 | dispatch 结果在 plan() 时固化 |
+| 创建图、capture / replay、图的生命周期 | 负责整个 forward | 不调用这些操作 |
+| 捕获哪些 batch size、分桶、shape 路由、FULL/PIECEWISE 策略 | 负责 | 不管理模型图 |
+| 预先分配并传入固定 workspace / metadata buffer，维持其存储生命周期 | 负责 | 校验、持有并使用传入资源 |
+| plan/run 划分、固定资源绑定、冻结校验 | 在捕获前调用 plan | T9 已实现，见 §3.4.4 |
+| 最大 workspace 查询 | 按返回字节数分配 buffer，显式启用 | T10 已实现有限的 FIA v1 路径，见 §3.4.5 |
+| 重放前参数更新 | 提供当前逻辑参数、按录制任务顺序调用更新入口，然后 replay | T11 持有句柄/事件，按登记配方更新，见 §3.4.6 |
 
-**flashinfer 不做的**：图编译调度、多图管理、shape 路由——这些是模型框架的职责。
+跨卡通信入图、投机解码与模型级调度仍属于调用方。调用方在捕获前查询所选 kernel 的
+能力、准备资源并预热；`NEEDS_PARAM_UPDATE` 还要求在调用方 capture 内进入
+`ReplayParameterUpdates.recording()`，每次 replay 前调用 `before_replay()`。
+具体接口及调用示例见 [NPU 图扩展说明](npu_graph_extensions.md)；这些是
+`flashinfer.npu` 下的 NPU-only 扩展，不是上游 FlashInfer 的通用接口。
 
-#### 3.4.2 适用范围：decode-only
+注册/fake 实现不能替代可捕获证据。当前
+[`_torch_library.py`](../flashinfer/_torch_library.py) 实际注册的是 `rmsnorm` 和
+`fused_add_rmsnorm`，含 mutation 与 fake 实现；它没有实现旧文示例中的 Attention
+三层注册或 GE 接入。本文也不据此承诺其它 JIT/backend 路径可捕获。
 
-**图模式仅面向 decode 算子，prefill 不入图**。图模式的净收益 = 省下的 host 开销 × 复用次数
-− 图编译成本；prefill 每请求执行一次、seq 请求间差异大（零复用），编译成本无法摊销，
-收益为负，统一走 eager plan/run 路径。**本章后续内容均只针对 decode**。
+#### 3.4.3 GraphCapability、登记字段与证据门禁
 
-**decode 执行模式**：动态图（GE 动态 shape）——构图期选 kernel 固化，tiling 注册为回调
-每 step 重算。decode 每 step shape 缓变、同 bucket 高复用，图编译成本被反复 replay 摊销，
-收益为正。
+三种值定义在 [`runtime/schema.py`](../flashinfer/runtime/schema.py)，描述一个
+kernel 在**已验证条件内**的入图性质，不参与 eager capability 过滤或排序：
 
-用户不感知差异：统一调 `single_prefill_with_kv_cache()` / `single_decode_with_kv_cache()`，
-框架根据算子类型自动适配 eager 或图模式。
+| `GraphCapability` | 语义 | 更新字段 / 配方 |
+| --- | --- | --- |
+| `CAPTURE_SAFE`（`capture_safe`） | 可捕获，重放前不需要改写 host 参数；仍须附验证范围与证据 | 空更新字段及映射，`strategy="none"` |
+| `NEEDS_PARAM_UPDATE`（`needs_param_update`） | 可捕获，但每次重放前必须更新声明的任务参数 | 非空更新字段，当前策略为 `host_kwargs` |
+| `NOT_CAPTURABLE`（`not_capturable`） | 默认保守声明：未经验证或当前路径不支持入图；仍可正常参与 eager 选型 | 空更新字段，`graph_replay=None` |
 
-#### 3.4.3 kernel 选择固化的 bucket 策略
+登记到 `KernelDescriptor` 的字段对应如下：
 
-**核心问题**：decode 每 step shape 变，若 kernel 选择也变，则图内无法固化 → 图爆炸。
+| 字段 | 当前含义与校验 |
+| --- | --- |
+| `graph_capability` | 上述枚举，默认 `NOT_CAPTURABLE` |
+| `graph_param_updates` | 需更新的**原生命名参数**，不是 ABI 位置；仅 `NEEDS_PARAM_UPDATE` 可非空，且必须非空、无重复 |
+| `graph_replay: GraphReplaySpec` | 更新策略、逻辑字段到原生参数的 `parameter_sources`、必需/固定实参、张量 metadata、参数范围，以及绑定 kernel ID 的测试 selector 和验证环境 |
 
-**初版形态（无 tuning 竞争）**：每接口固化**单默认 kernel**（capability 过滤 + 启发式首选，
-§5.4.3），图分裂仅发生在 capability 硬边界——通常一个接口一张动态图。
-多 kernel 后端竞争与 tuning 冠军切换为**进阶特性**（§9，后期启用），届时才引入按下述
-bucket 粒度的冠军分图。
+本例映射为 `actual_seq_lengths_kv <- kv_seq_lengths`。调用方通过
+`flashinfer.npu.graph_requirements(kernel_id)` 得到能力和原生更新字段名；真正更新时
+按逻辑字段 `kv_seq_lengths` 传值，无需按 CANN 参数位置解包。
+schema 校验 kernel 绑定、策略与能力匹配、映射恰好覆盖更新字段；非默认图字段进入
+descriptor 指纹，并可经 manifest 往返。
 
-**进阶策略（tuning 启用后）**：kernel 选择按 **bucket 粒度**固化，而非单点 shape：
+**声明必须附证据。** schema 仍允许构造没有 `graph_replay` 的非默认声明；这只是
+静态描述接口，不等于通过图验收。NPU 查询和录制入口会拒绝这种声明；
+[`t11_replay_param_audit.py --declarations`](../tools/t11_replay_param_audit.py)
+另检查引用的测试 selector 确实存在。提升能力或放宽范围还须在对应设备环境中实际
+通过调用方拥有图的 capture/replay 对照；无 NPU 的 skip 不算新证据。
+`validated_environment` 是验证环境记录，不是运行时版本探测门禁；字段齐全也不能
+自动证明任意 runner、输入或其它环境可捕获。门禁与往返检查见
+[`test_graph_capability.py`](../tests/test_graph_capability.py)。
+
+#### 3.4.4 T9：固定资源与 plan 冻结
+
+decode、paged prefill、ragged prefill 的共享门面
+[`PublicBatchWrapper`](../flashinfer/attention/public_batch.py) 保留公开兼容参数
+`use_cuda_graph`；在 NPU 上它表示图资源契约，不会触发 capture。
+启用时要求调用方传齐固定 int32 metadata buffer，校验连续性、设备、容量与资源
+不重叠；可选 custom-mask buffer 成对传入。native plan 用 `copy_` 原地写入 metadata，
+不替换固定存储；首次传入的 block table 由 wrapper 持有，后续写入原表。
+
+batch size 由构造时固定 indptr 的长度确定。首次成功的 graph-enabled plan 建立冻结
+状态：实际解析的 backend、`q_len_per_req`、block-table 宽度及其有无、kernel ID 与
+descriptor 指纹。后续改变这些选择会报错，需要另建 wrapper；不是等到捕获发生后
+才冻结，因为本仓无法感知调用方何时捕获。冻结与容量校验先于 metadata 拷贝和新 plan
+发布，见 [`AttentionGraphResourceContract._validate_plan`](../flashinfer/attention/execution_identity.py)
+与 [`AttentionFrameworkSession`](../flashinfer/attention/planner.py)。
+
+[T9 报告](reports/T9-report.md) 和
+[`test_attention_graph_plan.py`](../tests/test_attention_graph_plan.py) 验证了真实 NPU
+固定地址、内容更新与冻结门禁；**它们没有证明这些 batch wrapper 已可动态重放**。
+允许重新 plan 的参数变化也不能直接推导为可以复用旧图。
+
+#### 3.4.5 T10：捕获前查询并绑定最大 workspace
+
+三种 batch wrapper 的 `use_max_workspace: bool = False` 默认关闭；仅 native 路径
+同时设置 `use_cuda_graph=True` 和 `use_max_workspace=True` 时，plan 才自动查询并
+绑定最大需求。单开图开关只得到 T9 的资源/冻结语义，不能据此承诺最大容量。
+显式 `workspace_size()` 查询不发布 plan、不写固定 metadata、不冻结 session；
+`flashinfer.npu.maximum_workspace_size()` 委托该已有方法。ragged wrapper 没有这个
+查询方法，其 graph plan 支持自动最大查询，不能把扩展入口当作新增的 ragged 接口。
+
+当前查询实现是 [`cann.attention.maximum_workspace_bytes`](../flashinfer/cann/attention.py)：
+用真实连续 BSND Q/K/V prototype 调 FIA **v1** 最大接口，覆盖 LSE 开/关；返回值是
+Tensor，按 `numel() * element_size()` 换算字节。逐请求顺序执行共享 workspace，
+需求取最大值而非求和，int workspace 需求为 0。查询的暂存 Tensor 不作为持久
+workspace 留存；持久存储始终由调用方提供，容量不足在 plan 发布前报错，不自动扩容。
+相同静态配置下 KV 长度变化复用已绑定需求，其它查询配置变化重新查询。
+启用这条路径时，plan/run 校验 workspace 绑定，要求连续且 `storage_offset=0`，
+run 把原 buffer 传给 FIA `.out(workspace=...)`。
+
+代价是额外常驻显存。[T10 报告](reports/T10-report.md) 实测 FP16/BF16、8/2 heads、
+Q length=1、D=64/128、KV length=1～131072 的样本：最大 workspace 为 33,554,432
+字节，约为按需分配的 **1.79～2 倍**。这只是算子 workspace 的比较，不含输入/输出、
+查询暂存或 allocator 保留量；不是任意 SoC、任意配置或无限长度的容量证明。
+可复现验证见 [`test_attention_max_workspace.py`](../tests/test_attention_max_workspace.py)。
+v2 只做过接口探针，没有 v2 runner；当前 paged wrapper 整理为 dense KV 后执行 FIA，
+不能把这份结果外推到原生分页 FIA、量化、RoPE 等其它调用路径。
+
+#### 3.4.6 T11：重放前的显式参数更新
+
+[`flashinfer.npu.ReplayParameterUpdates`](../flashinfer/npu.py) 为每张调用方图持有
+独立录制状态；[`runtime/_graph_params.py`](../flashinfer/runtime/_graph_params.py)
+实现通用句柄、事件及更新循环。adapter 只把 descriptor、普通 operation 和命名实参
+交给 `_record_kernel_call()`；当前实际更新机制只有 `host_kwargs`，没有通用的任意
+tiling 二进制改写器。
+
+录制必须位于调用方已经开启的 capture 中且保持同一流；保存完整实参、张量引用、
+task-group handle 和 `ExternalEvent`。每次 `before_replay()` 按 forward 中的任务
+顺序接收一份逻辑参数；同一个 kernel 多次调用也是多个任务，调用方保留层/请求对应关系。
+更新前先对**全部任务**检查字段、host 类型/序列长度、范围，以及张量的地址、shape、
+stride、dtype、device，再执行设备更新。时序为：
 
 ```text
-capability 声明：  kernel 声明支持 bs1-64/seq2k-16k（bucket 范围）
-dispatch 选择：   构图时按 bucket 中心 shape 选 kernel，bucket 内所有 shape 复用
-图捕获：          一个 bucket = 一张图 = 一个固定 kernel
+capture: event.wait → event.reset → group_begin → operation → group_end
+update:  update_stream.wait_stream(current_replay_stream)
+         update_begin → operation(new kwargs) → update_end → event.record
+caller:  graph.replay()
 ```
 
-| 机制 | 作用 | 阶段 |
-| --- | --- | --- |
-| **capability 按 bucket 声明** | kernel 明确支持范围，不承诺单点 shape；capability 边界是图分裂的硬约束 | 初版 |
-| **dispatch 用 bucket 中心 shape** | 选择结果在 bucket 内稳定，不因 shape 微变而切换 | 初版（默认 kernel） |
-| **tuning bucket 边界对齐 kernel 切换边界** | 确保 bucket 内不跨 kernel 优势区，性能结论一致 | 进阶（§9 启用后） |
+调用方须串行访问同一个 updater，并在调用 `before_replay()` 时的当前流上排队 replay。
+预检失败不会更新任何任务；设备更新失败则应丢弃 updater 和对应图。改变已捕获的
+张量绑定或 host 序列布局需重新捕获；超出声明范围还须先取得新证据并更新声明。
+这些是算子侧更新契约，不是模型图管理；
+下游 callback 接线目前只有接口和示例，没有完成模型集成验证。
 
-**bucket 数量控制**：图数量 = bucket 数量。初版图数量 = capability 段数（通常为 1）；
-进阶期通过 tuning 流水（§9.2）验证 bucket 内一致性，不一致时拆桶而非允许 bucket 内换 kernel，
-且冠军切换需满足显著收益阈值方允许分裂新图。
+#### 3.4.7 已验证范围与未完成项
 
-#### 3.4.4 算子侧适配清单（图捕获契约）
+当前内置登记表共 **79 条记录：1 条 `NEEDS_PARAM_UPDATE`、0 条 `CAPTURE_SAFE`、
+78 条 `NOT_CAPTURABLE`**。唯一提升的是 `cann/attention/single_decode_fia_v1`；
+其它记录保持保守声明，不能由已有 eager、meta 或固定-buffer 测试推断入图能力。
+统计与声明证据由上述 T11 审计和 `test_graph_capability.py` 检查。
 
-被图框架捕获的算子必须满足以下契约。CANN 两段式算子天然满足大部分条款，
-kernel 作者的实际负担仅有：shape 推导 lambda、确认纯函数约束、KV cache 类算子标记 mutation。
+| 边界 / 未完成项 | 当前实际范围与依据 |
+| --- | --- |
+| 单算子、有限配置 | `_DECODE_REPLAY` 与真实 capture/replay 测试仅覆盖 Ascend950PR_9579、torch 2.10.0+cpu、torch_npu 2.10.0.post7、CANN 9.2，BSND `.out`、固定 workspace/out、无 mask、8/2 heads、D=64、Q length=1、KV 容量 1024、FP16/BF16、scale=0.125、返回 LSE。原生 Q/K/V shape 为 `(1,1,8,64)` / `(1,1024,2,64)` / `(1,1024,2,64)`，逻辑参数为长度固定为 1 的 host list，元素范围为 `[1,1024]`，已测长度为 `63,1,17,128,513,1024,3,63`；其它张量尺寸或关闭 LSE 会在 recording 中拒绝。 |
+| 依赖捕获时长度的 mask | `dense_attention()` 在 recording 中明确拒绝 causal/window/custom（含 packed）mask；仅改 FIA host 长度不能修正已捕获的 mask 预处理。三个 mask 拒绝用例见 `test_replay_param_npu.py`；T9/T10 的 mask 数值测试不等于动态 replay 验证。 |
+| batch/paged 动态路径 | `_run_native()` 仍逐请求 gather/slice dense KV，分配中间/输出张量并拼接结果，未改成动态重放路径；三个 batch FIA descriptor 仍为 `NOT_CAPTURABLE`，`_batch_run()` 在参数 recording 中明确拒绝。 |
+| 公共 single-decode 入口 | 已证明的是 descriptor runner 携带固定 workspace 的调用路径；上游形状的公共 single-decode 函数没有 workspace 参数，不能直接声称该入口已支持上述动态重放。 |
+| 外部 provider 与 Host reference | 外部 provider 的 public batch 图资源绑定仍显式报 `NotImplementedError`；Host ReferenceTensor 只验证结构契约，不能作设备捕获证据，见 `public_batch.py` 与 T9 报告。 |
+| consumer / 完整模型 | vLLM/SGLang consumer 状态在两本对标账本中仍为 `unverified`；没有运行完整模型。T11B 的单算子 forward 捕获、更新开/关对照和输出/LSE 零误差不能外推为 serving 或全模型验证。 |
 
-**契约定位（两点前提）**：
-
-1. **契约对象是注册算子节点，不是 kernel 接口**。图捕获的直接对象是 flashinfer 对外接口
-   注册的 torch 算子（图内一个原子节点）；底下的 kernel 两段式接口不是图结构的一部分，
-   而是该节点在图执行期的内部行为（动态 tiling 回调）。kernel 选择在构图期固化，
-   图节点与 kernel 1:1 绑定——因此 mutation 声明、meta 推导均挂在接口级算子上。
-2. **契约内容不是 flashinfer 私设，是 CANN 生态通用规范的显式化**。注册体系
-   （`torch.library` 三层）、图工具链（torchair/GE）、实现契约（纯函数推导、mutation 声明、
-   两段式动态 tiling）与 torch_npu 等仓完全同套——flashinfer 复用标准机制，差异仅在
-   GE 侧接入的内容（自研 kernel vs 官方 aclnn）。kernel 作者无需学习新规范，
-   框架维护跟随 torchair/GE 演进即可。
-
-**A. 注册与接入**
-
-| 适配项 | 说明 | 责任方 |
-| --- | --- | --- |
-| **meta 注册** | 输出 shape/dtype 推导函数，构图期 GE 调用 | 框架封装，kernel 作者提供 lambda（通常 1~3 行） |
-| **动态 tiling** | 第一段接口支持 bucket 内任意 shape | kernel 作者（CANN 两段式天然支持） |
-| **workspace 动态计算** | `GetWorkspaceSize` 返回当前 shape 实际 size | kernel 作者（CANN 两段式天然支持） |
-| **mutation 声明** | KV cache 原地更新的算子，声明被修改的输入 buffer | 注册时标记（防图优化错误重排/内存复用） |
-
-**B. 纯函数约束（必须满足）**
-
-| 约束 | 含义 | 反例（不可支持） |
-| --- | --- | --- |
-| 输出 shape 是输入 shape 的纯函数 | `out_shape = f(in_shapes)`，构图期可求值；f 可为符号推导（batch/seq 作为符号变量，运行期代入数值） | data-dependent shape：输出 shape 取决于数据内容（nonzero/unique 类） |
-| 输出 dtype 是输入 dtype 的纯函数 | `out_dtype = f(in_dtypes)`，通常是平凡映射（等于输入 dtype；LSE 固定 fp32） | 运行期看数据决定 dtype |
-| 无 host 侧数据依赖 | host 编排代码不读 tensor 数据做分支；决策只基于 shape/dtype/layout/标量参数 | `if tensor[0] > 0:` 出现在 host 代码 |
-| 无隐藏全局状态 | kernel 行为不依赖全局可变变量，图重放行为一致 | 依赖全局计数器/内部缓存状态 |
-
-**C. 显式化约束（副作用不得隐藏）**
-
-- **副作用显式声明**：KV cache in-place 更新必须声明为 mutation；输出通过返回值或显式 out 参数暴露；
-- **workspace 显式申请**：GM workspace 由框架按 `GetWorkspaceSize` 返回值分配，kernel 内部禁止自行 `aclrtMalloc`；
-- **随机性显式输入**：含随机行为的算子（如采样），seed/offset 必须作为显式输入参数。
-
-**D. flashinfer 算子对照检查**
-
-| 算子类型 | 输出 shape 可推导 | mutation | 结论 |
-| --- | --- | --- | --- |
-| `single_prefill/decode_with_kv_cache` | 是（= q 的 shape） | KV cache 更新需声明 | 满足 |
-| batch prefill/decode wrapper | 是（= q shape + indptr **长度**，非内容） | 同上 | 满足 |
-| LSE 返回（`return_lse`） | 是（固定 fp32） | 无 | 满足 |
-| 量化 KV cache 写入 | 是 | 需声明 | 满足 |
-
-**唯一需刻意处理的点**：KV cache 类算子的 mutation 声明——这是与普通纯算子的最大区别，
-不声明会导致图框架误判 buffer 未被修改而做错误的内存复用。
-
-#### 3.4.5 算子注册形式（torch.library 三层）
-
-图捕获机制由图编译工具链（torchair/GE）实现；flashinfer 的职责是按 PyTorch
-算子注册规范，把算子挂进 `torch.ops.flashinfer.*` 命名空间。**注册形式取决于图编译
-工具链规范，与推理框架无关**——注册一次，任何基于 PyTorch 图编译的推理框架
-（vLLM / SGLang 等）都能捕获，推理框架只是图编译的触发方。
-
-注册分三层，与 §3.4.4 契约一一对应：
-
-```python
-# 第 1 层：schema 定义（契约 C：mutation 声明的落地处）
-torch.library.define(
-    "flashinfer::single_decode_with_kv_cache",
-    "(Tensor q, Tensor(a!) k_cache, Tensor(b!) v_cache, ...) -> Tensor"
-    #                ^^               ^^  "!" 标记该 buffer 被原地修改，
-    #                PyTorch functionalization 据此处理 KV cache 更新
-)
-
-# 第 2 层：meta/fake 注册（契约 B：纯函数约束的落地处）
-@torch.library.register_fake("flashinfer::single_decode_with_kv_cache")
-def _decode_meta(q, k_cache, v_cache, ...):
-    return torch.empty_like(q)   # out_shape/dtype = f(in)，纯元信息推导，
-                                 # 图捕获时 fake tensor 传播调用
-)
-
-# 第 3 层：实现绑定（契约 A：动态 tiling / workspace 的落地处）
-@torch.library.impl("flashinfer::single_decode_with_kv_cache", "PrivateUse1")
-def _decode_impl(q, k_cache, v_cache, ...):
-    ...  # dispatch（构图期固化）→ plan → 两段式 launch
-```
-
-| 层 | 落地契约条款 | 责任方 |
-| --- | --- | --- |
-| schema 定义 | 契约 C（mutation 声明） | 框架统一编写；kernel 作者标记可变 buffer |
-| meta/fake 注册 | 契约 B（shape/dtype 纯函数推导） | kernel 作者提供推导 lambda，框架挂载 |
-| 实现绑定 | 契约 A（动态 tiling、workspace） | 框架封装两段式调用，kernel 作者不感知 |
-
-GE 侧接入按 kernel 类型分岔，动态 tiling 回调的提供者不同：
-
-| kernel 类型 | GE 侧接入方式 | 动态 tiling 回调由谁提供 |
-| --- | --- | --- |
-| aclnn（cann backend） | torchair 原生识别 aclnn 调用 | **CANN 栈自带**——aclnn 两段式是 GE 动态 shape 标准路径，图执行期自动重跑第一段，框架零适配 |
-| 自研 Ascend C | 编译为 GE 自定义算子，绑定到实现层 | **框架封装**——在实现绑定层把第一段接口注册为图执行期 host 回调 |
-| Triton | 经 triton-ascend 工具链产物接入 | **无回调**——无两段式，实现层按当前 shape 重算 grid/constexpr 后直接 launch |
-
-kernel 作者始终不直接对接 torchair/GE：三层注册代码由框架生成或封装。
-
-#### 3.4.6 JIT 在图模式下的约束
-
-- 构图期若查无 AOT 产物，可触发 JIT 编译（§8）；产物进磁盘缓存，该图长期复用；
-- **图执行期绝不允许触发 JIT**——图运行中不能再进 Python 编译流程；
-- shape 超出算子 capability 声明的 bucket 范围时，模型框架侧报错或触发重新构图。
-
-#### 3.4.7 对既有机制的影响
-
-- **dispatch cache**：图模式下 dispatch 只发生在构图期；图生命周期内选择结果已固化，
-  dispatch cache 不再被查询。registry 冻结约束（§10.1）与图模式天然契合——换 kernel = 重构图。
-- **图注册路径**：`register_kernel`（§10.1）除 eager launch ABI 外，同步注册 torchair 算子
-  （meta + 图接入），由框架封装层完成，对用户透明。
-- **错误处理**：图模式下的 capability 失败、编译失败等，在构图期抛出，不延迟到运行期。
+上述限制的实现集中在 [`cann/attention.py`](../flashinfer/cann/attention.py) 和
+[`attention/public_batch.py`](../flashinfer/attention/public_batch.py)；验证范围及未完成项见
+[T11B 报告](reports/T11B-report.md)、[NPU 扩展说明](npu_graph_extensions.md) 与
+[对标账本](../flashinfer/data/attention_api_parity.json)。新增算子先保留
+`NOT_CAPTURABLE`，取得对应路径的真实证据后才能提升声明。
 
 
 ## 4. 硬件感知与环境探测

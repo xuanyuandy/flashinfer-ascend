@@ -5,15 +5,15 @@
 
 ## 当前结果
 
-| 验证 | 当前结果 | 证据 |
+| 验证 | 当前结果 | 过程产物路径（未入仓） |
 | --- | --- | --- |
-| 包模块导入 | 119 个，0 失败 | [imports](steps/P1-final-imports.log) |
-| 测试收集 | 1000 项，0 错误 | [collect](steps/P1-final-collect.log) |
-| 全量测试 | 997 通过、3 失败、0 跳过 | [完整输出](steps/P1-full-after-workload.log)、[JUnit](P1-after-workload.xml)、失败清单（过程产物，未入仓） |
-| parity / enum / pdl / backend 门禁 | 131 通过 | [门禁输出](steps/T5-and-T4-gates.log) |
-| 原有 A5 smoke | 23 项数值检查通过 | [smoke](steps/P1-final-A5-smoke.log) |
-| 双账本完整性 | 退出码 0；覆盖状态仍 incomplete | [安装包验证](steps/T5-installed-final.log) |
-| 主登记表 | 63 条，35 个 op；CANN 32、reference 30、Triton 1 | [登记表](steps/P1-registry-inventory.log) |
+| 包模块导入 | 119 个，0 失败 | `steps/P1-final-imports.log` |
+| 测试收集 | 1000 项，0 错误 | `steps/P1-final-collect.log` |
+| 全量测试 | 997 通过、3 失败、0 跳过 | 完整输出 `steps/P1-full-after-workload.log`、JUnit `P1-after-workload.xml`、失败清单 |
+| parity / enum / pdl / backend 门禁 | 131 通过 | `steps/T5-and-T4-gates.log` |
+| 原有 A5 smoke | 23 项数值检查通过 | `steps/P1-final-A5-smoke.log` |
+| 双账本完整性 | 退出码 0；覆盖状态仍 incomplete | `steps/T5-installed-final.log` |
+| 主登记表 | 63 条，35 个 op；CANN 32、reference 30、Triton 1 | `steps/P1-registry-inventory.log` |
 
 全量结果与最初 T1 的 734 通过 / 119 失败相比已显著收敛。
 测试数量增加是新增功能验证的结果，不将新增用例与旧失败机械抵消。
@@ -64,10 +64,10 @@ python examples/a5_smoke.py
 
 ## 修改留痕与提交
 
-[`events.jsonl`](events.jsonl) 记录操作时间、命令和退出码；`steps/*.patch` / `*.log` 保存每组源码差异和完整输出。
+`events.jsonl` 记录操作时间、命令和退出码；`steps/*.patch` / `*.log` 保存每组源码差异和完整输出。这些均为未入仓的过程产物。
 任务提交使用中文任务号标题；后续全量测试发现的同任务遗漏以补充提交记录，未改写既有提交历史。
 
-前序 A5 修改保留在工作区，基线见 [`preexisting.patch`](preexisting.patch)。
+前序 A5 修改保留在工作区，基线记录在 `preexisting.patch`（过程产物，未入仓）。
 本次任务提交没有把它们混入其他任务；当前数值证据基于包含这些 A5 改动的工作区，
 不应被描述成只检出某一个新提交即可复现的干净树证据。
 

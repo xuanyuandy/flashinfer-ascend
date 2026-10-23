@@ -31,6 +31,6 @@
 最后一项由冻结 wire 反推验证：只在诊断副本中替换已知错误的 binary header 后，补齐 workload 版本即可得到原始冻结 wire 的完整 SHA-256；未修改运行期指纹或测试断言。
 证据为 `T1-workload-version-recovery.json`（过程产物，未入仓）。
 
-当前工作区全量回归 997 通过、3 失败（[`steps/P1-full-after-workload.log`](steps/P1-full-after-workload.log)）。
+当前工作区全量回归 997 通过、3 失败（`steps/P1-full-after-workload.log`，过程产物，未入仓）。
 仍失败的是 binary ABI v1、binary ABI v2 和由其 header 派生的 wire 指纹；error ABI 单独检查也尚未匹配。
 导入 119 个模块零失败，收集 1000 项零错误。最初 119 项失败清单保留为历史基线；最新状态见 P0/P1 总报告。
