@@ -2,7 +2,26 @@
 
 from functools import partial
 
-from ..runtime.schema import Backend, CapabilitySpec, KernelDescriptor, SchemaError
+from ..runtime.schema import (
+    Backend, CapabilitySpec, GraphCapability, GraphReplaySpec, KernelDescriptor, SchemaError,
+)
+
+
+_DECODE_ID = "cann/attention/single_decode_fia_v1"
+_DECODE_REPLAY = GraphReplaySpec(
+    validated_kernel_id=_DECODE_ID,
+    validation_tests=("tests/test_replay_param_npu.py::test_fia_full_capture_replay_needs_parameter_update",),
+    validated_environment="Ascend950PR_9579; torch 2.10.0+cpu; torch_npu 2.10.0.post7; CANN 9.2",
+    parameter_sources=(("actual_seq_lengths_kv", "kv_seq_lengths"),),
+    required_arguments=("workspace", "out"),
+    fixed_arguments=(("input_layout", "BSND"), ("atten_mask", None),
+                     ("num_heads", 8), ("num_key_value_heads", 2),
+                     ("scale", .125), ("softmax_lse_flag", True)),
+    tensor_metadata=tuple((name, shape, ("float16", "bfloat16")) for name, shape in (
+        ("query", (1, 1, 8, 64)), ("key", (1, 1024, 2, 64)), ("value", (1, 1024, 2, 64)),
+    )),
+    parameter_ranges=(("actual_seq_lengths_kv", 1, 1024),),
+)
 
 
 def _scale(value, heads, tensor, name):
@@ -101,7 +120,7 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
                 allowed &= custom_mask
         if native:
             import torch_npu
-            from ..runtime._graph_params import _is_recording, _record_call
+            from ..runtime._graph_params import _is_recording, _record_kernel_call
 
             if _is_recording() and workspace is None:
                 raise SchemaError("updatable FIA capture requires caller-owned fixed workspace")
@@ -127,11 +146,14 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
                     query, value, input_layout="BSND", num_heads=h,
                     num_key_value_heads=hk, softmax_lse_flag=bool(return_lse),
                 )
-                result, natural_lse = _record_call(
+                from ..runtime.registry import get_global_registry
+
+                kernel_id = _DECODE_ID if decode else "cann/attention/single_prefill_fia_v1"
+                result, natural_lse = _record_kernel_call(
+                    get_global_registry().get(kernel_id),
                     torch_npu.npu_fused_infer_attention_score.out,
                     dict(query=query, key=key, value=value, workspace=workspace,
                          out=list(outputs), actual_seq_lengths_kv=[sk], **options),
-                    updates=("actual_seq_lengths_kv",),
                 )
             output = result.squeeze(0).to(out_dtype)
             lse = natural_lse.reshape(h, sq).transpose(0, 1) / math.log(2) if return_lse else None
@@ -193,6 +215,10 @@ def maximum_workspace_bytes(spec, query_lengths, kv_lengths, *, device):
 
 
 def _batch_run(wrapper, q, *kv, **options):
+    from ..runtime._graph_params import _is_recording
+
+    if _is_recording():
+        raise SchemaError("batch FIA composite: graph_capability=not_capturable")
     return wrapper._run_native(q, *kv, **options)
 
 
@@ -206,5 +232,9 @@ def attention_descriptors():
                 layouts=("NHD", "HND"), soc_models=("Ascend950",),
                 specializations=(("head_dim", ("64", "128")),),
             ), runner=partial(dense_attention, native=True) if op.startswith("single") else _batch_run,
+            graph_capability=(GraphCapability.NEEDS_PARAM_UPDATE if op == "single_decode"
+                              else GraphCapability.NOT_CAPTURABLE),
+            graph_param_updates=(("actual_seq_lengths_kv",) if op == "single_decode" else ()),
+            graph_replay=(_DECODE_REPLAY if op == "single_decode" else None),
         ))
     return tuple(result)

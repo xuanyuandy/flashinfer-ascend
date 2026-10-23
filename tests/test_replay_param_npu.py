@@ -8,8 +8,8 @@ handle. No NPU imports or initialization occur during test collection.
 import pytest
 
 from flashinfer.cann.attention import dense_attention
-from flashinfer.runtime import SchemaError
-from flashinfer.runtime._graph_params import _ReplayParameterUpdates
+from flashinfer.npu import GraphCapability, ReplayParameterUpdates, graph_requirements
+from flashinfer.runtime import SchemaError, get_global_registry
 
 
 @pytest.fixture(scope="module")
@@ -35,6 +35,10 @@ def test_fia_full_capture_replay_needs_parameter_update(npu, dtype, data):
     import torch
     import torch_npu
 
+    descriptor = get_global_registry().get("cann/attention/single_decode_fia_v1")
+    assert graph_requirements(descriptor.kernel_id) == (
+        GraphCapability.NEEDS_PARAM_UPDATE, ("actual_seq_lengths_kv",),
+    )
     capacity, heads, kv_heads, dim = 1024, 8, 2, 64
     generator = torch.Generator().manual_seed(1101)
     if data == "ramp":
@@ -57,7 +61,7 @@ def test_fia_full_capture_replay_needs_parameter_update(npu, dtype, data):
     def forward():
         nonlocal calls
         calls += 1
-        result, stats = dense_attention(q, k, v, decode=True, return_lse=True, workspace=workspace)
+        result, stats = descriptor.runner(q, k, v, decode=True, return_lse=True, workspace=workspace)
         out.copy_(result)
         lse.copy_(stats)
 
@@ -65,7 +69,7 @@ def test_fia_full_capture_replay_needs_parameter_update(npu, dtype, data):
         forward()
     torch.npu.synchronize()
     graph = torch.npu.NPUGraph()
-    updates = _ReplayParameterUpdates()
+    updates = ReplayParameterUpdates()
     capture_stream, update_stream = torch.npu.Stream(), torch.npu.Stream()
     with torch.npu.graph(graph, stream=capture_stream, auto_dispatch_capture=False):
         with updates.recording():
@@ -74,6 +78,8 @@ def test_fia_full_capture_replay_needs_parameter_update(npu, dtype, data):
     task, = updates.tasks
     assert isinstance(task.handle, torch_npu._C._NPUTaskGroupHandle)
     assert task.layout.updates == ("actual_seq_lengths_kv",)
+    assert task.descriptor is descriptor
+    assert task.kernel_id == descriptor.kernel_id
     assert task.arguments["workspace"] is workspace
     assert graph.auto_dispatch_capture is False
     workspace_binding = (workspace.data_ptr(), tuple(workspace.shape))
@@ -103,14 +109,13 @@ def test_fia_full_capture_replay_needs_parameter_update(npu, dtype, data):
     # No synchronize between these updates/replays: the runtime must order
     # the previous replay before another update on the separate update stream.
     for length in lengths:
-        updates.update(({"actual_seq_lengths_kv": [length]},), stream=update_stream)
+        updates.before_replay(({"kv_seq_lengths": [length]},), stream=update_stream)
         graph.replay()
         observations.append((length, out.clone(), lse.clone()))
     for length, actual, actual_lse in observations:
         expected, expected_lse = eager[length]
-        tolerance = .002 if dtype == "float16" else .02
-        torch.testing.assert_close(actual, expected, atol=tolerance, rtol=tolerance)
-        torch.testing.assert_close(actual_lse, expected_lse, atol=.002, rtol=.002)
+        torch.testing.assert_close(actual, expected, atol=0, rtol=0)
+        torch.testing.assert_close(actual_lse, expected_lse, atol=0, rtol=0)
         print(f"{dtype} {data} update=ON seq_len={length} eager={expected[0, 0].item():.9g} "
               f"graph={actual[0, 0].item():.9g} "
               f"max_abs_error={(actual.float() - expected.float()).abs().max().item():.9g} "
@@ -133,7 +138,7 @@ def test_updatable_fia_requires_fixed_workspace(npu):
     q = torch.zeros((8, 64), dtype=torch.float16, device=npu)
     k = torch.zeros((128, 2, 64), dtype=q.dtype, device=npu)
     graph = torch.npu.NPUGraph()
-    updates = _ReplayParameterUpdates()
+    updates = ReplayParameterUpdates()
     # Catch inside graph() so capture is closed normally; the task recorder
     # must still invalidate its scope and clear the context on failure.
     with torch.npu.graph(graph):
@@ -153,7 +158,7 @@ def test_capture_time_mask_cannot_silently_follow_updated_lengths(npu, mask):
     options = {"causal": True} if mask == "causal" else {"window_left": 31} if mask == "window" else {
         "custom_mask": torch.ones((1, 128), dtype=torch.bool, device=npu),
     }
-    updates = _ReplayParameterUpdates()
+    updates = ReplayParameterUpdates()
     graph = torch.npu.NPUGraph()
     with torch.npu.graph(graph):
         with pytest.raises(NotImplementedError, match="unmasked attention"):

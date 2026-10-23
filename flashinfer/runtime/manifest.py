@@ -12,6 +12,7 @@ from .schema import (
     CapabilitySpec,
     CompileMode,
     GraphCapability,
+    GraphReplaySpec,
     KernelConstraints,
     KernelCapabilityBinding,
     KernelDescriptor,
@@ -51,6 +52,7 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         "capability",
         "graph_capability",
         "graph_param_updates",
+        "graph_replay",
     }
     if not {"kernel_id", "op", "backend"} <= set(value):
         raise SchemaError("kernel descriptor is missing required fields")
@@ -130,6 +132,8 @@ def descriptor_from_dict(value: Mapping[str, Any]) -> KernelDescriptor:
         compile_mode=value.get("compile_mode", CompileMode.NONE),
         graph_capability=value.get("graph_capability", GraphCapability.NOT_CAPTURABLE),
         graph_param_updates=value.get("graph_param_updates", ()),
+        graph_replay=(GraphReplaySpec.from_dict(value["graph_replay"])
+                      if value.get("graph_replay") is not None else None),
         launch_abi=(
             KernelLaunchABI.from_dict(launch_abi_value)
             if launch_abi_value is not None

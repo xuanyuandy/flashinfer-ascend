@@ -1,6 +1,7 @@
 """Host-only failure and ownership checks for the private graph update runtime."""
 
 from contextlib import contextmanager
+from dataclasses import replace
 from pathlib import Path
 import subprocess
 import sys
@@ -8,7 +9,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from flashinfer.runtime import SchemaError
+from flashinfer.npu import GraphCapability, GraphReplaySpec, ReplayParameterUpdates, graph_requirements
+from flashinfer.runtime import Backend, KernelDescriptor, KernelRegistry, SchemaError
 from flashinfer.runtime import _graph_params as runtime
 
 
@@ -29,10 +31,14 @@ shutil.which = forbidden
 subprocess.Popen = forbidden
 import flashinfer
 from flashinfer.runtime._graph_params import _ReplayParameterUpdates, _record_call
+from flashinfer.npu import graph_requirements, ReplayParameterUpdates
 updates = _ReplayParameterUpdates()
 assert updates.tasks == ()
+assert ReplayParameterUpdates().tasks == ()
+capability, params = graph_requirements('cann/attention/single_decode_fia_v1')
+assert capability.value == 'needs_param_update' and params == ('actual_seq_lengths_kv',)
 assert _record_call(lambda **kw: kw, {'lengths': [17]}, updates=('lengths',)) == {'lengths': [17]}
-print('PASS import flashinfer + private graph runtime + eager hook: optional imports=0 compiler probes=0')
+print('PASS import flashinfer + NPU extension + graph query + eager hook: optional imports=0 compiler probes=0')
 '''
     result = subprocess.run([sys.executable, "-S", "-c", code],
                             cwd=Path(__file__).resolve().parents[1],
@@ -258,3 +264,112 @@ def test_empty_recording_and_capture_stream_switch_fail_closed(device):
             runtime._record_call(lambda **kw: None, {"lengths": [128]}, updates=("lengths",))
     assert not runtime._is_recording()
     assert device.log == []
+
+
+def graph_descriptor(**spec_changes):
+    kernel_id = "cann/test/declared_graph"
+    spec = GraphReplaySpec(
+        kernel_id, ("tests/test_replay_param_runtime.py::test_descriptor_drives_multiple_tasks_and_public_callback",),
+        "host test double; not NPU evidence", required_arguments=("workspace", "out"),
+        parameter_sources=(("lengths", "kv_seq_lengths"),),
+        fixed_arguments=(("layout", "BSND"),),
+        tensor_metadata=(("query", (8, 64), ("float16",)),),
+        parameter_ranges=(("lengths", 1, 128),),
+    )
+    return KernelDescriptor(
+        kernel_id, op="test.graph", backend=Backend.CANN,
+        graph_capability=GraphCapability.NEEDS_PARAM_UPDATE, graph_param_updates=("lengths",),
+        graph_replay=replace(spec, **spec_changes),
+    )
+
+
+def graph_arguments():
+    return dict(query=Tensor(), workspace=Tensor(), out=[Tensor()], lengths=[128], layout="BSND")
+
+
+def test_descriptor_drives_multiple_tasks_and_public_callback(device):
+    descriptor = graph_descriptor()
+    registry = KernelRegistry((descriptor,))
+    assert graph_requirements(descriptor.kernel_id, registry=registry) == (
+        GraphCapability.NEEDS_PARAM_UPDATE, ("lengths",),
+    )
+    launches = []
+    updater = ReplayParameterUpdates()
+    arguments = graph_arguments()
+    with updater.recording() as recording:
+        assert recording is updater
+        for _ in range(2):
+            runtime._record_kernel_call(descriptor, lambda **kw: launches.append(kw), arguments)
+    assert [t.kernel_id for t in updater.tasks] == [descriptor.kernel_id] * 2
+    assert all(t.descriptor is descriptor for t in updater.tasks)
+    device.api.capturing, device.api.current = False, device.replay
+    device.log.clear()
+    updater.before_replay(({"kv_seq_lengths": [17]}, {"kv_seq_lengths": [63]}), stream=device.update)
+    assert [kw["lengths"] for kw in launches] == [[128], [128], [17], [63]]
+    assert [e[0] for e in device.log] == [
+        "wait_stream", "update_begin", "update_end", "record", "update_begin", "update_end", "record",
+    ]
+    device.log.clear()
+    with pytest.raises(SchemaError, match="verified graph range"):
+        updater.before_replay(({"kv_seq_lengths": [17]}, {"kv_seq_lengths": [129]}), stream=device.update)
+    assert device.log == []  # All tasks preflight before ANY update or event.
+
+
+@pytest.mark.parametrize("change,match", [
+    ({"workspace": None}, "requires argument workspace"),
+    ({"layout": "BNSD"}, "requires layout='BSND'"),
+    ({"query": None}, "outside the verified graph tensor metadata"),
+    ({"lengths": [0]}, "verified graph range"),
+])
+def test_descriptor_scope_rejects_before_device_nodes(device, change, match):
+    updater = ReplayParameterUpdates()
+    with pytest.raises(SchemaError, match=match):
+        with updater.recording():
+            runtime._record_kernel_call(graph_descriptor(), lambda **kw: None,
+                                        {**graph_arguments(), **change})
+    assert updater.tasks == () and device.log == []
+
+
+def test_declaration_evidence_is_required_and_cannot_be_copied_to_another_kernel(device):
+    from tools.t11_replay_param_audit import audit_declarations
+
+    safe = KernelDescriptor("cann/test/unverified", op="test.graph", graph_capability="capture_safe")
+    with pytest.raises(SchemaError, match="no graph replay validation evidence"):
+        graph_requirements(safe.kernel_id, registry=KernelRegistry((safe,)))
+    with pytest.raises(SchemaError, match="no graph replay validation evidence"):
+        audit_declarations((safe,))
+    with pytest.raises(SchemaError, match="different kernel"):
+        replace(graph_descriptor(), kernel_id="cann/test/another")
+    with pytest.raises(SchemaError, match="missing graph validation test"):
+        audit_declarations((graph_descriptor(validation_tests=("tests/missing.py::test_graph",)),))
+    with pytest.raises(SchemaError, match="not_capturable"):
+        with ReplayParameterUpdates().recording():
+            runtime._record_kernel_call(replace(safe, graph_capability="not_capturable"),
+                                        lambda **kw: None, {})
+    assert device.log == []
+
+
+def test_new_npu_namespace_and_t10_option_are_tracked_as_extensions():
+    from flashinfer.parity import ParityEntry, validate_packaged_manifests
+    from tools.update_parity_inventory import annotate
+
+    class NoUpstreamExtensions:
+        def resolve(self, symbol):
+            return None
+
+    manifests = validate_packaged_manifests()
+    for manifest in manifests:
+        extensions = [e for e in manifest.entries if e.local.startswith("flashinfer.npu.")]
+        assert len(extensions) == 8
+        for entry in extensions:
+            assert entry.api_kind == "npu_extension"
+            assert entry.semantic_status == "intentionally_different"
+            assert entry.extra_fields["upstream_counterpart"] is None
+            assert entry.extra_fields["drop_in"] is False
+            assert ParityEntry.from_dict(annotate(entry.to_dict(), NoUpstreamExtensions())) == entry
+        for entry in manifest.entries:
+            if entry.local in {"flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+                              "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
+                              "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper"}:
+                option = entry.extra_fields["parameters"]["use_max_workspace"]
+                assert option["api_kind"] == "npu_extension" and option["default"] is False

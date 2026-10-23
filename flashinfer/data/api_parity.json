@@ -2220,7 +2220,18 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
+      "parameters": {
+        "use_max_workspace": {
+          "api_kind": "npu_extension",
+          "semantic_status": "intentionally_different",
+          "default": false,
+          "extension_namespace": "flashinfer.npu",
+          "upstream_counterpart": null,
+          "drop_in": false,
+          "reason": "T10 NPU-only 最大 workspace 选项；上游无对应参数。保留默认 False；显式查询入口为 flashinfer.npu.maximum_workspace_size。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.begin_forward",
@@ -4247,7 +4258,18 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
+      "parameters": {
+        "use_max_workspace": {
+          "api_kind": "npu_extension",
+          "semantic_status": "intentionally_different",
+          "default": false,
+          "extension_namespace": "flashinfer.npu",
+          "upstream_counterpart": null,
+          "drop_in": false,
+          "reason": "T10 NPU-only 最大 workspace 选项；上游无对应参数。保留默认 False；显式查询入口为 flashinfer.npu.maximum_workspace_size。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.begin_forward",
@@ -4550,7 +4572,18 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
+      "parameters": {
+        "use_max_workspace": {
+          "api_kind": "npu_extension",
+          "semantic_status": "intentionally_different",
+          "default": false,
+          "extension_namespace": "flashinfer.npu",
+          "upstream_counterpart": null,
+          "drop_in": false,
+          "reason": "T10 NPU-only 最大 workspace 选项；上游无对应参数。保留默认 False；显式查询入口为 flashinfer.npu.maximum_workspace_size。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.begin_forward",
@@ -7521,6 +7554,174 @@
         "vllm": "unverified",
         "sglang": "unverified"
       }
+    },
+    {
+      "upstream": "flashinfer.npu.GraphCapability",
+      "local": "flashinfer.npu.GraphCapability",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.GraphReplaySpec",
+      "local": "flashinfer.npu.GraphReplaySpec",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.ReplayParameterUpdates",
+      "local": "flashinfer.npu.ReplayParameterUpdates",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.ReplayParameterUpdates.before_replay",
+      "local": "flashinfer.npu.ReplayParameterUpdates.before_replay",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.ReplayParameterUpdates.recording",
+      "local": "flashinfer.npu.ReplayParameterUpdates.recording",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.ReplayParameterUpdates.tasks",
+      "local": "flashinfer.npu.ReplayParameterUpdates.tasks",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.graph_requirements",
+      "local": "flashinfer.npu.graph_requirements",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.npu.maximum_workspace_size",
+      "local": "flashinfer.npu.maximum_workspace_size",
+      "upstream_kind": "stable",
+      "implementation_status": "framework",
+      "semantic_status": "intentionally_different",
+      "priority": "P1",
+      "notes": "NPU-only；查询不导入设备包。有限验证范围与调用方接入示例见 docs/npu_graph_extensions.md。",
+      "extension_namespace": "flashinfer.npu",
+      "upstream_counterpart": null,
+      "drop_in": false,
+      "api_kind": "npu_extension",
+      "reason": "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
     }
   ],
   "coverage_matrix": {

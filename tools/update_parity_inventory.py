@@ -176,6 +176,11 @@ def annotate_attention_workspace(entry):
     if symbol in ATTENTION_CLASSES:
         entry["notes"] = (entry.get("notes", "").split(" use_max_workspace", 1)[0]
                           + " use_max_workspace=False 为 NPU 扩展的仅关键字参数；显式开启且 use_cuda_graph=True 时，plan 查询 FIA v1 最大字节容量并校验调用方固定 workspace，run 透传同一地址；默认关闭以保留内存代价，未实现的 T11 tiling 更新不在此保证内。")
+        entry.setdefault("parameters", {})["use_max_workspace"] = dict(
+            api_kind="npu_extension", semantic_status="intentionally_different", default=False,
+            extension_namespace="flashinfer.npu", upstream_counterpart=None, drop_in=False,
+            reason="T10 NPU-only 最大 workspace 选项；上游无对应参数。保留默认 False；显式查询入口为 flashinfer.npu.maximum_workspace_size。",
+        )
     return entry
 
 
@@ -183,7 +188,16 @@ def annotate(entry, upstream):
     symbol = entry["upstream"]
     resolved = upstream.resolve(symbol)
     if resolved is None:
-        if symbol == "flashinfer.utils.enable_torch_library":
+        if symbol in {
+            "flashinfer.npu.GraphCapability", "flashinfer.npu.GraphReplaySpec",
+            "flashinfer.npu.graph_requirements", "flashinfer.npu.maximum_workspace_size",
+            "flashinfer.npu.ReplayParameterUpdates", "flashinfer.npu.ReplayParameterUpdates.recording",
+            "flashinfer.npu.ReplayParameterUpdates.before_replay", "flashinfer.npu.ReplayParameterUpdates.tasks",
+        }:
+            kind = "npu_extension"
+            reason = "T10/T11 NPU-only 扩展：descriptor 声明已验证的入图范围、参数与更新策略；调用方拥有 capture/replay 和固定 buffer。固定上游无对应接口，不属于 upstream drop-in API。"
+            entry.update(extension_namespace="flashinfer.npu", upstream_counterpart=None, drop_in=False)
+        elif symbol == "flashinfer.utils.enable_torch_library":
             kind = "npu_extension"
             reason = "T8 显式、幂等的进程级启用入口；上游无同名入口。保持默认 eager 开销与 torch-free 导入，同时允许在 tracing/capture 之前完成真实注册。"
         elif symbol.endswith(".plan_selection"):

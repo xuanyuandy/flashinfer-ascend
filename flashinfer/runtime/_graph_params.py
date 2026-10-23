@@ -1,13 +1,12 @@
-"""Private task parameter updates for caller-owned ACL graphs (T11A).
+"""Descriptor-driven task parameter updates for caller-owned ACL graphs.
 
 This module never creates, captures or replays a graph. The caller surrounds
 its forward with torch.npu.graph and recording(), then calls update() before
 each replay on the current stream. Keep this object alive with that graph:
 records deliberately own their tensor arguments, task handles and events.
 
-Only fixed-layout host parameters are supported here. Descriptor bindings and
-the downstream-facing NPU extension API belong to T11B. Importing this module
-does not import torch, torch_npu, or a compiler.
+Only fixed-layout host parameters are supported here. The public NPU extension
+is flashinfer.npu; importing either module needs no optional device packages.
 """
 
 from collections.abc import Mapping
@@ -16,7 +15,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .schema import SchemaError
+from .schema import GraphCapability, SchemaError
 
 
 _ACTIVE_UPDATES = ContextVar("flashinfer_task_parameter_recording", default=None)
@@ -61,6 +60,36 @@ def _tensor_bindings(value):
             yield from _tensor_bindings(item)
 
 
+def _validate_graph_declaration(descriptor):
+    if descriptor.graph_capability != GraphCapability.NOT_CAPTURABLE and descriptor.graph_replay is None:
+        raise SchemaError("%s: capturable declaration has no graph replay validation evidence" %
+                          descriptor.kernel_id)
+
+
+def _validate_graph_arguments(descriptor, arguments):
+    """Validate the declared finite scope before creating or updating nodes."""
+    spec = descriptor.graph_replay
+    for name in spec.required_arguments:
+        if arguments.get(name) is None:
+            raise SchemaError("%s: graph replay requires argument %s" % (descriptor.kernel_id, name))
+    for name, value in spec.fixed_arguments:
+        if name not in arguments or type(arguments[name]) is not type(value) or arguments[name] != value:
+            raise SchemaError("%s: graph replay requires %s=%r" % (descriptor.kernel_id, name, value))
+    for name, shape, dtypes in spec.tensor_metadata:
+        tensor = arguments.get(name)
+        if (tuple(getattr(tensor, "shape", ())) != shape
+                or str(getattr(tensor, "dtype", "")).removeprefix("torch.") not in dtypes
+                or str(getattr(tensor, "device", "")).split(":", 1)[0] != "npu"):
+            raise SchemaError("%s: %s is outside the verified graph tensor metadata" %
+                              (descriptor.kernel_id, name))
+    for name, minimum, maximum in spec.parameter_ranges:
+        value = arguments.get(name)
+        values = value if isinstance(value, (tuple, list)) else (value,)
+        if not values or any(type(v) is not int or not minimum <= v <= maximum for v in values):
+            raise SchemaError("%s: %s must stay within verified graph range [%d, %d]" %
+                              (descriptor.kernel_id, name, minimum, maximum))
+
+
 @dataclass(frozen=True)
 class _ParameterLayout:
     names: tuple
@@ -94,12 +123,27 @@ class _RecordedTask:
     bindings: tuple
     handle: object
     event: object
+    descriptor: object = None
+
+    @property
+    def kernel_id(self):
+        return None if self.descriptor is None else self.descriptor.kernel_id
 
     def bind(self, changes):
         for tensor, binding in self.bindings:
             if _tensor_binding(tensor) != binding:
                 raise SchemaError("graph task tensor address/shape/stride/dtype/device changed")
-        return self.layout.bind(self.arguments, changes)
+        if self.descriptor is not None:
+            sources = self.descriptor.graph_replay.parameter_sources
+            names = {source for _, source in sources}
+            if not isinstance(changes, Mapping) or set(changes) != names:
+                raise SchemaError("graph update must supply exactly these logical parameters: %s" %
+                                  ", ".join(sorted(names)))
+            changes = {name: changes[source] for name, source in sources}
+        arguments = self.layout.bind(self.arguments, changes)
+        if self.descriptor is not None:
+            _validate_graph_arguments(self.descriptor, arguments)
+        return arguments
 
 
 class _ReplayParameterUpdates:
@@ -146,7 +190,7 @@ class _ReplayParameterUpdates:
         finally:
             _ACTIVE_UPDATES.reset(token)
 
-    def _record(self, operation, arguments, updates):
+    def _record(self, operation, arguments, updates, descriptor=None):
         if self._state != "recording":
             raise SchemaError("graph parameter recording failed; discard the caller's graph")
         npu = _npu()
@@ -173,7 +217,7 @@ class _ReplayParameterUpdates:
             self._state = "failed"
             raise
         self._tasks.append(_RecordedTask(operation, MappingProxyType(arguments),
-                                         layout, bindings, handle, event))
+                                         layout, bindings, handle, event, descriptor))
         return result
 
     def update(self, parameter_updates, *, stream):
@@ -217,3 +261,25 @@ def _record_call(operation, arguments, *, updates):
     if active is None:
         return operation(**arguments)
     return active._record(operation, arguments, updates)
+
+
+def _record_kernel_call(descriptor, operation, arguments):
+    """Bind a descriptor's named recipe to the actual low-level operation.
+
+    The adapter supplies the operation and its ordinary keyword arguments.
+    It supplies no parameter update list or operator-specific replay code.
+    """
+    active = _ACTIVE_UPDATES.get()
+    if active is None:
+        return operation(**arguments)
+    try:
+        if descriptor.graph_capability == GraphCapability.NOT_CAPTURABLE:
+            raise SchemaError("%s: graph_capability=not_capturable" % descriptor.kernel_id)
+        _validate_graph_declaration(descriptor)
+        _validate_graph_arguments(descriptor, arguments)
+        if descriptor.graph_capability == GraphCapability.CAPTURE_SAFE:
+            return operation(**arguments)
+        return active._record(operation, arguments, descriptor.graph_param_updates, descriptor)
+    except BaseException:
+        active._state = "failed"
+        raise

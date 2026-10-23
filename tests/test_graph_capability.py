@@ -130,10 +130,23 @@ def test_query_returns_graph_capability_and_parameters_without_execution(capabil
         registry.graph_requirements("missing")
 
 
-def test_all_existing_records_default_to_not_capturable():
+def test_only_proven_record_declares_capture_and_keeps_others_conservative():
+    from tools.t11_replay_param_audit import audit_declarations
+
     registry = KernelRegistry(_builtin_descriptors())
+    audit_declarations(registry.descriptors())
     assert len(registry.descriptors()) == 79
     for descriptor in registry.descriptors():
+        if descriptor.kernel_id == "cann/attention/single_decode_fia_v1":
+            assert registry.graph_requirements(descriptor.kernel_id) == (
+                GraphCapability.NEEDS_PARAM_UPDATE, ("actual_seq_lengths_kv",),
+            )
+            assert descriptor.graph_replay.validated_kernel_id == descriptor.kernel_id
+            assert descriptor.graph_replay.validation_tests
+            restored = descriptor_from_dict(json.loads(json.dumps(descriptor.to_dict())))
+            assert restored.graph_replay == descriptor.graph_replay
+            assert restored.fingerprint == descriptor.fingerprint
+            continue
         assert registry.graph_requirements(descriptor.kernel_id) == (
             GraphCapability.NOT_CAPTURABLE, (),
         )
@@ -191,7 +204,7 @@ def test_graph_declarations_do_not_change_auto_for_any_existing_record(
     monkeypatch.setenv("FLASHINFER_NPU_DISABLE_DISPATCH_CACHE", "1")
     original = KernelRegistry(_builtin_descriptors())
     annotated = KernelRegistry(
-        replace(d, graph_capability=capability, graph_param_updates=params)
+        replace(d, graph_capability=capability, graph_param_updates=params, graph_replay=None)
         for d in original.descriptors()
     )
     for descriptor in original.descriptors():

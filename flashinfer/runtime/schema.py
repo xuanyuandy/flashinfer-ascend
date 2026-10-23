@@ -846,6 +846,69 @@ KernelRunner = Callable[..., Any]
 
 
 @dataclass(frozen=True)
+class GraphReplaySpec(_Record):
+    """Serializable NPU replay recipe and the finite scope actually validated.
+
+    ``host_kwargs`` replaces named host arguments and reissues the saved
+    operation inside a task update; it never replaces captured tensor storage.
+    Evidence is bound to a kernel ID, not transferable to another descriptor.
+    Public access is through :mod:`flashinfer.npu`.
+    """
+
+    validated_kernel_id: str
+    validation_tests: Tuple[str, ...]
+    validated_environment: str
+    strategy: str = "host_kwargs"
+    parameter_sources: Tuple[Tuple[str, str], ...] = ()
+    required_arguments: Tuple[str, ...] = ()
+    fixed_arguments: Tuple[Tuple[str, Any], ...] = ()
+    tensor_metadata: Tuple[Tuple[str, Tuple[int, ...], Tuple[str, ...]], ...] = ()
+    parameter_ranges: Tuple[Tuple[str, int, int], ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.strategy, str) or self.strategy not in {"host_kwargs", "none"}:
+            raise SchemaError("unsupported graph replay strategy")
+        if (not isinstance(self.validated_kernel_id, str) or not self.validated_kernel_id
+                or not isinstance(self.validated_environment, str) or not self.validated_environment):
+            raise SchemaError("graph replay requires kernel-bound validation evidence and environment")
+        for name in ("validation_tests", "required_arguments"):
+            values = getattr(self, name)
+            if (not isinstance(values, (tuple, list))
+                    or any(not isinstance(v, str) or not v.strip() for v in values)
+                    or len(set(values)) != len(values)):
+                raise SchemaError("invalid graph replay " + name)
+            object.__setattr__(self, name, tuple(values))
+        if not self.validation_tests:
+            raise SchemaError("graph replay requires non-empty validation_tests")
+        try:
+            sources = tuple((name, source) for name, source in self.parameter_sources)
+            fixed = tuple((name, value) for name, value in self.fixed_arguments)
+            metadata = tuple((name, tuple(shape), tuple(dtypes))
+                             for name, shape, dtypes in self.tensor_metadata)
+            ranges = tuple((name, lo, hi) for name, lo, hi in self.parameter_ranges)
+        except (TypeError, ValueError) as exc:
+            raise SchemaError("invalid graph replay argument constraints") from exc
+        for values in (sources, fixed, metadata, ranges):
+            if (any(not isinstance(v[0], str) or not v[0].strip() for v in values)
+                    or len({v[0] for v in values}) != len(values)):
+                raise SchemaError("graph replay argument constraints require unique names")
+        if any(not isinstance(source, str) or not source.strip() for _, source in sources):
+            raise SchemaError("graph replay parameter sources require non-empty names")
+        if any(type(v) not in (bool, int, float, str, type(None)) for _, v in fixed):
+            raise SchemaError("graph replay fixed arguments must be host scalars")
+        if any(not shape or any(type(d) is not int or d <= 0 for d in shape)
+               or not dtypes or any(not isinstance(d, str) or not d for d in dtypes)
+               for _, shape, dtypes in metadata):
+            raise SchemaError("invalid graph replay tensor metadata")
+        if any(type(lo) is not int or type(hi) is not int or lo > hi for _, lo, hi in ranges):
+            raise SchemaError("invalid graph replay parameter ranges")
+        object.__setattr__(self, "parameter_sources", sources)
+        object.__setattr__(self, "fixed_arguments", fixed)
+        object.__setattr__(self, "tensor_metadata", metadata)
+        object.__setattr__(self, "parameter_ranges", ranges)
+
+
+@dataclass(frozen=True)
 class KernelDescriptor:
     """registry 条目：一个可执行 kernel 的全部静态描述（§11）。
 
@@ -860,8 +923,8 @@ class KernelDescriptor:
     ``graph_capability`` 默认 ``NOT_CAPTURABLE``：未经入图验证的记录不能
     据此进入图，但仍正常参与 eager 选型。``NEEDS_PARAM_UPDATE`` 必须声明
     非空的 ``graph_param_updates``，列出重放前须改写的 kernel 入参符号名；
-    元组顺序不表示 ABI 参数位置。参数名到任务参数布局的绑定及更新方法由
-    T11 提供，这里不检查 runner 签名、不执行更新或捕获。
+    元组顺序不表示 ABI 参数位置。``graph_replay`` 声明统一更新策略、已验证
+    范围及测试证据，由 T11 消费；没有证据的静态声明不能用于 NPU 图接口。
     """
 
     kernel_id: str
@@ -884,6 +947,7 @@ class KernelDescriptor:
     target_soc: Optional[str] = None
     graph_capability: GraphCapability = GraphCapability.NOT_CAPTURABLE
     graph_param_updates: Tuple[str, ...] = ()
+    graph_replay: Optional[GraphReplaySpec] = None
 
     def __post_init__(self):
         object.__setattr__(self, "backend", Backend(self.backend))
@@ -917,6 +981,21 @@ class KernelDescriptor:
         elif params:
             raise SchemaError("graph_param_updates requires graph_capability=needs_param_update")
         object.__setattr__(self, "graph_param_updates", params)
+        if self.graph_replay is not None:
+            spec = self.graph_replay
+            if not isinstance(spec, GraphReplaySpec):
+                raise SchemaError("graph_replay must be GraphReplaySpec or None")
+            if spec.validated_kernel_id != self.kernel_id:
+                raise SchemaError("graph replay evidence belongs to a different kernel")
+            if graph_capability == GraphCapability.NOT_CAPTURABLE:
+                raise SchemaError("not_capturable kernel cannot declare graph_replay")
+            expected = "host_kwargs" if graph_capability == GraphCapability.NEEDS_PARAM_UPDATE else "none"
+            if spec.strategy != expected:
+                raise SchemaError("graph replay strategy does not match graph_capability")
+            if {name for name, _ in spec.parameter_sources} != set(params):
+                raise SchemaError("graph replay parameter_sources must bind exactly graph_param_updates")
+            if any(name not in params for name, _, _ in spec.parameter_ranges):
+                raise SchemaError("graph replay ranges must name graph_param_updates")
         if self.capability is None:
             object.__setattr__(self, "capability", CapabilitySpec(op=self.op))
         if not self.op:
@@ -991,6 +1070,8 @@ class KernelDescriptor:
             value["graph_capability"] = self.graph_capability.value
         if self.graph_param_updates:
             value["graph_param_updates"] = list(self.graph_param_updates)
+        if self.graph_replay is not None:
+            value["graph_replay"] = self.graph_replay.to_dict()
         # 历史记录未序列化 capability；规模或物理排布受限的新记录携带它，
         # 保证限制进入静态身份且可往返，同时不迁移旧记录的指纹。
         if self.capability.shape_ranges or self.capability.physical_layouts:

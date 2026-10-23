@@ -207,10 +207,11 @@ def test_workspace_view_cannot_bypass_storage_binding(npu, view):
 
 
 def test_explicit_size_query_is_read_only(npu):
+    from flashinfer.npu import maximum_workspace_size
     wrapper = decode(npu, capacity=0)
     before = tuple(buffer.tolist() for buffer in wrapper._fixed_graph_buffers)
     contract = wrapper.workspace_contract
-    sizes = wrapper.workspace_size(index([0, 1]), index([0]), index([1]), 8, 2, 64, 128)
+    sizes = maximum_workspace_size(wrapper, index([0, 1]), index([0]), index([1]), 8, 2, 64, 128)
     assert sizes == (32 * 1024 * 1024, 0)
     assert wrapper.workspace_contract is contract
     assert not wrapper.is_planning_done and wrapper._graph_plan_state is None
