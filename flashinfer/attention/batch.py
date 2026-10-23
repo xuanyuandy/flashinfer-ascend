@@ -8,6 +8,7 @@ from typing import Optional, Sequence
 from flashinfer.runtime import DispatchError, SchemaError
 
 from .frontend import (
+    canonicalize_dtype_name,
     finalize_reference_result,
     require_reference_backend,
     require_reference_tensor,
@@ -444,10 +445,20 @@ def validate_graph_buffer(
     dtype: str,
     length: Optional[int] = None,
     minimum_length: Optional[int] = None,
-) -> ReferenceTensor:
-    tensor = require_reference_tensor(value, name)
-    if len(tensor.shape) != 1 or tensor.dtype != dtype:
-        raise SchemaError("%s must be a rank-1 %s ReferenceTensor" % (name, dtype))
+):
+    # ReferenceTensor is an immutable structural oracle. Real tensor buffers
+    # must support in-place writes; importing this validator never loads torch.
+    tensor = value
+    if not isinstance(tensor, ReferenceTensor) and not (
+        callable(getattr(tensor, "data_ptr", None))
+        and callable(getattr(tensor, "copy_", None))
+    ):
+        raise TypeError("%s must be a ReferenceTensor or writable tensor" % name)
+    actual_dtype = tensor.dtype if isinstance(tensor, ReferenceTensor) else canonicalize_dtype_name(tensor.dtype)
+    if len(tensor.shape) != 1 or actual_dtype != dtype:
+        raise SchemaError("%s must be a rank-1 %s tensor" % (name, dtype))
+    if not isinstance(tensor, ReferenceTensor) and not tensor.is_contiguous():
+        raise SchemaError("%s must be contiguous" % name)
     if length is not None and tensor.shape[0] != length:
         raise SchemaError("%s length must be %d" % (name, length))
     if minimum_length is not None and tensor.shape[0] < minimum_length:

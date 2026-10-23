@@ -5,6 +5,7 @@ Real NPU tensors use the main kernel registry and an eager FIA composite.
 """
 
 from copy import copy
+from dataclasses import replace
 import math
 import warnings
 
@@ -12,7 +13,7 @@ from flashinfer.runtime import InputSignature, current_hardware, dispatch, get_g
 from flashinfer.runtime.schema import SchemaError
 
 from .batch import HostBatchReferenceWrapper, require_no_host_plan_extensions, validate_graph_buffer
-from .execution_identity import AttentionGraphResourceContract
+from .execution_identity import AttentionGraphResourceContract, AttentionPersistentBufferSpec
 from .frontend import (
     adapt_batch_custom_mask, adapt_head_scale, adapt_paged_kv_data,
     adapt_ragged_kv_data, canonicalize_dtype_name, canonicalize_kv_dtype,
@@ -53,37 +54,18 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             names = ("paged_kv_indptr_buffer", "paged_kv_indices_buffer", "paged_kv_last_page_len_buffer")
             fixed = values.get("paged_kv_indptr_buffer")
         buffers = tuple(values.get(name) for name in names)
-        if self._native_backend:
-            if graph:
-                raise NotImplementedError("CANN graph resources are not bound yet (T9/T10)")
-            workspace = validate_framework_workspace_buffer(values["float_workspace_buffer"], "float_workspace_buffer")
-            if str(workspace.device).split(":", 1)[0] != "npu":
-                raise SchemaError("CANN workspace must be on NPU")
-            if self._backend not in ("auto", "cann"):
-                raise NotImplementedError("batch tensor execution currently supports backend='auto' or 'cann'")
-            import torch
-
-            self._operator_runtime = None
-            self._session = AttentionFrameworkSession(mode)
-            self._float_workspace_buffer = workspace
-            self._int_workspace_buffer = torch.empty(0, dtype=torch.uint8, device=workspace.device)
-            self._workspace_contract = AttentionWorkspaceContract(
-                "cann", str(workspace.device), workspace.numel(), 0,
-            )
-            self._graph_resources = AttentionGraphResourceContract.disabled(mode)
-            self._capture_record = None
-            self._capture_generation = 0
-            self._custom_mask_data = None
-            self._native_decision = None
-            return
         fixed_batch_size = None
-        if mode == AttentionMode.BATCH_DECODE_PAGED and self._use_tensor_cores and self._backend != "reference":
-            raise NotImplementedError("provider matrix-core preference binding is not implemented")
-        if graph and isinstance(values["float_workspace_buffer"], ReferenceTensor):
+        if graph and not self._native_backend and self._backend != "reference" and not isinstance(values["float_workspace_buffer"], ReferenceTensor):
+            raise NotImplementedError("provider graph resources are not bound to public batch wrappers")
+        if graph:
             if any(value is None for value in buffers):
                 raise SchemaError("graph mode requires all fixed metadata buffers")
             for name, value in zip(names, buffers):
                 validate_graph_buffer(value, name, dtype="int32")
+                if str(value.device) != str(values["float_workspace_buffer"].device):
+                    raise SchemaError("fixed graph buffers and workspace must share one device")
+                if self._native_backend and not _real_tensor(value):
+                    raise TypeError("CANN graph buffers must be writable tensors")
             fixed_batch_size = fixed.shape[0] - 1
             if fixed_batch_size <= 0:
                 raise SchemaError("fixed metadata buffers must describe a positive batch size")
@@ -100,8 +82,49 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             if custom is not None:
                 validate_graph_buffer(custom, "custom_mask_buf", dtype="uint8")
                 validate_graph_buffer(maskptr, "mask_indptr_buf", dtype="int32", length=fixed_batch_size + 1)
+                if self._native_backend and not all(_real_tensor(value) for value in (custom, maskptr)):
+                    raise TypeError("CANN graph buffers must be writable tensors")
+                if any(str(value.device) != str(fixed.device) for value in (custom, maskptr)):
+                    raise SchemaError("fixed graph buffers and workspace must share one device")
                 buffers += (custom, maskptr)
         self._fixed_graph_buffers = buffers if graph else ()
+        self._graph_plan_state = None
+        self._fixed_block_tables = None
+        self._fixed_block_table_binding = None
+        self._graph_buffer_bindings = tuple(self._graph_buffer_binding(value) for value in self._fixed_graph_buffers)
+        if self._native_backend:
+            workspace = validate_framework_workspace_buffer(values["float_workspace_buffer"], "float_workspace_buffer")
+            if str(workspace.device).split(":", 1)[0] != "npu":
+                raise SchemaError("CANN workspace must be on NPU")
+            if self._backend not in ("auto", "cann"):
+                raise NotImplementedError("batch tensor execution currently supports backend='auto' or 'cann'")
+            import torch
+
+            if graph:
+                for i, value in enumerate(buffers):
+                    if any(torch._C._overlaps(value, other) for other in (workspace,) + buffers[:i]):
+                        raise SchemaError("fixed graph buffers and workspace cannot alias")
+            self._operator_runtime = None
+            self._session = AttentionFrameworkSession(mode, graph_enabled=graph, fixed_batch_size=fixed_batch_size)
+            self._float_workspace_buffer = workspace
+            self._int_workspace_buffer = torch.empty(0, dtype=torch.uint8, device=workspace.device)
+            self._workspace_contract = AttentionWorkspaceContract(
+                "cann", str(workspace.device), workspace.numel(), 0, graph_enabled=graph,
+            )
+            self._graph_resources = (
+                AttentionGraphResourceContract(mode, True, fixed_batch_size, tuple(
+                    AttentionPersistentBufferSpec(name.removesuffix("_buffer").removesuffix("_buf"),
+                                                  canonicalize_dtype_name(value.dtype), value.numel(), str(value.device))
+                    for name, value in zip(names + ("custom_mask_buf", "mask_indptr_buf"), buffers)
+                )) if graph else AttentionGraphResourceContract.disabled(mode)
+            )
+            self._capture_record = None
+            self._capture_generation = 0
+            self._custom_mask_data = None
+            self._native_decision = None
+            return
+        if mode == AttentionMode.BATCH_DECODE_PAGED and self._use_tensor_cores and self._backend != "reference":
+            raise NotImplementedError("provider matrix-core preference binding is not implemented")
         self._init_host_wrapper(
             mode=mode, float_workspace_buffer=values["float_workspace_buffer"],
             backend=self._backend, graph_enabled=graph,
@@ -130,6 +153,79 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             kernel_id=self._native_decision.kernel_id,
             registry_generation=get_global_registry().revision,
         )
+
+    @staticmethod
+    def _graph_buffer_binding(value):
+        if isinstance(value, ReferenceTensor):
+            return (id(value), value.shape, value.dtype, value.device)
+        return (value.data_ptr(), tuple(value.shape), tuple(value.stride()),
+                canonicalize_dtype_name(value.dtype), str(value.device))
+
+    def _validate_graph_inputs(self, inputs):
+        bindings = tuple(self._graph_buffer_binding(value) for value in self._fixed_graph_buffers)
+        if bindings != self._graph_buffer_bindings:
+            raise AttentionStateError("fixed graph buffer address/shape/dtype/device changed")
+        if len(inputs) != len(self._fixed_graph_buffers):
+            raise SchemaError("graph custom masks require fixed custom_mask_buf and mask_indptr_buf")
+        for buffer, source in zip(self._fixed_graph_buffers, inputs):
+            size = source.numel() if _real_tensor(source) else len(source.data) if isinstance(source, ReferenceTensor) else len(source)
+            if size > buffer.shape[0]:
+                raise SchemaError("graph buffer capacity is too small")
+
+    def _validate_block_tables(self, table, metadata):
+        """Bind a caller-owned dense table only when it agrees with the CSR plan."""
+
+        if table is None:
+            return
+        if not self._native_backend or not self.is_graph_enabled or self._mode == AttentionMode.BATCH_PREFILL_RAGGED:
+            raise NotImplementedError("Host reference plan does not implement: block_tables")
+        if not _real_tensor(table) or len(table.shape) != 2 or canonicalize_dtype_name(table.dtype) != "int32":
+            raise SchemaError("block_tables must be a rank-2 int32 tensor")
+        if str(table.device) != self._workspace_contract.device or not table.is_contiguous():
+            raise SchemaError("block_tables must be contiguous on the wrapper device")
+        pages = metadata.paged_kv if isinstance(metadata, PagedPrefillMetadata) else metadata
+        if table.shape[0] != pages.batch_size:
+            raise SchemaError("block_tables batch size does not match paged metadata")
+        rows = table.tolist()
+        for r, (start, end) in enumerate(zip(pages.indptr, pages.indptr[1:])):
+            if table.shape[1] < end - start:
+                raise SchemaError("block_tables width cannot hold every planned sequence")
+            if tuple(rows[r][:end - start]) != pages.indices[start:end]:
+                raise SchemaError("block_tables does not match paged KV indices")
+        import torch
+
+        if any(torch._C._overlaps(table, other) for other in (self._float_workspace_buffer,) + self._fixed_graph_buffers):
+            raise SchemaError("block_tables cannot alias fixed metadata or workspace")
+
+    def _copy_graph_inputs(self, inputs, *, non_blocking):
+        # Immutable ReferenceTensor buffers model structural contracts only.
+        # Physical address guarantees apply to caller-owned framework tensors.
+        if not self._native_backend:
+            return
+        import torch
+
+        for buffer, source in zip(self._fixed_graph_buffers, inputs):
+            if not _real_tensor(source):
+                source = torch.as_tensor(source.data if isinstance(source, ReferenceTensor) else source,
+                                         dtype=buffer.dtype, device="cpu")
+            buffer[:source.numel()].view(source.shape).copy_(source, non_blocking=non_blocking)
+
+    def _graph_inputs(self, metadata, sources, mask_data, *, packed=False):
+        if not self.is_graph_enabled:
+            return ()
+        inputs = tuple(sources)
+        if len(self._fixed_graph_buffers) > len(inputs):
+            if mask_data is None:
+                return inputs + ((), (0,) * (metadata.batch_size + 1))
+            offsets = [0]
+            lengths = metadata.paged_kv.sequence_lengths if isinstance(metadata, PagedPrefillMetadata) else metadata.kv_lengths
+            for q_len, kv_len in zip(metadata.qo_lengths, lengths):
+                size = q_len * kv_len
+                offsets.append(offsets[-1] + ((size + 7) // 8 if packed else size))
+            return inputs + (mask_data, tuple(offsets))
+        if mask_data is not None:
+            raise SchemaError("graph custom masks require fixed custom_mask_buf and mask_indptr_buf")
+        return inputs
 
     def _plan_prefill(self, values):
         values = dict(values)
@@ -164,7 +260,9 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
         )}
         if values.get("fixed_split_size") is not None or values.get("disable_split_kv"):
             raise NotImplementedError("split-K planning controls are not implemented")
+        block_tables = extensions.pop("block_tables")
         require_no_host_plan_extensions(**extensions)
+        self._validate_block_tables(block_tables, metadata)
         custom, packed = values.get("custom_mask"), values.get("packed_custom_mask")
         if self._operator_runtime is not None and (custom is not None or packed is not None):
             raise NotImplementedError("provider custom-mask plan binding is not implemented")
@@ -200,7 +298,11 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             rope_scale=values["rope_scale"], rope_theta=values["rope_theta"],
             use_fp16_qk_reduction=values["use_fp16_qk_reduction"],
         )
-        self._publish_plan(spec, metadata, mask_data)
+        sources = ((values["qo_indptr"], values["paged_kv_indptr"], values["paged_kv_indices"], values["paged_kv_last_page_len"])
+                   if self._mode == AttentionMode.BATCH_PREFILL_PAGED else (values["qo_indptr"], values["kv_indptr"]))
+        self._publish_plan(spec, metadata, mask_data,
+                           graph_inputs=self._graph_inputs(metadata, sources, mask_data, packed=mask is not None and mask.packed),
+                           block_tables=block_tables, non_blocking=values["non_blocking"])
 
     def _plan_decode(self, values):
         legacy_names = (
@@ -242,13 +344,14 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             raise ValueError("window_right != 0 requires a backend that supports it")
         if options["fixed_split_size"] is not None or options["disable_split_kv"]:
             raise NotImplementedError("split-K planning controls are not implemented")
-        require_no_host_plan_extensions(block_tables=options["block_tables"], seq_lens=options["seq_lens"])
+        require_no_host_plan_extensions(seq_lens=options["seq_lens"])
         metadata = PagedKVMetadata(
             framework_index_values(values["indptr"], "indptr"),
             framework_index_values(values["indices"], "indices"),
             framework_index_values(values["last_page_len"], "last_page_len"),
             values["page_size"],
         )
+        self._validate_block_tables(options["block_tables"], metadata)
         if options["data_type"] is not None:
             options["q_data_type"] = options["q_data_type"] or options["data_type"]
             options["kv_data_type"] = options["kv_data_type"] or options["data_type"]
@@ -264,9 +367,11 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             window_left=options["window_left"], logits_soft_cap=options["logits_soft_cap"],
             rope_scale=options["rope_scale"], rope_theta=options["rope_theta"],
         )
-        self._publish_plan(spec, metadata, None)
+        self._publish_plan(spec, metadata, None,
+                           graph_inputs=self._graph_inputs(metadata, (values["indptr"], values["indices"], values["last_page_len"]), None),
+                           block_tables=options["block_tables"], non_blocking=options["non_blocking"])
 
-    def _publish_plan(self, spec, metadata, mask_data):
+    def _publish_plan(self, spec, metadata, mask_data, *, graph_inputs=(), block_tables=None, non_blocking=True):
         if self._native_backend:
             if spec.pos_encoding_mode.value != "NONE" or spec.logits_soft_cap != 0 or spec.use_fp16_qk_reduction or spec.kv_quant_spec is not None:
                 raise NotImplementedError("CANN facade supports dense KV, NONE position mode, no soft-cap or FP16 QK reduction")
@@ -276,23 +381,42 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
             )
             candidate = self._session.prepare_plan(spec, metadata)
             decision = dispatch(signature, current_hardware(), backend="cann")
+            descriptor = get_global_registry().get(decision.kernel_id)
+            graph_state = self._graph_resources._validate_plan(
+                candidate, resolved_backend=decision.backend.value,
+                kernel_identity=(decision.kernel_id, descriptor.fingerprint),
+                block_table_width=None if block_tables is None else block_tables.shape[1],
+                frozen=self._graph_plan_state,
+            )
+            if self.is_graph_enabled:
+                self._validate_graph_inputs(graph_inputs)
+                if self._fixed_block_tables is not None and self._graph_buffer_binding(self._fixed_block_tables) != self._fixed_block_table_binding:
+                    raise AttentionStateError("fixed block_tables address/shape/dtype/device changed")
+                self._copy_graph_inputs(graph_inputs, non_blocking=non_blocking)
+                if block_tables is not None and self._fixed_block_tables is not None:
+                    self._fixed_block_tables.copy_(block_tables, non_blocking=non_blocking)
             self._session.commit_prepared_plan(candidate)
             self._native_decision = decision
             self._workspace_contract = self._workspace_contract.bind_plan(candidate.generation)
+            self._graph_plan_state = graph_state
+            if self.is_graph_enabled and block_tables is not None and self._fixed_block_tables is None:
+                self._fixed_block_tables = block_tables
+                self._fixed_block_table_binding = self._graph_buffer_binding(block_tables)
+                self._graph_resources = replace(self._graph_resources, persistent_buffers=self._graph_resources.persistent_buffers + (
+                    AttentionPersistentBufferSpec("block_tables", "int32", block_tables.numel(), str(block_tables.device)),
+                ))
+            if self.is_graph_enabled and mask_data is not None:
+                fixed_mask = self._fixed_graph_buffers[-2][:mask_data.numel()]
+                mask_data = fixed_mask if spec.custom_mask.packed else fixed_mask.view(mask_data.dtype)
             self._custom_mask_data = mask_data
             return
         if self.is_graph_enabled:
-            expected = metadata.batch_size
-            if self._mode == AttentionMode.BATCH_PREFILL_PAGED:
-                page_count = len(metadata.paged_kv.indices)
-                if self._fixed_graph_buffers[2].shape[0] < page_count:
-                    raise SchemaError("paged_kv_indices graph buffer capacity is too small")
-            elif self._mode == AttentionMode.BATCH_DECODE_PAGED:
-                if self._fixed_graph_buffers[1].shape[0] < len(metadata.indices):
-                    raise SchemaError("paged_kv_indices graph buffer capacity is too small")
-            if self._fixed_graph_buffers[0].shape[0] != expected + 1:
-                raise AttentionStateError("fixed batch size must match graph buffers")
+            candidate = self._session.prepare_plan(spec, metadata)
+            graph_state = self._graph_resources._validate_plan(candidate, resolved_backend="reference", frozen=self._graph_plan_state)
+            self._validate_graph_inputs(graph_inputs)
         self._commit_plan(spec, metadata, mask_data)
+        if self.is_graph_enabled:
+            self._graph_plan_state = graph_state
 
     def _run_facade(self, q, kv, values):
         values = dict(values)
@@ -450,7 +574,11 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
                 raise SchemaError("paged K/V shapes do not match the plan")
             if pages.max_page_index >= keys.shape[0]:
                 raise SchemaError("page index exceeds cache capacity")
-            page_ids = torch.tensor(pages.indices, dtype=torch.int64, device=q.device)
+            if self.is_graph_enabled:
+                index_slot = 2 if self._mode == AttentionMode.BATCH_PREFILL_PAGED else 1
+                page_ids = self._fixed_graph_buffers[index_slot]
+            else:
+                page_ids = torch.tensor(pages.indices, dtype=torch.int64, device=q.device)
             kv_lengths = pages.sequence_lengths
             qo = metadata.qo_indptr if isinstance(metadata, PagedPrefillMetadata) else tuple(i * spec.q_len_per_req for i in range(pages.batch_size + 1))
         if keys.device != q.device or vals.device != q.device or str(keys.dtype).removeprefix("torch.") != spec.kv_dtype or vals.dtype != keys.dtype:
@@ -463,8 +591,10 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
                 key, val = keys[ks:ke], vals[ks:ke]
             else:
                 ps, pe = pages.indptr[r:r + 2]
-                key = keys.index_select(0, page_ids[ps:pe]).reshape(-1, spec.num_kv_heads, spec.head_dim_qk)[:kv_lengths[r]]
-                val = vals.index_select(0, page_ids[ps:pe]).reshape(-1, spec.num_kv_heads, spec.head_dim_vo)[:kv_lengths[r]]
+                request_pages = (self._fixed_block_tables[r, :pe - ps]
+                                 if self.is_graph_enabled and self._fixed_block_tables is not None else page_ids[ps:pe])
+                key = keys.index_select(0, request_pages).reshape(-1, spec.num_kv_heads, spec.head_dim_qk)[:kv_lengths[r]]
+                val = vals.index_select(0, request_pages).reshape(-1, spec.num_kv_heads, spec.head_dim_vo)[:kv_lengths[r]]
             mask_options = {}
             if spec.custom_mask is not None:
                 count = (end - start) * kv_lengths[r]
@@ -522,6 +652,11 @@ class PublicBatchWrapper(HostBatchReferenceWrapper):
 
         if torch._C._overlaps(first, second):
             raise SchemaError("float and int workspace buffers cannot alias")
+        if self.is_graph_enabled and (
+            self._graph_buffer_binding(first) != self._graph_buffer_binding(self._float_workspace_buffer)
+            or self._graph_buffer_binding(second) != self._graph_buffer_binding(self._int_workspace_buffer)
+        ):
+            raise AttentionStateError("fixed graph workspace address/shape/dtype/device cannot change")
         contract = self._workspace_contract.rebind(
             device=str(first.device), float_capacity_bytes=first.numel(), int_capacity_bytes=second.numel(), allow_device_change=False,
         )

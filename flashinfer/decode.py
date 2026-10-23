@@ -72,6 +72,14 @@ from functools import partialmethod
 
 
 class BatchDecodeWithPagedKVCacheWrapper(PublicBatchWrapper):
+    """Paged decode with caller-owned graph metadata when use_cuda_graph=True.
+
+    plan() runs outside capture and copies into the fixed buffers. Its first
+    successful graph plan freezes the execution choices; the caller owns
+    aclgraph capture/replay. Maximum workspace and tiling updates are separate
+    backend contracts, not guarantees supplied by this flag.
+    """
+
     def __init__(
         self,
         float_workspace_buffer: torch.Tensor,
@@ -208,14 +216,17 @@ def cudnn_batch_decode_with_kv_cache(
     整数倍）。返回 (batch_size, num_heads_qo, head_dim)。
 
     与上游的显式差异（parity 清单标记 compatible）：
-    - ``workspace_buffer`` / ``is_cuda_graph_compatible`` 为 cuDNN/CUDA Graph
-      专属参数，NPU 无对应机制，接受并忽略；
+    - ``workspace_buffer`` 兼容保留，当前 CANN FIA 适配器自行管理 workspace；
+    - ``is_cuda_graph_compatible`` 兼容保留；此无状态入口未绑定固定图资源，
+      该标志不提供可捕获保证。NPU 的 aclgraph 捕获／重放由调用方管理，
+      plan 期的固定 buffer 与冻结检查见批量 wrapper；
     - ``actual_seq_lens_kv`` / ``block_tables`` 上游默认 ``None`` 但 kernel
       实际必需，本地显式校验非空；
     - ``batch_offsets_*``（上游 CUDA Graph 变长批偏移）暂不支持，非空时
       显式报错而非静默忽略。
     """
-    del workspace_buffer, is_cuda_graph_compatible  # NPU 无对应机制，接受并忽略
+    # 本入口未绑定 workspace／图资源；兼容参数不能作为 aclgraph 可捕获保证。
+    del workspace_buffer, is_cuda_graph_compatible
     if any(
         x is not None
         for x in (batch_offsets_q, batch_offsets_o, batch_offsets_k, batch_offsets_v)

@@ -19,7 +19,7 @@ from .numerics import (
     DEFAULT_ATTENTION_NUMERICS_POLICY,
     AttentionNumericsPolicy,
 )
-from .planner import AttentionFrameworkPlan
+from .planner import AttentionFrameworkPlan, AttentionStateError
 from .schema import AttentionMode
 from .tensor_contract import (
     AttentionRunTensorContract,
@@ -92,6 +92,17 @@ class AttentionPersistentBufferSpec:
 
 
 @dataclass(frozen=True)
+class _AttentionGraphPlanState:
+    """Process-local frozen choices, separate from the serialized resource ABI."""
+
+    batch_size: int
+    resolved_backend: str
+    q_len_per_req: int
+    block_table_width: Optional[int]
+    kernel_identity: Optional[Tuple[str, str]]
+
+
+@dataclass(frozen=True)
 class AttentionGraphResourceContract:
     mode: AttentionMode
     graph_enabled: bool
@@ -122,6 +133,45 @@ class AttentionGraphResourceContract:
     @classmethod
     def disabled(cls, mode: AttentionMode) -> "AttentionGraphResourceContract":
         return cls(mode, False, None)
+
+    def _validate_plan(
+        self,
+        plan: AttentionFrameworkPlan,
+        *,
+        resolved_backend: str,
+        block_table_width: Optional[int] = None,
+        kernel_identity: Optional[Tuple[str, str]] = None,
+        frozen: Optional[_AttentionGraphPlanState] = None,
+    ) -> Optional[_AttentionGraphPlanState]:
+        """Validate before copying metadata or publishing a new plan.
+
+        Like upstream, freeze on the first successful graph-enabled plan. The
+        caller captures run(), so the library cannot observe capture itself.
+        This method neither captures a graph nor changes dispatch policy.
+        """
+
+        if not self.graph_enabled:
+            return None
+        if plan.spec.mode != self.mode:
+            raise SchemaError("graph resource mode does not match the plan")
+        if plan.batch_size != self.fixed_batch_size:
+            raise AttentionStateError(
+                "graph-enabled wrapper requires a fixed batch size: planned %s, got %s"
+                % (self.fixed_batch_size, plan.batch_size)
+            )
+        candidate = _AttentionGraphPlanState(
+            plan.batch_size, resolved_backend, plan.spec.q_len_per_req,
+            block_table_width, kernel_identity,
+        )
+        if frozen is not None:
+            for field in ("resolved_backend", "q_len_per_req", "block_table_width", "kernel_identity"):
+                before, after = getattr(frozen, field), getattr(candidate, field)
+                if before != after:
+                    raise AttentionStateError(
+                        "graph-enabled wrapper requires a fixed %s: planned %r, got %r; "
+                        "use a separate wrapper" % (field, before, after)
+                    )
+        return candidate
 
     def to_dict(self) -> Dict[str, Any]:
         return {

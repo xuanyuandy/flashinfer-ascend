@@ -91,6 +91,12 @@ from functools import partialmethod
 
 
 class BatchPrefillWithPagedKVCacheWrapper(PublicBatchWrapper):
+    """Paged prefill; graph plans copy into caller-owned fixed metadata buffers.
+
+    plan() runs outside capture. The first successful graph plan freezes the
+    execution choices; aclgraph capture/replay belongs to the caller.
+    """
+
     def __init__(
         self,
         float_workspace_buffer: torch.Tensor,
@@ -239,6 +245,8 @@ class BatchPrefillWithPagedKVCacheWrapper(PublicBatchWrapper):
 
 
 class BatchPrefillWithRaggedKVCacheWrapper(PublicBatchWrapper):
+    """Ragged prefill with the same fixed-buffer graph plan contract as paged prefill."""
+
     def __init__(
         self,
         float_workspace_buffer: torch.Tensor,

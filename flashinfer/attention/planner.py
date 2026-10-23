@@ -257,14 +257,16 @@ class AttentionFrameworkSession:
                 and batch_size != self._fixed_batch_size
             ):
                 raise AttentionStateError(
-                    "graph-enabled wrapper requires a fixed batch size"
+                    "graph-enabled wrapper requires a fixed batch size: planned %s, got %s"
+                    % (self._fixed_batch_size, batch_size)
                 )
             if (
                 self._fixed_q_len_per_req is not None
                 and spec.q_len_per_req != self._fixed_q_len_per_req
             ):
                 raise AttentionStateError(
-                    "graph-enabled wrapper requires a fixed q_len_per_req"
+                    "graph-enabled wrapper requires a fixed q_len_per_req: planned %s, got %s"
+                    % (self._fixed_q_len_per_req, spec.q_len_per_req)
                 )
         return AttentionFrameworkPlan(
             spec=spec,
