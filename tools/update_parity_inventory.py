@@ -200,6 +200,13 @@ def annotate(entry, upstream):
         elif symbol == "flashinfer.utils.enable_torch_library":
             kind = "npu_extension"
             reason = "T8 显式、幂等的进程级启用入口；上游无同名入口。保持默认 eager 开销与 torch-free 导入，同时允许在 tracing/capture 之前完成真实注册。"
+        elif symbol in {
+            "flashinfer.jit.torch_library.AscendCOp",
+            "flashinfer.jit.torch_library.matmul_probe_op",
+        }:
+            kind = "npu_extension"
+            reason = "T14 NPU 注册扩展：显式 enable_torch_library 注册 flashinfer:: schema、PrivateUse1 实现与独立 meta；复用 T13 已装载产物，不改变配方、选型或 aclgraph 证据门禁。固定上游无同名接口。"
+            entry.update(extension_namespace="flashinfer.jit.torch_library", upstream_counterpart=None, drop_in=False)
         elif symbol.endswith(".plan_selection"):
             kind = "npu_extension"
             reason = "NPU 扩展：查询已解析的执行选择及登记表版本；固定上游没有同名公开属性。"

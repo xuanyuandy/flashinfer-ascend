@@ -48,8 +48,8 @@ def register_fake_op(
     return torch.library.register_fake(name, fn)
 
 
-def enable_torch_library() -> None:
-    """Enable registered RMSNorm ops for this process, before torch.compile.
+def enable_torch_library(*, ascendc_ops=()) -> None:
+    """Enable registered ops for this process, before torch.compile.
 
     This is an explicit, idempotent opt-in. By default the public frontends use
     their original eager path, matching upstream's choice to avoid registration
@@ -60,11 +60,26 @@ def enable_torch_library() -> None:
     The registered implementations still perform the original runtime dispatch;
     backend/kernel overrides and numerical behavior are unchanged. Registration
     does not probe hardware, run kernels, or declare aclgraph capture safety.
+
+    ``ascendc_ops`` contains explicit ``jit.torch_library.AscendCOp``
+    declarations backed by already prepared implementations. They register in
+    ``flashinfer::`` with PrivateUse1 device kernels and separate fake kernels.
+    Setup never builds or loads an artifact. Reusing a declaration is idempotent;
+    replacing an enabled implementation requires a fresh process.
     """
+    import torch
+
+    # Check on every setup call, including one following a previous enable.
+    if not (hasattr(torch.library, "custom_op") and hasattr(torch.library, "register_fake")):
+        raise RuntimeError("enable_torch_library requires torch >= 2.4")
     from . import norm
+    from ._torch_library import _register_ascendc_ops, _validate_ascendc_ops
 
     with _registration_lock:
+        declarations = tuple(ascendc_ops)
+        _validate_ascendc_ops(declarations)
         if norm._torch_library_ops is None:
             from ._torch_library import _register_norm_ops
 
             norm._torch_library_ops = _register_norm_ops()
+        _register_ascendc_ops(declarations)

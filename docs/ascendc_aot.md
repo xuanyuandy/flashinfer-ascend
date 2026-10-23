@@ -74,6 +74,13 @@ CANN 的 vendor 注册与环境读取属于进程状态。首次装载前不得�
 路径；本版主动拒绝在同进程切换另一个 package generation，避免假装支持热切换。
 每个对照实验使用独立进程。
 
+需要 PyTorch 注册接口时，可用 `flashinfer.jit.torch_library.matmul_probe_op()`
+将上述已装载的 op-package，或 host_shared 的 `JitLoadedModule` 与 `JitSpec`，
+转换为注册声明，再显式调用 `enable_torch_library(ascendc_ops=(op,))`。
+它暴露 `torch.ops.flashinfer.matmul_probe(a, b, out)`，device kernel 使用
+PrivateUse1，独立 meta 只校验输出元信息；注册不构建或装载产物。
+新算子接入步骤、两条桥接契约和实际验证见 [T14 报告](reports/T14-report.md)。
+
 ## 发版与 SOC
 
 ```bash
