@@ -101,6 +101,14 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
                 allowed &= custom_mask
         if native:
             import torch_npu
+            from ..runtime._graph_params import _is_recording, _record_call
+
+            if _is_recording() and workspace is None:
+                raise SchemaError("updatable FIA capture requires caller-owned fixed workspace")
+            if _is_recording() and allowed is not None:
+                # These masks encode capture-time KV positions. Updating only
+                # FIA's host length would leave that preprocessing stale.
+                raise NotImplementedError("FIA parameter recording requires unmasked attention (T11A)")
 
             # A5/CANN 9.2 BNSD masked GQA writes incomplete LSE rows.
             # BSND is verified by probe_attention_lse.py and keeps KV shared.
@@ -119,8 +127,11 @@ def dense_attention(q, k, v, *, native=True, decode=False, kv_layout="NHD",
                     query, value, input_layout="BSND", num_heads=h,
                     num_key_value_heads=hk, softmax_lse_flag=bool(return_lse),
                 )
-                result, natural_lse = torch_npu.npu_fused_infer_attention_score.out(
-                    query, key, value, workspace=workspace, out=list(outputs), **options,
+                result, natural_lse = _record_call(
+                    torch_npu.npu_fused_infer_attention_score.out,
+                    dict(query=query, key=key, value=value, workspace=workspace,
+                         out=list(outputs), actual_seq_lengths_kv=[sk], **options),
+                    updates=("actual_seq_lengths_kv",),
                 )
             output = result.squeeze(0).to(out_dtype)
             lse = natural_lse.reshape(h, sq).transpose(0, 1) / math.log(2) if return_lse else None
