@@ -28,6 +28,9 @@ _OP_GEMMA_RMSNORM = "norm.gemma_rmsnorm"
 _OP_GEMMA_FUSED_ADD_RMSNORM = "norm.gemma_fused_add_rmsnorm"
 _OP_LAYERNORM = "norm.layernorm"
 
+# Set only by utils.enable_torch_library(), before tracing/capture.
+_torch_library_ops = None
+
 
 def _run_selected(kernel_id: str, *args, **kwargs):
     """拉起 dispatch 选中的 kernel。产物未接入时显式报错。"""
@@ -80,6 +83,18 @@ def rmsnorm(
 
     if out is None:
         out = torch.empty_like(input)
+    if _torch_library_ops is not None:
+        _torch_library_ops.rmsnorm(
+            out, input, weight, float(eps),
+            backend.value if isinstance(backend, Backend) else backend, kernel_id,
+        )
+    else:
+        _rmsnorm_impl(out, input, weight, float(eps), backend, kernel_id)
+    return out
+
+
+def _rmsnorm_impl(out, input, weight, eps, backend, kernel_id):
+    """Original eager dispatch, also used inside the opaque registered op."""
     signature = build_signature(
         _OP_RMSNORM,
         (input, weight),
@@ -89,7 +104,6 @@ def rmsnorm(
         signature, current_hardware(), backend=backend, kernel_id=kernel_id
     )
     _run_selected(decision.kernel_id, out, input, weight, float(eps))
-    return out
 
 
 def fused_add_rmsnorm(
@@ -126,6 +140,17 @@ def fused_add_rmsnorm(
         调度覆盖参数（§3.2.2，与计算语义正交）。
     """
     del enable_pdl  # 上游在非 CUDA 设备上同样关闭 PDL，语义兼容
+    if _torch_library_ops is not None:
+        _torch_library_ops.fused_add_rmsnorm(
+            input, residual, weight, float(eps),
+            backend.value if isinstance(backend, Backend) else backend, kernel_id,
+        )
+    else:
+        _fused_add_rmsnorm_impl(input, residual, weight, eps, backend, kernel_id)
+
+
+def _fused_add_rmsnorm_impl(input, residual, weight, eps, backend, kernel_id):
+    """Original eager dispatch; input and residual are both mutated by the runner."""
     signature = build_signature(
         _OP_FUSED_ADD_RMSNORM,
         (input, residual, weight),

@@ -3677,7 +3677,19 @@
       "cann_operators": [
         "npu_add_rms_norm"
       ],
-      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
+      "torch_library": {
+        "enabled_by_default": false,
+        "setup": "flashinfer.utils.enable_torch_library",
+        "operator": "flashinfer::fused_add_rmsnorm",
+        "mutates_args": [
+          "input",
+          "residual"
+        ],
+        "returns": "void",
+        "fake": "metadata unchanged in caller-owned buffers; no tensor operations or allocations",
+        "notes": "T8 有意差异：上游 helper 当前为 no-op；本仓显式启用后真实注册。输出元数据由门面的 empty_like(input) 或调用者的 out 给定；编译/FakeTensor 时 empty_like 只创建虚拟张量。数值与 backend/kernel_id 覆盖保持原路径。"
+      }
     },
     {
       "upstream": "flashinfer.norm.fused_add_rmsnorm_fp8_block_quant",
@@ -3991,7 +4003,18 @@
       "cann_operators": [
         "npu_rms_norm"
       ],
-      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
+      "torch_library": {
+        "enabled_by_default": false,
+        "setup": "flashinfer.utils.enable_torch_library",
+        "operator": "flashinfer::rmsnorm",
+        "mutates_args": [
+          "out"
+        ],
+        "returns": "void",
+        "fake": "metadata unchanged in caller-owned buffers; no tensor operations or allocations",
+        "notes": "T8 有意差异：上游 helper 当前为 no-op；本仓显式启用后真实注册。输出元数据由门面的 empty_like(input) 或调用者的 out 给定；编译/FakeTensor 时 empty_like 只创建虚拟张量。数值与 backend/kernel_id 覆盖保持原路径。"
+      }
     },
     {
       "upstream": "flashinfer.norm.rmsnorm_quant",
@@ -7430,6 +7453,74 @@
       },
       "cann_coverage": "not_applicable",
       "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.utils.register_custom_op",
+      "local": "flashinfer.utils.register_custom_op",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P3",
+      "api_kind": "upstream",
+      "local_status": "functional",
+      "reason": "T8 保留上游同名同签名，但调用时真实委托 torch.library；固定上游两个 helper 的注册调用被注释、装饰器返回恒等函数。真实注册是 torch.compile/FakeTensor 所需的有意差异。",
+      "notes": "torch 惰性导入；仅显式调用 helper 时注册，支持装饰器和 fn 直接调用。torch < 2.4 显式报错，不静默禁用。import flashinfer/flashinfer.utils 不调用 helper、不加载 torch/torch_npu/triton 或探测编译器。现有 builtin 默认 eager，需先 enable_torch_library() 再 torch.compile。",
+      "cann_coverage": "not_applicable",
+      "cann_operators": [],
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/utils.py",
+        "line": 419,
+        "sha256": "affbdae50486b23f5103efb1fe266a46953c3685b0b19c9b77a3bc47edf171c3",
+        "declaration": "flashinfer.utils.register_custom_op"
+      }
+    },
+    {
+      "upstream": "flashinfer.utils.register_fake_op",
+      "local": "flashinfer.utils.register_fake_op",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P3",
+      "api_kind": "upstream",
+      "local_status": "functional",
+      "reason": "T8 保留上游同名同签名，但调用时真实委托 torch.library；固定上游两个 helper 的注册调用被注释、装饰器返回恒等函数。真实注册是 torch.compile/FakeTensor 所需的有意差异。",
+      "notes": "torch 惰性导入；仅显式调用 helper 时注册，支持装饰器和 fn 直接调用。torch < 2.4 显式报错，不静默禁用。import flashinfer/flashinfer.utils 不调用 helper、不加载 torch/torch_npu/triton 或探测编译器。现有 builtin 默认 eager，需先 enable_torch_library() 再 torch.compile。",
+      "cann_coverage": "not_applicable",
+      "cann_operators": [],
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "upstream_source": {
+        "commit": "2895577720741ddfedff118202c89584996b8875",
+        "path": "flashinfer/utils.py",
+        "line": 440,
+        "sha256": "affbdae50486b23f5103efb1fe266a46953c3685b0b19c9b77a3bc47edf171c3",
+        "declaration": "flashinfer.utils.register_fake_op"
+      }
+    },
+    {
+      "upstream": "flashinfer.utils.enable_torch_library",
+      "local": "flashinfer.utils.enable_torch_library",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
+      "priority": "P3",
+      "api_kind": "npu_extension",
+      "local_status": "functional",
+      "reason": "T8 显式、幂等的进程级启用入口；上游无同名入口。保持默认 eager 开销与 torch-free 导入，同时允许在 tracing/capture 之前完成真实注册。",
+      "notes": "首批仅 rmsnorm 和 fused_add_rmsnorm。注册不跑 kernel、不探测硬件/编译器、不捕获图。启用后的 custom op 仍使用原有 build_signature/current_hardware/dispatch/runner，不冻结选型，不改 T6/T7/T19/T20；不把可被 torch.compile 追踪等同于 GraphCapability.CAPTURE_SAFE，不改 graph_param_updates。应在应用初始化时、并发调用之前执行。",
+      "cann_coverage": "not_applicable",
+      "cann_operators": [],
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      }
     }
   ],
   "coverage_matrix": {

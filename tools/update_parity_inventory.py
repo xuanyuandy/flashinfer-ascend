@@ -65,6 +65,16 @@ for _symbol in (
     CANN_OPERATORS[_symbol] = ["npu_fused_infer_attention_score"]
 
 
+def declaration_nodes(body):
+    """Include version-guarded declarations without entering function scopes."""
+    for node in body:
+        if isinstance(node, ast.If):
+            yield from declaration_nodes(node.body)
+            yield from declaration_nodes(node.orelse)
+        else:
+            yield node
+
+
 class Upstream:
     def __init__(self, root):
         self.root = str(root)
@@ -90,7 +100,7 @@ class Upstream:
         path, source, tree = self.module(module)
         namespace = tree
         for index, name in enumerate(attrs):
-            definitions = [n for n in namespace.body if
+            definitions = [n for n in declaration_nodes(namespace.body) if
                            isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef))
                            and n.name == name]
             if definitions:
@@ -154,7 +164,10 @@ def annotate(entry, upstream):
     symbol = entry["upstream"]
     resolved = upstream.resolve(symbol)
     if resolved is None:
-        if symbol.endswith(".plan_selection"):
+        if symbol == "flashinfer.utils.enable_torch_library":
+            kind = "npu_extension"
+            reason = "T8 显式、幂等的进程级启用入口；上游无同名入口。保持默认 eager 开销与 torch-free 导入，同时允许在 tracing/capture 之前完成真实注册。"
+        elif symbol.endswith(".plan_selection"):
             kind = "npu_extension"
             reason = "NPU 扩展：查询已解析的执行选择及登记表版本；固定上游没有同名公开属性。"
         elif symbol in {
