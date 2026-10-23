@@ -158,6 +158,14 @@ def annotate(entry, upstream):
             kind = "npu_extension"
             reason = "NPU 扩展：查询已解析的执行选择及登记表版本；固定上游没有同名公开属性。"
         elif symbol in {
+            "flashinfer.runtime.registry.ImplementationStack",
+            "flashinfer.runtime.registry.KernelRegistry.stacks",
+            "flashinfer.runtime.registry.KernelRegistry.stack_id_for",
+            "flashinfer.runtime.dispatch.StackReport",
+        }:
+            kind = "npu_extension"
+            reason = "NPU 扩展：T19A 按来源及外部仓命名空间分栈，保留 T6/T7 语义并解释栈间与栈内选择；固定上游没有本仓 runtime 两级决策契约。"
+        elif symbol in {
             "flashinfer.jit.backends.JitBackend",
             "flashinfer.jit.backends.TritonBackend",
             "flashinfer.jit.backends.AscendCBackend",

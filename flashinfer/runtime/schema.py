@@ -1,9 +1,10 @@
 """runtime 静态契约：Backend / CapabilitySpec / KernelDescriptor（§5、§11）。
 
-设计要点（§5.1）：调度涉及 op / backend / kernel 三个粒度递进的概念——
+设计要点（§5.1，T19A）：调度涉及 op / 实现栈 / kernel——
 - op      语义层（"做什么"），如 ``attention.decode``
-- backend 实现来源层，是 kernel 的分类属性，不是独立决策对象
-- kernel  唯一可执行单元，调度决策只在 kernel 粒度上发生
+- stack   registry 按来源分组的视图，外部仓的命名空间参与身份
+- backend 来源分类属性；多个栈可同属 EXTERNAL，Ascend C AOT/JIT 可同栈
+- kernel  栈内唯一可执行单元；既有 capability 与 T7 排序不变
 """
 
 from __future__ import annotations

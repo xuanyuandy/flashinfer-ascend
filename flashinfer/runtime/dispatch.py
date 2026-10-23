@@ -1,7 +1,8 @@
-"""dispatcher：backend policy 过滤 → capability 过滤 → 排序（设计文档 §5.3）。
+"""dispatcher：逐实现过滤 → 选择来源栈 → 选择栈内实现（T19A）。
 
 要点：
-- 决策单元是 kernel 不是 backend；backend 是选定 kernel 后附带确定的属性；
+- 来源栈由 registry 提供；栈边界取其最优可用实现的既有 T7 排序键，
+  选栈后再在栈内按同一个键选实现，不增加无实测依据的排序规则；
 - 显式 ``backend=`` 只缩小候选集，不改变选择算法（§5.3.1）；
 - 显式 ``kernel_id=`` 直接锁定唯一实现，优先级最高（§3.2.2）；
 - 排序先查 tuning 记录（进阶特性，当前恒未命中），冠军须通过上述过滤；
@@ -21,7 +22,7 @@ from typing import Dict, Optional, Tuple, Union
 from .. import config
 from ..tuning import query_tuning_record
 from .hardware import HardwareSignature
-from .registry import KernelRegistry, get_global_registry
+from .registry import ImplementationStack, KernelRegistry, get_global_registry
 from .schema import Backend, CompileMode, DispatchError, KernelDescriptor
 from .signature import InputSignature
 
@@ -37,6 +38,24 @@ class CandidateReport:
 
 
 @dataclass(frozen=True)
+class StackReport:
+    """栈的资格、栈间比较与逐实现的栈内比较。
+
+    accepted 表示至少一个实现通过过滤，selected 表示最终选中此栈。
+    representative_kernel_id 是本栈的首选可用实现（未通过过滤时为 None）。
+    implementations 保留每个实现的拒绝原因，并为通过者添加栈内排序原因。
+    DispatchDecision.reports 仍只报告原有的逐实现过滤，保持调用者契约。
+    """
+
+    stack_id: str
+    accepted: bool
+    selected: bool = False
+    representative_kernel_id: Optional[str] = None
+    reasons: Tuple[str, ...] = ()
+    implementations: Tuple[CandidateReport, ...] = ()
+
+
+@dataclass(frozen=True)
 class DispatchDecision:
     """dispatch 输出：选定 kernel、后备链、选型依据与完整决策链。"""
 
@@ -46,6 +65,8 @@ class DispatchDecision:
     reason: str = ""
     reports: Tuple[CandidateReport, ...] = ()
     cache_hit: bool = False
+    stack_id: str = ""
+    stack_reports: Tuple[StackReport, ...] = ()
 
 
 _TIER_NAMES = {
@@ -187,22 +208,39 @@ def _dispatch_uncached(
         reports = (
             CandidateReport(kernel_id, descriptor.backend, not reasons, reasons),
         )
+        stack_id = registry.stack_id_for(kernel_id)
         if reasons:
             raise DispatchError(
                 "显式指定 kernel %s 不支持当前输入：%s"
                 % (kernel_id, "；".join(reasons))
+                + "\n  第一级：显式 kernel_id 锁定栈 %s；其他栈未评估" % stack_id
+                + "\n  第二级：指定实现 %s 被拒绝：%s；其他配置未评估" % (kernel_id, "；".join(reasons))
             )
         return DispatchDecision(
             kernel_id=kernel_id,
             backend=descriptor.backend,
             reason="显式 kernel_id 锁定",
             reports=reports,
+            stack_id=stack_id,
+            stack_reports=(StackReport(
+                stack_id, True, True, kernel_id,
+                ("显式 kernel_id 锁定来源栈；其他栈未评估",),
+                (replace(reports[0], reasons=(
+                    "显式 kernel_id 锁定；capability / target 通过；其他配置未评估",
+                )),),
+            ),),
         )
 
+    # 一个决策使用同一份登记快照。过滤过程中允许接入 external/custom，
+    # 新记录留到下次 revision 决策，不能混入本次未评估的栈报告。
+    stacks = registry.stacks(op=signature.op)
+    descriptors = sorted(
+        (d for stack in stacks for d in stack.descriptors), key=lambda d: d.kernel_id,
+    )
     reports = []
     survivors = []
     allow_custom = config.allow_custom_kernels()
-    for descriptor in registry.descriptors(op=signature.op):
+    for descriptor in descriptors:
         reasons = []
         # 1. backend policy 过滤（§5.3 第 1 步：policy 只是候选集过滤器）
         if policy != "auto" and descriptor.backend != policy:
@@ -250,20 +288,39 @@ def _dispatch_uncached(
         if accepted:
             survivors.append(descriptor)
 
+    eligible = {}
+    for descriptor in survivors:
+        eligible.setdefault(registry.stack_id_for(descriptor.kernel_id), []).append(descriptor)
+
     if not survivors:
         raise DispatchError(
-            _format_no_candidate(signature, policy, tuple(reports))
+            _format_no_candidate(signature, policy, _stack_reports(
+                stacks, tuple(reports), eligible, None, None, order,
+            ))
         )
 
     # 4. 查询只发生在 capability/policy 过滤之后，记录不能复活已淘汰的实现。
     #    tuning 仅给冠军 ID，其余后备仍按同一确定性启发式排序。
     tuned_kernel_id = query_tuning_record(signature, hardware)
-    ordered = sorted(survivors, key=lambda d: _sort_key(d, order))
-    champion = ordered[0]
-    tuned = next((d for d in ordered if d.kernel_id == tuned_kernel_id), None)
+    tuned = next((d for d in survivors if d.kernel_id == tuned_kernel_id), None)
+
+    # 第一级：一个来源只有在至少一个实现可用时才可选。栈的比较边界取
+    # 最优可用实现的 T7 键；不能用 Backend/静态栈 priority 替代，否则
+    # 同栈含 AOT/JIT 或部分配置被淘汰时会改变 T6/T7 的既有结果。
+    frontiers = {
+        stack_id: min(members, key=lambda d: _sort_key(d, order))
+        for stack_id, members in eligible.items()
+    }
+    selected_stack = (
+        registry.stack_id_for(tuned.kernel_id) if tuned is not None else
+        min(frontiers, key=lambda stack_id: _sort_key(frontiers[stack_id], order))
+    )
+
+    # 第二级：只在选中栈的可用实现中选择。T19A 复用现有的确定性规则，
+    # 不引入自动调优、性能采样或配置搜索协议。
+    local_order = sorted(eligible[selected_stack], key=lambda d: _sort_key(d, order))
+    champion = tuned if tuned is not None else local_order[0]
     if tuned is not None:
-        champion = tuned
-        ordered = [tuned] + [d for d in ordered if d.kernel_id != tuned_kernel_id]
         reason = "实测 tuning 记录命中：kernel_id=%s" % tuned_kernel_id
     else:
         tier = _heuristic_tier(champion, order)
@@ -272,33 +329,135 @@ def _dispatch_uncached(
         )
         if tuned_kernel_id is not None:
             reason += "；tuning 记录 %s 不在当前可用候选中" % tuned_kernel_id
+
+    # 后备是既有的逐 kernel 顺序，不能因分栈而把同栈后备强行提前。
+    ordered = sorted(survivors, key=lambda d: _sort_key(d, order))
     return DispatchDecision(
         kernel_id=champion.kernel_id,
         backend=champion.backend,
-        fallback_chain=tuple(d.kernel_id for d in ordered[1:]),
+        fallback_chain=tuple(d.kernel_id for d in ordered if d.kernel_id != champion.kernel_id),
         reason=reason,
         reports=tuple(reports),
+        stack_id=selected_stack,
+        stack_reports=_stack_reports(
+            stacks, tuple(reports), eligible, selected_stack,
+            tuned.kernel_id if tuned is not None else None, order,
+        ),
     )
+
+
+def _rank_description(descriptor: KernelDescriptor, order: Tuple[str, ...]) -> str:
+    return "tier=%d（%s）, priority=%d, kernel_id=%s" % (
+        _heuristic_tier(descriptor, order), _TIER_NAMES[_heuristic_group(descriptor)],
+        descriptor.priority, descriptor.kernel_id,
+    )
+
+
+def _rank_comparison(winner, other, order) -> str:
+    """指出既有 T7 键中首个决定胜负的分量，不把通过过滤等同于选中。"""
+    a, b = _sort_key(winner, order), _sort_key(other, order)
+    if a[0] != b[0]:
+        return "tier %d < %d" % (a[0], b[0])
+    if a[1] != b[1]:
+        return "同 tier，priority %d > %d" % (winner.priority, other.priority)
+    return "同 tier / priority，kernel_id 字典序 %s < %s" % (a[2], b[2])
+
+
+def _stack_reports(
+    stacks: Tuple[ImplementationStack, ...],
+    reports: Tuple[CandidateReport, ...],
+    eligible,
+    selected_stack: Optional[str],
+    tuned_kernel_id: Optional[str],
+    order: Tuple[str, ...],
+) -> Tuple[StackReport, ...]:
+    filters = {report.kernel_id: report for report in reports}
+    local_first = {}
+    for stack_id, members in eligible.items():
+        local_first[stack_id] = next(
+            (d for d in members if d.kernel_id == tuned_kernel_id),
+            min(members, key=lambda d: _sort_key(d, order)),
+        )
+    winner = local_first.get(selected_stack)
+    result = []
+    for stack in stacks:
+        first = local_first.get(stack.stack_id)
+        implementations = []
+        for descriptor in stack.descriptors:
+            report = filters[descriptor.kernel_id]
+            if report.accepted:
+                rank = _rank_description(descriptor, order)
+                if descriptor.kernel_id == first.kernel_id:
+                    detail = (
+                        "栈内实测 tuning 记录命中" if first.kernel_id == tuned_kernel_id else
+                        "栈内唯一通过过滤的实现" if len(eligible[stack.stack_id]) == 1 else
+                        "栈内 T7 排序第一"
+                    )
+                elif first.kernel_id == tuned_kernel_id:
+                    detail = "栈内让位于通过过滤的 tuning 冠军 %s" % first.kernel_id
+                else:
+                    detail = "栈内排序落后于 %s：%s" % (
+                        first.kernel_id, _rank_comparison(first, descriptor, order),
+                    )
+                report = replace(report, reasons=("通过全部候选过滤", rank, detail))
+            implementations.append(report)
+        if first is None:
+            reasons = ("栈不可用：栈内全部 %d 个实现被过滤" % len(implementations),) + tuple(
+                "%s：%s" % (report.kernel_id, "；".join(report.reasons))
+                for report in implementations
+            )
+        else:
+            reasons = ("栈内 %d/%d 个实现通过过滤；比较边界：%s" % (
+                len(eligible[stack.stack_id]), len(implementations),
+                _rank_description(first, order),
+            ),)
+            if stack.stack_id == selected_stack:
+                reasons += (("通过过滤的 tuning 冠军锁定此栈" if tuned_kernel_id else
+                             "栈间 T7 排序第一"),)
+            elif tuned_kernel_id:
+                reasons += ("栈可用但未选中：让位于 tuning 冠军所在栈 %s" % selected_stack,)
+            else:
+                reasons += ("栈可用但未选中：落后于 %s：%s" % (
+                    selected_stack, _rank_comparison(winner, first, order),
+                ),)
+        result.append(StackReport(
+            stack.stack_id, first is not None, stack.stack_id == selected_stack,
+            first.kernel_id if first is not None else None, reasons, tuple(implementations),
+        ))
+    return tuple(result)
+
+
+def _format_stack_reports(reports: Tuple[StackReport, ...]):
+    lines = ["  第一级：选择实现栈"]
+    for stack in reports:
+        mark = "select" if stack.selected else "accept" if stack.accepted else "reject"
+        lines.append("    [%s] %s：%s" % (mark, stack.stack_id, "；".join(stack.reasons)))
+    lines.append("  第二级：各栈内的实现（含逐条过滤与排序原因）")
+    for stack in reports:
+        lines.append("    栈 %s，首选=%s%s" % (
+            stack.stack_id, stack.representative_kernel_id or "无",
+            "（最终选中栈）" if stack.selected else "",
+        ))
+        for report in stack.implementations:
+            # 保留原 [accept]/[reject] 过滤标记；首选关系由上方字段与
+            # 逐实现排序理由表达，不能把 accept 悄悄改成 selected。
+            mark = "accept" if report.accepted else "reject"
+            lines.append("      [%s] %s (%s)：%s" % (
+                mark, report.kernel_id, report.backend.value, "；".join(report.reasons),
+            ))
+    return lines
 
 
 def _format_no_candidate(
     signature: InputSignature,
     policy: Union[str, Backend],
-    reports: Tuple[CandidateReport, ...],
+    reports: Tuple[StackReport, ...],
 ) -> str:
     lines = [
         "无可用 kernel：op=%s，backend policy=%s。逐条淘汰原因："
         % (signature.op, policy if policy == "auto" else policy.value)
     ]
-    for report in reports:
-        lines.append(
-            "  - %s [%s]：%s"
-            % (
-                report.kernel_id,
-                report.backend.value,
-                "；".join(report.reasons) or "（未评估）",
-            )
-        )
+    lines.extend(_format_stack_reports(reports))
     if not reports:
         lines.append("  （registry 中无该 op 的任何 kernel）")
     return "\n".join(lines)
@@ -326,13 +485,7 @@ def explain_dispatch(
         % (signature.op, decision.kernel_id, decision.backend.value),
         "  选型依据：%s" % decision.reason,
     ]
-    for report in decision.reports:
-        mark = "accept" if report.accepted else "reject"
-        detail = "；".join(report.reasons) if report.reasons else "-"
-        lines.append(
-            "  [%s] %s (%s)：%s"
-            % (mark, report.kernel_id, report.backend.value, detail)
-        )
+    lines.extend(_format_stack_reports(decision.stack_reports))
     if decision.fallback_chain:
         lines.append("  fallback：%s" % " → ".join(decision.fallback_chain))
     return "\n".join(lines)

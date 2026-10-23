@@ -7232,6 +7232,78 @@
       },
       "cann_coverage": "not_applicable",
       "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.dispatch.StackReport",
+      "local": "flashinfer.runtime.dispatch.StackReport",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T19A 两级解释：accepted 表示存在可用实现，selected 表示最终选栈；representative_kernel_id 为本栈首选可用实现，reasons 解释栈间资格及排序，implementations 逐条保留过滤原因并解释栈内排序。DispatchDecision 追加 stack_id/stack_reports，原 reports/reason/fallback 契约保持。不增加 tuning、采样或自动配置搜索。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T19A 按来源及外部仓命名空间分栈，保留 T6/T7 语义并解释栈间与栈内选择；固定上游没有本仓 runtime 两级决策契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.registry.ImplementationStack",
+      "local": "flashinfer.runtime.registry.ImplementationStack",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T19A 只读栈视图：stack_id + descriptors；来源跨 op 稳定，ACLNN/CANN 合栈、Ascend C AOT/JIT 合栈，external:<T6.2 仓库命名空间> 区分具体外部仓。由已登记 descriptor 派生，不改变静态记录指纹。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T19A 按来源及外部仓命名空间分栈，保留 T6/T7 语义并解释栈间与栈内选择；固定上游没有本仓 runtime 两级决策契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.registry.KernelRegistry.stack_id_for",
+      "local": "flashinfer.runtime.registry.KernelRegistry.stack_id_for",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T19A 查询已登记 kernel 的来源栈身份；Backend 为来源分类，外部仓命名空间参与栈身份，历史 ACLNN/Ascend C 分类按来源归并。未知 kernel 保持 KeyError。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T19A 按来源及外部仓命名空间分栈，保留 T6/T7 语义并解释栈间与栈内选择；固定上游没有本仓 runtime 两级决策契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.runtime.registry.KernelRegistry.stacks",
+      "local": "flashinfer.runtime.registry.KernelRegistry.stacks",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T19A 返回按 stack_id 排序的不可变栈快照，可按 op 限定；引用原 descriptor，冻结后 external/custom 登记立即可见，继续沿用 registry revision。无 provider 导入、编译或工具链探测。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T19A 按来源及外部仓命名空间分栈，保留 T6/T7 语义并解释栈间与栈内选择；固定上游没有本仓 runtime 两级决策契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
     }
   ],
   "coverage_matrix": {

@@ -13,6 +13,7 @@ from .schema import (
 )
 from .registry import (
     CUSTOM_KERNEL_PREFIX,
+    ImplementationStack,
     KernelRegistry,
     get_global_registry,
     register_custom_kernel,
@@ -21,6 +22,7 @@ from .registry import (
 from .dispatch import (
     CandidateReport,
     DispatchDecision,
+    StackReport,
     clear_dispatch_cache,
     dispatch,
     explain_dispatch,
@@ -47,10 +49,12 @@ __all__ = [
     "GraphCapability",
     "HardwareSignature",
     "InputSignature",
+    "ImplementationStack",
     "KernelDescriptor",
     "KernelRegistry",
     "Plan",
     "ShapeRange",
+    "StackReport",
     "build_signature",
     "clear_dispatch_cache",
     "current_hardware",

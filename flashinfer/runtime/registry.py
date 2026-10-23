@@ -32,6 +32,29 @@ class CompatibilityReport:
     reasons: Tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class ImplementationStack:
+    """同一来源的只读登记视图；不携带 capability 或额外的排序策略。
+
+    ``stack_id`` 跨 op 稳定：内置来源为 cann / ascendc / triton /
+    reference / custom；外部仓为 ``external:<仓库命名空间>``。历史
+    ACLNN 与 CANN 合栈，Ascend C 的 AOT/JIT 合栈，编译方式不改变来源。
+    ``descriptors`` 可由 ``KernelRegistry.stacks(op=...)`` 限定到某个 op。
+    """
+
+    stack_id: str
+    descriptors: Tuple[KernelDescriptor, ...]
+
+
+# Backend 是来源分类；栈身份另外包含 T6.2 已验证的外部仓命名空间。
+_BUILTIN_STACK_IDS = {
+    Backend.CANN: "cann", Backend.ACLNN: "cann",
+    Backend.ASCENDC: "ascendc", Backend.ASCENDC_AOT: "ascendc",
+    Backend.ASCENDC_JIT: "ascendc", Backend.TRITON: "triton",
+    Backend.REFERENCE: "reference", Backend.CUSTOM: "custom",
+}
+
+
 class KernelRegistry:
     """运行期可见 kernel 的唯一事实源。"""
 
@@ -137,6 +160,26 @@ class KernelRegistry:
         if op is not None:
             values = tuple(d for d in values if d.op == op)
         return tuple(sorted(values, key=lambda d: d.kernel_id))
+
+    def stack_id_for(self, kernel_id: str) -> str:
+        """从已登记的来源身份确定栈；不导入 provider 或探测编译器。"""
+        descriptor = self.get(kernel_id)
+        if descriptor.backend == Backend.EXTERNAL:
+            # register_external 已检查该前缀，不能合并所有 EXTERNAL。
+            return "external:" + descriptor.kernel_id.partition("/")[0]
+        return _BUILTIN_STACK_IDS[descriptor.backend]
+
+    def stacks(self, op: Optional[str] = None) -> Tuple[ImplementationStack, ...]:
+        """按来源分组，返回稳定排序的快照，不复制或改写 descriptor。
+
+        从登记记录派生，冻结后新接入的 external/custom 立即出现在视图中，
+        仍由同一个 revision 使 dispatch 缓存失效。
+        """
+        groups: Dict[str, list] = {}
+        for descriptor in self.descriptors(op):
+            groups.setdefault(self.stack_id_for(descriptor.kernel_id), []).append(descriptor)
+        return tuple(ImplementationStack(stack_id, tuple(descriptors))
+                     for stack_id, descriptors in sorted(groups.items()))
 
     def explain(self, workload, capability):
         """Report input compatibility without importing or executing a provider.
