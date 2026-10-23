@@ -12,5 +12,8 @@ wheelhouse/
 .cache/
 .triton/
 flashinfer-cache/
+*.sqlite3
+*.sqlite3-*
+!flashinfer/tuning/data/*/measurements.sqlite3
 *.npubin
 __pycache__/

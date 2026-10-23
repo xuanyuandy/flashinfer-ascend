@@ -1,4 +1,4 @@
-# Local performance evidence (T20A)
+# Local and release performance evidence (T20A / T20B)
 
 Tuning is an explicit offline operation. Import and dispatch never collect
 timings or compile candidates. Without a usable measured champion, dispatch
@@ -71,8 +71,10 @@ trigger in dispatch.
 
 `FLASHINFER_NPU_TUNING_DB` names the local SQLite file. Its default is
 `$XDG_CACHE_HOME/flashinfer/tuning.sqlite3` (or `~/.cache/flashinfer/tuning.sqlite3`).
-An empty value disables lookup. Reading a missing database never creates it.
-Unreadable, locked or malformed data produces a deterministic heuristic miss.
+An empty value disables **both** local and release lookup, retaining T20A's
+all-tuning-off contract. To use only release data, point this variable at a
+nonexistent local path. Reading never creates a database. Unreadable, locked or
+malformed local data is skipped; valid release evidence can still be used.
 
 Each appended measurement carries:
 
@@ -88,8 +90,8 @@ result: winner or null, median/MAD/IQR/p10/p90/min/max, pairwise gaps/gates/p-va
 
 `capability_fingerprint` in the database key is the canonical SHA256 of the
 entire `HardwareSignature`, including core count and UB capacity. Each candidate's
-`CapabilitySpec` fingerprint is stored separately. Descriptor/capability identity
-of a returned champion is checked before it can affect selection.
+`CapabilitySpec` fingerprint is stored separately. Both tiers check the identities
+of **all compared candidates**, not only the champion, before using a record.
 
 The bucket uses the **intersection of the actual T6.3 `shape_ranges`**, with
 negative axes normalized against input rank. It does not invent small/medium/large
@@ -99,17 +101,158 @@ specializations stay exact. For the two Gemma configurations, hidden ranges
 ranges means exact shape matching. Records retain their actual measured shape;
 bucket reuse does not mean every shape in the interval was measured.
 
-`read_tuning_record(signature, hardware)` returns full matching evidence,
-including inconclusive results. `query_tuning_record(signature, hardware)` keeps
-its `Optional[str]` contract and returns only a significant champion. The latest
-matching record takes precedence within this local measurement history, so new
-inconclusive evidence suppresses an older winner. Explain reports the record,
-sample counts, dispersion, noise threshold, paired p-value, time and load; an
-inconclusive hit explicitly explains why selection remains heuristic.
+`read_tuning_record(signature, hardware, *, registry=None)` returns a copy of
+full **valid** evidence, including inconclusive results.
+`query_tuning_record(signature, hardware, *, registry=None)` keeps its
+`Optional[str]` return contract and returns only a valid significant champion.
+Two-argument calls validate against the global registry. Callers collecting
+private kernels must pass the same current private registry; dispatch does this
+automatically for its registry. This avoids treating an unregistered kernel as
+current simply because its old ID still exists in a measurement.
 
-Writes refresh this process's lookup and decision caches. When another process
-writes the database, use `reload_tuning_records()` or restart. T20B will address
-release database packaging, release/local priority and automatic invalidation
-rules, including software/environment changes. T20A records that metadata but
-does not claim to implement those policies. Runtime JSON/SQLite measurements
-are local products and must not be checked into this repository.
+## Two tiers and conflict policy
+
+Resolution is **valid local evidence > valid release evidence > deterministic
+heuristic**. A local measurement observes the user's launch overhead, software
+environment and contention on that machine. An otherwise identical hardware
+signature does not make a different release machine's measurements more
+representative. Release provenance alone is not a reason to override the user's
+valid measurement. Dates are compared within a tier, never to promote a newer
+release measurement above local evidence.
+
+The newest valid matching local row (append sequence) wins. A newer valid
+`winner: null` suppresses both an older local winner and a release winner: it is
+positive evidence that the conservative gates found no significant difference,
+so selection stays heuristic. An **invalid** row is skipped rather than acting
+as an inconclusive result; lookup can continue to an older valid local row and
+then the release tier. Release export keeps the newest measurement per exact
+key by `finished_at`, breaking equal-time ties by `record_id`, and inserts in
+that order so overlapping buckets also resolve deterministically.
+
+Records never bypass the existing capability, target SoC, policy, JIT, custom or
+reference filters. If a valid record's champion is filtered out, the existing
+heuristic selects among survivors. The T19A stack selection and implementation
+selection, and the T7 fallback order, are unchanged.
+
+Explain retains T20A's distributions, sample counts, noise threshold, paired
+p-value, time and load. It adds `tuning source=local|release`. Skipped records
+carry `source`, `record_id`, and the rejection reason, including saved/current
+hardware fields or the candidate and mismatching fingerprint. At most eight
+rejections are displayed per resolution; this limit never stops validation.
+
+## Invalidation rules
+
+Both tiers run the same checks. No new hardware or kernel identity scheme is
+introduced; the schema is still record version 1.
+
+| Condition | Check and consequence |
+|---|---|
+| Kernel source changed | Every candidate's saved `descriptor_fingerprint` must equal its current `KernelDescriptor.fingerprint`. This includes `SourceRef.digest` when source is declared. |
+| Kernel configuration changed | The same descriptor comparison covers configuration expressed by the descriptor: ID, compile mode, constraints, workspace, target, ABI, and op/tiling schema versions. Capability changes are checked independently below. |
+| Declared compiled artifact changed | `ArtifactRef` digest, size, build ID, format, entry point and target enter the descriptor fingerprint; a changed reference invalidates the measurement. |
+| Capability changed | Every saved `capability_fingerprint` must equal the current `CapabilitySpec.fingerprint`, including dtype, layout, SoC support, core requirement, specialization and shape ranges. Some legacy descriptors omit capability fields from their own fingerprint; the separate comparison is required. |
+| A compared candidate disappeared | Missing IDs in the current registry invalidate the entire comparison. A changed loser could now beat the old winner; an inconclusive comparison can become stale too. |
+| Hardware differs | Compare the complete stored `HardwareSignature` with the current one: `soc_model`, `aicore_count`, **and** `ub_size_bytes` must all be equal. Zero or unknown fields cannot establish a match and are refused even against another zero. Also verify the SQL hardware digest agrees with the payload. |
+| Schema differs | Record and release manifest versions must be integer 1. SQLite `user_version=1` is current; `0` is accepted only for legacy T20A databases whose individual payloads still pass all version-1 checks. Other database versions are refused. There is no implicit migration. |
+| Payload is corrupt or conclusion was edited | Reuse T20A validation, including recomputing its unchanged noise/significance analysis from raw samples. Reject the row and continue resolution. |
+| Workload does not match | Keep T20A's bucket matching: exact semantics and non-ranged axes plus the actual T6.3 range intersection. This is a miss, not authority to widen capability. |
+
+These rules depend on accurate descriptor declarations. Source owners must
+refresh `SourceRef.digest` when code changes and represent configuration changes
+in the descriptor/ID; artifact owners must update `ArtifactRef` when replacing a
+binary. Lookup does not hash source/binary files or probe the compiler on the hot
+path. A binary modified without updating its declared digest remains the loader's
+artifact-verification responsibility.
+
+T20A's free-form software/environment and JIT artifact metadata is retained for
+review. It is not a current runtime identity: `HardwareSignature` intentionally
+excludes CANN/driver versions, and the dispatch registry does not expose the
+current `JitSpec` or loaded JIT binary. This change does **not** claim automatic
+detection of an undeclared compiler/options/provider change. Until that identity
+is bound to descriptors, discard/recollect affected records after such changes.
+No expiry time is invented: age alone neither validates nor invalidates evidence.
+
+On the current A5, an explicit probe returned `Ascend950 / 56 / UB=0`. UB capacity
+is therefore unknown to this environment's existing probe. Such measurements
+can still be collected and saved for audit, but cannot steer dispatch or be
+exported as trusted release evidence. The collector prints that distinction and
+the runtime rejection explanation. Fixing the hardware probe is separate work.
+
+Writes refresh this process's lookup and dispatch caches. Other-process writes
+or an in-place package replacement require `reload_tuning_records()` or a process
+restart. Fresh resolutions automatically apply the rules above. Cache keys
+include both data roots/reload revision and current candidate identities; dispatch
+also retains its existing registry identity/revision and hardware keys. Cache hits
+perform no stat, SQL, collection, device import or compiler probe.
+
+## Release layout, packaging and size
+
+Upstream `flashinfer-ori/flashinfer/tuning_configs/` stores executable Python
+`best_configs` dictionaries in files such as
+`v0_1_trtllm_fused_moe_NVIDIA_B200.py` and `..._NVIDIA_GB200.py`, selected by device
+name and CUTLASS version. Here a SoC directory is only a file partition; it cannot
+assert compatibility. We retain the T20A key
+`(op, workload bucket digest, full HardwareSignature digest)` instead of copying
+upstream SKU filenames or importing executable tuning data.
+
+```text
+flashinfer/tuning/data/
+  manifest.json                 # schema_version: 1, socs: [...] (currently empty)
+  Ascend950/measurements.sqlite3 # only after reviewed measurements exist
+  Ascend910B/measurements.sqlite3
+```
+
+`pyproject.toml` explicitly includes `tuning/data/manifest.json` and
+`tuning/data/*/measurements.sqlite3` as setuptools package data in both wheel and
+sdist. Runtime reads the manifest lazily and opens only the current SoC's shard,
+using SQLite `mode=ro`. It also compares each record's hardware payload, even if
+the shard name and SQL index claim otherwise. It never writes package data or
+merges it into a local cache. Tests build wheel/sdist with temporary synthetic
+shards, exclude a stray local DB, and run an installed-wheel release hit with
+provider imports, timing and subprocess/compiler probes forbidden.
+
+Export retains only the newest full measurement per key, including a latest
+inconclusive result; it does not carry the append-only local history or any kernel
+binaries. Raw samples, orders, observations and provenance remain in the selected
+payload so the result can be audited. The uncompressed **total of all shards and
+the manifest is capped at 8 MiB**; export fails rather than silently truncating
+evidence. `--max-bytes` may impose a smaller budget. The repository budget test
+also checks packaged data against this cap. Unsupported SoCs simply miss.
+
+## Producing release data
+
+Use explicitly reviewed output JSONs from the existing collector. Before
+promotion, review correctness checks, machine/software/artifact identities,
+quiet/busy conditions, raw samples and applicability. A synthetic unit fixture
+is never release performance evidence. The exporter checks schema, hardware
+completeness, current descriptor/capability identities and the unchanged T20A
+conclusion, but cannot establish that a caller actually measured real hardware.
+
+```bash
+# Output must be a new staging directory; no implicit discovery of user caches.
+PYTHONPATH=. /root/miniforge3/envs/flashinfer-a5/bin/python tools/t20_export_release.py \
+  --output-dir /tmp/reviewed-release-data \
+  --registry-factory examples.two_level_gemma:configuration_registry \
+  /path/to/reviewed-quiet.json /path/to/reviewed-busy.json
+```
+
+After review, copy only that staged manifest and its SoC shards into
+`flashinfer/tuning/data/`. Keep the input JSONs and collection commands in the
+release evidence archive; selected payloads also remain intact in each shard.
+Given the same input JSONs and descriptors, export is byte reproducible,
+independent of input-file order. Repeating physical measurements is a different
+operation and is subject to noise; it is not promised to reproduce timestamps,
+latencies or winners bit for bit. No search or automatic collection is added.
+
+**This release intentionally has zero performance records.** We have only one
+A5 and T20A found no significant difference. That does not establish a portable
+release champion. The empty manifest is reproducible with no inputs:
+
+```bash
+PYTHONPATH=. /root/miniforge3/envs/flashinfer-a5/bin/python tools/t20_export_release.py \
+  --output-dir /tmp/empty-release-data
+```
+
+User runtime JSON/SQLite measurements stay outside the checkout. `.gitignore`
+excludes local SQLite databases and sidecars, with a narrow exception for the
+reviewed release shard path; package-data patterns also exclude stray local DBs.

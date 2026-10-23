@@ -137,8 +137,13 @@ def run(args):
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(record, indent=2) + "\n")
     save_tuning_record(record)
-    assert read_tuning_record(request, hardware)["record_id"] == record["record_id"]
-    assert query_tuning_record(request, hardware) == record["result"]["winner"]
+    evidence = read_tuning_record(request, hardware, registry=registry)
+    if evidence is not None:
+        assert evidence["record_id"] == record["record_id"]
+    else:
+        print("record saved for audit; runtime validity checks rejected it (see explain below)")
+    assert query_tuning_record(request, hardware, registry=registry) == (
+        record["result"]["winner"] if evidence is not None else None)
     print("record:", record["record_id"], "db:", args.db, "raw:", args.output)
     print("machine:", json.dumps({
         "before_load": record["measurement"]["machine_before"]["load_average"],

@@ -221,7 +221,7 @@ def test_real_tuning_stub_miss_preserves_heuristic_decision(
     query = Mock(wraps=query_tuning_record)
     monkeypatch.setattr(_DISPATCH, "query_tuning_record", query)
     after = dispatch(_SIG, npu_hardware, registry=decode_registry)
-    query.assert_called_once_with(_SIG, npu_hardware)
+    query.assert_called_once_with(_SIG, npu_hardware, registry=decode_registry)
     assert after == before
     assert after.reason == "确定性启发式 tier 1（CANN / ACLNN 算子）"
 
@@ -241,7 +241,7 @@ def test_tuning_champion_overrides_order_and_explains_source(
     again = dispatch(_SIG, npu_hardware, registry=decode_registry)
     assert again.cache_hit and again.reason == decision.reason
     assert decision.reason in explain_dispatch(_SIG, npu_hardware, registry=decode_registry)
-    query.assert_called_once_with(_SIG, npu_hardware)
+    query.assert_called_once_with(_SIG, npu_hardware, registry=decode_registry)
 
 
 @pytest.mark.parametrize("restriction", [
@@ -297,7 +297,7 @@ def test_tuning_cannot_select_an_unavailable_candidate(
     if restriction != "unknown":
         report = next(r for r in decision.reports if r.kernel_id == tuned_id)
         assert not report.accepted and report.reasons
-    query.assert_called_once_with(signature, npu_hardware)
+    query.assert_called_once_with(signature, npu_hardware, registry=decode_registry)
 
 
 def test_explicit_kernel_id_takes_precedence_over_tuning(

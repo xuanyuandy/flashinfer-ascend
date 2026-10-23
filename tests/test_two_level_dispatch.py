@@ -290,7 +290,7 @@ def test_existing_tuning_champion_is_explained_at_both_levels(monkeypatch):
     a = descriptor("triton/a")
     b = descriptor("triton/b")
     registry = registry_of(a, b, descriptor("cann/a", Backend.CANN))
-    monkeypatch.setattr(DISPATCH, "query_tuning_record", lambda *args: b.kernel_id)
+    monkeypatch.setattr(DISPATCH, "query_tuning_record", lambda *args, **kwargs: b.kernel_id)
     decision = dispatch(SIG, HW, registry=registry)
     assert decision.stack_id == "triton" and decision.kernel_id == b.kernel_id
     assert decision.fallback_chain == ("cann/a", a.kernel_id)
@@ -305,7 +305,7 @@ def test_existing_tuning_champion_is_explained_at_both_levels(monkeypatch):
 def test_tuning_cannot_resurrect_ineligible_config_in_an_available_stack(monkeypatch):
     bad = descriptor("triton/a", capability=CapabilitySpec(SIG.op, dtypes=("int8",)))
     good = descriptor("triton/b")
-    monkeypatch.setattr(DISPATCH, "query_tuning_record", lambda *args: bad.kernel_id)
+    monkeypatch.setattr(DISPATCH, "query_tuning_record", lambda *args, **kwargs: bad.kernel_id)
     decision = dispatch(SIG, HW, registry=registry_of(bad, good))
     assert decision.kernel_id == good.kernel_id
     stack, = decision.stack_reports

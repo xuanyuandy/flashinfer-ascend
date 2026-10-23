@@ -21,7 +21,7 @@ classifiers = [
 include = ["flashinfer*"]
 
 [tool.setuptools.package-data]
-flashinfer = ["data/*.json", "data/kernels/*.json"]
+flashinfer = ["data/*.json", "data/kernels/*.json", "tuning/data/manifest.json", "tuning/data/*/measurements.sqlite3"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

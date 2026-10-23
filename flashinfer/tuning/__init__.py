@@ -1,7 +1,7 @@
-"""Explicit offline measurement and a runtime-local tuning database (T20A).
+"""Explicit offline measurement with local and packaged release evidence.
 
 Import and lookup never run kernels, initialize a device, or create a database.
-Release database distribution and precedence are deferred to T20B.
+Valid local evidence takes precedence; both tiers share identity/schema checks.
 """
 
 from .store import (

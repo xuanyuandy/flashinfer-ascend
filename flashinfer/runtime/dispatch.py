@@ -5,7 +5,7 @@
   选栈后再在栈内按同一个键选实现，不增加无实测依据的排序规则；
 - 显式 ``backend=`` 只缩小候选集，不改变选择算法（§5.3.1）；
 - 显式 ``kernel_id=`` 直接锁定唯一实现，优先级最高（§3.2.2）；
-- 排序先查本地实测 tuning 记录，冠军须通过上述过滤；
+- 排序先查有效本地、再查随包发版的 tuning 记录，冠军须通过上述过滤；
   未命中落可配置的确定性阶梯：external > CANN/ACLNN > 自研 AOT
   > 自研 JIT/未声明 AOT > reference。这是默认策略，不代表实测排名；
 - 决策缓存（§5.3.2）：key 覆盖全部可影响决策的输入，含 registry
@@ -21,8 +21,8 @@ from typing import Dict, Optional, Tuple, Union
 from weakref import WeakKeyDictionary
 
 from .. import config
-from ..tuning import query_tuning_record, read_tuning_record, tuning_cache_token
-from ..tuning.store import _evidence_description
+from ..tuning import query_tuning_record, tuning_cache_token
+from ..tuning.store import _evidence_description, _resolve_tuning_records
 from .hardware import HardwareSignature
 from .registry import ImplementationStack, KernelRegistry, get_global_registry
 from .schema import Backend, CompileMode, DispatchError, KernelDescriptor
@@ -308,18 +308,12 @@ def _dispatch_uncached(
 
     # 4. 查询只发生在 capability/policy 过滤之后，记录不能复活已淘汰的实现。
     #    tuning 仅给冠军 ID，其余后备仍按同一确定性启发式排序。
-    tuned_kernel_id = query_tuning_record(signature, hardware)
+    tuned_kernel_id = query_tuning_record(signature, hardware, registry=registry)
     tuned = next((d for d in survivors if d.kernel_id == tuned_kernel_id), None)
-    evidence = getattr(tuned_kernel_id, "record", None)
-    identity_mismatch = False
-    if tuned is not None and evidence is not None:
-        identity = evidence["candidates"][tuned.kernel_id]
-        identity_mismatch = (
-            identity["descriptor_fingerprint"] != tuned.fingerprint
-            or identity["capability_fingerprint"] != tuned.capability.fingerprint
-        )
-        if identity_mismatch:
-            tuned = None
+    resolution = getattr(tuned_kernel_id, "resolution", None)
+    if tuned_kernel_id is None:
+        resolution = _resolve_tuning_records(signature, hardware, registry)
+    evidence = resolution.record if resolution is not None else None
 
     # 第一级：一个来源只有在至少一个实现可用时才可选。栈的比较边界取
     # 最优可用实现的 T7 键；不能用 Backend/静态栈 priority 替代，否则
@@ -346,14 +340,15 @@ def _dispatch_uncached(
         reason = "确定性启发式 tier %d（%s）" % (
             tier, _TIER_NAMES[_heuristic_group(champion)],
         )
-        if identity_mismatch:
-            reason += "；tuning 记录实现指纹不匹配"
-        elif tuned_kernel_id is not None:
+        if tuned_kernel_id is not None:
             reason += "；tuning 记录 %s 不在当前可用候选中" % tuned_kernel_id
-        else:
-            evidence = read_tuning_record(signature, hardware)
-            if evidence is not None and evidence["result"]["winner"] is None:
-                reason += "；" + _evidence_description(evidence)
+        elif evidence is not None and evidence["result"]["winner"] is None:
+            reason += "；" + _evidence_description(evidence)
+    if resolution is not None:
+        if evidence is not None:
+            reason += "；tuning source=%s" % resolution.source
+        if resolution.rejections:
+            reason += "；" + "；".join(resolution.rejections)
 
     # 后备是既有的逐 kernel 顺序，不能因分栈而把同栈后备强行提前。
     ordered = sorted(survivors, key=lambda d: _sort_key(d, order))

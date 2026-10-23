@@ -19,6 +19,7 @@ from flashinfer.tuning.benchmark import _analyze
 
 
 BENCH = importlib.import_module("flashinfer.tuning.benchmark")
+STORE = importlib.import_module("flashinfer.tuning.store")
 A, B = (f"triton/t19a/gemma/block{block}" for block in (128, 256))
 SIG = InputSignature(OP, dtypes=("float32",), shapes=((4, 128),))
 HW = HardwareSignature("Ascend950", 32, 262144)
@@ -81,6 +82,7 @@ def test_must_beat_every_candidate_and_correct_for_multiple_comparisons():
 def local_db(monkeypatch, tmp_path):
     path = tmp_path / "runtime" / "tuning.sqlite3"
     monkeypatch.setenv("FLASHINFER_NPU_TUNING_DB", str(path))
+    monkeypatch.setattr(STORE, "_RELEASE_DATA_ROOT", tmp_path / "release")
     reload_tuning_records()
     yield path
     reload_tuning_records()
@@ -121,7 +123,7 @@ def test_actual_store_hit_overrides_heuristic_and_explains_confidence(local_db, 
     assert dispatch(SIG, HW, registry=registry).kernel_id == A
     assert dispatch(SIG, HW, registry=registry).cache_hit
     save_tuning_record(record)
-    assert query_tuning_record(SIG, HW) == B
+    assert query_tuning_record(SIG, HW, registry=registry) == B
     decision = dispatch(SIG, HW, registry=registry)
     assert decision.kernel_id == B and not decision.cache_hit
     assert decision.stack_id == "triton" and decision.fallback_chain == (A,)
@@ -130,7 +132,7 @@ def test_actual_store_hit_overrides_heuristic_and_explains_confidence(local_db, 
         assert text in explanation
     with sqlite3.connect(local_db) as db:
         assert db.execute("SELECT count(*) FROM measurements").fetchone() == (1,)
-    assert read_tuning_record(SIG, HW) == json.loads(json.dumps(record))
+    assert read_tuning_record(SIG, HW, registry=registry) == json.loads(json.dumps(record))
 
 
 def test_inconclusive_measurement_suppresses_older_winner(local_db, monkeypatch):
@@ -139,8 +141,8 @@ def test_inconclusive_measurement_suppresses_older_winner(local_db, monkeypatch)
     assert dispatch(SIG, HW, registry=registry).kernel_id == B
     _, second = fixture_record(monkeypatch, durations={A: 100, B: 101})
     save_tuning_record(second)
-    assert query_tuning_record(SIG, HW) is None
-    assert read_tuning_record(SIG, HW)["result"]["status"] == "no_significant_difference"
+    assert query_tuning_record(SIG, HW, registry=registry) is None
+    assert read_tuning_record(SIG, HW, registry=registry)["result"]["status"] == "no_significant_difference"
     decision = dispatch(SIG, HW, registry=registry)
     assert decision.kernel_id == A
     assert "确定性启发式" in decision.reason and "依据实测记录：无显著差异" in decision.reason
@@ -184,18 +186,18 @@ def test_path_switch_does_not_reuse_old_dispatch_decision(local_db, monkeypatch,
     (SIG, replace(HW, soc_model="Ascend910B")),
 ])
 def test_bucket_semantics_and_hardware_are_isolated(local_db, monkeypatch, signature, hardware):
-    _, record = fixture_record(monkeypatch)
+    registry, record = fixture_record(monkeypatch)
     save_tuning_record(record)
-    assert query_tuning_record(signature, hardware) is None
+    assert query_tuning_record(signature, hardware, registry=registry) is None
 
 
 def test_bucket_reuses_t63_ranges_and_keeps_unranged_axes_exact(local_db, monkeypatch):
-    _, record = fixture_record(monkeypatch)
+    registry, record = fixture_record(monkeypatch)
     assert record["bucket"]["signature"]["shapes"] == [[4, None]]
     assert [(r["minimum"], r["maximum"], r["axis"]) for r in record["bucket"]["shape_ranges"]] == [(1, 128, 1), (1, 256, 1)]
     save_tuning_record(record)
-    assert query_tuning_record(replace(SIG, shapes=((4, 64),)), HW) == B
-    assert query_tuning_record(replace(SIG, shapes=((4, 256),)), HW) is None
+    assert query_tuning_record(replace(SIG, shapes=((4, 64),)), HW, registry=registry) == B
+    assert query_tuning_record(replace(SIG, shapes=((4, 256),)), HW, registry=registry) is None
 
 
 def test_changed_winner_identity_cannot_use_old_measurement(local_db, monkeypatch):
