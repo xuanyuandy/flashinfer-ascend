@@ -9,7 +9,7 @@
   未命中落可配置的确定性阶梯：external > CANN/ACLNN > 自研 AOT
   > 自研 JIT/未声明 AOT > reference。这是默认策略，不代表实测排名；
 - 决策缓存（§5.3.2）：key 覆盖全部可影响决策的输入，含 registry
-  注册计数——注册新 kernel 自动使旧决策缓存失效；
+  身份与注册计数——不同实例隔离，注册新 kernel 自动使旧决策缓存失效；
 - 同一 workload 下选择结果确定可复现，全部过滤原因可查询（explain_dispatch）。
 """
 
@@ -18,6 +18,7 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass, replace
 from typing import Dict, Optional, Tuple, Union
+from weakref import WeakKeyDictionary
 
 from .. import config
 from ..tuning import query_tuning_record
@@ -118,7 +119,10 @@ def _sort_key(descriptor: KernelDescriptor, order: Optional[Tuple[str, ...]] = N
     return (_heuristic_tier(descriptor, order), -descriptor.priority, descriptor.kernel_id)
 
 
-_decision_cache: Dict[tuple, DispatchDecision] = {}
+# 按实例隔离，弱键不延长 registry 生命周期；回收时一并释放其决策缓存。
+_decision_cache: WeakKeyDictionary[
+    KernelRegistry, Dict[tuple, DispatchDecision]
+] = WeakKeyDictionary()
 _cache_lock = threading.Lock()
 
 
@@ -170,7 +174,8 @@ def dispatch(
             registry.revision,
         )
         with _cache_lock:
-            cached = _decision_cache.get(cache_key)
+            registry_cache = _decision_cache.get(registry)
+            cached = registry_cache.get(cache_key) if registry_cache is not None else None
         if cached is not None:
             return replace(cached, cache_hit=True)
 
@@ -179,7 +184,7 @@ def dispatch(
     )
     if cache_key is not None:
         with _cache_lock:
-            _decision_cache[cache_key] = decision
+            _decision_cache.setdefault(registry, {})[cache_key] = decision
     return decision
 
 
@@ -492,6 +497,6 @@ def explain_dispatch(
 
 
 def clear_dispatch_cache() -> None:
-    """清空决策缓存。一般无需调用——registry.revision 已保证正确性。"""
+    """清空所有 registry 的决策缓存。"""
     with _cache_lock:
         _decision_cache.clear()
