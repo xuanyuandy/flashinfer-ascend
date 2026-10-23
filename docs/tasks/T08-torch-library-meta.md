@@ -6,7 +6,7 @@
 | **执行序号** | 11 / 20 |
 | **依赖** | T1 |
 | **规模** | 中 |
-| **状态** | `未开始` |
+| **状态** | `已完成` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,7 +14,7 @@
 
 ## 进度
 
-- [ ] 完成并通过验收
+- [x] 完成并通过验收
 
 ---
 
@@ -83,7 +83,7 @@ TORCH_LOGS=graph_breaks python3 <你的最小复现脚本>
 
 ## 完成时填写
 
-- **实际改动**：
-- **验收结果**：
-- **遗留问题**（不要顺手改，记在这里）：
-- **提交**：`T8 <标题>`
+- **实际改动**：建立与上游同名同签名的 register_custom_op / register_fake_op；helper 被调用时真实委托 torch.library，builtin 默认仍 eager，需显式 enable_torch_library()；首批给 rmsnorm / fused_add_rmsnorm 加装饰与 meta（均返回 void，meta 只推形状/dtype）；flashinfer/utils/ 空占位包改为 utils.py 模块
+- **验收结果**：npu + inductor + fullgraph=True 下 graph_count=1 graph_break_count=0；正对照（故意插入 graph_break）确实打出 [__graph_breaks] 日志，证明该 0 可被证伪；FakeTensorMode 下连调 50 次设备内存恒为 (0,0,0,0)；1592 passed / 3 failed；79/79 选型不变；import 后 torch_npu/triton 均未加载
+- **遗留问题**（不要顺手改，记在这里）：上游 helper 当前为 no-op，本仓真实注册属有意差异，已登记账本；其余算子的装饰与 meta 未铺开
+- **提交**：`64e748b`

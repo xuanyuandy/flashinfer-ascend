@@ -180,15 +180,15 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 >
 > **核心原则：本仓不捕获图，只负责让自己「可以被捕获」。** 与上游一致。
 
-- [ ] **[T8](tasks/T08-torch-library-meta.md)** · 建立 torch.library 注册层与 meta 实现  
+- [x] **[T8](tasks/T08-torch-library-meta.md)** · 建立 torch.library 注册层与 meta 实现  
   <sub>依赖 T1 · 规模 中 · 执行序号 11</sub>
-- [ ] **[T9](tasks/T09-graph-contract-plan.md)** · 把图契约接到 plan() 上  
+- [x] **[T9](tasks/T09-graph-contract-plan.md)** · 把图契约接到 plan() 上  
   <sub>依赖 T1 · 规模 中 · 执行序号 12</sub>
-- [ ] **[T10](tasks/T10-max-workspace.md)** · plan 期的最大 workspace 查询  
+- [x] **[T10](tasks/T10-max-workspace.md)** · plan 期的最大 workspace 查询  
   <sub>依赖 T9 · 规模 小 · 执行序号 13</sub>
-- [ ] **[T11](tasks/T11-replay-param-update.md)** · 通用的「重放前参数更新」机制 ★  
+- [x] **[T11](tasks/T11-replay-param-update.md)** · 通用的「重放前参数更新」机制 ★  
   <sub>依赖 T6.5 T10 · 规模 大 · 执行序号 14</sub>
-- [ ] **[T12](tasks/T12-rewrite-design-3-4.md)** · 重写设计文档 §3.4  
+- [x] **[T12](tasks/T12-rewrite-design-3-4.md)** · 重写设计文档 §3.4  
   <sub>依赖 T9 T10 T11 · 规模 小 · 执行序号 15</sub>
 
 ### P4 · 自定义算子与下沉

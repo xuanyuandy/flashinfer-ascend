@@ -6,7 +6,7 @@
 | **执行序号** | 14 / 20 |
 | **依赖** | T6.5 T10 |
 | **规模** | 大 |
-| **状态** | `未开始` |
+| **状态** | `已完成` |
 
 > 索引与全局约束见 [`../TASKS.md`](../TASKS.md)。
 > 架构背景与论证见配套的架构说明文档。
@@ -14,7 +14,7 @@
 
 ## 进度
 
-- [ ] 完成并通过验收
+- [x] 完成并通过验收
 
 ---
 
@@ -101,7 +101,7 @@ T10、T11 两项在上游**根本不存在对应接口**。
 
 ## 完成时填写
 
-- **实际改动**：
-- **验收结果**：
-- **遗留问题**（不要顺手改，记在这里）：
-- **提交**：`T11 <标题>`
+- **实际改动**：拆 11A/11B。11A：runtime 层通用的「捕获期记句柄 → 重放前改参数」机制（_graph_params.py），接通 CANN BSND FIA 的 .out 路径。11B：descriptor 新增 graph_replay 声明更新策略与证据，统一消费；对外 flashinfer.npu 接口（graph_requirements / ReplayParameterUpdates）；8 个符号按 NPU-only 登记账本
+- **验收结果**：决定性验证是反面证据：关闭更新时同图换 seq_len 结果确实变错（FP16 递增 seq_len=63 误差 480.5，图返回捕获长度 1024 的答案），开启后 8 个 seq_len 输出与 LSE 误差全为 0；forward_calls_during_replay=0 证明确实是图在跑；只提升 1 条记录，78 条保持 NOT_CAPTURABLE；我方亲自伪造假声明被 SchemaError 拒绝；1679 passed / 3 failed
+- **遗留问题**（不要顺手改，记在这里）：consumer 仍 unverified（未跑完整 vLLM 模型）；依赖捕获长度的 mask 预处理当前拒绝；batch/paged 的 gather/slice 未改造；更新实现只有 host_kwargs
+- **提交**：`05131ee`（11A）、`0ecbc15`（11B）
