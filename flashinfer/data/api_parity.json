@@ -7304,6 +7304,132 @@
       },
       "cann_coverage": "not_applicable",
       "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.BenchmarkConfig",
+      "local": "flashinfer.tuning.BenchmarkConfig",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 显式采集参数：预热、配对轮数（至少25）、每轮迭代、轮间隔；3%实用差距、三倍稳健离散门槛、Bonferroni校正单侧sign检验和双执行顺序检查。记录全部样本及MAD/IQR，不把串行相关样本的检验阈值宣传成无条件置信概率。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.BenchmarkCandidate",
+      "local": "flashinfer.tuning.BenchmarkCandidate",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 由调用者显式提供descriptor与prepare(iterations)；正确性须先验证，每个样本独立准备原地输入，fixture与编译在计时外。不做配置搜索或自动空间探索。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.collect_tuning_record",
+      "local": "flashinfer.tuning.collect_tuning_record",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 离线显式预热、交错配对采样，计时为同步wall延迟（含Python launch与同步）；保留原始样本、中位数、MAD、IQR、采集时间、CPU load/PSI/affinity活动和工具链元数据。噪声内返回no_significant_difference、winner=None。无import期或dispatch热路径采集。bucket直接复用候选T6.3 ShapeRange交集，未声明的轴保持精确值。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.query_tuning_record",
+      "local": "flashinfer.tuning.query_tuning_record",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 保留(signature, hardware)->Optional[str]契约；只读本地SQLite，按op、T6.3区间bucket、HardwareSignature稳定SHA256匹配；无数据/无显著差异/库不可读返回None。记录不能绕过T6/T7过滤；实测冠军附分布与判据用于explain。FLASHINFER_NPU_TUNING_DB指定本地路径，空值禁用，默认XDG_CACHE_HOME/flashinfer/tuning.sqlite3；不接入发布数据库。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.read_tuning_record",
+      "local": "flashinfer.tuning.read_tuning_record",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 查询完整本地证据（包括无显著差异），返回副本；dtype/layout/physical_layout/specializations与未分桶轴精确匹配。命中区间保留实际测量签名以便审计；相同key的较新无显著差异记录覆盖较旧冠军，历史测量仍保留。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.save_tuning_record",
+      "local": "flashinfer.tuning.save_tuning_record",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 显式追加本地SQLite测量，写前从原始样本复核结论。索引op、bucket摘要、硬件capability摘要，并保留各候选descriptor/capability指纹与完整证据。写后清除本进程查询/dispatch缓存；运行期数据库不随包发布。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
+    },
+    {
+      "upstream": "flashinfer.tuning.reload_tuning_records",
+      "local": "flashinfer.tuning.reload_tuning_records",
+      "upstream_kind": "stable",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "framework",
+      "priority": "P2",
+      "notes": "T20A 显式清除本进程本地库查询与dispatch缓存。其他进程写库后需主动调用或重启；发布库分发、跨库优先级和自动失效策略留给T20B。",
+      "api_kind": "npu_extension",
+      "reason": "NPU 扩展：T20A 本地实测性能数据链路；固定上游无本仓HardwareSignature、ShapeRange与两级dispatch的对应契约。",
+      "local_status": "framework",
+      "consumers": {
+        "vllm": "unverified",
+        "sglang": "unverified"
+      },
+      "cann_coverage": "not_applicable",
+      "cann_operators": []
     }
   ],
   "coverage_matrix": {
