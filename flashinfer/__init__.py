@@ -10,6 +10,7 @@ from .activation import silu_and_mul, gelu_and_mul, gelu_tanh_and_mul
 from .attention import BatchAttention
 from .decode import (
     BatchDecodeWithPagedKVCacheWrapper,
+    CUDAGraphBatchDecodeWithPagedKVCacheWrapper,
     cudnn_batch_decode_with_kv_cache,
     single_decode_with_kv_cache,
     single_decode_with_kv_cache_with_jit_module,
@@ -98,6 +99,7 @@ __all__ = [
     "merge_state",
     "merge_states", "append_paged_kv_cache",
     "BatchDecodeWithPagedKVCacheWrapper",
+    "CUDAGraphBatchDecodeWithPagedKVCacheWrapper",
     "BatchPrefillWithPagedKVCacheWrapper",
     "BatchPrefillWithRaggedKVCacheWrapper",
     "rmsnorm",

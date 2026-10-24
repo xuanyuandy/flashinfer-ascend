@@ -163,7 +163,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
       "parameters": {
         "use_max_workspace": {
           "api_kind": "npu_extension",
@@ -243,7 +243,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.is_cuda_graph_enabled",
@@ -355,7 +355,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper.use_tensor_cores",
@@ -435,7 +435,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.decode.single_decode_with_kv_cache_with_jit_module",
@@ -490,7 +490,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
       "parameters": {
         "use_max_workspace": {
           "api_kind": "npu_extension",
@@ -572,7 +572,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.is_cuda_graph_enabled",
@@ -701,7 +701,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper.workspace_size",
@@ -756,7 +756,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
       "parameters": {
         "use_max_workspace": {
           "api_kind": "npu_extension",
@@ -836,7 +836,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper.is_cuda_graph_enabled",
@@ -965,7 +965,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.single_prefill_with_kv_cache",
@@ -994,7 +994,7 @@
       "cann_operators": [
         "npu_fused_infer_attention_score"
       ],
-      "coverage_evidence": "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
     },
     {
       "upstream": "flashinfer.prefill.single_prefill_with_kv_cache_with_jit_module",

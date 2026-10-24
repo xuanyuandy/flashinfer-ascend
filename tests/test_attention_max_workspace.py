@@ -6,6 +6,7 @@ import pytest
 
 from flashinfer import (
     BatchDecodeWithPagedKVCacheWrapper,
+    CUDAGraphBatchDecodeWithPagedKVCacheWrapper,
     BatchPrefillWithPagedKVCacheWrapper,
     BatchPrefillWithRaggedKVCacheWrapper,
 )
@@ -117,13 +118,16 @@ def test_too_small_workspace_fails_before_freeze_or_copy(npu):
     print("capacity:", error.value)
 
 
-@pytest.mark.parametrize("mode", ["decode", "paged_prefill", "ragged_prefill"])
+@pytest.mark.parametrize("mode", ["decode", "graph_decode", "paged_prefill", "ragged_prefill"])
 def test_repeated_plan_and_run_use_the_bound_address(npu, monkeypatch, mode):
     import torch
     import torch_npu
     ws = torch.empty(40 * 1024 * 1024, dtype=torch.uint8, device=npu)
-    if mode == "decode":
-        wrapper = decode(npu, ws=ws)
+    if mode in ("decode", "graph_decode"):
+        wrapper = (CUDAGraphBatchDecodeWithPagedKVCacheWrapper(
+            ws, index([-7, -7], npu), index([-7] * 1024, npu), index([-7], npu),
+            use_max_workspace=True,
+        ) if mode == "graph_decode" else decode(npu, ws=ws))
         def replan(length):
             plan(wrapper, length)
     else:

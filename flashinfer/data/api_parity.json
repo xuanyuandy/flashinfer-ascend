@@ -2541,10 +2541,10 @@
       "upstream": "flashinfer.decode.CUDAGraphBatchDecodeWithPagedKVCacheWrapper",
       "local": "flashinfer.decode.CUDAGraphBatchDecodeWithPagedKVCacheWrapper",
       "upstream_kind": "stable",
-      "semantic_status": "unassessed",
-      "implementation_status": "missing",
+      "semantic_status": "intentionally_different",
+      "implementation_status": "functional",
       "priority": "P2",
-      "notes": "固定上游公开声明的库存条目；未确认 CANN 覆盖和下游使用，不代表 147 条原始覆盖表。",
+      "notes": "三个元数据 buffer 为位置必填参数；必填值、dtype/device/可写/长度/别名校验均复用父类。plan/run 未覆写；上游 CUDA 效率比较在 NPU 侧未实测。 use_max_workspace=False 为 NPU 扩展的仅关键字参数；显式开启且 use_cuda_graph=True 时，plan 查询 FIA v1 最大字节容量并校验调用方固定 workspace，run 透传同一地址；默认关闭以保留内存代价，未实现的 T11 tiling 更新不在此保证内。",
       "api_kind": "upstream",
       "upstream_source": {
         "commit": "2895577720741ddfedff118202c89584996b8875",
@@ -2553,13 +2553,29 @@
         "sha256": "7c69ae41dd981476d8424f193550b5da017820af7e060944bd11fb48de592b00",
         "declaration": "flashinfer.decode.CUDAGraphBatchDecodeWithPagedKVCacheWrapper"
       },
-      "local_status": "missing",
+      "local_status": "functional",
       "consumers": {
         "vllm": "unverified",
         "sglang": "unverified"
       },
-      "cann_coverage": "unverified",
-      "cann_operators": []
+      "cann_coverage": "covered",
+      "cann_operators": [
+        "npu_fused_infer_attention_score"
+      ],
+      "backend": "cann",
+      "reason": "构造签名对齐上游并固定图模式；执行继承通用 decode wrapper 的 CANN FIA 组合、固定 buffer 与 T9 冻结。NPU 捕获/重放由调用方 aclgraph 管理；父类不支持的能力仍显式报错。",
+      "coverage_evidence": "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。",
+      "parameters": {
+        "use_max_workspace": {
+          "api_kind": "npu_extension",
+          "semantic_status": "intentionally_different",
+          "default": false,
+          "extension_namespace": "flashinfer.npu",
+          "upstream_counterpart": null,
+          "drop_in": false,
+          "reason": "T10 NPU-only 最大 workspace 选项；上游无对应参数。保留默认 False；显式查询入口为 flashinfer.npu.maximum_workspace_size。"
+        }
+      }
     },
     {
       "upstream": "flashinfer.decode.cudnn_batch_decode_with_kv_cache",

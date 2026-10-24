@@ -135,3 +135,17 @@ def test_conflicting_shared_attention_statuses_are_rejected(monkeypatch):
                         lambda scope: general if scope == "all" else attention)
     with pytest.raises(SchemaError, match="inconsistent Attention status"):
         validate_packaged_manifests()
+
+
+def test_inventory_refresh_preserves_reviewed_npu_extensions():
+    from tools.update_parity_inventory import annotate
+
+    class NoUpstream:
+        def resolve(self, symbol):
+            return None
+
+    entry = next(e.to_dict() for e in load_packaged_manifest("all").entries
+                 if e.local == "flashinfer.aot.build.compile_and_package")
+    assert annotate(dict(entry), NoUpstream()) == entry
+    with pytest.raises(ValueError, match="unresolved ledger symbol"):
+        annotate(dict(entry, api_kind="upstream", semantic_status="unassessed", reason=""), NoUpstream())

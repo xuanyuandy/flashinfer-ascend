@@ -6,11 +6,13 @@ import pytest
 
 from flashinfer import (
     BatchDecodeWithPagedKVCacheWrapper,
+    CUDAGraphBatchDecodeWithPagedKVCacheWrapper,
     BatchPrefillWithPagedKVCacheWrapper,
     BatchPrefillWithRaggedKVCacheWrapper,
 )
 from flashinfer.attention import public_batch
 from flashinfer.attention.planner import AttentionStateError
+from flashinfer.attention.reference import ReferenceTensor
 from flashinfer.runtime import Backend, SchemaError, get_global_registry
 from flashinfer.runtime.registry import KernelRegistry
 
@@ -30,12 +32,16 @@ def index(values, device="cpu"):
     return torch.tensor(values, dtype=torch.int32, device=device)
 
 
-def make_decode(npu, *, graph=True, capacity=8):
+def make_decode(npu, *, graph=True, capacity=8, kv_layout="NHD",
+                wrapper_cls=BatchDecodeWithPagedKVCacheWrapper):
     import torch
 
     buffers = (index([-7] * 3, npu), index([-7] * capacity, npu), index([-7] * 2, npu))
+    workspace = torch.empty(1024, dtype=torch.uint8, device=npu)
+    if wrapper_cls is CUDAGraphBatchDecodeWithPagedKVCacheWrapper:
+        return wrapper_cls(workspace, *buffers, kv_layout, True), buffers
     wrapper = BatchDecodeWithPagedKVCacheWrapper(
-        torch.empty(1024, dtype=torch.uint8, device=npu),
+        workspace, kv_layout=kv_layout,
         use_cuda_graph=graph, use_tensor_cores=True,
         paged_kv_indptr_buffer=buffers[0], paged_kv_indices_buffer=buffers[1],
         paged_kv_last_page_len_buffer=buffers[2],
@@ -51,13 +57,14 @@ def plan_decode(wrapper, *, batch=2, q_len=1, width=None, ids=None):
     return table
 
 
-@pytest.mark.parametrize("mode", ["decode", "paged_prefill", "ragged_prefill"])
+@pytest.mark.parametrize("mode", ["decode", "graph_decode", "paged_prefill", "ragged_prefill"])
 def test_graph_plan_copies_without_reallocating(npu, monkeypatch, mode):
     import torch
 
     ws = torch.empty(1024, dtype=torch.uint8, device=npu)
-    if mode == "decode":
-        wrapper, fixed = make_decode(npu)
+    if mode in ("decode", "graph_decode"):
+        cls = CUDAGraphBatchDecodeWithPagedKVCacheWrapper if mode == "graph_decode" else BatchDecodeWithPagedKVCacheWrapper
+        wrapper, fixed = make_decode(npu, wrapper_cls=cls)
         ws = wrapper._float_workspace_buffer
         first = (index([0, 1, 2]), index([0, 1]), index([1, 1]))
         second = (index([0, 2, 3]), index([2, 0, 1]), index([2, 1]))
@@ -108,9 +115,8 @@ def test_graph_plan_copies_without_reallocating(npu, monkeypatch, mode):
     print(f"{mode} data_ptr: before={before} plan1={after_first} plan2={after_second}; no device allocation")
 
 
-@pytest.mark.parametrize("dimension", ["batch_size", "resolved_backend", "q_len_per_req", "block_table_width"])
-def test_graph_plan_freezes_dimension(npu, monkeypatch, dimension):
-    wrapper, fixed = make_decode(npu)
+def _check_graph_plan_freezes_dimension(npu, monkeypatch, dimension, wrapper_cls):
+    wrapper, fixed = make_decode(npu, wrapper_cls=wrapper_cls)
     table = plan_decode(wrapper, width=2)
     previous_plan, previous_decision = wrapper.plan_state, wrapper._native_decision
     previous_data = tuple(buffer.tolist() for buffer in fixed) + (table.tolist(),)
@@ -135,6 +141,72 @@ def test_graph_plan_freezes_dimension(npu, monkeypatch, dimension):
     assert wrapper._native_decision is previous_decision
     assert tuple(buffer.tolist() for buffer in fixed) + (table.tolist(),) == previous_data
     print(f"{dimension}: {type(error.value).__name__}: {error.value}")
+
+
+@pytest.mark.parametrize("dimension", ["batch_size", "resolved_backend", "q_len_per_req", "block_table_width"])
+def test_graph_plan_freezes_dimension(npu, monkeypatch, dimension):
+    _check_graph_plan_freezes_dimension(npu, monkeypatch, dimension, BatchDecodeWithPagedKVCacheWrapper)
+
+
+@pytest.mark.parametrize("dimension", ["batch_size", "resolved_backend", "q_len_per_req", "block_table_width"])
+def test_graph_decode_freezes_dimension(npu, monkeypatch, dimension):
+    _check_graph_plan_freezes_dimension(npu, monkeypatch, dimension, CUDAGraphBatchDecodeWithPagedKVCacheWrapper)
+
+
+@pytest.fixture
+def graph_decode_arguments():
+    return dict(
+        workspace_buffer=ReferenceTensor.zeros((1024,), dtype="uint8"),
+        indptr_buffer=ReferenceTensor.zeros((3,), dtype="int32"),
+        indices_buffer=ReferenceTensor.zeros((8,), dtype="int32"),
+        last_page_len_buffer=ReferenceTensor.zeros((2,), dtype="int32"),
+    )
+
+
+@pytest.mark.parametrize("name", ["indptr_buffer", "indices_buffer", "last_page_len_buffer"])
+def test_graph_decode_requires_metadata_arguments(graph_decode_arguments, name):
+    del graph_decode_arguments[name]
+    with pytest.raises(TypeError, match="required positional argument: '" + name + "'") as error:
+        CUDAGraphBatchDecodeWithPagedKVCacheWrapper(**graph_decode_arguments)
+    print(f"missing {name}: {type(error.value).__name__}: {error.value}")
+
+
+@pytest.mark.parametrize("name", ["indptr_buffer", "indices_buffer", "last_page_len_buffer"])
+def test_graph_decode_rejects_none_metadata(graph_decode_arguments, name):
+    graph_decode_arguments[name] = None
+    with pytest.raises(SchemaError, match="graph mode requires all fixed metadata buffers") as error:
+        CUDAGraphBatchDecodeWithPagedKVCacheWrapper(**graph_decode_arguments)
+    print(f"None {name}: {type(error.value).__name__}: {error.value}")
+
+
+@pytest.mark.parametrize("enabled", [False, True])
+def test_graph_decode_rejects_graph_flag(graph_decode_arguments, enabled):
+    with pytest.raises(TypeError, match="unexpected keyword argument 'use_cuda_graph'") as error:
+        CUDAGraphBatchDecodeWithPagedKVCacheWrapper(**graph_decode_arguments, use_cuda_graph=enabled)
+    print(f"use_cuda_graph={enabled}: {type(error.value).__name__}: {error.value}")
+
+
+@pytest.mark.parametrize("layout", ["NHD", "HND"])
+def test_graph_decode_matches_generic_bitwise(npu, layout):
+    import torch
+
+    wrapper, buffers = make_decode(npu, kv_layout=layout, wrapper_cls=CUDAGraphBatchDecodeWithPagedKVCacheWrapper)
+    generic = BatchDecodeWithPagedKVCacheWrapper(
+        wrapper._float_workspace_buffer, kv_layout=layout, use_cuda_graph=True, use_tensor_cores=True,
+        paged_kv_indptr_buffer=buffers[0], paged_kv_indices_buffer=buffers[1],
+        paged_kv_last_page_len_buffer=buffers[2],
+    )
+    rng = torch.Generator().manual_seed(21)
+    q, k, v = (torch.randn(shape, generator=rng, dtype=torch.float16).to(npu)
+               for shape in ((2, 4, 64), (2, 2, 2, 64), (2, 2, 2, 64)))
+    if layout == "HND":
+        k, v = (value.transpose(1, 2).contiguous() for value in (k, v))
+    for generation, ids in enumerate(([0, 1], [1, 0]), 1):
+        plan_decode(wrapper, ids=ids)
+        plan_decode(generic, ids=ids)
+        equal = torch.equal(wrapper.run(q, (k, v)), generic.run(q, (k, v)))
+        assert equal
+        print(f"{layout} plan={generation}: torch.equal={equal}")
 
 
 def test_graph_plan_rejects_another_kernel_on_the_same_backend(npu, monkeypatch):

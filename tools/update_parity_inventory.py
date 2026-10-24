@@ -14,7 +14,7 @@ import subprocess
 
 
 REF = "2895577720741ddfedff118202c89584996b8875"
-LOCAL_COVERAGE_EVIDENCE = "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。"
+LOCAL_COVERAGE_EVIDENCE = "当前工作区实现与执行期 A5 真机验证（日志为过程产物，未入仓）；不代替原始覆盖表。"
 DOMAINS = {
     "activation", "attention", "cascade", "decode", "fused_moe", "gemm",
     "mla", "norm", "page", "prefill", "quantization", "rope", "sampling",
@@ -24,6 +24,7 @@ ATTENTION_CLASSES = (
     "flashinfer.prefill.BatchPrefillWithPagedKVCacheWrapper",
     "flashinfer.prefill.BatchPrefillWithRaggedKVCacheWrapper",
     "flashinfer.decode.BatchDecodeWithPagedKVCacheWrapper",
+    "flashinfer.decode.CUDAGraphBatchDecodeWithPagedKVCacheWrapper",
 )
 # Mappings established by the recorded implementations and A5 numerical tests.
 # No CANN support is inferred merely from an upstream function's name.
@@ -188,7 +189,11 @@ def annotate(entry, upstream):
     symbol = entry["upstream"]
     resolved = upstream.resolve(symbol)
     if resolved is None:
-        if symbol in {
+        if (entry.get("api_kind") == "npu_extension"
+                and entry.get("semantic_status") == "intentionally_different"
+                and entry.get("reason")):
+            kind, reason = "npu_extension", entry["reason"]
+        elif symbol in {
             "flashinfer.npu.GraphCapability", "flashinfer.npu.GraphReplaySpec",
             "flashinfer.npu.graph_requirements", "flashinfer.npu.maximum_workspace_size",
             "flashinfer.npu.ReplayParameterUpdates", "flashinfer.npu.ReplayParameterUpdates.recording",
@@ -297,7 +302,9 @@ def annotate(entry, upstream):
         and entry["implementation_status"] in {"functional", "optimized"}
     ), None)
     if owner is not None:
-        if entry.get("cann_coverage", "unverified") in {"unverified", "verified", "verified_composite"} or entry.get("coverage_evidence") == LOCAL_COVERAGE_EVIDENCE:
+        if entry.get("cann_coverage", "unverified") in {"unverified", "verified", "verified_composite"} or entry.get("coverage_evidence") in {
+            LOCAL_COVERAGE_EVIDENCE, "当前工作区实现与 work_items/reports/execution/steps 中的真实 A5 验证；不代替原始覆盖表。",
+        }:
             operators = CANN_OPERATORS[owner]
             entry["cann_coverage"] = "covered" if operators else "unverified"
             entry["cann_operators"] = operators
@@ -311,8 +318,8 @@ def annotate(entry, upstream):
     if entry["semantic_status"] == "intentionally_different" and entry["implementation_status"] == "missing":
         entry["cann_coverage"] = "not_applicable"
     if symbol.endswith(".is_cuda_graph_enabled") or symbol.endswith(".use_tensor_cores"):
-        entry.update(local=symbol, semantic_status="compatible", reason="",
-                     notes="保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。")
+        entry.update(local=symbol, semantic_status="compatible", reason="")
+        entry.setdefault("notes", "保留上游同名属性作为兼容入口；NPU 图捕获冻结语义仍由 T9 实现。")
     annotate_attention_workspace(entry)
     if symbol == "flashinfer.fused_moe.RoutingMethodType":
         entry.update(upstream_alias_of="flashinfer.tllm_enums.RoutingMethodType",
@@ -324,13 +331,13 @@ def annotate(entry, upstream):
 
 def refresh(manifest, upstream, all_symbols=()):
     entries = {e["upstream"]: e for e in manifest["entries"]}
-    for symbol in all_symbols:
+    for symbol in sorted(all_symbols):
         entries.setdefault(symbol, dict(
             upstream=symbol, local=symbol, upstream_kind="stable",
             semantic_status="unassessed", implementation_status="missing", priority="P2",
             notes="固定上游公开声明的库存条目；未确认 CANN 覆盖和下游使用，不代表 147 条原始覆盖表。",
         ))
-    manifest["entries"] = [annotate(entry, upstream) for _, entry in sorted(entries.items())]
+    manifest["entries"] = [annotate(entry, upstream) for entry in entries.values()]
     manifest["upstream"]["ref"] = REF
     manifest["generated_at"] = "2026-10-21"
     manifest["inventory_status"] = "bootstrap"

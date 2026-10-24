@@ -52,7 +52,7 @@
 | **P2** | T6 → T7 | 扩展登记表并调整调度规则 |
 | **P2+** | T18 → T19 → T20 | 打通编译加载、两级选择和性能数据 |
 | **P3** | T8 → T9 → T10 → T11 → T12 | 注册/meta、图契约、workspace、参数更新 |
-| **P4** | T13 → T14 → T15 → T16 | 建本仓编译链路与注册层，再挑选并剥离语义地下沉算子 |
+| **P4** | T13 → T14 → T21 → T15 → T16 | 建本仓编译链路与注册层，补上图模式 wrapper 的接口缺口，再挑选并剥离语义地下沉算子 |
 | **P5** | T17 | 把 Attention 收敛到统一架构 |
 
 ---
@@ -113,7 +113,7 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 
 ## 任务索引
 
-20 条任务，**按执行顺序排列**。每条点进去是一份自带依赖、文件清单、验收命令的工作单。
+21 条任务，**按执行顺序排列**。每条点进去是一份自带依赖、文件清单、验收命令的工作单。
 
 > 勾选框就是进度。改完一条，在这里和任务文件里同时打勾。
 
@@ -198,17 +198,19 @@ T2.2（Attention 后端接入）与 T4（现有接口纠偏）会碰同一批 at
 
 - [x] **[T13](tasks/T13-csrc-build-framework.md)** · 建立本仓自己的 Ascend C 编译链路（catlass 作为 3rdparty）  
   <sub>依赖 T6.1 · 规模 大 · 执行序号 16</sub>
-- [ ] **[T14](tasks/T14-op-registration-layer.md)** · 扩展本仓注册层并补 meta 实现  
-  <sub>依赖 T8 T13 · 规模 中 · 执行序号 17</sub>
+- [x] **[T14](tasks/T14-op-registration-layer.md)** · 扩展本仓注册层并补 meta 实现  
+  <sub>依赖 T8 T13 · 规模 中 · 执行序号 17 · `348c8fb`</sub>
+- [x] **[T21](tasks/T21-cudagraph-decode-wrapper.md)** · 补齐图模式 decode wrapper 的接口对标缺口  
+  <sub>依赖 T9 · 规模 小 · 执行序号 18 · 账本里该符号是自动兜底生成的 `unassessed`，从没被评估过；插在 T15 之前，因为下沉之后接口面只会更大</sub>
 - [ ] **[T15](tasks/T15-sink-generic-ops.md)** · 下沉通用计算算子  
-  <sub>依赖 T13 T14 · 规模 大 · 执行序号 18</sub>
+  <sub>依赖 T13 T14 · 规模 大 · 执行序号 19</sub>
 - [ ] **[T16](tasks/T16-sink-fused-ops.md)** · 剥离 vLLM 语义后再下沉融合算子  
-  <sub>依赖 T15 · 规模 大 · 执行序号 19</sub>
+  <sub>依赖 T15 · 规模 大 · 执行序号 20</sub>
 
 ### P5 · 收尾
 
 - [ ] **[T17](tasks/T17-attention-dir-disposition.md)** · 处置 attention/ 那两万多行  
-  <sub>依赖 T1 T6.2 · 规模 大 · 执行序号 20</sub>
+  <sub>依赖 T1 T6.2 · 规模 大 · 执行序号 21</sub>
 
 ---
 

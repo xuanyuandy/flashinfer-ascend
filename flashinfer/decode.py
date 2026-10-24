@@ -191,6 +191,40 @@ class BatchDecodeWithPagedKVCacheWrapper(PublicBatchWrapper):
         return None
 
 
+class CUDAGraphBatchDecodeWithPagedKVCacheWrapper(BatchDecodeWithPagedKVCacheWrapper):
+    """Paged decode with required caller-owned graph metadata buffers.
+
+    plan() runs outside capture; the caller owns aclgraph capture/replay.
+    Validation, frozen plan choices and execution are inherited unchanged.
+    Upstream warns of lower CUDA efficiency from fixed kernel dispatch;
+    this performance comparison has not been measured on NPU.
+    use_max_workspace=False is the same keyword-only NPU extension as on
+    BatchDecodeWithPagedKVCacheWrapper.
+    """
+
+    def __init__(
+        self,
+        workspace_buffer: torch.Tensor,
+        indptr_buffer: torch.Tensor,
+        indices_buffer: torch.Tensor,
+        last_page_len_buffer: torch.Tensor,
+        kv_layout: str = "NHD",
+        use_tensor_cores: bool = False,
+        *,
+        use_max_workspace: bool = False,
+    ) -> None:
+        super().__init__(
+            workspace_buffer,
+            kv_layout,
+            use_cuda_graph=True,
+            use_tensor_cores=use_tensor_cores,
+            paged_kv_indptr_buffer=indptr_buffer,
+            paged_kv_indices_buffer=indices_buffer,
+            paged_kv_last_page_len_buffer=last_page_len_buffer,
+            use_max_workspace=use_max_workspace,
+        )
+
+
 _OP_CUDNN_DECODE = "decode.cudnn_batch_decode_with_kv_cache"
 
 
