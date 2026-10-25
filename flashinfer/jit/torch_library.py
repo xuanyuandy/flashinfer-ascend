@@ -49,7 +49,7 @@ def matmul_probe_op(recipe, module, *, spec=None):
     """Adapt a verified T13 module to ``flashinfer::matmul_probe(a, b, out)``.
 
     For host_shared, pass the JitLoadedModule and its JitSpec returned by T13.
-    For op_package, pass load_op_package's OpPackageModule (before NPU init),
+    For op_package, pass load_op_package's OpPackageModule (before custom-op execution),
     or a JitLoadedModule plus spec. This function neither loads nor registers.
     Native/CATLASS selection stays entirely in the supplied recipe/config.
     """

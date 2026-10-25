@@ -219,7 +219,7 @@ def verify_build_directory(directory: Path, *, spec=None, record=None) -> JitCac
     directory = Path(directory).resolve(strict=True)
     value = json.loads((directory / "manifest.json").read_text())
     if set(value) != {"schema_version", "spec", "files", "record"} or value["schema_version"] != 1:
-        raise SchemaError("invalid JIT build manifest schema")
+        raise SchemaError("invalid JIT build manifest schema: manifest.json")
     published_spec = JitSpec.from_dict(value["spec"])
     published = JitCacheRecord.from_dict(value["record"])
     published.validate_spec(published_spec)
@@ -229,9 +229,31 @@ def verify_build_directory(directory: Path, *, spec=None, record=None) -> JitCac
         raise SchemaError("JIT cache record changed before load")
     metadata = {"spec": value["spec"], "files": value["files"]}
     if _canonical_hash(metadata) != published.build_metadata_fingerprint:
-        raise SchemaError("JIT build manifest digest mismatch")
-    if DiskJitBuildStore._inventory(directory) != value["files"]:
-        raise SchemaError("JIT cache file inventory mismatch")
+        raise SchemaError("JIT build manifest digest mismatch: manifest.json metadata (spec/files)")
+    expected = value["files"]
+    actual = DiskJitBuildStore._inventory(directory)
+    if actual != expected:
+        # Releases and the writable cache share this verifier. Preserve the
+        # failing path/check so discovery can report corrupt AOT bytes instead
+        # of disguising them as a missing artifact or a compilation request.
+        if not isinstance(expected, dict):
+            raise SchemaError("JIT cache file inventory mismatch: manifest.json files must be an object")
+        problems = []
+        for name in sorted(set(actual) | set(expected)):
+            if name not in actual:
+                problems.append("%s: missing file" % name)
+            elif name not in expected:
+                problems.append("%s: unexpected file" % name)
+            elif actual[name] != expected[name]:
+                entry = expected[name]
+                if not isinstance(entry, dict) or set(entry) != {"digest", "size"}:
+                    problems.append("%s: invalid manifest.json inventory entry" % name)
+                    continue
+                for field in ("digest", "size"):
+                    if actual[name][field] != entry[field]:
+                        problems.append("%s: %s mismatch (expected %s, got %s)" % (
+                            name, field, entry[field], actual[name][field]))
+        raise SchemaError("JIT cache file inventory mismatch: " + "; ".join(problems))
     published.artifact.verify_file(directory)
     return published
 

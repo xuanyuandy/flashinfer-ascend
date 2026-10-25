@@ -2,10 +2,11 @@
 
 No SDK discovery, optional imports, installers or filesystem work at import.
 The release directory is a copy of a verified JitBuildStore generation, not a
-second cache. Call load_op_package before initializing ACL in a fresh process.
+second cache. Activate before the first custom-op execution; one package
+identity is supported per process, including lazy activation after NPU init.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import hashlib
 import json
 import os
@@ -14,6 +15,7 @@ import platform
 import re
 import shutil
 from threading import RLock
+from typing import Optional
 
 from flashinfer.runtime import ArtifactFormat, SchemaError
 
@@ -23,6 +25,10 @@ from .recipe import BuildRecipe, _path
 
 
 OP_PACKAGE_ADAPTER_HASH = _canonical_hash("ascendc.op_package.v1")
+
+
+class OpPackageSymbolError(SchemaError):
+    """An otherwise verified package cannot supply its required ACLNN entry."""
 
 
 def package_target(soc):
@@ -99,7 +105,7 @@ def verify_op_package(directory, spec):
         machine=machines[platform.machine()], elf_type=3, dynamic_only=True)
     for entry in (recipe.host_entry, recipe.host_entry + "GetWorkspaceSize"):
         if entry not in symbols:
-            raise SchemaError("op-package host ELF has no ACLNN symbol: " + entry)
+            raise OpPackageSymbolError("op-package host ELF has no ACLNN symbol: " + entry)
     kernel = vendor + "/op_impl/ai_core/tbe/kernel/"
     config = json.loads(_file(directory, kernel + "config/" + compute + "/binary_info_config.json").read_text())
     if set(config) != {recipe.package_op_type}:
@@ -118,16 +124,40 @@ def verify_op_package(directory, spec):
         # Check the actual names recorded in its binary metadata against ELF,
         # instead of treating the source C symbol as the packaged entry.
         generated = [k["kernelName"] for k in metadata.get("kernelList", ())]
-        if (not generated or any(name not in entries or not name.startswith(recipe.package_op_type + "_")
-                                 for name in generated)):
+        mixed = recipe.schema_version == 2 and recipe.task_type == "aic_aiv"
+        required_entries = ([name + suffix for name in generated for suffix in ("_mix_aic", "_mix_aiv")]
+                            if mixed else generated)
+        if (not generated or any(not name.startswith(recipe.package_op_type + "_") for name in generated)
+                or any(name not in entries for name in required_entries)):
             raise SchemaError("op-package NPU ET_EXEC does not define its CANN metadata entries")
-        # 310P has unified AiCore metadata without the A2/A3/A5 core_type field.
-        # Keep its contract explicit instead of weakening validation globally.
-        magic = "RT_DEV_BINARY_MAGIC_ELF" if compute == "ascend310p" else "RT_DEV_BINARY_MAGIC_ELF_AICUBE"
-        if (metadata.get("binFileSuffix") != ".o" or metadata.get("coreType") != "AiCore"
-                or metadata.get("magic") != magic
-                or (compute != "ascend310p" and metadata.get("core_type") != "AIC")):
-            raise SchemaError("op-package kernel metadata does not declare the target's AIC executable contract")
+        if mixed:
+            if (metadata.get("binFileSuffix") != ".o" or metadata.get("coreType") != "MIX"
+                    or metadata.get("magic") != "RT_DEV_BINARY_MAGIC_ELF"
+                    or metadata.get("intercoreSync") != 1
+                    or any(k.get("kernelType") not in {"MIX_AIC", "MIX_AIV"}
+                           or k.get("crossCoreSync") != 1
+                           for k in metadata["kernelList"])):
+                raise SchemaError("op-package kernel metadata does not declare the v2 synchronized AIC+AIV executable contract")
+        else:
+            # v1 retains its AIC-only metadata rules unchanged. 310P has unified
+            # AiCore metadata without the A2/A3/A5 core_type field.
+            magic = "RT_DEV_BINARY_MAGIC_ELF" if compute == "ascend310p" else "RT_DEV_BINARY_MAGIC_ELF_AICUBE"
+            if (metadata.get("binFileSuffix") != ".o" or metadata.get("coreType") != "AiCore"
+                    or metadata.get("magic") != magic
+                    or (compute != "ascend310p" and metadata.get("core_type") != "AIC")):
+                raise SchemaError("op-package kernel metadata does not declare the target's AIC executable contract")
+        if recipe.schema_version == 2:
+            support = metadata.get("supportInfo", {})
+            if support.get("opMode") != "dynamic":
+                raise SchemaError("v2 package metadata must declare dynamic host tiling")
+            for role, key in (("input", "inputs"), ("output", "outputs")):
+                declared = [(p.name, p.dtype) for p in recipe.tensor_parameters if p.role == role]
+                packaged = [(p.get("name"), p.get("dtype")) for p in support.get(key, ())]
+                if packaged != declared:
+                    raise SchemaError("v2 package tensor parameter order/types differ from recipe: " + role)
+            if (recipe.workspace_bytes == "dynamic"
+                    and metadata.get("workspace", {}).get("size") != [-1]):
+                raise SchemaError("v2 dynamic workspace must have a host-computed metadata size")
         if metadata.get("sha256") != hashlib.sha256(binary).hexdigest():
             raise SchemaError("CANN kernel metadata digest does not match its NPU executable")
     _file(directory, data["run_file"])
@@ -142,8 +172,12 @@ _active_package = None
 class OpPackageModule:
     """Owns ACLNN function pointers; caller owns ACL tensors, stream and workspace.
 
-    get_workspace_size(a,b,c) accepts three aclTensor* and returns (bytes,
-    aclOpExecutor*). launch(workspace,bytes,executor,stream) is stage two.
+    get_workspace_size(*tensors) accepts recipe-ordered aclTensor* and returns
+    (bytes, aclOpExecutor*). Named arguments are reordered from the same recipe.
+    launch(workspace,bytes,executor,stream) is stage two. The host tiling callback
+    computes workspace and writes the tiling data: CANN's executor transports
+    that data as the device kernel's last GM buffer argument, after workspace.
+    It is deliberately not an extra aclTensor argument to GetWorkspaceSize.
     Both stages raise on any nonzero CANN status. Successful dlopen alone does
     not claim execution or numerical correctness.
     """
@@ -151,13 +185,25 @@ class OpPackageModule:
     recipe: BuildRecipe
     vendor_path: Path
     api: object
+    # Retain the directory descriptor backing CANN's dot-free /proc alias for
+    # the active module's process lifetime. No second copy/cache is created.
+    registration_path: Optional[Path] = None
+    _registration_fd: Optional[int] = field(default=None, repr=False, compare=False)
 
-    def get_workspace_size(self, a, b, c):
+    def get_workspace_size(self, *tensors, **named_tensors):
         import ctypes as C
 
+        names = self.recipe.tensor_parameter_names
+        if named_tensors:
+            if tensors or set(named_tensors) != set(names):
+                raise SchemaError("ACLNN tensor arguments must match recipe order: " + ", ".join(names))
+            tensors = tuple(named_tensors[name] for name in names)
+        if len(tensors) != len(names):
+            raise SchemaError("ACLNN requires %d tensor arguments (%s); got %d"
+                              % (len(names), ", ".join(names), len(tensors)))
         size, executor = C.c_uint64(), C.c_void_p()
         status = getattr(self.api, self.recipe.host_entry + "GetWorkspaceSize")(
-            a, b, c, C.byref(size), C.byref(executor))
+            *tensors, C.byref(size), C.byref(executor))
         if status or not executor.value:
             raise RuntimeError("%sGetWorkspaceSize returned %s; executor=%s"
                                % (self.recipe.host_entry, status, executor.value))
@@ -172,9 +218,11 @@ class OpPackageModule:
 def load_op_package(directory, *, target_soc):
     """Load a verified release/cache generation without sources or a compiler.
 
-    Set ASCEND_CUSTOM_OPP_PATH before ACL initialization; no .run installation.
+    Set ASCEND_CUSTOM_OPP_PATH before custom-op execution; no .run installation.
     CANN caches vendor registrations, so changing packages in-process is rejected.
     CANN runtime/driver shared libraries must be on the library search path.
+    Known gap: this loader does not compare the current CANN version with the
+    recorded build environment; target/spec checks are not that comparison.
     """
     import ctypes as C
     from .cache import verify_build_directory
@@ -194,24 +242,41 @@ def load_op_package(directory, *, target_soc):
             return _active_package[1]
         vendor = _file(directory, data["vendor_path"])
         previous = os.environ.get("ASCEND_CUSTOM_OPP_PATH")
-        os.environ["ASCEND_CUSTOM_OPP_PATH"] = str(vendor) + (os.pathsep + previous if previous else "")
+        registration_fd = None
+        registration_path = vendor
         try:
+            if "." in str(vendor):
+                # CANN 9.2's NnopbaseReadJsonConfig derives the companion JSON
+                # from the first '.' in a full binary path. Ordinary JIT store
+                # paths (.objects, ~/.cache) consequently become e.g. jit/.json.
+                # Expose the SAME verified directory through a stable Linux fd;
+                # preserve the vendor basename, which CANN uses as its identity.
+                # Keep this fd alive with the process-scoped active package.
+                registration_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+                registration_path = (Path("/proc") / str(os.getpid()) / "fd"
+                                     / str(registration_fd) / data["vendor_path"])
+                if not registration_path.is_dir():
+                    raise SchemaError("CANN op-package dotted paths require Linux /proc directory fd access")
+            os.environ["ASCEND_CUSTOM_OPP_PATH"] = str(registration_path) + (os.pathsep + previous if previous else "")
             api = C.CDLL(str(_file(directory, data["api_library"])), mode=C.RTLD_LOCAL)
             workspace = getattr(api, recipe.host_entry + "GetWorkspaceSize")
-            workspace.argtypes = [C.c_void_p] * 3 + [C.POINTER(C.c_uint64), C.POINTER(C.c_void_p)]
+            workspace.argtypes = ([C.c_void_p] * len(recipe.tensor_parameter_names)
+                                  + [C.POINTER(C.c_uint64), C.POINTER(C.c_void_p)])
             workspace.restype = C.c_int
             launch = getattr(api, recipe.host_entry)
             launch.argtypes = [C.c_void_p, C.c_uint64, C.c_void_p, C.c_void_p]
             launch.restype = C.c_int
         except Exception:
+            if registration_fd is not None:
+                os.close(registration_fd)
             if previous is None:
                 os.environ.pop("ASCEND_CUSTOM_OPP_PATH", None)
             else:
                 os.environ["ASCEND_CUSTOM_OPP_PATH"] = previous
             raise
-        module = OpPackageModule(recipe, vendor, api)
+        module = OpPackageModule(recipe, vendor, api, registration_path, registration_fd)
         _active_package = identity, module
         return module
 
 
-__all__ = ["OpPackageModule", "load_op_package"]
+__all__ = ["OpPackageModule", "OpPackageSymbolError", "load_op_package"]
