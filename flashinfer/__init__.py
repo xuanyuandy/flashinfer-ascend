@@ -2,7 +2,7 @@
 
 M0：框架骨架——对外 API 门面、输入/硬件签名、registry、dispatcher、
 JIT cache key。kernel 产物（CANN 适配、Ascend C/Triton AOT/JIT）随
-M1 起接入（实施路线见 docs/framework_design.md §15）。
+M1 起接入（实施路线见 docs/framework_design.md §16）。
 """
 
 from .version import __version__

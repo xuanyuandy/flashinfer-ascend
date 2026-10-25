@@ -1,4 +1,4 @@
-# T12 · 重写设计文档 §3.4
+# T12 · 重写设计文档 §6
 
 | | |
 |---|---|
@@ -54,7 +54,7 @@
 
 **依赖**：T9~T11 的设计确定后
 
-**文件**：`docs/framework_design.md` §3.4（第 233-400 行，7 个小节，约 160 行）
+**文件**：`docs/framework_design.md` §6（第 233-400 行，7 个小节，约 160 行）
 
 **问题**：这 160 行设计的是 **torchair / GE 那条路**，核心机制是
 「动态 tiling（host 回调）…图执行期每 step 重算 tiling + workspace size」。
@@ -73,7 +73,7 @@
 
 ## 完成时填写
 
-- **实际改动**：按 T9/T10/T11 的实际实现重写 framework_design.md §3.4（172 → 180 行），七节重组；删除 GE host 动态 tiling 主线、decode-only 一刀切、自动 bucket 分图、Attention 自动三层注册等无实现支撑的描述；torchair/GE 仅留作旧路线背景
-- **验收结果**：§3.4 内 aclgraph 0→5、torchair 7→3、GE 14→3；§3.4 之外逐字节不变（节前节后分别校验）；仅 4 个 .md 改动，无代码改动；docs 本地链接 0 broken；12 条边界逐条附依据
+- **实际改动**：按 T9/T10/T11 的实际实现重写 framework_design.md §6（172 → 180 行），七节重组；删除 GE host 动态 tiling 主线、decode-only 一刀切、自动 bucket 分图、Attention 自动三层注册等无实现支撑的描述；torchair/GE 仅留作旧路线背景
+- **验收结果**：§6 内 aclgraph 0→5、torchair 7→3、GE 14→3；§6 之外逐字节不变（节前节后分别校验）；仅 4 个 .md 改动，无代码改动；docs 本地链接 0 broken；12 条边界逐条附依据
 - **遗留问题**（不要顺手改，记在这里）：另修正三份历史报告 12 处既有断链（指向未入仓的过程产物），数字结果原样保留
 - **提交**：`04f5eae`

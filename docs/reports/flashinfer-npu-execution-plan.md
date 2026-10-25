@@ -199,7 +199,7 @@ vllm-ascend 工程，以免把 T18 反向依赖到 P4。
 | T9 | T4.4 的 wrapper、Attention 图身份、固定 metadata buffer | 两次 plan 的地址不变；batch/backend/q_len/block-table 宽度按上游时点冻结；图开关有实际作用 |
 | T10 | plan 最大 workspace 查询与调用方 workspace 下发 | 声明 shape 上界、容量与开关；执行使用固定 workspace；不足时报错；报告显存代价 |
 | T11 | 通用任务句柄、参数更新协议、事件顺序、NPU 扩展 API | 捕获由外部测试/调用方负责；多 seq_len replay 与 eager 对拍；更新入口与账本声明一致 |
-| T12 | framework_design §3.4 及相关图说明 | 与 T9–T11 实现逐项一致；核对指定 vllm-ascend 版本的路线信息 |
+| T12 | framework_design §6 及相关图说明 | 与 T9–T11 实现逐项一致；核对指定 vllm-ascend 版本的路线信息 |
 | T13 | vllm-ascend 构建框架、CMake/打包、第三方来源与登记 | 先在本机 A5 验证 AOT/JIT；其他 SoC 仅报告实际完成的构建/验证；保留许可证和源提交 |
 | T14 | C++/Python 注册和 meta 与 T8 合并 | 无重复注册；PrivateUse1 与 fake 路由正确；最小下游导入和编译追踪可用 |
 | T15 | 每个通用算子及 vllm-ascend 薄调用点 | 每个算子单独交付 diff、对拍与下游冒烟；确认新调用可用后再移除旧实现 |
