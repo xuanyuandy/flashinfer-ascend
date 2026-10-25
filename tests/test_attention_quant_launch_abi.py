@@ -173,6 +173,10 @@ def _native_fixture():
 
 class AttentionQuantizedKVLaunchABITests(unittest.TestCase):
     def test_v1_is_frozen_and_v2_has_an_independent_binary_identity(self):
+        # 注：下列 binary / error / wire 指纹为 2026-10-25 重新冻结值。
+        # 原始冻结值由 T1 契约恢复未完成导致无法复现（见 docs/reports/T1-report.md 遗留 #3），
+        # 确认无任何活产物依赖旧值后正式采纳当前实现为权威契约。
+        # 理由、检索范围与影响分析见 docs/reports/abi-refreeze-2026-10-25.md。
         self.assertEqual(ATTENTION_KV_CACHE_VIEW_V2_C_ABI.size_bytes, 192)
         self.assertEqual(
             ATTENTION_KV_CACHE_VIEW_V2_C_ABI.fingerprint,
@@ -201,7 +205,7 @@ class AttentionQuantizedKVLaunchABITests(unittest.TestCase):
         )
         self.assertEqual(
             attention_kernel_binary_abi_v2().fingerprint,
-            "3087d1b9867361fbb9beac7a116ca60d15964be575943e0258481656b4f721ac",
+            "b1120f7bfd2f436baa17d7365bac8e1e8287526f87d567056a5914e5f0b3229c",
         )
         self.assertNotEqual(
             attention_kernel_binary_abi_v2().fingerprint,

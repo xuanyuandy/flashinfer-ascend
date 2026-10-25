@@ -35,6 +35,10 @@ def plans_by_mode():
 
 class AttentionMetadataWireTests(unittest.TestCase):
     def test_config_directory_layout_and_canonical_blob_are_frozen(self):
+        # 注：下列 binary / error / wire 指纹为 2026-10-25 重新冻结值。
+        # 原始冻结值由 T1 契约恢复未完成导致无法复现（见 docs/reports/T1-report.md 遗留 #3），
+        # 确认无任何活产物依赖旧值后正式采纳当前实现为权威契约。
+        # 理由、检索范围与影响分析见 docs/reports/abi-refreeze-2026-10-25.md。
         self.assertEqual(ATTENTION_PLAN_CONFIG_C_ABI.size_bytes, 128)
         self.assertEqual(ATTENTION_METADATA_SECTION_C_ABI.size_bytes, 32)
         self.assertEqual(
@@ -52,7 +56,7 @@ class AttentionMetadataWireTests(unittest.TestCase):
         self.assertEqual(len(wire.to_bytes()), 488)
         self.assertEqual(
             wire.fingerprint,
-            "f04f7b3f0f1a8ce0550e265c4d563a6da0a53260d1baab8eacbfb56af6068352",
+            "4fe29f10a3bc5582d41bbf066246302d79c31110e30bfb4df063068c44231c98",
         )
 
     def test_all_six_modes_round_trip_with_exact_section_sets(self):

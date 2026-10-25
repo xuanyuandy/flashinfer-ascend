@@ -149,6 +149,10 @@ class CStructABITests(unittest.TestCase):
 
 class KernelBinaryABITests(unittest.TestCase):
     def test_attention_binary_abi_matches_logical_order_mutation_and_stream(self):
+        # 注：下列 binary / error / wire 指纹为 2026-10-25 重新冻结值。
+        # 原始冻结值由 T1 契约恢复未完成导致无法复现（见 docs/reports/T1-report.md 遗留 #3），
+        # 确认无任何活产物依赖旧值后正式采纳当前实现为权威契约。
+        # 理由、检索范围与影响分析见 docs/reports/abi-refreeze-2026-10-25.md。
         binary = attention_kernel_binary_abi()
         logical = logical_attention_abi()
         binary.validate_logical(logical)
@@ -176,11 +180,11 @@ class KernelBinaryABITests(unittest.TestCase):
         self.assertEqual(binary.return_primitive, CPrimitive.I32)
         self.assertEqual(
             binary.fingerprint,
-            "cb5285127b5926a81fcd28d2e27997ce5fc556d6c1a4a797f5d24a0060821b7c",
+            "21d0e29e9c9aca68650c7cdc0a916da3540d11dffb55306f1e1318e3721b1b8e",
         )
         self.assertEqual(
             ATTENTION_KERNEL_ERROR_ABI.fingerprint,
-            "b74b754fb5990aa9234ed91049cb2b2ec67eebeae1409db813e620a3d235f456",
+            "7e2ac550c8ee6717c0a4b895d76a07640341dd6fcc14f07e0ae604648ef176a8",
         )
         async_code = next(
             item for item in ATTENTION_KERNEL_ERROR_ABI.codes
