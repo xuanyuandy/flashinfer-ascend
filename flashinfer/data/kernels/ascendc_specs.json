@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "kernels": [
+    {
+      "kernel_id": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
+      "recipe": {
+        "recipe_id": "matmul_bias_silu",
+        "version": 2,
+        "kernel_id": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
+        "implementation": "native",
+        "target_soc": "Ascend950",
+        "npu_arch": "dav-3510",
+        "source": {
+          "language": "ascendc",
+          "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+          "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
+          "schema_version": 1
+        },
+        "sources": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+            "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
+            "schema_version": 1
+          }
+        ],
+        "headers": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/include/flashinfer_ascend/matmul_bias_silu_tiling.h",
+            "digest": "34f5b59d3cc602f0d0fbee7b08f62a3f7aa07fff7ab15cc253f30a51f306dfd9",
+            "schema_version": 1
+          }
+        ],
+        "include_dirs": [
+          "csrc/include"
+        ],
+        "dependencies": [],
+        "definitions": [],
+        "compile_options": [
+          "-O2"
+        ],
+        "link_options": [],
+        "device_entry": "fi_matmul_bias_silu",
+        "host_entry": "aclnnFiMatmulBiasSilu",
+        "launch_abi": "aclnn.matmul_bias_silu.v2",
+        "tiling_mode": "host_dynamic",
+        "tiling_schema_version": 2,
+        "block_dim": 1,
+        "workspace_bytes": "dynamic",
+        "task_type": "aic_aiv",
+        "sync_policy": "cross_core_flags",
+        "toolchain": "ascendc",
+        "output_kind": "op_package",
+        "output_adapter": "ascendc.op_package.v1",
+        "schema_version": 2,
+        "host_sources": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/op_package/matmul_bias_silu.cpp",
+            "digest": "19135b1ec435f68d3b48748ea45baede4ae9cb01ebbe8b15d61ce4862616ab69",
+            "schema_version": 1
+          }
+        ],
+        "package_vendor": "flashinfer_t2_matmul_bias_silu",
+        "package_op_type": "FiMatmulBiasSilu",
+        "tensor_parameters": [
+          {
+            "name": "a",
+            "role": "input",
+            "dtype": "bfloat16",
+            "shape": [
+              "M",
+              "K"
+            ]
+          },
+          {
+            "name": "b",
+            "role": "input",
+            "dtype": "bfloat16",
+            "shape": [
+              "K",
+              "N"
+            ]
+          },
+          {
+            "name": "bias",
+            "role": "input",
+            "dtype": "bfloat16",
+            "shape": [
+              "N"
+            ]
+          },
+          {
+            "name": "out",
+            "role": "output",
+            "dtype": "bfloat16",
+            "shape": [
+              "M",
+              "N"
+            ]
+          }
+        ],
+        "shape_constraints": [
+          {
+            "name": "M",
+            "minimum": 16,
+            "maximum": 256,
+            "multiple_of": 16
+          },
+          {
+            "name": "N",
+            "minimum": 16,
+            "maximum": 256,
+            "multiple_of": 16
+          },
+          {
+            "name": "K",
+            "minimum": 16,
+            "maximum": 256,
+            "multiple_of": 16
+          }
+        ],
+        "tiling_host_entry": "FiMatmulBiasSiluTiling",
+        "workspace_host_entry": "FiMatmulBiasSiluTiling"
+      },
+      "spec": {
+        "schema_version": 1,
+        "name": "kernel.9f253a56d2f05beea3f127544abd063feb887bd5373b5080fcee6ceac35cf02b",
+        "domain": "kernel",
+        "generator_id": "ascendc",
+        "generator_version": "2",
+        "target_soc": "Ascend950",
+        "environment_fingerprint": "d522e8eacacb955c6036daafcf1b2d4104952efe94c8f3e4a71566fb699eb40e",
+        "specialization_fingerprint": "20030d0e01a3877c31891af31a041d341210acd1af3b6252fabd4ff6cafe4fda",
+        "input_fingerprints": [
+          [
+            "build_recipe",
+            "98fae660c68ab744db8952b823d8348dff244fea3c8318dab3d4418aa8b25079"
+          ],
+          [
+            "kernel",
+            "86458a1bd892dc2d5facc5dafd6aacb678a5a008130c3792319fb0ac2bb1e666"
+          ],
+          [
+            "output_adapter",
+            "1977921b4c21903c722600d0f46c06091b2dec465760fb280549553c0a64a92e"
+          ],
+          [
+            "package",
+            "2965215d4a91931ae823ca2b3a57b601be0243343aaa6f0b5a7d416801e522ad"
+          ],
+          [
+            "resolved_recipe",
+            "a1e99db436939abe7afb0be9e661db7fe0ea5e4d7deda29461a0b7263d4ca74f"
+          ]
+        ],
+        "source_artifacts": [],
+        "compile_options": [],
+        "entry_points": [
+          "aclnnFiMatmulBiasSilu"
+        ],
+        "kernel_id": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
+        "source": {
+          "language": "ascendc",
+          "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+          "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
+          "schema_version": 1
+        },
+        "output_path": "op-package.json"
+      }
+    },
+    {
+      "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+      "recipe": {
+        "recipe_id": "flash_attention",
+        "version": 2,
+        "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+        "implementation": "catlass",
+        "target_soc": "Ascend950",
+        "npu_arch": "dav-3510",
+        "source": {
+          "language": "ascendc",
+          "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+          "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+          "schema_version": 1
+        },
+        "sources": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+            "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+            "schema_version": 1
+          }
+        ],
+        "headers": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel.h",
+            "digest": "4e729565d1035e17cc9fc118dccd86248bf83b147dff33736f27d790f899c814",
+            "schema_version": 1
+          },
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel_utils.h",
+            "digest": "17a78609674d72d71c75eefaab2d8cce99ab2b398ad46e603f1999a49b10ef09",
+            "schema_version": 1
+          },
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/flash_attention/fai_tiling.h",
+            "digest": "c606564e57045621c7b6e28e9019d391c131a07baa8573a561307060be940175",
+            "schema_version": 1
+          },
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/flash_attention/tiling_data_def.h",
+            "digest": "dd5639fda933be255cb160df44ea3efb1c29e7be1edfe53bd16d2b559911a5ea",
+            "schema_version": 1
+          },
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/flash_attention/CANN_LICENSE.h",
+            "digest": "06f070fb72f5fcd2e58e72813a10182edcb76e87177d6d4c7eccf2ca654deaf5",
+            "schema_version": 1
+          }
+        ],
+        "include_dirs": [
+          "csrc/kernels/ascendc/flash_attention"
+        ],
+        "dependencies": [
+          {
+            "name": "catlass",
+            "revision": "41bf90da655bba3c66d0acd7e00abe33960ecfd6",
+            "include_dir": "include"
+          }
+        ],
+        "definitions": [
+          "CATLASS_ARCH=3510"
+        ],
+        "compile_options": [
+          "-O2"
+        ],
+        "link_options": [],
+        "device_entry": "fi_flash_attention",
+        "host_entry": "aclnnFiFlashAttention",
+        "launch_abi": "aclnn.flash_attention.v2",
+        "tiling_mode": "host_dynamic",
+        "tiling_schema_version": 2,
+        "block_dim": 1,
+        "workspace_bytes": "dynamic",
+        "task_type": "aic_aiv",
+        "sync_policy": "cross_core_flags",
+        "toolchain": "ascendc",
+        "output_kind": "op_package",
+        "output_adapter": "ascendc.op_package.v1",
+        "schema_version": 2,
+        "host_sources": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/op_package/flash_attention.cpp",
+            "digest": "6e808537d0508e99e1686146f76a92910138b755a7c1fe2a137fe7d9943a872f",
+            "schema_version": 1
+          }
+        ],
+        "package_vendor": "flashinfer_t4_flash_attention",
+        "package_op_type": "FiFlashAttention",
+        "tensor_parameters": [
+          {
+            "name": "q",
+            "role": "input",
+            "dtype": "float16",
+            "shape": [
+              "S",
+              "H",
+              "D"
+            ]
+          },
+          {
+            "name": "k",
+            "role": "input",
+            "dtype": "float16",
+            "shape": [
+              "T",
+              "H",
+              "D"
+            ]
+          },
+          {
+            "name": "v",
+            "role": "input",
+            "dtype": "float16",
+            "shape": [
+              "T",
+              "H",
+              "D"
+            ]
+          },
+          {
+            "name": "out",
+            "role": "output",
+            "dtype": "float16",
+            "shape": [
+              "S",
+              "H",
+              "D"
+            ]
+          }
+        ],
+        "shape_constraints": [
+          {
+            "name": "S",
+            "minimum": 128,
+            "maximum": 512,
+            "multiple_of": 128
+          },
+          {
+            "name": "T",
+            "minimum": 128,
+            "maximum": 512,
+            "multiple_of": 128
+          },
+          {
+            "name": "H",
+            "minimum": 1,
+            "maximum": 8,
+            "multiple_of": 1
+          },
+          {
+            "name": "D",
+            "minimum": 128,
+            "maximum": 128,
+            "multiple_of": 128
+          }
+        ],
+        "tiling_host_entry": "FiFlashAttentionTiling",
+        "workspace_host_entry": "FiFlashAttentionTiling"
+      },
+      "spec": {
+        "schema_version": 1,
+        "name": "kernel.fbfde71ebe0e13776951307024ef85316fdbdf00f7ef35f8535572086c2c6465",
+        "domain": "kernel",
+        "generator_id": "ascendc",
+        "generator_version": "2",
+        "target_soc": "Ascend950",
+        "environment_fingerprint": "d522e8eacacb955c6036daafcf1b2d4104952efe94c8f3e4a71566fb699eb40e",
+        "specialization_fingerprint": "5de2dc30e9a7c423646cacb69a1840a6cdee64f8622f5ff2bc232be885fbb46d",
+        "input_fingerprints": [
+          [
+            "build_recipe",
+            "5b2d4f29510c11a9a6f7890a73ded5e0ac411ffc887bd0063b4d7fa4864192a3"
+          ],
+          [
+            "kernel",
+            "287031ecb28c7cb05c364fa496568308803d9e3324207f2596f950a8c980a83a"
+          ],
+          [
+            "output_adapter",
+            "1977921b4c21903c722600d0f46c06091b2dec465760fb280549553c0a64a92e"
+          ],
+          [
+            "package",
+            "2965215d4a91931ae823ca2b3a57b601be0243343aaa6f0b5a7d416801e522ad"
+          ],
+          [
+            "resolved_recipe",
+            "85057e2ace9561bcbc0ea218e64d11760a9d0a63749b574c10268512bf783f6e"
+          ]
+        ],
+        "source_artifacts": [],
+        "compile_options": [],
+        "entry_points": [
+          "aclnnFiFlashAttention"
+        ],
+        "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+        "source": {
+          "language": "ascendc",
+          "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+          "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+          "schema_version": 1
+        },
+        "output_path": "op-package.json"
+      }
+    }
+  ]
+}

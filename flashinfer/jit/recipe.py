@@ -11,7 +11,7 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath
 import re
-from typing import Mapping, Optional, Tuple
+from typing import Mapping, Optional, Tuple, Union
 
 from flashinfer.runtime import KernelDescriptor, SchemaError, SourceRef
 
@@ -56,6 +56,48 @@ class BuildDependency:
 
 
 @dataclass(frozen=True)
+class TensorParameter:
+    """An ordered ACLNN tensor argument and its device-visible shape contract."""
+
+    name: str
+    role: str
+    dtype: str
+    shape: Tuple[Union[str, int], ...]
+
+    def __post_init__(self):
+        if (not isinstance(self.name, str) or not _SYMBOL.fullmatch(self.name)
+                or self.name in {"workspace", "tiling", "executor", "stream", "workspace_bytes"}):
+            raise SchemaError("invalid/reserved tensor parameter name")
+        if not isinstance(self.role, str) or self.role not in {"input", "output"}:
+            raise SchemaError("tensor parameter role must be input or output")
+        if (not isinstance(self.dtype, str) or self.dtype not in {
+                "bfloat16", "float16", "float32", "float64", "int8", "uint8", "int16", "int32", "int64", "bool"}):
+            raise SchemaError("unsupported tensor parameter dtype")
+        if (not isinstance(self.shape, (tuple, list))
+                or any(not ((type(d) is int and d > 0)
+                            or (isinstance(d, str) and _SYMBOL.fullmatch(d))) for d in self.shape)):
+            raise SchemaError("tensor parameter shape requires positive dimensions or declared symbols")
+        object.__setattr__(self, "shape", tuple(self.shape))
+
+
+@dataclass(frozen=True)
+class ShapeConstraint:
+    """Finite host/dispatch bounds for one shared tensor dimension."""
+
+    name: str
+    minimum: int
+    maximum: int
+    multiple_of: int = 1
+
+    def __post_init__(self):
+        if (not isinstance(self.name, str) or not _SYMBOL.fullmatch(self.name)
+                or any(type(v) is not int for v in (self.minimum, self.maximum, self.multiple_of))
+                or self.minimum < 1 or self.maximum < self.minimum or self.multiple_of < 1
+                or ((self.minimum + self.multiple_of - 1) // self.multiple_of) * self.multiple_of > self.maximum):
+            raise SchemaError("shape constraint requires a named, nonempty finite positive range")
+
+
+@dataclass(frozen=True)
 class BuildRecipe:
     recipe_id: str
     version: int
@@ -77,7 +119,7 @@ class BuildRecipe:
     tiling_mode: str
     tiling_schema_version: int
     block_dim: int
-    workspace_bytes: int
+    workspace_bytes: Union[int, str]
     task_type: str
     sync_policy: str
     toolchain: str = "ascendc"
@@ -87,9 +129,14 @@ class BuildRecipe:
     host_sources: Tuple[SourceRef, ...] = ()
     package_vendor: Optional[str] = None
     package_op_type: Optional[str] = None
+    tensor_parameters: Tuple[TensorParameter, ...] = ()
+    shape_constraints: Tuple[ShapeConstraint, ...] = ()
+    tiling_host_entry: Optional[str] = None
+    workspace_host_entry: Optional[str] = None
 
     def __post_init__(self):
-        if self.schema_version != 1 or type(self.version) is not int or self.version < 1:
+        if (type(self.schema_version) is not int or self.schema_version not in {1, 2}
+                or type(self.version) is not int or self.version < 1):
             raise SchemaError("unsupported BuildRecipe version")
         for name in ("recipe_id", "kernel_id", "target_soc", "npu_arch", "launch_abi"):
             value = getattr(self, name)
@@ -131,18 +178,113 @@ class BuildRecipe:
             raise SchemaError("invalid/reserved recipe definition")
         if any(not _SYMBOL.fullmatch(getattr(self, n)) for n in ("host_entry", "device_entry")):
             raise SchemaError("recipe entries must be C symbols")
-        expected_tiling = "none" if self.output_kind == "host_shared" else "fixed"
-        if (self.tiling_mode != expected_tiling or self.tiling_schema_version != 1
-                or type(self.block_dim) is not int or self.block_dim < 1
-                or self.workspace_bytes != 0 or self.task_type != "aic_only"
-                or self.sync_policy != "compiler_default"):
-            raise SchemaError("Ascend C v1 supports explicit fixed tiling, AIC-only, no workspace")
+        object.__setattr__(self, "tensor_parameters", tuple(self.tensor_parameters))
+        object.__setattr__(self, "shape_constraints", tuple(self.shape_constraints))
+        if self.schema_version == 1:
+            # Do not relax the frozen v1 protocol when adding a new contract.
+            expected_tiling = "none" if self.output_kind == "host_shared" else "fixed"
+            if (self.tiling_mode != expected_tiling or self.tiling_schema_version != 1
+                    or type(self.block_dim) is not int or self.block_dim < 1
+                    or self.workspace_bytes != 0 or self.task_type != "aic_only"
+                    or self.sync_policy != "compiler_default"):
+                raise SchemaError("Ascend C v1 supports explicit fixed tiling, AIC-only, no workspace")
+            if (self.tensor_parameters or self.shape_constraints or self.tiling_host_entry is not None
+                    or self.workspace_host_entry is not None):
+                raise SchemaError("Ascend C v1 cannot declare v2 tensor/host contracts")
+        else:
+            self._validate_v2()
+
+    def _validate_v2(self):
+        if (self.output_kind != "op_package" or self.tiling_mode != "host_dynamic"
+                or type(self.tiling_schema_version) is not int or self.tiling_schema_version < 2
+                or type(self.block_dim) is not int or self.block_dim < 1):
+            raise SchemaError("Ascend C v2 requires op_package, host_dynamic tiling schema >= 2 and positive block_dim")
+        if not isinstance(self.tiling_host_entry, str) or not _SYMBOL.fullmatch(self.tiling_host_entry):
+            raise SchemaError("host_dynamic tiling requires a tiling_host_entry C symbol")
+        if self.workspace_bytes == "dynamic":
+            if not isinstance(self.workspace_host_entry, str) or not _SYMBOL.fullmatch(self.workspace_host_entry):
+                raise SchemaError("dynamic workspace requires a workspace_host_entry C symbol")
+        elif type(self.workspace_bytes) is not int or self.workspace_bytes < 0:
+            raise SchemaError("v2 workspace_bytes must be nonnegative integer or dynamic")
+        elif self.workspace_host_entry is not None:
+            raise SchemaError("fixed workspace must not declare workspace_host_entry")
+        if self.task_type == "aic_aiv":
+            if self.sync_policy != "cross_core_flags":
+                raise SchemaError("aic_aiv requires explicit cross_core_flags synchronization")
+        elif self.task_type != "aic_only" or self.sync_policy != "compiler_default":
+            raise SchemaError("unsupported v2 task_type/sync_policy")
+        parameters = self.tensor_parameters
+        if (not parameters or any(not isinstance(p, TensorParameter) for p in parameters)
+                or len({p.name for p in parameters}) != len(parameters)):
+            raise SchemaError("v2 requires unique ordered tensor_parameters")
+        # CANN-generated ACLNN APIs place input tensors before output tensors.
+        roles = [p.role for p in parameters]
+        if roles != sorted(roles):
+            raise SchemaError("ACLNN tensor_parameters must declare inputs before outputs")
+        constraints = self.shape_constraints
+        symbols = {d for p in parameters for d in p.shape if isinstance(d, str)}
+        if (any(not isinstance(c, ShapeConstraint) for c in constraints)
+                or len({c.name for c in constraints}) != len(constraints)
+                or {c.name for c in constraints} != symbols):
+            raise SchemaError("shape_constraints must bind every tensor shape symbol exactly once")
+
+    @property
+    def tensor_parameter_names(self):
+        """ACLNN stage-one order; the frozen probe ABI supplies the v1 default."""
+        return tuple(p.name for p in self.tensor_parameters) if self.schema_version == 2 else ("a", "b", "c")
+
+    @property
+    def device_parameter_order(self):
+        """Device GM arguments; CANN supplies workspace and tiling via executor."""
+        return self.tensor_parameter_names + ("workspace", "tiling")
+
+    def validate_tensor_metadata(self, *, shapes, dtypes):
+        """Reject unsupported v2 metadata before dispatch can resolve/build a unit.
+
+        No tensor library import, device access, source read or compiler discovery
+        is required. Returned dimensions may also be used by host preparation.
+        """
+        if self.schema_version != 2:
+            raise SchemaError("tensor metadata validation requires recipe v2")
+        names = set(self.tensor_parameter_names)
+        if set(shapes) != names or set(dtypes) != names:
+            raise SchemaError("dispatch tensor arguments must match recipe parameters: " + ", ".join(self.tensor_parameter_names))
+        dimensions = {}
+        for parameter in self.tensor_parameters:
+            if dtypes[parameter.name] != parameter.dtype:
+                raise SchemaError("dispatch dtype for %s must be %s; got %s"
+                                  % (parameter.name, parameter.dtype, dtypes[parameter.name]))
+            shape = tuple(shapes[parameter.name])
+            if len(shape) != len(parameter.shape):
+                raise SchemaError("dispatch shape for %s requires rank %d; got %s"
+                                  % (parameter.name, len(parameter.shape), shape))
+            for actual, declared in zip(shape, parameter.shape):
+                if type(actual) is not int or actual < 1:
+                    raise SchemaError("dispatch shape for %s requires positive integer dimensions" % parameter.name)
+                if isinstance(declared, str):
+                    if declared in dimensions and dimensions[declared] != actual:
+                        raise SchemaError("dispatch shape symbol %s is inconsistent across tensor arguments" % declared)
+                    dimensions[declared] = actual
+                elif actual != declared:
+                    raise SchemaError("dispatch shape for %s requires dimension %d; got %d"
+                                      % (parameter.name, declared, actual))
+        for constraint in self.shape_constraints:
+            actual = dimensions[constraint.name]
+            if not constraint.minimum <= actual <= constraint.maximum or actual % constraint.multiple_of:
+                raise SchemaError("dispatch shape %s=%d is outside declared range [%d, %d], multiple_of=%d"
+                                  % (constraint.name, actual, constraint.minimum,
+                                     constraint.maximum, constraint.multiple_of))
+        return dimensions
 
     def to_dict(self):
         value = asdict(self)
         value["source"] = self.source.to_dict()
         for name in ("sources", "headers", "host_sources"):
             value[name] = [r.to_dict() for r in getattr(self, name)]
+        if self.schema_version == 1:
+            # Preserve all existing v1 identities, including op-package recipes.
+            for name in ("tensor_parameters", "shape_constraints", "tiling_host_entry", "workspace_host_entry"):
+                value.pop(name)
         # Preserve the 13-I serialization/fingerprints for host_shared recipes.
         if self.output_kind == "host_shared":
             for name in ("host_sources", "package_vendor", "package_op_type"):
@@ -158,6 +300,8 @@ class BuildRecipe:
                 data[name] = tuple(SourceRef.from_dict(r) for r in data[name])
             data["host_sources"] = tuple(SourceRef.from_dict(r) for r in data.get("host_sources", ()))
             data["dependencies"] = tuple(BuildDependency(**d) for d in data["dependencies"])
+            data["tensor_parameters"] = tuple(TensorParameter(**p) for p in data.get("tensor_parameters", ()))
+            data["shape_constraints"] = tuple(ShapeConstraint(**c) for c in data.get("shape_constraints", ()))
             return cls(**data)
         except (KeyError, TypeError, ValueError) as error:
             raise SchemaError("invalid BuildRecipe manifest: %s" % error) from error

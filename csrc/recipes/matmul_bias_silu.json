@@ -1,0 +1,123 @@
+[
+  {
+    "recipe_id": "matmul_bias_silu",
+    "version": 2,
+    "kernel_id": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
+    "implementation": "native",
+    "target_soc": "Ascend950",
+    "npu_arch": "dav-3510",
+    "source": {
+      "language": "ascendc",
+      "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+      "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
+      "schema_version": 1
+    },
+    "sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+        "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
+        "schema_version": 1
+      }
+    ],
+    "headers": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/include/flashinfer_ascend/matmul_bias_silu_tiling.h",
+        "digest": "34f5b59d3cc602f0d0fbee7b08f62a3f7aa07fff7ab15cc253f30a51f306dfd9",
+        "schema_version": 1
+      }
+    ],
+    "include_dirs": [
+      "csrc/include"
+    ],
+    "dependencies": [],
+    "definitions": [],
+    "compile_options": [
+      "-O2"
+    ],
+    "link_options": [],
+    "device_entry": "fi_matmul_bias_silu",
+    "host_entry": "aclnnFiMatmulBiasSilu",
+    "launch_abi": "aclnn.matmul_bias_silu.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
+    "block_dim": 1,
+    "workspace_bytes": "dynamic",
+    "task_type": "aic_aiv",
+    "sync_policy": "cross_core_flags",
+    "toolchain": "ascendc",
+    "output_kind": "op_package",
+    "output_adapter": "ascendc.op_package.v1",
+    "schema_version": 2,
+    "package_vendor": "flashinfer_t2_matmul_bias_silu",
+    "package_op_type": "FiMatmulBiasSilu",
+    "host_sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/op_package/matmul_bias_silu.cpp",
+        "digest": "19135b1ec435f68d3b48748ea45baede4ae9cb01ebbe8b15d61ce4862616ab69",
+        "schema_version": 1
+      }
+    ],
+    "tiling_host_entry": "FiMatmulBiasSiluTiling",
+    "workspace_host_entry": "FiMatmulBiasSiluTiling",
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "bfloat16",
+        "shape": [
+          "M",
+          "K"
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "bfloat16",
+        "shape": [
+          "K",
+          "N"
+        ]
+      },
+      {
+        "name": "bias",
+        "role": "input",
+        "dtype": "bfloat16",
+        "shape": [
+          "N"
+        ]
+      },
+      {
+        "name": "out",
+        "role": "output",
+        "dtype": "bfloat16",
+        "shape": [
+          "M",
+          "N"
+        ]
+      }
+    ],
+    "shape_constraints": [
+      {
+        "name": "M",
+        "minimum": 16,
+        "maximum": 256,
+        "multiple_of": 16
+      },
+      {
+        "name": "N",
+        "minimum": 16,
+        "maximum": 256,
+        "multiple_of": 16
+      },
+      {
+        "name": "K",
+        "minimum": 16,
+        "maximum": 256,
+        "multiple_of": 16
+      }
+    ]
+  }
+]

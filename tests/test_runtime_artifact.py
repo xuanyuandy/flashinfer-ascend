@@ -324,11 +324,30 @@ class KernelExecutionBodyTests(unittest.TestCase):
         self.assertIsNone(descriptor.target_soc)
         self.assertEqual(descriptor.compile_mode, CompileMode.NONE)
         self.assertEqual(descriptor_from_dict(descriptor.to_dict()), descriptor)
-        for existing in get_global_registry().descriptors():
+        from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID
+        from flashinfer.runtime.registry import _builtin_descriptors
+
+        registry = get_global_registry()
+        legacy = _builtin_descriptors()
+        self.assertEqual(len(legacy), 79)
+        self.assertEqual(len(registry.descriptors()), 81)
+        self.assertEqual(
+            {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy},
+            {MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID},
+        )
+        for declaration in legacy:
+            existing = registry.get(declaration.kernel_id)
             with self.subTest(kernel_id=existing.kernel_id):
                 self.assertEqual(replace(existing), existing)
                 self.assertIsNone(existing.source)
                 self.assertIsNone(existing.target_soc)
+        production = registry.get(MATMUL_BIAS_SILU_KERNEL_ID)
+        self.assertEqual(replace(production), production)
+        self.assertIsNotNone(production.source)
+        self.assertEqual(production.source.language, "ascendc")
+        self.assertEqual(production.target_soc, "Ascend950")
+        self.assertEqual(production.compile_mode, CompileMode.AOT)
+        self.assertEqual(descriptor_from_dict(production.to_dict()), replace(production, runner=None))
 
     def test_aot_artifact_source_and_target_round_trip_through_manifest(self):
         descriptor = KernelDescriptor(

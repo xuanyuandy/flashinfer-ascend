@@ -184,6 +184,59 @@ _OP_BMM_BF16 = "gemm.bmm_bf16"
 _OP_SEGMENT_GEMM = "gemm.segment_gemm"
 
 
+def matmul_bias_silu(
+    a, b, bias, out=None, *,
+    backend: Union[str, Backend, None] = "auto", kernel_id: Optional[str] = None,
+):
+    """Compute ``silu(a @ b + bias)`` with the registered Ascend C kernel.
+
+    All tensors are contiguous BF16 in NPU ND format: ``a[M,K]``, ``b[K,N]``,
+    ``bias[N]`` and ``out[M,N]``. M, N and K must be multiples of 16 in
+    [16, 256]. The dispatcher rejects unsupported shapes, dtypes and layouts.
+    A verified installed package is used automatically; an absent package can
+    compile only when JIT is enabled. This eager entry is not graph capturable.
+    """
+    import torch
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from .ascendc import MATMUL_BIAS_SILU_KERNEL_ID, tensor_contract_specialization
+
+    if out is None:
+        # Validate the prospective output from metadata before allocating it;
+        # unsupported huge shapes must reach dispatch without risking an OOM.
+        m = a.shape[0] if a.ndim else 0
+        n = b.shape[1] if b.ndim >= 2 else 0
+        output_metadata = SimpleNamespace(
+            shape=(m, n), dtype=torch.bfloat16, device=a.device,
+            is_contiguous=lambda: True,
+        )
+    else:
+        output_metadata = out
+    tensors = (a, b, bias, output_metadata)
+    signature = build_signature(
+        "gemm.matmul_bias_silu", tensors if out is not None else tensors[:3],
+        specializations={"tensor_contract": tensor_contract_specialization(
+            MATMUL_BIAS_SILU_KERNEL_ID, tensors,
+        )},
+    )
+    if out is None:
+        signature = replace(
+            signature, dtypes=signature.dtypes + ("bfloat16",),
+            shapes=signature.shapes + (output_metadata.shape,),
+            layouts=signature.layouts + ("",),
+            physical_layouts=tuple(
+                signature.physical_layouts[index]
+                if index < len(signature.physical_layouts) else ""
+                for index in range(3)
+            ) + ("ND",),
+        )
+    decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
+    if out is None:
+        out = torch.empty(output_metadata.shape, dtype=torch.bfloat16, device=a.device)
+    _run_selected(decision.kernel_id, a, b, bias, out)
+    return out
+
+
 def _run(op, tensors, specializations, args, backend, kernel_id):
     signature = build_signature(op, tensors, specializations=specializations)
     decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)

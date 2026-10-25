@@ -54,11 +54,19 @@ def test_builtin_partition_is_complete_disjoint_and_has_no_within_stack_data():
     before = [(d.kernel_id, d.fingerprint) for d in registry.descriptors()]
     stacks = registry.stacks()
     assert {s.stack_id: len(s.descriptors) for s in stacks} == {
-        "cann": 40, "reference": 38, "triton": 1,
+        "ascendc": 2, "cann": 40, "reference": 38, "triton": 1,
     }
     assert all(isinstance(s, ImplementationStack) for s in stacks)
     flat = [d for s in stacks for d in s.descriptors]
-    assert len(flat) == len({d.kernel_id for d in flat}) == 79
+    assert len(flat) == len({d.kernel_id for d in flat}) == 81
+    from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID
+    from flashinfer.runtime.registry import _builtin_descriptors
+
+    legacy = _builtin_descriptors()
+    assert len(legacy) == 79
+    assert {d.kernel_id for d in flat} - {d.kernel_id for d in legacy} == {
+        MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID,
+    }
     assert {id(d) for d in flat} == {id(d) for d in registry.descriptors()}
     assert all(max(Counter(d.op for d in s.descriptors).values()) == 1 for s in stacks)
     assert before == [(d.kernel_id, d.fingerprint) for d in registry.descriptors()]
@@ -317,6 +325,8 @@ def test_tuning_cannot_resurrect_ineligible_config_in_an_available_stack(monkeyp
 def test_real_example_configs_select_by_actual_tile_capacity(hidden, expected):
     from examples.two_level_gemma import OP, configuration_registry
 
+    production_before = tuple((d.kernel_id, d.fingerprint) for d in get_global_registry().descriptors())
+    assert len(production_before) == 81
     registry = configuration_registry(HW.soc_model)
     signature = replace(SIG, op=OP, shapes=((4, hidden),))
     decision = dispatch(signature, HW, registry=registry)
@@ -329,8 +339,9 @@ def test_real_example_configs_select_by_actual_tile_capacity(hidden, expected):
     else:
         assert not stack_report(decision, "triton").implementations[0].accepted
         assert "hidden %d 不在支持区间 [1, 128]" % hidden in explain_dispatch(signature, HW, registry=registry)
-    # The optional example must not add configs to production registration.
-    assert len(get_global_registry().descriptors()) == 79
+    # The optional example must not add or mutate production registrations.
+    assert tuple((d.kernel_id, d.fingerprint) for d in get_global_registry().descriptors()) == production_before
+    assert not any(kernel_id.startswith("triton/t19a/") for kernel_id, _ in production_before)
 
 
 @pytest.mark.parametrize("hidden", [0, 257])

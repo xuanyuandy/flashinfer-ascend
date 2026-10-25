@@ -8,6 +8,7 @@ M1 起接入（实施路线见 docs/framework_design.md §15）。
 from .version import __version__
 from .activation import silu_and_mul, gelu_and_mul, gelu_tanh_and_mul
 from .attention import BatchAttention
+from .attention.catlass_prefill import single_prefill_with_kv_cache_catlass
 from .decode import (
     BatchDecodeWithPagedKVCacheWrapper,
     CUDAGraphBatchDecodeWithPagedKVCacheWrapper,
@@ -17,7 +18,7 @@ from .decode import (
 )
 from .cascade import merge_state, merge_states
 from .page import append_paged_kv_cache
-from .gemm import SegmentGEMMWrapper, bmm_bf16, bmm_fp8, mm_bf16, gemm_fp8_nt_groupwise
+from .gemm import SegmentGEMMWrapper, bmm_bf16, bmm_fp8, mm_bf16, gemm_fp8_nt_groupwise, matmul_bias_silu
 from .fused_moe import (
     RoutingMethodType,
     fp8_block_scale_moe,
@@ -78,6 +79,7 @@ __all__ = [
     "silu_and_mul", "gelu_and_mul", "gelu_tanh_and_mul",
     # 对外 API（对标 flashinfer）
     "single_prefill_with_kv_cache",
+    "single_prefill_with_kv_cache_catlass",
     "single_prefill_with_kv_cache_with_jit_module",
     "single_decode_with_kv_cache_with_jit_module",
     "sampling_from_probs", "sampling_from_logits", "top_p_sampling_from_probs",
@@ -88,6 +90,7 @@ __all__ = [
     "cudnn_batch_decode_with_kv_cache",
     "SegmentGEMMWrapper",
     "bmm_bf16",
+    "matmul_bias_silu",
     "bmm_fp8",
     "mm_bf16",
     "gemm_fp8_nt_groupwise",

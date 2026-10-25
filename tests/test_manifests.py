@@ -17,8 +17,28 @@ from flashinfer.runtime import SchemaError, load_kernel_manifest
 
 
 class ManifestTests(unittest.TestCase):
-    def test_packaged_kernel_manifest_is_valid_and_honestly_empty(self):
-        self.assertEqual(load_kernel_manifest(packaged_kernel_manifest_path()), ())
+    def test_packaged_kernel_manifest_contains_the_first_production_entry(self):
+        from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID
+        from flashinfer.runtime import Backend, CompileMode, GraphCapability
+
+        descriptors = load_kernel_manifest(packaged_kernel_manifest_path())
+        self.assertEqual(len(descriptors), 2)
+        self.assertEqual(
+            {item.kernel_id for item in descriptors},
+            {MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID},
+        )
+        descriptor = next(item for item in descriptors
+                          if item.kernel_id == MATMUL_BIAS_SILU_KERNEL_ID)
+        self.assertEqual(descriptor.kernel_id, MATMUL_BIAS_SILU_KERNEL_ID)
+        self.assertEqual(descriptor.op, "gemm.matmul_bias_silu")
+        self.assertEqual(descriptor.backend, Backend.ASCENDC)
+        self.assertEqual(descriptor.compile_mode, CompileMode.AOT)
+        self.assertIsNotNone(descriptor.source)
+        self.assertEqual(descriptor.target_soc, "Ascend950")
+        self.assertEqual(descriptor.launch_abi.entry_point, "aclnnFiMatmulBiasSilu")
+        self.assertEqual(descriptor.graph_capability, GraphCapability.NOT_CAPTURABLE)
+        self.assertIsNone(descriptor.artifact)
+        self.assertIsNone(descriptor.runner)
 
     def test_packaged_attention_capabilities_are_valid_and_honestly_empty(self):
         self.assertEqual(

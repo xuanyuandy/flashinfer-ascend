@@ -24,7 +24,7 @@ from .attention import (
 from .attention.json_envelope import decode_attention_json
 from .config import format_config
 from .parity import load_packaged_manifest, validate_packaged_manifests
-from .runtime import SchemaError, load_kernel_manifest
+from .runtime import CompileMode, SchemaError, load_kernel_manifest
 
 
 def packaged_kernel_manifest_path() -> Path:
@@ -78,6 +78,8 @@ def _list_kernels(_args: argparse.Namespace) -> int:
                 (
                     descriptor.artifact.locator
                     if descriptor.artifact is not None
+                    else "aot (runtime discovery)"
+                    if descriptor.compile_mode == CompileMode.AOT
                     else "reference"
                 ),
             )

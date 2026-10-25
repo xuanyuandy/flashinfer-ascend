@@ -304,7 +304,12 @@ def get_global_registry() -> KernelRegistry:
     if _GLOBAL_REGISTRY is None:
         with _GLOBAL_LOCK:
             if _GLOBAL_REGISTRY is None:
-                registry = KernelRegistry(_builtin_descriptors())
+                from ..ascendc import ascendc_descriptors
+
+                # Historical Python builtin declarations retain their own
+                # catalog. Packaged production manifests join the same global
+                # registry before it is frozen, with ordinary dispatch rules.
+                registry = KernelRegistry(_builtin_descriptors() + ascendc_descriptors())
                 registry.freeze()
                 _GLOBAL_REGISTRY = registry
     return _GLOBAL_REGISTRY
