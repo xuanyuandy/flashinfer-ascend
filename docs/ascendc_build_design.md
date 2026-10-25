@@ -530,7 +530,7 @@ compiler adapter 可以从**显式传入的冻结 recipe 集合**按 spec 中的
 
 ## 6. 本仓目录与命名建议
 
-现有 `docs/framework_design.md:146–165` 已明确 `kernels/ascendc` 放 device 源码、`csrc` 放 host glue。因此推荐沿用这个职责划分，把“本仓自己的 csrc”落实为自己的编译工程、launcher 和可选 op-package host 层；无需复制 vllm-ascend 的扫描布局。这样也避免 T13 目录建议与已写的框架设计直接冲突。[L7]
+现有 `docs/framework_design.md` §2.3 给出了 `kernels/` 与 `csrc/` 的职责划分（当前 `csrc/kernels/ascendc` 承载完整档生产设备源码，与 `kernels/` 的受限档探针树并存，该节已标注需后续收敛）。因此推荐沿用这个职责划分，把“本仓自己的 csrc”落实为自己的编译工程、launcher 和可选 op-package host 层；无需复制 vllm-ascend 的扫描布局。这样也避免 T13 目录建议与已写的框架设计直接冲突。[L7]
 
 建议目录，均为后续规划：
 
@@ -659,7 +659,7 @@ tools/                               # AOT build-only / 打包入口
 | [L4] | `L/flashinfer/jit/build.py:27–49,52–94` |
 | [L5] | `L/flashinfer/jit/loading.py:376–390` |
 | [L6] | `L/flashinfer/jit/cache.py:212–218,242–252,303–348` |
-| [L7] | `L/docs/framework_design.md:146–165` |
+| [L7] | `L/docs/framework_design.md` §2.3 |
 | [L8] | `L/flashinfer/runtime/schema.py:918–950` |
 | [E1] | `E/native.device.log`、`E/catlass.device.log`，命令从第 1 行起、末行退出码；`E/device_commands.json` |
 | [E2] | `E/{native,catlass}.build.log:13`；`E/{native,catlass}.run.log:1–2`；`E/direct_commands.json` |
@@ -821,7 +821,7 @@ endif()
 [L4]: /home/dy/projects/flashinfer/flashinfer/jit/build.py:27
 [L5]: /home/dy/projects/flashinfer/flashinfer/jit/loading.py:376
 [L6]: /home/dy/projects/flashinfer/flashinfer/jit/cache.py:212
-[L7]: /home/dy/projects/flashinfer/docs/framework_design.md:146
+[L7]: /home/dy/projects/flashinfer/docs/framework_design.md
 [L8]: /home/dy/projects/flashinfer/flashinfer/runtime/schema.py:918
 [E1]: /tmp/flashinfer-t13-analysis-20261023-bS8hFg/device_commands.json
 [E2]: /tmp/flashinfer-t13-analysis-20261023-bS8hFg/native.build.log:13

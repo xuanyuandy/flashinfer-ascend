@@ -147,7 +147,7 @@ CuTe 的无缓存分支可直接执行 compile closure；Cake 此处汇合到 NV
 默认 provider specs 仍为空（`flashinfer/attention/operator_bootstrap.py:391`）。single 的 `with_jit_module` 要调用方自带 module（`flashinfer/_single_attention.py:141`）。
 
 **为什么 / 代价 / 性质：** 把 dtype/layout/variant 身份前置可防错误复用，但声明本身不产生机器代码；Attention 的源码物化与编译接线是**尚未补齐**。
-CUDA 模板、CuTe/NVRTC 与 Ascend C 的语言及目标码不同是**必然差异**；不逐行搬运 CUDA kernel 是**有意不对标**（`docs/framework_design.md:39`）。
+CUDA 模板、CuTe/NVRTC 与 Ascend C 的语言及目标码不同是**必然差异**；不逐行搬运 CUDA kernel 是**有意不对标**（`docs/framework_design.md` §1.3）。
 选择 recipe 作为构建输入是工程选择，不能据此把动态 tiling 或任意 ABI 缺口合理化；具体护栏见 §3。
 
 ### 2.3 JIT / AOT 层
@@ -333,7 +333,7 @@ P0-2 测试用隔离 registry 的具体位置为 `tests/aot_runtime_probe.py:120
 | 性质 | 具体边界 | 为什么这样判断 / 代价 |
 |---|---|---|
 | **必然差异** | CUDA 与 Ascend 目标码、编译器及设备 runtime | CUDA 模板不能作为 NPU binary 执行；两侧各用本平台构建/加载，证据见 §2.2–2.4；不要求相同 native ABI |
-| **有意不对标** | CUDA runtime 模拟、二进制兼容、逐行 kernel 翻译 | 明确非目标：`docs/framework_design.md:38`–`:39`；迁移应追求接口语义，不追求 CUDA 二进制直用 |
+| **有意不对标** | CUDA runtime 模拟、二进制兼容、逐行 kernel 翻译 | 明确非目标：`docs/framework_design.md` §1.3；迁移应追求接口语义，不追求 CUDA 二进制直用 |
 | **有意不对标** | CUDA PDL hint | facade 显式丢弃：`flashinfer/attention/public_batch.py:474`；保留参数名不代表实现该 launch 功能 |
 | **有意不对标（现有机制选择）** | 独立 Attention 契约、内容寻址、ctypes/ACLNN、随主包交付 | 分别提供状态校验、构建身份、CANN 接线和现有分发路径；代价是契约桥接与 adapter 工作，不能据此说 typed FFI 不可能实现 |
 | **尚未补齐** | Attention generator → compilation unit；公共 batch 定制扩展 | 硬断点分别在 `flashinfer/jit/build.py:66`、`flashinfer/attention/public_batch.py:44` |
