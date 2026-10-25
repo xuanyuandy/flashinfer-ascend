@@ -9,7 +9,7 @@
 
 ### 1.1 项目定位
 
-flashinfer 是对标 flashinfer 的昇腾 NPU 推理算子库：
+本仓是面向昇腾 NPU 的推理算子库，对外接口对标上游 FlashInfer：
 
 - **接口对标 flashinfer**：对外包名为 `flashinfer`，调用形式为
   `flashinfer.xx`（如 `flashinfer.prefill.single_prefill_with_kv_cache`），
@@ -25,7 +25,7 @@ flashinfer 是对标 flashinfer 的昇腾 NPU 推理算子库：
 
 上述 AOT/JIT 分工是目标态；当前绝大多数公共接口仍走 CANN aclnn，生产自研仅
 `matmul_bias_silu`、`flash_attention` 两条，自动 AOT 发现仅对已登记并绑定 runner 的
-Ascend C 算子生效，见 [P0-2 验收](p0-2-aot-runtime-validation-2026-10-25.md) 与 [接入交付](reports/custom-operator-onboarding.md)。
+Ascend C 算子生效，见 [AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md) 与 [接入交付](reports/custom-operator-onboarding.md)。
 
 ### 1.2 设计目标
 
@@ -55,6 +55,20 @@ Ascend C 算子生效，见 [P0-2 验收](p0-2-aot-runtime-validation-2026-10-25
 | JIT | 即时编译，运行期按 cache key 生成并缓存 |
 | 输入签名 | 由输入张量的 dtype、shape、layout 及特化参数构成的结构化描述 |
 | 硬件签名 | 由 SoC 系列型号与 AI Core 数量构成 |
+| descriptor（`KernelDescriptor`） | 一个候选 kernel 的登记记录，描述其标识、能力、优先级及产物引用 |
+| capability | 候选 kernel 支持的输入、硬件及执行条件，调度时用作准入判断 |
+| registry | 保存 descriptor 的登记表，是调度候选和能力声明的统一来源 |
+| recipe | 声明式接入配方，描述自研算子如何编译、需要哪些资源、按什么参数调用 |
+| spec / `JitSpec` | 固化一次编译所需输入的结构化规格；`JitSpec` 用于确定编译产物身份 |
+| fingerprint（指纹） | 对规范化描述计算的内容摘要，用于判断声明或产物身份是否一致 |
+| runner | 把张量与资源传给已加载算子的调用适配器 |
+| op-package | 包含算子 host/kernel 产物及 manifest 的交付单元，由统一加载器校验并加载 |
+| package identity | op-package 在进程内激活时的包身份；当前单进程仅支持一个包身份 |
+| store / loader | 分别负责产物存储与发布、产物校验与加载的公共设施 |
+| envelope（支持范围） | 算子承诺处理的输入与执行条件集合；范围声明仍须有对应验证证据 |
+| 受控回落 | 只在明确策略允许的失败类别下转入备用路径，并保留原因与诊断 |
+| 冻结身份 | plan 成功时固定的 kernel、descriptor 和资源绑定；不允许后续调用悄然换绑 |
+| generation（产物代） | 一次完整发布形成的不可变产物目录，新发布通过切换引用替代旧代 |
 
 ## 2. 总体架构
 
@@ -150,13 +164,13 @@ flashinfer/
 │   │   └── attention/          # Attention 特化身份与 generator 契约
 │   ├── aot/ / data/             # 构建导出；登记表、冻结 spec、随包产物布局
 │   └── tuning/ / utils/
-├── kernels/                    # v1 老探针树，仍与 csrc/kernels 并存
+├── kernels/                    # 受限档探针树，仍与 csrc/kernels 并存
 │   ├── manifest.schema.json
 │   ├── ascendc/matmul_probe/    # native.cpp / catlass.cpp
 │   └── triton/                 # 仅占位；Python 实现在 flashinfer/triton/
 ├── csrc/
 │   ├── cmake/ / include/flashinfer_ascend/ / launch/
-│   ├── kernels/ascendc/         # v2 生产设备源码
+│   ├── kernels/ascendc/         # 完整档生产设备源码
 │   │   ├── matmul_bias_silu/
 │   │   └── flash_attention/
 │   ├── op_package/             # host/、kernel/ 构建模板及各算子的 host .cpp
@@ -177,20 +191,20 @@ flashinfer/
 | --- | --- | --- |
 | `flashinfer/prefill.py`、`decode.py` | **对外 API 门面（facade）**：函数签名对标 flashinfer 顶层模块，内部只做"签名构建 + 调 dispatcher + 持有 Plan 生命周期" | 不是算子——不含任何 kernel 逻辑，算子的实现在 backend 层之下 |
 | `flashinfer/attention/` | 各算子域的 plan/run wrapper 与域逻辑 | 与 prefill.py 的关系：prefill.py 是薄门面，域内复杂逻辑（paged KV、wrapper 状态）在域包里 |
-| `kernels/ascendc/`、`csrc/kernels/ascendc/` | **设备侧编译输入**：前者保留 v1 探针，后者承载 v2 生产源码；Triton 实现在 `flashinfer/triton/` | 目录并存不表示两套 runtime；`kernels/triton/` 目前仅占位 |
+| `kernels/ascendc/`、`csrc/kernels/ascendc/` | **设备侧编译输入**：前者保留受限档探针，后者承载完整档生产源码；Triton 实现在 `flashinfer/triton/` | 目录并存不表示两套 runtime；`kernels/triton/` 目前仅占位 |
 | `csrc/` | **host 桥与设备源码**：CMake、launch ABI、op-package host/kernel 模板、recipe，以及 `kernels/ascendc/` | 已不再仅放 host 胶水；不能用目录名推断源码运行在 CPU 还是 AI Core |
 
 **prefill.py/decode.py 与 kernels/ 的分工**：prefill.py 里一行 kernel 代码都没有——
-它接收用户张量、构建 `InputSignature`、委托 dispatcher 选择、返回结果。真正的计算
-发生在 dispatcher 选中的 kernel 里（CANN 算子 / 设备源码的 AOT 产物 / JIT
-产物），由 backend 层拉起。即：**API 文件是门面，设备 kernel 承担计算**，两者通过
+它接收用户张量、构建 `InputSignature`、委托 dispatcher 选择、返回结果。
+CANN 路径调用内置算子；自研路径执行设备源码的 AOT 或 JIT 产物，均由 backend 层拉起。
+即：**API 文件是门面，设备 kernel 承担计算**，两者通过
 runtime 层的 descriptor/registry 间接关联（API 不直接 import kernel）。
 
 **两个 kernel 目录并存是当前的结构不一致**：旧 `kernels/` 树共 6 个文件，
 其中 `matmul_probe/` 放两份源码，schema 在 `kernels/manifest.schema.json`；
 新 `csrc/kernels/ascendc/{matmul_bias_silu,flash_attention}/` 共 8 个文件。
-这不是新的目录分工设计，建议后续收敛设备源码与 recipe 的位置，并保留 v1 身份兼容；
-本次只如实记录，交付闭环见 [契约 v2](reports/ascendc-contract-v2.md) 与 [接入清单](reports/custom-operator-onboarding.md)。
+这不是新的目录分工设计，建议后续收敛设备源码与 recipe 的位置，并保留受限档的产物身份兼容（§10.5）；
+本次只如实记录，交付闭环见 [完整档契约说明](reports/ascendc-contract-v2.md) 与 [接入清单](reports/custom-operator-onboarding.md)。
 
 ### 2.4 与上游的分层对比
 
@@ -201,8 +215,8 @@ typed export** 四层对齐职责；这是准备与执行的依赖关系，不�
 | --- | --- |
 | wrapper：绑定 workspace，plan 保存 native 调度信息，run 复用 module | 公共 facade + Attention 资源契约，plan 保存选型与资源身份；CANN batch 仍逐请求 gather/FIA/concat，尚非同等 fused scheduler |
 | generator：dtype/head_dim/variant 物化模板源码或编译输入 | Attention generator 目前主要形成特化身份，未接通公共 batch 编译；生产 Ascend C 由 recipe + 冻结 spec 提供可编译输入 |
-| JIT/AOT：查预编译 module，缺失时按策略构建并加载 | P0-2 discovery → match → lazy runner；两条生产登记接入同一 store/loader，不能外推为全部 op 自动编译 |
-| typed export：typed native function 编入库，经 FFI 暴露 plan/run 等属性 | CDLL + ABI adapter + ACLNN 两段式，v2 参数顺序来自 recipe；已有变参 Tensor ABI，不等于通用 typed export 生成器 |
+| JIT/AOT：查预编译 module，缺失时按策略构建并加载 | 运行期发现 → 身份匹配 → 延迟绑定调用适配器；两条生产登记接入同一 store/loader，不能外推为全部 op 自动编译 |
+| typed export：typed native function 编入库，经 FFI 暴露 plan/run 等属性 | 动态库加载后经适配器调用，沿用 ACLNN 两段式协议；完整档的 Tensor 参数顺序来自 recipe，尚无通用 typed export 生成器 |
 
 差异需要分清来源，不能把缺口都归因于硬件：
 
@@ -213,14 +227,14 @@ typed export** 四层对齐职责；这是准备与执行的依赖关系，不�
 | 尚未补齐 | Attention 源码物化与公共 JIT 接线、fused batch/workspace 规划、通用 export、生产/batch 入图，以及 **HCCL 路径的通信**；后者是 NPU 通信能力缺口，不能与 CUDA 专属机制一并排除 |
 
 保留独立 Attention 契约可以在失败 plan 发布前完成验证，代价是契约身份与可执行编译单元
-之间仍需显式接线。T2′/T4 已补两条生产 eager 路径；分层报告中的空 registry、固定三参
+之间仍需显式接线。当前已有两条生产 eager 路径；分层报告中的空 registry、固定三参
 及旧计数属于当时快照，最新边界见 [接入交付](reports/custom-operator-onboarding.md) 与附录 A。
 
 ## 3. 对外 API 层
 
 ### 3.1 命名对标规则
 
-| flashinfer | flashinfer |
+| 上游 FlashInfer（CUDA） | 本仓（昇腾 NPU） |
 | --- | --- |
 | `flashinfer.prefill.single_prefill_with_kv_cache` | `flashinfer.prefill.single_prefill_with_kv_cache` |
 | `flashinfer.decode.single_decode_with_kv_cache` | `flashinfer.decode.single_decode_with_kv_cache` |
@@ -256,7 +270,7 @@ def single_prefill_with_kv_cache(
 
 ### 3.3 plan / run 生命周期
 
-对齐 flashinfer 的 wrapper 语义：
+对齐 flashinfer 的 wrapper 语义，目标是把准备工作集中在 plan，run 仅复用资源：
 
 ```python
 wrapper = flashinfer.BatchPrefillWithPagedKVCacheWrapper(backend="auto")
@@ -269,15 +283,18 @@ wrapper.run(...)    # O(1)：校验 + 已缓存 kernel handle 的异步 launch
 - `run()` 只做轻量 shape/bounds 校验与异步 launch，无分配、无 Host 同步。
 - 动态 shape 超出 plan 范围时明确报错或触发 re-plan，不静默换 kernel。
 
+以上是生命周期的目标边界；当前 CANN batch 组合路径仍有 gather、分配与拼接，
+尚未达到上述 run 约束，也不能由此推定可入图，具体范围见 §3.4.7。
+
 ### 3.4 图模式支持
 
-本节按 T9/T10/T11B 已交付的代码与验证描述当前 aclgraph 契约。§15 的 M5、
+本节依据固定资源、最大 workspace 与参数更新的代码和验收描述当前 aclgraph 契约。§15 的 M5、
 §16 第 9/10 项仍保留旧的 GE / 动态 tiling 设想，不作为当前已实现能力的依据。
 **本仓不捕获图，只负责让自己的算子可以被调用方捕获；可捕获范围必须逐条有证据。**
 
 #### 3.4.1 路线选择：aclgraph
 
-P3 选择 aclgraph 的 capture/replay 路线，与 vllm-ascend 的默认运行时图路径一致。
+本仓选择 aclgraph 的 capture/replay 路线，与 vllm-ascend 的默认运行时图路径一致。
 上游通过 `torch.npu.NPUGraph` 捕获并重放设备任务，见
 [vllm-ascend Graph Mode Guide](https://docs.vllm.ai/projects/ascend/en/main/user_guide/feature_guide/graph_mode.html)。
 torchair 的退出时间线也已明确：v0.11.0rc1（2025-11-10）宣布弃用，早期截止计划为
@@ -288,24 +305,24 @@ torchair 的退出时间线也已明确：v0.11.0rc1（2025-11-10）宣布弃用
 
 旧设计的“torchair / GE 在图执行期通过 host 回调每 step 重算 tiling 和 workspace”
 不能作为 aclgraph 的实现机制：设备图 replay 不重新执行 Python forward、plan 或
-dispatch，也不会自动重跑 host 侧参数推导。T11 的办法是在 **replay 之前**显式更新
+dispatch，也不会自动重跑 host 侧参数推导。本仓的办法是在 **replay 之前**显式更新
 已录制任务的参数，而非往 replay 中加入 host 回调。真实测试捕获一次、同图重放十次，
 期间 forward 调用增量为 0，见
-[T11B 报告](reports/T11B-report.md) 与
+[aclgraph 捕获重放验收](reports/T11B-report.md) 与
 [capture/replay 测试](../tests/test_replay_param_npu.py)。
 
 #### 3.4.2 责任划分与调用生命周期
 
-责任边界沿用 [P3 工作单的责任表](tasks/T12-rewrite-design-3-4.md)：
+责任边界见 [图模式职责划分](tasks/T12-rewrite-design-3-4.md)：
 
 | 动作 | 调用方（如 vllm-ascend） | 本仓 |
 | --- | --- | --- |
 | 创建图、capture / replay、图的生命周期 | 负责整个 forward | 不调用这些操作 |
 | 捕获哪些 batch size、分桶、shape 路由、FULL/PIECEWISE 策略 | 负责 | 不管理模型图 |
 | 预先分配并传入固定 workspace / metadata buffer，维持其存储生命周期 | 负责 | 校验、持有并使用传入资源 |
-| plan/run 划分、固定资源绑定、冻结校验 | 在捕获前调用 plan | T9 已实现，见 §3.4.4 |
-| 最大 workspace 查询 | 按返回字节数分配 buffer，显式启用 | T10 已实现有限的 FIA v1 路径，见 §3.4.5 |
-| 重放前参数更新 | 提供当前逻辑参数、按录制任务顺序调用更新入口，然后 replay | T11 持有句柄/事件，按登记配方更新，见 §3.4.6 |
+| plan/run 划分、固定资源绑定、冻结校验 | 在捕获前调用 plan | 已实现固定资源绑定与冻结校验，见 §3.4.4 |
+| 最大 workspace 查询 | 按返回字节数分配 buffer，显式启用 | 已实现有限的 FIA v1 路径，见 §3.4.5 |
+| 重放前参数更新 | 提供当前逻辑参数、按录制任务顺序调用更新入口，然后 replay | 持有句柄/事件，按登记配方更新，见 §3.4.6 |
 
 跨卡通信入图、投机解码与模型级调度仍属于调用方。调用方在捕获前查询所选 kernel 的
 能力、准备资源并预热；`NEEDS_PARAM_UPDATE` 还要求在调用方 capture 内进入
@@ -352,7 +369,7 @@ descriptor 指纹，并可经 manifest 往返。
 自动证明任意 runner、输入或其它环境可捕获。门禁与往返检查见
 [`test_graph_capability.py`](../tests/test_graph_capability.py)。
 
-#### 3.4.4 T9：固定资源与 plan 冻结
+#### 3.4.4 固定资源与 plan 冻结
 
 decode、paged prefill、ragged prefill 的共享门面
 [`PublicBatchWrapper`](../flashinfer/attention/public_batch.py) 保留公开兼容参数
@@ -368,38 +385,38 @@ descriptor 指纹。后续改变这些选择会报错，需要另建 wrapper；�
 发布，见 [`AttentionGraphResourceContract._validate_plan`](../flashinfer/attention/execution_identity.py)
 与 [`AttentionFrameworkSession`](../flashinfer/attention/planner.py)。
 
-[T9 报告](reports/T9-report.md) 和
+[固定资源与 plan 冻结验收](reports/T9-report.md) 和
 [`test_attention_graph_plan.py`](../tests/test_attention_graph_plan.py) 验证了真实 NPU
 固定地址、内容更新与冻结门禁；**它们没有证明这些 batch wrapper 已可动态重放**。
 允许重新 plan 的参数变化也不能直接推导为可以复用旧图。
 
-#### 3.4.5 T10：捕获前查询并绑定最大 workspace
+#### 3.4.5 捕获前查询并绑定最大 workspace
 
 三种 batch wrapper 的 `use_max_workspace: bool = False` 默认关闭；仅 native 路径
 同时设置 `use_cuda_graph=True` 和 `use_max_workspace=True` 时，plan 才自动查询并
-绑定最大需求。单开图开关只得到 T9 的资源/冻结语义，不能据此承诺最大容量。
+绑定最大需求。单开图开关只得到固定资源与 plan 冻结语义，不能据此承诺最大容量。
 显式 `workspace_size()` 查询不发布 plan、不写固定 metadata、不冻结 session；
 `flashinfer.npu.maximum_workspace_size()` 委托该已有方法。ragged wrapper 没有这个
 查询方法，其 graph plan 支持自动最大查询，不能把扩展入口当作新增的 ragged 接口。
 
 当前查询实现是 [`cann.attention.maximum_workspace_bytes`](../flashinfer/cann/attention.py)：
-用真实连续 BSND Q/K/V prototype 调 FIA **v1** 最大接口，覆盖 LSE 开/关；返回值是
-Tensor，按 `numel() * element_size()` 换算字节。逐请求顺序执行共享 workspace，
+查询使用真实连续的 BSND Q/K/V prototype。它调用 FIA **v1** 最大接口，覆盖 LSE 开/关。
+返回值是 Tensor，按 `numel() * element_size()` 换算字节。逐请求顺序执行共享 workspace，
 需求取最大值而非求和，int workspace 需求为 0。查询的暂存 Tensor 不作为持久
 workspace 留存；持久存储始终由调用方提供，容量不足在 plan 发布前报错，不自动扩容。
 相同静态配置下 KV 长度变化复用已绑定需求，其它查询配置变化重新查询。
 启用这条路径时，plan/run 校验 workspace 绑定，要求连续且 `storage_offset=0`，
 run 把原 buffer 传给 FIA `.out(workspace=...)`。
 
-代价是额外常驻显存。[T10 报告](reports/T10-report.md) 实测 FP16/BF16、8/2 heads、
+代价是额外常驻显存。[最大 workspace 查询验收](reports/T10-report.md) 实测 FP16/BF16、8/2 heads、
 Q length=1、D=64/128、KV length=1～131072 的样本：最大 workspace 为 33,554,432
 字节，约为按需分配的 **1.79～2 倍**。这只是算子 workspace 的比较，不含输入/输出、
 查询暂存或 allocator 保留量；不是任意 SoC、任意配置或无限长度的容量证明。
 可复现验证见 [`test_attention_max_workspace.py`](../tests/test_attention_max_workspace.py)。
-v2 只做过接口探针，没有 v2 runner；当前 paged wrapper 整理为 dense KV 后执行 FIA，
+FIA v2 只做过接口探针，没有对应 runner；当前 paged wrapper 整理为 dense KV 后执行 FIA，
 不能把这份结果外推到原生分页 FIA、量化、RoPE 等其它调用路径。
 
-#### 3.4.6 T11：重放前的显式参数更新
+#### 3.4.6 重放前的显式参数更新
 
 [`flashinfer.npu.ReplayParameterUpdates`](../flashinfer/npu.py) 为每张调用方图持有
 独立录制状态；[`runtime/_graph_params.py`](../flashinfer/runtime/_graph_params.py)
@@ -431,30 +448,30 @@ caller:  graph.replay()
 当前默认登记表共 **81 条记录：1 条 `NEEDS_PARAM_UPDATE`、0 条 `CAPTURE_SAFE`**。
 唯一提升的是 `cann/attention/single_decode_fia_v1`；
 其它记录保持保守声明，不能由已有 eager、meta 或固定-buffer 测试推断入图能力。
-统计与声明证据由上述 T11 审计和 `test_graph_capability.py` 检查。
+统计与声明证据由上述参数更新审计和 `test_graph_capability.py` 检查。
 
 | 边界 / 未完成项 | 当前实际范围与依据 |
 | --- | --- |
 | 单算子、有限配置 | `_DECODE_REPLAY` 与真实 capture/replay 测试仅覆盖 Ascend950PR_9579、torch 2.10.0+cpu、torch_npu 2.10.0.post7、CANN 9.2，BSND `.out`、固定 workspace/out、无 mask、8/2 heads、D=64、Q length=1、KV 容量 1024、FP16/BF16、scale=0.125、返回 LSE。原生 Q/K/V shape 为 `(1,1,8,64)` / `(1,1024,2,64)` / `(1,1024,2,64)`，逻辑参数为长度固定为 1 的 host list，元素范围为 `[1,1024]`，已测长度为 `63,1,17,128,513,1024,3,63`；其它张量尺寸或关闭 LSE 会在 recording 中拒绝。 |
-| 依赖捕获时长度的 mask | `dense_attention()` 在 recording 中明确拒绝 causal/window/custom（含 packed）mask；仅改 FIA host 长度不能修正已捕获的 mask 预处理。三个 mask 拒绝用例见 `test_replay_param_npu.py`；T9/T10 的 mask 数值测试不等于动态 replay 验证。 |
+| 依赖捕获时长度的 mask | `dense_attention()` 在 recording 中明确拒绝 causal/window/custom（含 packed）mask；仅改 FIA host 长度不能修正已捕获的 mask 预处理。三个 mask 拒绝用例见 `test_replay_param_npu.py`；固定资源与最大 workspace 路径中的 mask 数值测试不等于动态 replay 验证。 |
 | batch/paged 动态路径 | `_run_native()` 仍逐请求 gather/slice dense KV，分配中间/输出张量并拼接结果，未改成动态重放路径；三个 batch FIA descriptor 仍为 `NOT_CAPTURABLE`，`_batch_run()` 在参数 recording 中明确拒绝。 |
-| 公共 single-decode 入口 | 原公共函数仍无固定 workspace 参数；T3 已新增 `SingleDecodeWithKVCacheWrapper` 承接这条有限配置路线，见 §3.4.8，不能外推为通用 single-decode 图接口。 |
-| 外部 provider 与 Host reference | 外部 provider 的 public batch 图资源绑定仍显式报 `NotImplementedError`；Host ReferenceTensor 只验证结构契约，不能作设备捕获证据，见 `public_batch.py` 与 T9 报告。 |
-| consumer / 完整模型 | vLLM/SGLang consumer 状态在两本对标账本中仍为 `unverified`；没有运行完整模型。T11B 的单算子 forward 捕获、更新开/关对照和输出/LSE 零误差不能外推为 serving 或全模型验证。 |
+| 公共 single-decode 入口 | 原公共函数仍无固定 workspace 参数；`SingleDecodeWithKVCacheWrapper` 已承接这条有限配置路线，见 §3.4.8，不能外推为通用 single-decode 图接口。 |
+| 外部 provider 与 Host reference | 外部 provider 的 public batch 图资源绑定仍显式报 `NotImplementedError`；Host ReferenceTensor 只验证结构契约，不能作设备捕获证据，见 `public_batch.py` 与固定资源验收报告。 |
+| consumer / 完整模型 | vLLM/SGLang consumer 状态在两本对标账本中仍为 `unverified`；没有运行完整模型。已有单算子 forward 捕获、更新开/关对照和输出/LSE 零误差不能外推为 serving 或全模型验证。 |
 
 上述限制的实现集中在 [`cann/attention.py`](../flashinfer/cann/attention.py) 和
 [`attention/public_batch.py`](../flashinfer/attention/public_batch.py)；验证范围及未完成项见
-[T11B 报告](reports/T11B-report.md)、[NPU 扩展说明](npu_graph_extensions.md) 与
+[aclgraph 捕获重放验收](reports/T11B-report.md)、[NPU 扩展说明](npu_graph_extensions.md) 与
 [对标账本](../flashinfer/data/attention_api_parity.json)。新增算子先保留
 `NOT_CAPTURABLE`，取得对应路径的真实证据后才能提升声明。
 
 
-#### 3.4.8 T3：公共 single-decode 图 wrapper
+#### 3.4.8 公共 single-decode 图 wrapper
 
 此前唯一可入图的 single-decode 路线只能从低层 runner 取得，公共函数缺少固定
-workspace 参数。T3 在 [`single_decode_graph.py`](../flashinfer/attention/single_decode_graph.py)
+workspace 参数。当前在 [`single_decode_graph.py`](../flashinfer/attention/single_decode_graph.py)
 交付 `SingleDecodeWithKVCacheWrapper`（从 `flashinfer.decode` 导入），持有固定输入、
-workspace、out/LSE、图和更新器，沿用 T9/T10/T11B 的资源与参数更新契约。
+workspace、out/LSE、图和更新器，沿用上述固定资源、最大 workspace 与参数更新契约。
 
 | 阶段 | 调用方 / wrapper 的约定 |
 | --- | --- |
@@ -474,9 +491,11 @@ K/V `(1024,2,64)`、heads=8/2、head_dim=64、scale=0.125、无 mask、非 causa
 真机一次捕获、8 次重放，KV 长度为 `63/1/17/128/513/1024/3/63`，输出与 LSE
 误差均为 **0**；容量超限、冻结身份变更、漏调参数更新、未 plan 直接捕获均被拒绝。
 证据见 [图模式交付](reports/graph-mode-delivery.md)、[示例](../examples/single_decode_graph.py)
-与 [真机测试](../tests/test_single_decode_graph_real.py)。报告计数是 T3 时点快照；
+与 [真机测试](../tests/test_single_decode_graph_real.py)。报告计数是该 wrapper 交付时点的快照；
 当前覆盖仍为 **1/81**、`CAPTURE_SAFE` 为 **0**，两条生产自研算子均不可入图，
 batch 入图与下游模型接入也未因此完成。
+目标是在调用方持有图的边界内逐条扩展已验证路径；新增生产算子和 batch 路径须先
+完成各自的静态资源规划与真实重放验收，再公开对应的支持范围。
 
 ## 4. 硬件感知与环境探测
 
@@ -515,7 +534,8 @@ class HardwareSignature:
 ### 4.4 环境一致性校验（非硬件签名职责）
 
 CANN、driver、`torch_npu` 等软件栈版本**不进入 HardwareSignature**，原因是算子不感知
-这些信息——它们属于环境一致性问题，在环境建立阶段一次性保证：
+这些信息——它们属于环境一致性问题，目标是在环境建立阶段一次性保证：
+以下是目标校验流程；当前 AOT 尚不比较 CANN runtime 版本，不能视为门禁已完成（§7.5）。
 
 - 进程首次使用（或安装后 `flashinfer show-config`）时，将当前软件栈 tuple 与
   support matrix 中 CI 实测过的 tuple 对照；
@@ -703,6 +723,7 @@ dispatch_cache_key = hash(
 
 排序依据有两条数据通路：**tuning record（实测性能）** 与 **确定性启发式（无实测数据时的
 规则排序）**。二者的边界与定义如下；tuning 数据的产生、存储、失效与治理机制见 §9。
+这是有可用实测记录时的目标选择流程；当前发布库为空，不能据此给出 kernel 性能排名。
 
 #### 5.4.1 tuning 是什么
 
@@ -763,7 +784,7 @@ tuning record 结构示例：
 
 | 序 | 候选 | 理由 |
 | --- | --- | --- |
-| 1 | 自研 kernel 且 AOT 产物匹配 | 预编译、CI 全量验证、零首调延迟 |
+| 1 | 自研 kernel 且 AOT 产物匹配 | 预编译，避免首次调用触发编译；仍有定位与加载成本 |
 | 2 | CANN 算子 | 随环境预装、正确性有保障；代价是融合度低（多算子拼接、中间结果落显存） |
 | 3 | 自研 kernel 走 JIT | 需现场编译，首次调用有编译延迟，且要求环境具备工具链 |
 | 4 | reference | 仅显式 opt-in，永不进入生产热路径 |
@@ -771,7 +792,7 @@ tuning record 结构示例：
 同层 tie-break：`descriptor.priority`（维护者声明，新版本号优先）→ `kernel_id`
 字典序（保证最终全确定性）。
 
-该阶梯与 AOT-first 决策一致：生产环境常无编译器且不容忍首调延迟，AOT 自研最优；
+该阶梯与 AOT-first 决策一致：生产环境常无编译器，因此策略上优先匹配 AOT 自研产物；
 CANN 优先于 JIT 自研，因为 CANN 随环境预装而 JIT 有编译延迟与工具链依赖。
 
 确定性要求的意义：dispatch 结果可复现、benchmark 稳定、trace 可回放、缓存友好。
@@ -853,9 +874,13 @@ flowchart TD
 
 ### 6.2 Ascend C 算子（`kernels/ascendc`）
 
+当前两条生产 eager 路径使用完整档 recipe；接入目标是复用统一编译、存储与加载链路，
+设备源码位置仍待收敛（§2.3），生产算子入图尚未完成（§10.5）。
 
 ### 6.3 Triton 算子（`kernels/triton`）
 
+当前仅 `gemma_fused_add_rmsnorm` 有真机数值证据；目标是复用统一产物身份与加载设施，
+原生 Triton 路径与统一 store 路径仍并存，尚不能宣称全域统一。
 
 ### 6.4 kernel 注册（registry）
 
@@ -951,12 +976,11 @@ kernel 源码：ascendc/attention/decode_v2（一份代码）
 - 无匹配产物（组合未被预编译覆盖）→ 进入 JIT 路径（§8），属正常长尾处理，
   不是错误。
 
-### 7.5 P0-2：运行期发现与受控回落
+### 7.5 运行期发现与受控回落
 
-此前 `op_packages` 只有 `setup.py` 构建期写入，没有运行期 scanner；即使 wheel
-带有产物，公共 API 也不会自动消费。P0-2 在
+运行期发现的职责是让公共 API 自动消费已随 wheel 交付的算子包；当前在
 [`discovery.py`](../flashinfer/jit/discovery.py) 与 [`runtime.py`](../flashinfer/jit/runtime.py)
-接通 **discovery → match（SoC/spec/ABI）→ bind runner → 受控 JIT 回落**，
+实现 **发现产物 → 匹配目标硬件与规格 → 绑定 runner → 按策略转 JIT**，
 复用既有 `load_op_package()`，**没有新增第二个加载器**。
 默认扫描 `flashinfer/data/op_packages/<spec-sha>`，可用 `FLASHINFER_AOT_PATHS`
 追加路径；索引缓存目录与已验证 metadata，命中仍完整校验，绑定后复用 runner/module。
@@ -968,18 +992,18 @@ kernel 源码：ascendc/attention/decode_v2（一份代码）
 | --- | --- |
 | `missing` | 仅 JIT policy 为 `ENABLED` 且登记 backend factory 时回落；`DISABLED` / `CACHE_ONLY` 拒绝并保留搜索诊断 |
 | `corrupt` | **即使 JIT enabled 仍拒绝且不回落**；digest/size/manifest 损坏不能当成缺失静默重编译 |
-| `incompatible` | 不兼容候选必须拒绝，不加载它；本次要求的严格契约还应禁止因此回落，但当前实现存在下述差距 |
+| `incompatible` | 不兼容候选必须拒绝，不加载它；目标契约还应禁止因此回落，但当前实现存在下述差距 |
 | `load error` | 缺符号、dlopen、adapter 绑定、package identity 激活错误均拒绝且不回落，保留原始异常；执行期 CANN 错误原样传播 |
 
 **`incompatible` 一律拒绝且不回落尚未完全落实**：当前 scanner 拒绝各候选后，
 将“全部不兼容”汇总为带原因的 `AotMissingError`，`ENABLED` + factory 仍可进入 JIT。
-[P0-2 验收](p0-2-aot-runtime-validation-2026-10-25.md) 的真机 incompatible 场景使用
-`DISABLED`，不能证明 enabled 下不回落；本次只扩展文档，不把此差距写成已交付。
+[AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md) 的真机 incompatible 场景使用
+`DISABLED`，不能证明 enabled 下不回落；目标是只对真正缺失的产物开放 JIT 回落，这一差距仍须在实现中补齐。
 
 已知缺口还包括：**不比较当前 CANN runtime 版本**；单进程只支持**一个 package
 identity**，第二个不同 identity 需新进程。安装真实 wheel 后的生产矩阵亦不能由默认
 安装布局测试替代。机制和验收范围见 [AOT 运行期发现](aot-runtime-discovery.md) 与
-[P0-2 验收](p0-2-aot-runtime-validation-2026-10-25.md)，两条后续生产登记见附录 A。
+[AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md)，两条后续生产登记见附录 A。
 
 ## 8. JIT 模式与 kernel 缓存（核心设计）
 
@@ -1102,7 +1126,7 @@ flowchart TD
 - **只读环境**：包安装目录只读；用户缓存目录、构建临时目录、发布目录三者分离。
 - 禁止以文件名长度截断 key；禁止跨 key 复用产物。
 
-### 8.5 T18B：锁、不可变 generation 与失败诊断
+### 8.5 锁、不可变 generation 与失败诊断
 
 miss 的实际顺序为 **policy 检查 → per-spec flock → 锁内复查 → staging 编译 →
 校验 → 不可变 generation → 原子替换 symlink**，实现见
@@ -1118,6 +1142,8 @@ fsync，再 rename 到 `.objects/<key>-<generation>`，最后以 `os.replace` �
 这里本地 JIT 缓存损坏可按 policy 在锁下重建；**随包 AOT 的 corrupt 则必须拒绝**
 （§7.5），两类产物的失败策略不能混用。当前依赖支持 flock 和原子 symlink 替换的
 本地 POSIX 文件系统，缓存淘汰与旧 generation 自动清理尚未完成。
+目标是在保证已加载产物仍可访问的前提下完成自动回收；当前原子发布只解决完整性与并发，
+不代表缓存空间治理已经完成。
 
 ## 9. Tuning 机制（进阶特性，后期启用）
 
@@ -1127,6 +1153,8 @@ fsync，再 rename 到 `.objects/<key>-<generation>`，最后以 `os.replace` �
 
 本节定义 tuning 数据如何产生、存储、失效与治理；dispatch 侧如何消费这些数据见 §5.4。
 核心原则：**性能结论只来自实测，dispatch 只做查询，绝不在热路径测量**。
+当前已有采集、存储、查询和失效测试，发布库仍为空，软件身份和公开调优工具尚未补齐；
+下述模式与流水描述启用后的目标形态，不能作为已有性能证据。
 
 ### 9.1 三种 tuning 模式
 
@@ -1347,39 +1375,54 @@ bucket 声明得到 bucket 空间 → 每个 bucket 构造代表输入 → 加�
 5. **可见性**：用户 kernel 在 `explain_dispatch` / trace 中的呈现与内置 kernel 完全
    一致（候选、过滤原因、选择依据），不做特殊隐藏。
 
-### 10.5 T2′/T4：Ascend C 接入契约 v2
+### 10.5 Ascend C 接入契约：受限档与完整档
 
-上述注册设计之外，实际编译入口还受 [`recipe.py`](../flashinfer/jit/recipe.py) 校验。
-v1 的四条硬限制是**固定 tiling、`task_type == "aic_only"`、`workspace_bytes == 0`、
-固定三个 aclTensor**；FA 这样的复杂算子四条全违反，在 recipe 校验阶段就会被拒绝，
-不是补一个 kernel 文件即可接入。
+自研算子的接入主体是一份声明式 recipe：它描述**怎么编译、需要什么资源、怎么被调用**。
+注册 descriptor 决定算子能否进入候选池；recipe 经 [`recipe.py`](../flashinfer/jit/recipe.py)
+校验后提供实际编译与调用所需的契约。两者须一致，登记成功本身不等于已经可执行。
 
-v2 按 `schema_version` 分流：**v1 原条件一字未改**，另加“v1 不得声明 v2 字段”
-约束，保持旧序列化身份；v2 走独立 `_validate_v2()`，不能用新版本偷偷放宽旧契约。
+这是一套契约的两档 profile，代码用 `schema_version=1/2` 区分受限档与完整档。
+**受限档是最小可用面**：定形 tiling、单一核类型、零 workspace、固定三个 Tensor。
+最初将接入范围收到最窄，是为了减少变量，以最小代价打通“源码 → 编译 → 产物 → 加载 → 调用”。
+**完整档面向真实算子**：attention、融合 GEMM 需要 host 动态 tiling、混合核、动态
+workspace 或变参 Tensor，无法靠给受限档补一个 kernel 文件完成接入。
 
-| v1 护栏 | v2 的能力与对应校验 |
+| 受限档：最小接入面 | 完整档：真实算子所需能力与校验 |
 | --- | --- |
 | 固定 tiling | op-package 路径声明 `host_dynamic`、tiling schema ≥ 2 与 `tiling_host_entry`；host callback 仍须真实实现 |
 | AIC-only | 可声明 `aic_aiv`，但**强制 `sync_policy == "cross_core_flags"`**；混合核同步不能省略 |
 | 零 workspace | 动态 workspace **必须**有 `workspace_host_entry`，固定 workspace **不许**有；实际大小仍取 GetWorkspaceSize 返回值 |
 | 固定三 Tensor | `tensor_parameters` 有序、名称唯一、input 在 output 前；shape 符号须被 `shape_constraints` **恰好绑定一次** |
 
-调用 ABI 从固定三参推广为**变参 Tensor ABI**，参数名和顺序取自 recipe；v1 默认
-仍为 `(a, b, c)`，`matmul_probe` 路径不受影响。变化只在 ACLNN 第一段 Tensor 参数，
-workspace/tiling 不是额外用户 Tensor，第二段 executor/workspace/stream launch 沿用原协议。
+受限档的固定 tiling 指 op-package 路径；`host_shared` 路径不声明 tiling。
+**保留受限档是为兼容既有产物**：契约档位是 recipe 指纹的一部分，并绑定编译产物身份。
+已发布产物必须按构建时的档位重新解析和校验；删掉受限档支持，会让这些产物无法按原身份
+校验命中。因此受限档作为**冻结的兼容档**保留，不继续扩展其能力；完整档独立校验，
+受限档不得携带完整档新增字段，旧序列化身份保持不变。
 
-native 与 catlass **共用编译器、store、loader**，不是两套 runtime；catlass 只多一条
-固定 Git revision（并校验头树摘要）的依赖声明，**wheel 不自带 catlass 头树**。
-T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 已形成两条
-生产 eager 路径；有接口与声明不等于图、异步生命周期或任意 scalar/attribute ABI 已验证。
-数据内容驱动的 tiling 仍未支持，不能由 shape 驱动 host tiling 外推。
+**最终目标是收敛到单一完整档**：新增算子统一采用完整档，受限档只承接存量兼容，
+待存量产物退场后移除。这是演进目标；当前 schema 校验仍接受合法受限档 recipe，
+尚无禁止新算子使用该档的代码门禁。单份 recipe 的 `version` 是配方修订号，
+`ascendc.op_package.v1` 是包容器格式标识，均不表示另一套接入契约。
 
-接入交付件已整理为 [33 项清单](reports/custom-operator-onboarding.md)、
-[操作指南](adding-a-custom-operator.md) 与 [契约 v2](reports/ascendc-contract-v2.md)。
-前者补足 T4 的 FA 实例，后者保留 T2′ 时点证据；新算子仍须交付数学语义、源码闭包、
-冻结 spec、runner binding、能力门禁和独立真机验收，不能只靠登记 metadata 宣称完成。
+完整档使用**变参 Tensor ABI**，参数名和顺序取自 recipe；受限档默认仍为 `(a, b, c)`，
+`matmul_probe` 路径不受影响。差别只在 ACLNN 第一段的 Tensor 参数，workspace/tiling
+不是额外用户 Tensor；第二段 executor/workspace/stream launch 沿用原协议。
+
+native 与 catlass **共用编译器、store、loader**；catlass 只多一条固定 Git revision
+的依赖声明，并校验头树摘要，**wheel 不自带 catlass 头树**。当前两条生产 eager 路径为
+原生实现的 `matmul_bias_silu` 和基于 catlass 的 `flash_attention`，均使用完整档。
+这不等于图、异步生命周期或任意 scalar/attribute ABI 已验证；数据内容驱动的 tiling
+仍未支持，不能由 shape 驱动 host tiling 外推。
+
+接入交付件见 [33 项清单](reports/custom-operator-onboarding.md)、
+[操作指南](adding-a-custom-operator.md) 与 [完整档契约说明](reports/ascendc-contract-v2.md)。
+这些材料分别提供生产实例、接入步骤与契约证据；新算子仍须交付数学语义、源码闭包、
+冻结 spec、runner 绑定、能力门禁和独立真机验收，不能只靠登记 metadata 宣称完成。
 
 ## 11. 关键对象汇总
+
+以下对象共同描述目标职责边界；是否接通公共执行路径及验证范围，以附录 A 为准。
 
 | 对象 | 位置 | 不可变 / 可哈希 | 用途 |
 | --- | --- | --- | --- |
@@ -1394,6 +1437,8 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 
 ## 12. 错误处理与降级
 
+下表是统一错误策略；运行期 AOT 的现行严格分类及实现差距以 §7.5 为准。
+
 | 场景 | 行为 |
 | --- | --- |
 | 显式 backend 不可用（组内无 kernel 或全部被 capability 淘汰） | 抛异常，附逐条淘汰原因与可用候选，不跨 backend 静默降级（§5.3.1） |
@@ -1406,6 +1451,8 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 | 用户 kernel 参与 auto 但未开启开关 | 默认不参与候选；显式 `kernel_id` 指定仍可用 |
 
 ## 13. 配置项
+
+配置按功能边界组织；缓存治理与 tuning 的目标开关不代表相关能力均已交付（见附录 A）。
 
 | 环境变量 | 默认值 | 含义 |
 | --- | --- | --- |
@@ -1420,6 +1467,8 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 | `ASCEND_RT_VISIBLE_DEVICES` | 未设置（全部可见） | 指定进程可用卡；不进硬件签名（§4.2） |
 
 ## 14. 测试策略
+
+以下是各能力的目标验收门禁；当前实测基线与覆盖缺口见附录 A，新增能力须独立取得证据。
 
 1. **Host unit**（无需 NPU）：签名构建、cache key 稳定性（相同输入必同 key，任一
    组成变化必不同 key）、registry 过滤、目录布局、manifest 校验。
@@ -1445,6 +1494,9 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 
 ## 15. 实施路线
 
+里程碑编号只表示本文的规划阶段；已交付范围见附录 A，当前扩展优先级见附录 B。
+图模式里程碑保留历史方案供追溯，后续实施以 §3.4 的 aclgraph 契约为准。
+
 | 阶段 | 交付 | 验收 |
 | --- | --- | --- |
 | M0 框架骨架 | API 门面、签名构建、硬件探测、dispatcher、registry | dispatch 可解释；单测全绿 |
@@ -1458,6 +1510,8 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 | M8 生态 | parity 报告、vLLM/SGLang 适配 | serving 级 benchmark 进入门禁 |
 
 ## 16. 设计约束清单（摘要）
+
+本清单描述设计要求；其中 GE/动态 tiling 为历史方案，当前图模式按 §3.4 的资源与更新契约演进。
 
 1. 对外 API 只经 dispatcher 访问 backend，禁止绕过。
 2. 默认 AOT；JIT 仅在无匹配 AOT 产物时触发，且决策发生在 plan 期。
@@ -1480,7 +1534,7 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 
 ## 附录 A · 实现进展
 
-本附录把目标设计与已交付范围对照，任务报告保留各自验收时点；历史计数不作为
+本附录把目标设计与已交付范围对照，验收报告保留各自验收时点；历史计数不作为
 当前总量。当前口径采用本次已核实基线：**81 条 descriptor / 43 个 op**，backend 为
 **ascendc 2 / CANN 40 / REFERENCE 38 / TRITON 1**；9 个能力域有 op，8 个为空或仅有壳。
 “有 op”不表示该域逐参数、逐执行模式都已验证，REFERENCE 条目也不计作生产自研。
@@ -1488,26 +1542,26 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 | 组件 | 已交付范围与保留缺口 | 证据 |
 | --- | --- | --- |
 | API 层 | 公共门面与 parity 账本已有；同名入口不等于逐参数语义对齐，consumer 仍无下游接入证据 | [接口面](reports/api-surface-by-category.md)、[API 对标](api_parity.md) |
-| dispatcher | capability 过滤、确定性排序、显式锁定、两级诊断与 revision 缓存已有测试；不是执行失败后跨 backend 重试器 | [T19A](reports/T19A-report.md)、[两级选择测试](../tests/test_two_level_dispatch.py)、[缓存测试](../tests/test_dispatch_cache.py) |
+| dispatcher | capability 过滤、确定性排序、显式锁定、两级诊断与 revision 缓存已有测试；不是执行失败后跨 backend 重试器 | [调度选择验收](reports/T19A-report.md)、[两级选择测试](../tests/test_two_level_dispatch.py)、[缓存测试](../tests/test_dispatch_cache.py) |
 | CANN backend | 40 条 descriptor，是公共执行主线；batch attention 逐请求组合 FIA，尚非 fused batch scheduler | [分层对比](reports/call-stack-layering.md)、[实现](../flashinfer/cann/attention.py) |
 | Triton backend | 1 条 descriptor，`gemma_fused_add_rmsnorm` 有真机数值证据；原生 Triton 与统一 store 路径并存，不能声称全域统一 | [接口面](reports/api-surface-by-category.md)、[JIT 说明](jit.md) |
-| Ascend C 自研 | 两条生产 eager：`matmul_bias_silu` native v2、`flash_attention` catlass v2；此前生产 `registry.json` 的 `kernels` 为 `[]`，目前两条均不可入图 | [契约 v2](reports/ascendc-contract-v2.md)、[T4 接入交付](reports/custom-operator-onboarding.md) |
-| JIT | 完整 spec 身份、真实编译/加载、flock、不可变 generation、原子发布与失败诊断已接通；缓存淘汰及统一治理未完成 | [T18B](reports/T18B-report.md)、[JIT 测试](../tests/test_jit_build.py)、[说明](jit.md) |
-| AOT | P0-2 运行期发现、匹配、延迟绑定与受控 JIT 已接；全不兼容汇总 missing 的回落口径、CANN runtime 版本校验、多 package identity 仍有缺口 | [发现说明](aot-runtime-discovery.md)、[P0-2 验收](p0-2-aot-runtime-validation-2026-10-25.md)、§7.5 |
-| 图模式 | T9/T10/T11B 资源契约与 T3 公共 wrapper 单配置闭环；**1/81**、`CAPTURE_SAFE` **0**，生产自研及 batch 入图未完成 | [T11B](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py) |
-| 自定义算子接入 | v1/v2 独立校验、变参 Tensor ABI、native/catlass 范本与 33 项清单；任意 scalar/attr、数据内容驱动 tiling、异步生命周期不能外推 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md) |
+| Ascend C 自研 | 两条生产 eager：`matmul_bias_silu` 原生实现、`flash_attention` catlass 实现，均使用完整档；此前生产 `registry.json` 的 `kernels` 为 `[]`，目前两条均不可入图 | [完整档契约说明](reports/ascendc-contract-v2.md)、[生产算子接入交付](reports/custom-operator-onboarding.md) |
+| JIT | 完整 spec 身份、真实编译/加载、flock、不可变 generation、原子发布与失败诊断已接通；缓存淘汰及统一治理未完成 | [JIT 并发与发布验收](reports/T18B-report.md)、[JIT 测试](../tests/test_jit_build.py)、[说明](jit.md) |
+| AOT | 运行期发现、匹配、延迟绑定与受控 JIT 已接；全不兼容汇总 missing 的回落口径、CANN runtime 版本校验、多 package identity 仍有缺口 | [发现说明](aot-runtime-discovery.md)、[AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md)、§7.5 |
+| 图模式 | 固定资源、workspace、参数更新契约与公共 wrapper 单配置闭环；**1/81**、`CAPTURE_SAFE` **0**，生产自研及 batch 入图未完成 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py) |
+| 自定义算子接入 | 受限档与完整档独立校验、变参 Tensor ABI、native/catlass 范本与 33 项清单；任意 scalar/attr、数据内容驱动 tiling、异步生命周期不能外推 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md) |
 | tuning | 采集、store、query 及失效测试已有；发布库为空、软件身份不完整，公开 autotuner 未补齐 | [机制说明](tuning.md)、[测试](../tests/test_tuning.py)、[发布测试](../tests/test_tuning_release.py)、[接口面](reports/api-surface-by-category.md) |
 | ABI 契约 | 重新冻结后当前契约自洽、结构尺寸未变；原定义未恢复，**不能声称新旧契约语义等价** | [ABI 重冻记录](reports/abi-refreeze-2026-10-25.md) |
-| 测试基线 | 全量 **1975 passed / 0 failed**，`-m real_compile` **80 passed / 0 skipped**；8× Ascend950PR、CANN 9.2.0-beta.2，是已核实基线引用，本次文档扩展未重跑 | [测试目录](../tests/)、上述逐任务验收；历史报告总量仅代表当时快照 |
+| 测试基线 | 全量 **1975 passed / 0 failed**，`-m real_compile` **80 passed / 0 skipped**；8× Ascend950PR、CANN 9.2.0-beta.2，是已核实基线引用，本次文档扩展未重跑 | [测试目录](../tests/)、上述逐项验收；历史报告总量仅代表当时快照 |
 
 生产 FA 的 envelope 是 **FP16、NHD、batch=1、D=128、heads 1..8、S/T 为 128..512
-且 128 对齐、无 mask、非 causal**，见 [T4 接入交付](reports/custom-operator-onboarding.md)。
+且 128 对齐、无 mask、非 causal**，见 [生产算子接入交付](reports/custom-operator-onboarding.md)。
 它不构成通用 prefill/decode 替代，也不能把范围声明当成所有组合均已穷举的证明。
 
 跨组件还需保留三条边界：**没有同口径性能测量，因此没有性能优势结论**；
 没有完整模型或 vLLM/SGLang consumer 接入证据；固定资源、meta/fake、eager 数值与
 真实 capture/replay 是不同证据，不能互相替代。§15 的 M5、§16 的 GE/动态 tiling
-设想仍是历史设计，图模式实现以 §3.4 和 T3/T11B 证据为准。
+设想仍是历史设计，图模式实现以 §3.4、公共 wrapper 与捕获重放验收证据为准。
 
 ## 附录 B · 两个月对标路线图
 
@@ -1537,7 +1591,7 @@ T2′ 的 `matmul_bias_silu` native v2 与 T4 的 `flash_attention` catlass v2 �
 | 关键 workload 支持矩阵 / 中 | 逐参数语义与证据未齐 → 固定上游基线、输入 envelope、reference 与明确的维护责任 → 每个承诺入口覆盖数值/mutation/别名/异常/容量正反例，不支持项明确拒绝 → 组合膨胀，不能以接口计数冲抵 |
 | 安装后的生产 AOT/JIT / 中 | 源码树闭环不足以证明 wheel 可交付 → 两条冻结 recipe/spec、产物清单、runtime-only 与可编译环境 → 安装后公共 API 验 AOT hit、禁 JIT、真实冷 JIT、corrupt/load error；incompatible 在 enabled 下也须不回落 → 源闭包、catlass 外部依赖及单 identity 限制可能阻塞 |
 | CANN runtime 兼容门禁 / 中 | 当前不比较运行时版本 → 明确支持栈、版本/ABI 规则与诊断 → 不兼容和未知组合在加载前明确拒绝，支持组合实机通过 → 单靠版本号不足以证明 ABI 兼容 |
-| 图模式范围与资源门禁 / 中 | 当前仅 1/81，容易把固定 buffer 当入图证明 → T3 单配置、更新凭证、冻结身份与流所有权 → 保持一次捕获八次重放及负例，生产/batch 未验证路径继续拒绝 → executor/host tiling 生命周期不能由 eager 外推 |
+| 图模式范围与资源门禁 / 中 | 当前仅 1/81，容易把固定 buffer 当入图证明 → 公共 single-decode wrapper 单配置、更新凭证、冻结身份与流所有权 → 保持一次捕获八次重放及负例，生产/batch 未验证路径继续拒绝 → executor/host tiling 生命周期不能由 eager 外推 |
 | 最小 tuning 与性能证据 / 中 | 发布库为空、软件身份不完整、无同口径测量 → 稳定候选、软件栈指纹、统一 correctness/warmup/计时政策 → 旧 winner 在环境变化后失效，报告 AOT/JIT 来源及冷/热数据，不预设性能优势 → 噪声、路径混用导致不可比 |
 | 回归与独立复验 / 小至中 | 测试总量未映射支持矩阵 → 上述矩阵、安装产物与真机命令 → 以 1975/80 为回归基线，新增范围逐项关联证据，skip 不算通过 → 基线通过不能代替新增能力验证 |
 
@@ -1550,9 +1604,9 @@ workload 要求共存，多包支持立即成为前置阻塞，必须缩减 P1�
 | 项目 / 相对规模 | 缺口 → 依赖 → 验收 → 风险 |
 | --- | --- |
 | 一条生产自研算子入图 / 大 | 两条生产均不可入图 → 选择最小 envelope、异步资源寿命、固定 buffer 与更新机制 → 真机 eager/capture/replay 对照及越界/换绑/漏更新负例，证据绑定 descriptor → host tiling/executor 可能要求重构，未通过前不提升图声明 |
-| 固定容量 batch 图试点 / 大 | CANN composite 仍 gather/分配/concat → 静态资源规划与可捕获 batch runner → 限定 batch/shape 的多次 replay 正确、地址稳定、容量拒绝可复验 → 可能需要 fused kernel，不能包装 T9/T10 就宣称完成 |
+| 固定容量 batch 图试点 / 大 | CANN composite 仍 gather/分配/concat → 静态资源规划与可捕获 batch runner → 限定 batch/shape 的多次 replay 正确、地址稳定、容量拒绝可复验 → 可能需要 fused kernel，不能只包装固定资源与最大 workspace 接口就宣称完成 |
 | 受限 MLA 或基础量化 / 大 | 空域/壳域缺少真实执行 → 按目标模型二选一明确数学、布局、reference 与 backend → 仅承诺 envelope 的公共数值与错误路径、交付矩阵 → 吞入整个家族会挤压 P0；不预设两项均完成 |
-| 自定义接入脚手架 / 中 | 33 项仍需作者手工组织 → 稳定 recipe v2、冻结 spec 与同一 build/export 流水 → 新算子按清单独立接入，不改 loader、不放宽 v1 → 代码模板无法自动证明数学、同步或数据内容驱动 tiling |
+| 自定义接入脚手架 / 中 | 33 项仍需作者手工组织 → 稳定完整档 recipe、冻结 spec 与同一 build/export 流水 → 新算子按清单独立接入，不改 loader、不放宽受限兼容档 → 代码模板无法自动证明数学、同步或数据内容驱动 tiling |
 | 一个下游最小接入 / 大 | 无 vLLM/SGLang consumer 证据 → 明确版本、模型、入口与生命周期 → 下游真实调用、数值/状态/资源证据可复验 → 模型级调度与通信可能超过本仓范围，未跑通仍记 unverified |
 
 ### B.4 P2：不在两个月内的完整覆盖与范围取舍
