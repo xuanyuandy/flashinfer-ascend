@@ -1,0 +1,166 @@
+[
+  {
+    "recipe_id": "flash_attention",
+    "version": 2,
+    "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+    "implementation": "catlass",
+    "target_soc": "Ascend950",
+    "npu_arch": "dav-3510",
+    "source": {
+      "language": "ascendc",
+      "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+      "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+      "schema_version": 1
+    },
+    "sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+        "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+        "schema_version": 1
+      }
+    ],
+    "headers": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel.h",
+        "digest": "4e729565d1035e17cc9fc118dccd86248bf83b147dff33736f27d790f899c814",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel_utils.h",
+        "digest": "17a78609674d72d71c75eefaab2d8cce99ab2b398ad46e603f1999a49b10ef09",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/flash_attention/fai_tiling.h",
+        "digest": "c606564e57045621c7b6e28e9019d391c131a07baa8573a561307060be940175",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/flash_attention/tiling_data_def.h",
+        "digest": "dd5639fda933be255cb160df44ea3efb1c29e7be1edfe53bd16d2b559911a5ea",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/flash_attention/CANN_LICENSE.h",
+        "digest": "06f070fb72f5fcd2e58e72813a10182edcb76e87177d6d4c7eccf2ca654deaf5",
+        "schema_version": 1
+      }
+    ],
+    "include_dirs": [
+      "csrc/kernels/ascendc/flash_attention"
+    ],
+    "dependencies": [
+      {
+        "name": "catlass",
+        "revision": "41bf90da655bba3c66d0acd7e00abe33960ecfd6",
+        "include_dir": "include"
+      }
+    ],
+    "definitions": [
+      "CATLASS_ARCH=3510"
+    ],
+    "compile_options": [
+      "-O2"
+    ],
+    "link_options": [],
+    "device_entry": "fi_flash_attention",
+    "host_entry": "aclnnFiFlashAttention",
+    "launch_abi": "aclnn.flash_attention.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
+    "block_dim": 1,
+    "workspace_bytes": "dynamic",
+    "task_type": "aic_aiv",
+    "sync_policy": "cross_core_flags",
+    "toolchain": "ascendc",
+    "output_kind": "op_package",
+    "output_adapter": "ascendc.op_package.v1",
+    "schema_version": 2,
+    "package_vendor": "flashinfer_t4_flash_attention",
+    "package_op_type": "FiFlashAttention",
+    "host_sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/op_package/flash_attention.cpp",
+        "digest": "6e808537d0508e99e1686146f76a92910138b755a7c1fe2a137fe7d9943a872f",
+        "schema_version": 1
+      }
+    ],
+    "tiling_host_entry": "FiFlashAttentionTiling",
+    "workspace_host_entry": "FiFlashAttentionTiling",
+    "tensor_parameters": [
+      {
+        "name": "q",
+        "role": "input",
+        "dtype": "float16",
+        "shape": [
+          "S",
+          "H",
+          "D"
+        ]
+      },
+      {
+        "name": "k",
+        "role": "input",
+        "dtype": "float16",
+        "shape": [
+          "T",
+          "H",
+          "D"
+        ]
+      },
+      {
+        "name": "v",
+        "role": "input",
+        "dtype": "float16",
+        "shape": [
+          "T",
+          "H",
+          "D"
+        ]
+      },
+      {
+        "name": "out",
+        "role": "output",
+        "dtype": "float16",
+        "shape": [
+          "S",
+          "H",
+          "D"
+        ]
+      }
+    ],
+    "shape_constraints": [
+      {
+        "name": "S",
+        "minimum": 128,
+        "maximum": 512,
+        "multiple_of": 128
+      },
+      {
+        "name": "T",
+        "minimum": 128,
+        "maximum": 512,
+        "multiple_of": 128
+      },
+      {
+        "name": "H",
+        "minimum": 1,
+        "maximum": 8,
+        "multiple_of": 1
+      },
+      {
+        "name": "D",
+        "minimum": 128,
+        "maximum": 128,
+        "multiple_of": 128
+      }
+    ]
+  }
+]
