@@ -330,6 +330,10 @@ class AscendCBuildConfig:
     output_kind: str = "host_shared"
     target_soc: str = "Ascend950"
     overrides: Tuple[Tuple[str, str], ...] = ()
+    # A missing selector preserves the original probe CLI/config behavior.
+    # ``all`` selects the frozen production registry, including each entry's
+    # own implementation rather than the global implementation default.
+    recipe_id: str = "matmul_probe"
 
     def __post_init__(self):
         try:
@@ -339,6 +343,7 @@ class AscendCBuildConfig:
         if (self.implementation not in {"native", "catlass"}
                 or self.output_kind not in {"host_shared", "op_package"}
                 or not isinstance(self.target_soc, str) or not self.target_soc
+                or not isinstance(self.recipe_id, str) or not self.recipe_id
                 or any(len(p) != 2 or not isinstance(p[0], str) or not p[0]
                        or p[1] not in {"native", "catlass"} for p in pairs)
                 or len({p[0] for p in pairs}) != len(pairs)):

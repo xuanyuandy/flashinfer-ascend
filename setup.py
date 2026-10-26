@@ -2,7 +2,9 @@
 
 FLASHINFER_AOT_CONFIG=<json> FLASHINFER_AOT_SOCS=ascend950,... builds packages
 through the same recipe driver/store. FLASHINFER_AOT_PREBUILT=<release-dir>
-packages already verified exports without requiring a compiler. No installer runs.
+packages already verified exports without requiring a compiler.
+FLASHINFER_AOT_ALL=1 builds every registered production op-package. These three
+modes are mutually exclusive. No installer runs.
 """
 
 import os
@@ -14,8 +16,23 @@ from setuptools.command.build_py import build_py
 from wheel.bdist_wheel import bdist_wheel
 
 
+def aot_mode():
+    all_value = os.environ.get("FLASHINFER_AOT_ALL", "0")
+    if all_value not in {"", "0", "1"}:
+        raise ValueError("FLASHINFER_AOT_ALL must be 0 or 1")
+    modes = [name for name, enabled in (
+        ("FLASHINFER_AOT_ALL", all_value == "1"),
+        ("FLASHINFER_AOT_CONFIG", os.environ.get("FLASHINFER_AOT_CONFIG")),
+        ("FLASHINFER_AOT_PREBUILT", os.environ.get("FLASHINFER_AOT_PREBUILT")),
+    ) if enabled]
+    if len(modes) > 1:
+        raise ValueError("FLASHINFER_AOT_ALL, FLASHINFER_AOT_CONFIG and "
+                         "FLASHINFER_AOT_PREBUILT are mutually exclusive")
+    return modes[0] if modes else None
+
+
 def aot_requested():
-    return bool(os.environ.get("FLASHINFER_AOT_CONFIG") or os.environ.get("FLASHINFER_AOT_PREBUILT"))
+    return aot_mode() is not None
 
 
 class AOTDistribution(Distribution):
@@ -41,6 +58,7 @@ def build_inputs():
 
 class BuildPy(build_py):
     def run(self):
+        mode = aot_mode()
         super().run()
         root = Path(self.build_lib) / "flashinfer/data/build"
         for path in build_inputs():
@@ -49,20 +67,22 @@ class BuildPy(build_py):
             shutil.copyfile(path, target)
         config = os.environ.get("FLASHINFER_AOT_CONFIG")
         prebuilt = os.environ.get("FLASHINFER_AOT_PREBUILT")
-        if config and prebuilt:
-            raise ValueError("select FLASHINFER_AOT_CONFIG or FLASHINFER_AOT_PREBUILT")
         destination = Path(self.build_lib) / "flashinfer/data/op_packages"
         # Reusing a build directory must never contaminate a later pure wheel.
         if destination.exists():
             shutil.rmtree(destination)
-        if config:
-            from flashinfer.aot.build import compile_and_package
+        if mode in {"FLASHINFER_AOT_ALL", "FLASHINFER_AOT_CONFIG"}:
+            from flashinfer.aot.build import build_production_packages, compile_and_package
 
             targets = tuple(s.strip() for s in os.environ.get("FLASHINFER_AOT_SOCS", "").split(",") if s.strip())
-            compile_and_package(config, output_dir=destination, targets=targets,
+            options = dict(output_dir=destination, targets=targets,
                 cache_dir=os.environ.get("FLASHINFER_AOT_CACHE_DIR"),
                 cann_root=os.environ.get("ASCEND_HOME_PATH"),
                 catlass_root=os.environ.get("FLASHINFER_CATLASS_ROOT"))
+            if mode == "FLASHINFER_AOT_ALL":
+                build_production_packages(**options)
+            else:
+                compile_and_package(config, **options)
         elif prebuilt:
             from flashinfer.aot.build import export_op_package
 

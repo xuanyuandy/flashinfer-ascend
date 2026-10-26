@@ -40,6 +40,12 @@ def _show_config(_args: argparse.Namespace) -> int:
     return 0
 
 
+def _selftest(_args: argparse.Namespace) -> int:
+    from .selftest import run_selftest
+
+    return run_selftest()
+
+
 def _parity_report(args: argparse.Namespace) -> int:
     manifest = load_packaged_manifest(args.scope)
     print(manifest.report())
@@ -260,6 +266,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     show_config = subparsers.add_parser("show-config", help="show local environment")
     show_config.set_defaults(handler=_show_config)
+
+    selftest = subparsers.add_parser(
+        "selftest", help="verify installed production AOT kernels on a real NPU"
+    )
+    selftest.set_defaults(handler=_selftest)
 
     parity = subparsers.add_parser(
         "parity-report", help="summarize FlashInfer API parity"
