@@ -530,13 +530,13 @@ compiler adapter 可以从**显式传入的冻结 recipe 集合**按 spec 中的
 
 ## 6. 本仓目录与命名建议
 
-现有 `docs/framework_design.md` §2.3 给出了 `kernels/` 与 `csrc/` 的职责划分（当前 `csrc/kernels/ascendc` 承载完整档生产设备源码，与 `kernels/` 的受限档探针树并存，该节已标注需后续收敛）。因此推荐沿用这个职责划分，把“本仓自己的 csrc”落实为自己的编译工程、launcher 和可选 op-package host 层；无需复制 vllm-ascend 的扫描布局。这样也避免 T13 目录建议与已写的框架设计直接冲突。[L7]
+`docs/framework_design.md` §2.3 的设备源码目录现已统一为 `csrc/kernels/ascendc/`，探针与生产算子按算子分目录；构建工程、launcher 与可选 op-package host 层同属 `csrc/`。位置参考 vLLM-Ascend 的 `csrc/kernels/`，源码选择仍由显式 recipe 决定。[L7]
 
-建议目录，均为后续规划：
+设备源码位置已按下列目录收敛；其余编译工程细分仍为本分析的建议：
 
 ```text
 3rdparty/catlass/                     # 可选、固定版本的 submodule
-kernels/ascendc/<op>/
+csrc/kernels/ascendc/<op>/
   native.cpp                         # 原生实现；只声明实际存在的变体
   catlass.cpp                        # 可选 CATLASS 实现
   tiling.h                           # op 私有 host/device 契约
@@ -561,7 +561,7 @@ tools/                               # AOT build-only / 打包入口
 
 与 V 的具体差别：不把 host 文件是否存在当作 native/CATLASS 分类；不强制 direct kernel 也创建 GE OpDef；不以 glob 扫描结果决定依赖；公共 target/namespace 用 `flashinfer_ascend`、`fi_ascend_*`，vendor 建议 `flashinfer`，稳定入口按 `fi_<op>_<abi_version>` 或带 recipe 区分的唯一符号命名。原有特定 vLLM 类型、`*_transformer` 包名和 op 私有 CATLASS 副本均无须带入。[V5][V8][V14][V15][V16]
 
-打包时将构建输入映射到包内资源，例如 `data/kernels/ascendc/...` 与 `data/csrc/...`，descriptor 的 SourceRef 使用安装后实际可解析的相对 locator；源码只维护一份。当前本仓 `pyproject.toml:23–24` 只列 JSON/测量数据，尚未包含这些资源，需要实现阶段显式增加。该建议参考上游的 source-data 映射，并遵守本仓 SourceRef 的相对路径约束。[U11][L1]
+打包时将统一的 `csrc/` 构建输入映射到 `flashinfer/data/build/csrc/`，SourceRef 保持相对于构建输入根 `flashinfer/data/build/` 的 locator；源码只维护一份。当前由 `setup.py` 的 `BuildPy` 显式复制并登记输出，schema 与运行时声明则在 `flashinfer/data/kernels/`。该资源映射遵守本仓 SourceRef 的相对路径约束。[U11][L1]
 
 若决定改为所有 device 源码集中到 `csrc/ops/<op>/op_kernel`，须同步更改上述已存在的目录职责文档；本分析没有替用户执行这类文档或目录迁移。
 

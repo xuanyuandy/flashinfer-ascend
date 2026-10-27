@@ -9,7 +9,7 @@
 **“全部算子都编译打包”的口径**：43 个 op 中，40 个走 CANN aclnn（无需编译），
 1 个 Triton 在运行期 JIT，真正需要 AOT 预编的是 2 个 Ascend C 生产算子。
 因此 wheel 应携带**全部可预编算子的产物，以及其余构建所需源码**；
-`csrc/**` 与 `kernels/ascendc/**` 随包放在 `flashinfer/data/build/`。
+统一的 `csrc/**` 构建输入随包放在 `flashinfer/data/build/csrc/`。
 
 > **先说清楚支持范围**：FA 当前是**受限 envelope** 的生产算子，不是通用 attention。
 > 超出范围会在 dispatch 阶段被拒绝（这是设计如此，见 §7）。

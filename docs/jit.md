@@ -332,8 +332,8 @@ git submodule update --init --no-fetch -- 3rdparty/catlass
 
 `--cache-only` 从示例保存的 JitSpec 重载；该模式禁止 subprocess/compile，既不发现
 编译器，也不需要源码或 CATLASS。wheel/sdist 仅携带本仓自己的 CMake、配方、源码和
-launcher；构建 Python 分发包不会运行设备编译器。安装后的源码位于
-`flashinfer/data/build/{csrc,kernels/ascendc}`，可用 `--source-root` 显式覆盖，
+launcher；显式 `FLASHINFER_AOT_ALL=0` 可仅打包源码，普通 wheel 构建默认执行生产 AOT。安装后的源码位于
+`flashinfer/data/build/csrc/`，可用 `--source-root` 显式覆盖其上级 `data/build/`，
 CATLASS 可用 `--catlass-root` 指向调用者初始化的固定 Git checkout。
 
 验证范围仅 CANN 9.2 beta.2 / A5 / FP32 16×16×16 / AIC-only / 固定 tiling，

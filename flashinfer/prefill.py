@@ -1,7 +1,7 @@
 """prefill 对外 API 门面（对标 flashinfer 顶层模块，§2.3、§3.1）。
 
 门面只做三件事：构建输入签名 → 委托 dispatcher 选择 kernel → 拉起执行。
-一行 kernel 代码都没有（§2.3：API 文件 = 壳，kernels/ = 芯）。
+设备源码位于 csrc/kernels/ascendc/；本文件不包含 kernel 实现。
 """
 
 from __future__ import annotations

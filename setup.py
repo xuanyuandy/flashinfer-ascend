@@ -63,11 +63,10 @@ class AOTWheel(bdist_wheel):
 
 
 def build_inputs():
-    for directory in ("csrc", "kernels/ascendc"):
-        for path in sorted(Path(directory).rglob("*")):
-            if path.is_file() and (path.suffix in {".cpp", ".h", ".inc", ".cmake", ".json"}
-                                   or path.name == "CMakeLists.txt"):
-                yield path
+    for path in sorted(Path("csrc").rglob("*")):
+        if path.is_file() and (path.suffix in {".cpp", ".h", ".inc", ".cmake", ".json"}
+                               or path.name == "CMakeLists.txt"):
+            yield path
 
 
 class BuildPy(build_py):
@@ -75,6 +74,8 @@ class BuildPy(build_py):
         mode = aot_mode()
         super().run()
         root = Path(self.build_lib) / "flashinfer/data/build"
+        if root.exists():
+            shutil.rmtree(root)
         for path in build_inputs():
             target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)

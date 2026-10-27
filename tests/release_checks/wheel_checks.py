@@ -53,6 +53,10 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     distribution = wheel_setup["AOTDistribution"]()
     command = wheel_setup["BuildPy"](distribution)
     command.build_lib = str(tmp_path / "build")
+    build_inputs = tmp_path / "build/flashinfer/data/build"
+    stale_source = build_inputs / "kernels/ascendc/matmul_probe/native.cpp"
+    stale_source.parent.mkdir(parents=True)
+    stale_source.write_text("stale source from the previous layout")
     command.run()
     destination = tmp_path / "build/flashinfer/data/op_packages"
     assert {path.name for path in destination.iterdir()} == {"a" * 64, "b" * 64}
@@ -61,6 +65,10 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     assert calls[0]["cache_dir"] == str(tmp_path / "cache")
     assert distribution.has_ext_modules()
     assert (tmp_path / "build/flashinfer/data/build/csrc/recipes/flash_attention.json").is_file()
+    assert not (build_inputs / "kernels").exists()
+    for name in ("native.cpp", "catlass.cpp"):
+        relative = Path("csrc/kernels/ascendc/matmul_probe") / name
+        assert (build_inputs / relative).read_bytes() == (ROOT / relative).read_bytes()
 
     # A later source-only build in the same directory must not retain AOT bytes.
     monkeypatch.setenv("FLASHINFER_AOT_ALL", "0")

@@ -8,14 +8,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/native.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
       "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/native.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
         "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
         "schema_version": 1
       }
@@ -73,14 +73,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/catlass.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
       "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/catlass.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
         "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
         "schema_version": 1
       }
@@ -146,14 +146,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/native.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
       "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/native.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
         "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
         "schema_version": 1
       }
@@ -221,14 +221,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/catlass.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
       "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/catlass.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
         "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
         "schema_version": 1
       }
@@ -304,14 +304,14 @@
     "npu_arch": "dav-2201",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/native.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
       "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/native.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
         "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
         "schema_version": 1
       }
@@ -379,14 +379,14 @@
     "npu_arch": "dav-2201",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/native.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
       "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/native.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
         "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
         "schema_version": 1
       }
@@ -454,14 +454,14 @@
     "npu_arch": "dav-2002",
     "source": {
       "language": "ascendc",
-      "locator": "kernels/ascendc/matmul_probe/native.cpp",
+      "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
       "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "kernels/ascendc/matmul_probe/native.cpp",
+        "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
         "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
         "schema_version": 1
       }

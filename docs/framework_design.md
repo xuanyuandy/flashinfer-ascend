@@ -87,7 +87,7 @@ L4  对外 API      flashinfer/decode.py、prefill.py、norm.py ...
 L3  调度          flashinfer/runtime（dispatcher · registry · capability）
 L3' 编译          flashinfer/jit（代码生成 · 编译流水 · 缓存）
 L2  Backend       CANN（aclnn）· AOT 加载器 · JIT 加载器
-L1  算子          kernels/ascendc · kernels/triton（模板源码）
+L1  算子          csrc/kernels/ascendc · flashinfer/triton（设备实现）
 L0  硬件          硬件探测（SoC 型号 + AI Core 数）
 ────────────────────────────────────────────────────────────
 底座              ACL Runtime / aclrtStream · Ascend AI Core
@@ -145,7 +145,7 @@ ACL Runtime 提交 → AI Core 执行**。"L2 负责 kernel 拉起"指编排归 
 | L3 调度层 | `flashinfer/runtime` | dispatcher、registry、capability、签名与硬件快照 | 不做数据相关 D2H 读取 |
 | L3' 编译层 | `flashinfer/jit` | 代码生成、编译流水、缓存管理 | 不在持有 stream 时编译 |
 | L2 Backend 层 | `flashinfer/cann`、`aot` 加载器、JIT 加载器 | kernel 拉起：参数校验、handle 获取、异步 launch | 不隐式同步、不隐式 `.contiguous()` |
-| L1 算子层 | `kernels/ascendc`、`kernels/triton` | 算子模板源码与特化配置 | 不依赖框架类型（torch header 不进入） |
+| L1 算子层 | `csrc/kernels/ascendc`、`flashinfer/triton` | 算子模板源码与特化配置 | 不依赖框架类型（torch header 不进入） |
 | L0 硬件层 | capability 探测 | SoC / CANN / 可见设备探测与缓存 | 不散落 `if soc == ...` 判断 |
 
 ### 2.3 仓库目录结构
@@ -168,13 +168,11 @@ flashinfer/
 │   │   └── attention/          # Attention 特化身份与 generator 契约
 │   ├── aot/ / data/             # 构建导出；登记表、冻结 spec、随包产物布局
 │   └── tuning/ / utils/
-├── kernels/                    # 受限档探针树，仍与 csrc/kernels 并存
-│   ├── manifest.schema.json
-│   ├── ascendc/matmul_probe/    # native.cpp / catlass.cpp
-│   └── triton/                 # 仅占位；Python 实现在 flashinfer/triton/
 ├── csrc/
 │   ├── cmake/ / include/flashinfer_ascend/ / launch/
-│   ├── kernels/ascendc/         # 完整档生产设备源码
+│   ├── kernels/README.md        # 设备源码与配方位置说明
+│   ├── kernels/ascendc/         # 统一的探针与生产设备源码
+│   │   ├── matmul_probe/
 │   │   ├── matmul_bias_silu/
 │   │   └── flash_attention/
 │   ├── op_package/             # host/、kernel/ 构建模板及各算子的 host .cpp
@@ -195,20 +193,20 @@ flashinfer/
 | --- | --- | --- |
 | `flashinfer/prefill.py`、`decode.py` | **对外 API 门面（facade）**：函数签名对标 flashinfer 顶层模块，内部只做"签名构建 + 调 dispatcher + 持有 Plan 生命周期" | 不是算子——不含任何 kernel 逻辑，算子的实现在 backend 层之下 |
 | `flashinfer/attention/` | 各算子域的 plan/run wrapper 与域逻辑 | 与 prefill.py 的关系：prefill.py 是薄门面，域内复杂逻辑（paged KV、wrapper 状态）在域包里 |
-| `kernels/ascendc/`、`csrc/kernels/ascendc/` | **设备侧编译输入**：前者保留受限档探针，后者承载完整档生产源码；Triton 实现在 `flashinfer/triton/` | 目录并存不表示两套 runtime；`kernels/triton/` 目前仅占位 |
+| `csrc/kernels/ascendc/` | **设备侧编译输入**：探针、MatmulBiasSiLU、FlashAttention 按算子分目录 | Triton Python 实现在 `flashinfer/triton/` |
+| `flashinfer/data/kernels/` | **运行时声明**：descriptor、冻结 spec 与 `manifest.schema.json` | 不存放设备源码或编译缓存 |
 | `csrc/` | **host 桥与设备源码**：CMake、launch ABI、op-package host/kernel 模板、recipe，以及 `kernels/ascendc/` | 已不再仅放 host 胶水；不能用目录名推断源码运行在 CPU 还是 AI Core |
 
-**prefill.py/decode.py 与 kernels/ 的分工**：prefill.py 里一行 kernel 代码都没有——
+**prefill.py/decode.py 与 csrc/kernels/ 的分工**：prefill.py 里一行 kernel 代码都没有——
 它接收用户张量、构建 `InputSignature`、委托 dispatcher 选择、返回结果。
 CANN 路径调用内置算子；自研路径执行设备源码的 AOT 或 JIT 产物，均由 backend 层拉起。
 即：**API 文件是门面，设备 kernel 承担计算**，两者通过
 runtime 层的 descriptor/registry 间接关联（API 不直接 import kernel）。
 
-**两个 kernel 目录并存是当前的结构不一致**：旧 `kernels/` 树共 6 个文件，
-其中 `matmul_probe/` 放两份源码，schema 在 `kernels/manifest.schema.json`；
-新 `csrc/kernels/ascendc/{matmul_bias_silu,flash_attention}/` 共 8 个文件。
-这不是新的目录分工设计，建议后续收敛设备源码与 recipe 的位置，并保留受限档的产物身份兼容（§3.5）；
-本次只如实记录，交付闭环见 [完整档契约说明](reports/ascendc-contract-v2.md) 与 [接入清单](reports/custom-operator-onboarding.md)。
+**设备源码统一位于 `csrc/kernels/ascendc/`**，位置参考 vLLM-Ascend 的 `csrc/kernels/`；
+flashinfer-ori: `csrc/`、`include/flashinfer/` 也将编译输入集中在源码目录。
+受限档探针迁移时保持源码字节与 ABI 不变，recipe 的 locator 更新后使用新构建身份；既有生产冻结 spec 不变。
+完整档交付闭环见 [完整档契约说明](reports/ascendc-contract-v2.md) 与 [接入清单](reports/custom-operator-onboarding.md)。
 
 ### 2.4 与上游的分层对比
 
@@ -1428,12 +1426,12 @@ flowchart TD
 - 每个封装必须声明支持的 dtype / shape / layout 谓词，注册进 registry。
 - 作为 fallback 时必须在 trace / dispatch reason 中可见，不静默发生。
 
-### 10.2 Ascend C 算子（`kernels/ascendc`）
+### 10.2 Ascend C 算子（`csrc/kernels/ascendc`）
 
 当前两条生产 eager 路径使用完整档 recipe；接入目标是复用统一编译、存储与加载链路，
 设备源码位置仍待收敛（§2.3），生产算子入图尚未完成（§3.5）。
 
-### 10.3 Triton 算子（`kernels/triton`）
+### 10.3 Triton 算子（`flashinfer/triton`）
 
 当前仅 `gemma_fused_add_rmsnorm` 有真机数值证据；目标是复用统一产物身份与加载设施，
 原生 Triton 路径与统一 store 路径仍并存，尚不能宣称全域统一。

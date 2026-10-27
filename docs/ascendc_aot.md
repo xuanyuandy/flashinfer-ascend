@@ -103,8 +103,8 @@ FLASHINFER_AOT_PREBUILT=/tmp/flashinfer-t13ii-release \
   bdist_wheel --dist-dir /tmp/fi-prebuilt-wheel
 ```
 
-不设置 AOT 环境变量时，wheel 保持 `py3-none-any`，仅带原有 Python/数据和
-`flashinfer/data/build/{csrc,kernels/ascendc}` 构建输入，不探测编译器。
+显式设置 `FLASHINFER_AOT_ALL=0` 时，wheel 为 `py3-none-any`，仅带 Python/数据和
+`flashinfer/data/build/csrc/` 构建输入，不探测编译器；未设置构建模式时默认执行全部生产 AOT。
 AOT wheel 使用 `py3-none-linux_x86_64`（在相应 host 构建时采用其平台 tag），
 把每个 verified generation 放在 `flashinfer/data/op_packages/<spec_sha256>/`，
 包含标准 vendor 树、完整 manifests、receipt 和 `.run`。CANN runtime/driver 不随 wheel 分发。

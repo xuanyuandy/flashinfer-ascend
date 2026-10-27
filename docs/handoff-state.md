@@ -29,6 +29,7 @@
 | catlass FA 迁移 | 第 2 条生产算子，受限 envelope。见 `reports/custom-operator-onboarding.md` |
 | 打包与装后自检 | `FLASHINFER_AOT_ALL=1` 一条命令编全量并打进 wheel；`python -m flashinfer selftest` 不依赖源码树 |
 | 设计文档 | `framework_design.md` 改为设计+现状+路线图，按交付主线重排，面向外部专家 |
+| 设备源码目录（2026-10-27 增量） | 统一为 `csrc/kernels/ascendc/`，探针与生产源码按算子分目录；schema 位于 `flashinfer/data/kernels/`，见 [目录归一化验证](reports/kernel-layout-2026-10-27.md) |
 
 ## 3. 待办（按优先级，详见 `framework_design.md` 附录 B）
 
@@ -62,8 +63,6 @@
 
 ## 4. 结构性债务
 
-- **两个 kernel 目录并存**：`kernels/ascendc/`（v1 受限档探针）与
-  `csrc/kernels/ascendc/`（v2 生产源码）。`framework_design.md` §2.3 已标注需收敛。
 - `docs/ascendc_build_design.md` 的 `[L7]` 用绝对路径 `/home/dy/projects/...`，换机器即断。
 - `tests/` 不随 wheel 分发。`selftest` 覆盖了装后验证，
   但完整用例集仍需源码树——这是**有意取舍**，若要改需权衡包体积与 pytest 运行时依赖。
