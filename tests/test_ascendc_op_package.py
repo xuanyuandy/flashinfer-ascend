@@ -136,6 +136,8 @@ def fake_runtime(monkeypatch):
 
     monkeypatch.setattr(C, "CDLL", cdll)
     monkeypatch.setattr(package, "_active_package", None)
+    # Track an initially absent key before the loader mutates os.environ.
+    monkeypatch.setenv("ASCEND_CUSTOM_OPP_PATH", "")
     monkeypatch.delenv("ASCEND_CUSTOM_OPP_PATH", raising=False)
     return calls, statuses
 

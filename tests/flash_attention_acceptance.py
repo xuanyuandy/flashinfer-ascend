@@ -17,8 +17,10 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON = Path("/root/miniforge3/envs/flashinfer-a5/bin/python")
-CATLASS_ROOT = Path("/mnt/fi/catlass-ref")
+PYTHON = Path(os.environ.get("FLASHINFER_TEST_PYTHON", "/root/miniforge3/envs/flashinfer-a5/bin/python"))
+CATLASS_ROOT = Path(os.environ.get(
+    "FLASHINFER_TEST_CATLASS_ROOT", os.environ.get("FLASHINFER_CATLASS_ROOT", "/mnt/fi/catlass-ref"),
+))
 CATLASS_REVISION = "41bf90da655bba3c66d0acd7e00abe33960ecfd6"
 GENERATOR = CATLASS_ROOT / "examples/49_ascend950_flash_attention_infer/gen_data.py"
 GENERATOR_SHA256 = "c988b56dc2113990f2d0978185db3eda2cd18db05018b2f042ae3c2f4a6f2fb9"
@@ -244,4 +246,11 @@ def run_scenario(scenario, store_root):
 
 
 if __name__ == "__main__":
-    run_scenario(*sys.argv[1:])
+    if len(sys.argv) == 1:
+        if __package__:
+            from .flash_attention import main
+        else:
+            from flash_attention import main
+        main()
+    else:
+        run_scenario(*sys.argv[1:])

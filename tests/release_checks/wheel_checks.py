@@ -30,11 +30,13 @@ def test_aot_wheel_modes_are_mutually_exclusive(wheel_setup, monkeypatch, first,
         wheel_setup["aot_requested"]()
 
 
-def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, tmp_path):
+@pytest.mark.parametrize("all_value", [None, "1"])
+def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, tmp_path, all_value):
     from flashinfer.aot import build
 
     monkeypatch.chdir(ROOT)
-    monkeypatch.setenv("FLASHINFER_AOT_ALL", "1")
+    if all_value is not None:
+        monkeypatch.setenv("FLASHINFER_AOT_ALL", all_value)
     monkeypatch.setenv("FLASHINFER_CATLASS_ROOT", "/explicit-catlass")
     monkeypatch.setenv("FLASHINFER_AOT_CACHE_DIR", str(tmp_path / "cache"))
     monkeypatch.setattr(build_py, "run", lambda self: None)
@@ -61,8 +63,29 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     assert (tmp_path / "build/flashinfer/data/build/csrc/recipes/flash_attention.json").is_file()
 
     # A later source-only build in the same directory must not retain AOT bytes.
-    monkeypatch.delenv("FLASHINFER_AOT_ALL")
+    monkeypatch.setenv("FLASHINFER_AOT_ALL", "0")
     command.run()
     assert not destination.exists()
     assert command._aot_outputs == []
     assert not distribution.has_ext_modules()
+
+
+def test_default_wheel_requests_all_production_packages(wheel_setup):
+    assert wheel_setup["aot_mode"]() == "FLASHINFER_AOT_ALL"
+    assert wheel_setup["AOTDistribution"]().has_ext_modules()
+
+
+@pytest.mark.parametrize("value", ["0", ""])
+def test_source_only_wheel_is_explicit(wheel_setup, monkeypatch, value):
+    monkeypatch.setenv("FLASHINFER_AOT_ALL", value)
+    assert wheel_setup["aot_mode"]() is None
+    assert not wheel_setup["AOTDistribution"]().has_ext_modules()
+
+
+def test_default_catlass_checkout_is_a_build_input(wheel_setup, monkeypatch, tmp_path):
+    monkeypatch.delenv("FLASHINFER_CATLASS_ROOT", raising=False)
+    function = wheel_setup["build_catlass_root"]
+    monkeypatch.setitem(function.__globals__, "__file__", str(tmp_path / "project/setup.py"))
+    catlass = tmp_path / "catlass-ref"
+    (catlass / "include").mkdir(parents=True)
+    assert function() == str(catlass)

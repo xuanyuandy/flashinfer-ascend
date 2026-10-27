@@ -81,6 +81,7 @@ FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref FLASHINFER_AOT_ALL=1 \
 ```
 
 这一条命令完成“构建全部生产 AOT 算子 + 全部打进 wheel”，无需先执行 §2。
+普通 `python3 setup.py bdist_wheel` 现在也默认执行全部生产 AOT 构建；当前 `dy_test` 环境的简化操作见 [wheel 编译与直接调用说明](../README-wheel-conda.md)。
 已做过 §2 时，也可改用 `FLASHINFER_AOT_PREBUILT=/tmp/t10-release` 复用导出产物。
 得到 `flashinfer-0.1.0.dev0-py3-none-linux_x86_64.whl`。
 平台 tag 不是 `any`，因为包里带了设备产物。
@@ -92,7 +93,8 @@ FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref FLASHINFER_AOT_ALL=1 \
 | `FLASHINFER_AOT_ALL=1` | 打包时构建全部生产 AOT 算子 |
 | `FLASHINFER_AOT_PREBUILT` | 把已编好的 release 目录全部导出进包 |
 | `FLASHINFER_AOT_CONFIG` | 按配置选择 recipe 构建；可配合 `FLASHINFER_AOT_SOCS` 指定多个目标 |
-| 都不给 | 仅带源码与 Python 包，不带 AOT 产物 |
+| 都不给 | 默认构建全部生产 AOT 算子并打入 wheel |
+| `FLASHINFER_AOT_ALL=0` | 仅带源码与 Python 包，不带 AOT 产物 |
 
 配置文件的 `recipe_id` 可为 `matmul_bias_silu`、`flash_attention` 或 `all`；
 未填写时保留既有 `matmul_probe` 行为。CLI 可用 `--recipe` 覆盖配置中的选择。

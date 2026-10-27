@@ -52,7 +52,8 @@ def installed_release(release):
 
 def execute(scenario, tmp_path, *, search_root=None):
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-                       FLASHINFER_CATLASS_ROOT=str(CATLASS_ROOT))
+                       FLASHINFER_CATLASS_ROOT=str(CATLASS_ROOT),
+                       FLASHINFER_TEST_CATLASS_ROOT=str(CATLASS_ROOT))
     environment.pop("FLASHINFER_AOT_PATHS", None)
     environment.pop("FLASHINFER_NPU_JIT_DISABLE", None)
     if search_root is not None:

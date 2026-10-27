@@ -19,7 +19,7 @@ from flashinfer.runtime import Backend, CompileMode, KernelDescriptor, KernelLau
 
 # Reuse the existing verifier's synthetic ELF/store fixture; these bytes are
 # never executed. End-to-end tests separately compile and execute real packages.
-from test_ascendc_op_package import elf_fixture, generation, unit, write_fixture  # noqa: F401
+from tests.test_ascendc_op_package import elf_fixture, generation, unit, write_fixture  # noqa: F401
 
 
 @pytest.fixture

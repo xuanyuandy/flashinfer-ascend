@@ -862,15 +862,16 @@ class ReferenceAttentionExecutor:
                     lse.append(row_lse)
                     continue
                 for dim in range(int(spec.head_dim_vo)):
-                    value = sum(
-                        probability
-                        * value_fn(key_position, kv_head, dim)
-                        * v_scales[kv_head]
-                        for probability, key_position in zip(
-                            probabilities, visible_keys
-                        )
-                        if probability != 0.0
-                    )
+                    # Explicit addition keeps v1 trace bytes independent of
+                    # changes to Python's built-in floating-point sum.
+                    value = 0.0
+                    for probability, key_position in zip(probabilities, visible_keys):
+                        if probability != 0.0:
+                            value += (
+                                probability
+                                * value_fn(key_position, kv_head, dim)
+                                * v_scales[kv_head]
+                            )
                     output.append(value)
                 lse.append(row_lse)
         return output, lse

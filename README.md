@@ -5,6 +5,10 @@ software stack. It follows FlashInfer's API domains and plan/run execution
 model while implementing kernels for Ascend AI Core rather than translating
 CUDA kernels.
 
+For building an AOT wheel and testing it in a fresh conda environment, see
+[`README-wheel-conda.md`](README-wheel-conda.md).
+Ordinary wheel builds compile and bundle the registered production Ascend C operators.
+
 For runnable A5 (Ascend950) CANN/Triton operators, environment setup and a map
 of the current code, see [`docs/a5.md`](docs/a5.md). From an initialized CANN
 shell, the quick start is:
@@ -81,8 +85,8 @@ binding; neither public input exposes a provider plan or callable handle.
 The documentation map and content policy are in
 [`docs/README.md`](docs/README.md). The authoritative design is in
 [`docs/architecture.md`](docs/architecture.md). The Attention architecture
-includes host-side framework contracts; the repository does not yet contain
-runnable custom Ascend C kernels.
+includes host-side framework contracts. Production Ascend C build and installed-wheel
+execution are described in the wheel guide above.
 
 The Attention-specific framework contract is documented in
 [`docs/attention/framework.md`](docs/attention/framework.md).

@@ -1,10 +1,11 @@
-"""Pure source distribution by default; explicit per-SOC AOT release wheels.
+"""Production AOT wheels by default; explicit source-only opt-out.
 
 FLASHINFER_AOT_CONFIG=<json> FLASHINFER_AOT_SOCS=ascend950,... builds packages
 through the same recipe driver/store. FLASHINFER_AOT_PREBUILT=<release-dir>
 packages already verified exports without requiring a compiler.
-FLASHINFER_AOT_ALL=1 builds every registered production op-package. These three
-modes are mutually exclusive. No installer runs.
+An ordinary wheel build includes every registered production op-package.
+FLASHINFER_AOT_ALL=0 builds a source-only wheel. Explicit ALL=1, CONFIG and
+PREBUILT modes remain mutually exclusive. No installer runs.
 """
 
 import os
@@ -17,8 +18,8 @@ from wheel.bdist_wheel import bdist_wheel
 
 
 def aot_mode():
-    all_value = os.environ.get("FLASHINFER_AOT_ALL", "0")
-    if all_value not in {"", "0", "1"}:
+    all_value = os.environ.get("FLASHINFER_AOT_ALL")
+    if all_value not in {None, "", "0", "1"}:
         raise ValueError("FLASHINFER_AOT_ALL must be 0 or 1")
     modes = [name for name, enabled in (
         ("FLASHINFER_AOT_ALL", all_value == "1"),
@@ -28,11 +29,24 @@ def aot_mode():
     if len(modes) > 1:
         raise ValueError("FLASHINFER_AOT_ALL, FLASHINFER_AOT_CONFIG and "
                          "FLASHINFER_AOT_PREBUILT are mutually exclusive")
-    return modes[0] if modes else None
+    if modes:
+        return modes[0]
+    return None if all_value in {"", "0"} else "FLASHINFER_AOT_ALL"
 
 
 def aot_requested():
     return aot_mode() is not None
+
+
+def build_catlass_root():
+    explicit = os.environ.get("FLASHINFER_CATLASS_ROOT")
+    if explicit:
+        return explicit
+    root = Path(__file__).resolve().parent
+    for location in (root / "3rdparty/catlass", root.parent / "catlass-ref"):
+        if (location / "include").is_dir():
+            return str(location)
+    return None
 
 
 class AOTDistribution(Distribution):
@@ -78,7 +92,7 @@ class BuildPy(build_py):
             options = dict(output_dir=destination, targets=targets,
                 cache_dir=os.environ.get("FLASHINFER_AOT_CACHE_DIR"),
                 cann_root=os.environ.get("ASCEND_HOME_PATH"),
-                catlass_root=os.environ.get("FLASHINFER_CATLASS_ROOT"))
+                catlass_root=build_catlass_root())
             if mode == "FLASHINFER_AOT_ALL":
                 build_production_packages(**options)
             else:

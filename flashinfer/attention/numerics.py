@@ -111,7 +111,10 @@ def normalize_attention_logits(
     if max_logit == float("-inf"):
         return (), float("-inf")
     exponentials = tuple(math.exp(value - max_logit) for value in values)
-    denominator = sum(exponentials)
+    # Preserve the v1 oracle's reduction order across Python versions.
+    denominator = 0.0
+    for value in exponentials:
+        denominator += value
     return (
         tuple(value / denominator for value in exponentials),
         max_logit + math.log(denominator),

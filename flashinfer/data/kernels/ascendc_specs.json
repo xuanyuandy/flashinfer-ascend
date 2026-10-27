@@ -126,12 +126,12 @@
       },
       "spec": {
         "schema_version": 1,
-        "name": "kernel.9f253a56d2f05beea3f127544abd063feb887bd5373b5080fcee6ceac35cf02b",
+        "name": "kernel.30ccfafa798bbae54feb2b1cbc8839fd0d3064a2323bf3c2cd8aa97e72785bf7",
         "domain": "kernel",
         "generator_id": "ascendc",
         "generator_version": "2",
         "target_soc": "Ascend950",
-        "environment_fingerprint": "d522e8eacacb955c6036daafcf1b2d4104952efe94c8f3e4a71566fb699eb40e",
+        "environment_fingerprint": "226cecda7bb975ee0ba3e39f449aac371f1ebc7cdcba90d6198678804884d250",
         "specialization_fingerprint": "20030d0e01a3877c31891af31a041d341210acd1af3b6252fabd4ff6cafe4fda",
         "input_fingerprints": [
           [
@@ -152,7 +152,7 @@
           ],
           [
             "resolved_recipe",
-            "a1e99db436939abe7afb0be9e661db7fe0ea5e4d7deda29461a0b7263d4ca74f"
+            "511dd6e649ce5b958c9236282cd69caffb6cbc0d6b2be5730223ab098a015cff"
           ]
         ],
         "source_artifacts": [],
@@ -338,12 +338,12 @@
       },
       "spec": {
         "schema_version": 1,
-        "name": "kernel.fbfde71ebe0e13776951307024ef85316fdbdf00f7ef35f8535572086c2c6465",
+        "name": "kernel.ff971b38fe8116dc8544b25d48eca8ebe91f17643dddcc5a5b489ccee5694c8e",
         "domain": "kernel",
         "generator_id": "ascendc",
         "generator_version": "2",
         "target_soc": "Ascend950",
-        "environment_fingerprint": "d522e8eacacb955c6036daafcf1b2d4104952efe94c8f3e4a71566fb699eb40e",
+        "environment_fingerprint": "226cecda7bb975ee0ba3e39f449aac371f1ebc7cdcba90d6198678804884d250",
         "specialization_fingerprint": "5de2dc30e9a7c423646cacb69a1840a6cdee64f8622f5ff2bc232be885fbb46d",
         "input_fingerprints": [
           [
@@ -364,7 +364,7 @@
           ],
           [
             "resolved_recipe",
-            "85057e2ace9561bcbc0ea218e64d11760a9d0a63749b574c10268512bf783f6e"
+            "97b5a54869043a79bb5615fbabef97b4e57bda10f75f72cb452b8bc0ca24eb80"
           ]
         ],
         "source_artifacts": [],

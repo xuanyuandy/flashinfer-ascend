@@ -18,7 +18,7 @@ from flashinfer.jit.op_package import OP_PACKAGE_ADAPTER_HASH, OpPackageModule, 
 from flashinfer.jit.recipe import BuildRecipe, ShapeConstraint, TensorParameter, load_build_recipes
 from flashinfer.runtime import SchemaError
 
-from test_ascendc_op_package import elf_fixture, write_fixture
+from tests.test_ascendc_op_package import elf_fixture, write_fixture
 
 
 ROOT = Path(__file__).resolve().parents[1]
