@@ -17,9 +17,11 @@ python3 -m pip install --force-reinstall --no-deps \
 (cd tests && python3 matmul_bias_silu.py)
 ```
 
-普通 `bdist_wheel` 默认执行生产登记表中两条 Ascend C 算子的 AOT 编译，并把 host 库、设备二进制和 manifest 一起打进 wheel。构建会自动查找 `3rdparty/catlass` 或相邻的 `../catlass-ref`，仍校验固定 revision 和头文件摘要。CANN 调用路径使用已安装的 CANN 运行时；Triton 路径沿用其现有编译方式。
+普通 `bdist_wheel` 默认执行生产登记表中两条 Ascend C 算子的 AOT 编译，并把 host 库、设备二进制、manifest 和 Torch/ACLNN C++ 适配库一起打进 wheel。构建会自动查找 `3rdparty/catlass` 或相邻的 `../catlass-ref`，仍校验固定 revision 和头文件摘要。CANN 调用路径使用已安装的 CANN 运行时；Triton 路径沿用其现有编译方式。
 
 源码包选项为 `FLASHINFER_AOT_ALL=0`；缺少编译依赖时，默认 AOT 构建会报错。
+
+公开 Ascend C recipe、配置和新发布入口现只接受 v2；旧 `host_shared` 配置会被拒绝，v1 仅保留内部读取兼容。迁移更新了冻结构建身份，升级源码后请重新编译并安装本轮 wheel；验证范围见 [v2 迁移验收](docs/reports/v2-migration-2026-10-28.md)。
 
 ## 已安装完整 wheel：直接运行脚本
 
@@ -40,7 +42,22 @@ python3 -m pip install --force-reinstall --no-deps \
 | `flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)` | catlass Ascend C，wheel 内 AOT | FP16，`q[128,2,128]`、`k/v[256,2,128]` |
 | `torch.ops.flashinfer.rmsnorm(out, x, w, ...)` | CANN RMSNorm，经 torch.library 注册 | FP32，`x[4,128]`、`w[128]` |
 
-前两个公共函数直接接收和返回 `torch.Tensor`。直接使用 `torch.ops` 的示例采用当前已有注册的 RMSNorm；生产 MatmulBiasSiLU、FlashAttention 的调用入口是表中的公共函数。
+前两个公共函数直接接收和返回 `torch.Tensor`，保持原有默认调用路径。完整 wheel 提供 C++/OpCommand → ACLNN 适配库，显式启用后可使用 Torch 算子接口，原公共函数也会走同一适配库；每个生产算子在独立进程测试：
+
+```python
+import torch
+import torch_npu
+from flashinfer.aclnn import enable_aclnn
+
+enable_aclnn()
+q = torch.randn(128, 2, 128, device="npu", dtype=torch.float16)
+k = torch.randn(256, 2, 128, device="npu", dtype=torch.float16)
+v = torch.randn_like(k)
+out = torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)
+print(out.shape, out.dtype)
+```
+
+另一条入口是 `torch.ops.flashinfer.matmul_bias_silu(a, b, bias)`，输入使用表中的 BF16 形状。两者均有 `_out` 版本，参数 `out` 原地写入、返回 `None`。注册、FakeTensor、完整调用链和构建依赖见 [Torch/ACLNN 接入说明](docs/aclnn-torch-adapter.md)。
 
 ## 1. 设置构建环境并检查设备
 
@@ -286,4 +303,4 @@ python -B wheel_smoke.py rmsnorm
 | `GetWorkspaceSize returned 561002` | 检查 CANN 运行时变量及继承的 `ASCEND_CUSTOM_OPP_PATH`；日志中的具体原因需要进一步定位 |
 | `process-scoped` / package identity 冲突 | 按上面三条独立 Python 命令执行，每次测试一个生产包 |
 
-构建日志保存在 `$FI_WHEEL_RUN`，selftest 日志和示例脚本保存在 `$FI_RUN_DIR`。普通构建与 `dy_test` 的实测证据见 [默认 AOT wheel 验证报告](docs/reports/default-aot-wheel-2026-10-27.md)；迁移后的早期验证见 [目标机器回归报告](docs/reports/regression-target-2026-10-27.md)。
+构建日志保存在 `$FI_WHEEL_RUN`，selftest 日志和示例脚本保存在 `$FI_RUN_DIR`。最新 Torch/ACLNN、全量回归及 wheel 安装证据见 [接入验收记录](docs/reports/aclnn-integration-2026-10-28.md)。普通构建与 `dy_test` 的既有实测证据见 [默认 AOT wheel 验证报告](docs/reports/default-aot-wheel-2026-10-27.md)；迁移后的早期验证见 [目标机器回归报告](docs/reports/regression-target-2026-10-27.md)。

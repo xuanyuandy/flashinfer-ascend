@@ -17,5 +17,3 @@ extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
         }
     }
 }
-
-#include "matmul_probe.inc"

@@ -5,3 +5,5 @@ global-exclude *.o *.so *.so.* *.a *.run *.log
 prune 3rdparty
 prune packages
 prune flashinfer/data/op_packages
+prune flashinfer/data/aclnn
+prune tests/fixtures/legacy_ascendc

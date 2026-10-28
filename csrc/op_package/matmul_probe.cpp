@@ -14,17 +14,19 @@ bool IsProbeShape(const gert::StorageShape *shape) {
     return storage.GetDimNum() == 2 && storage.GetDim(0) == 16 && storage.GetDim(1) == 16
         && origin.GetDimNum() == 2 && origin.GetDim(0) == 16 && origin.GetDim(1) == 16;
 }
-ge::graphStatus Tile(gert::TilingContext *context) {
+}
+ge::graphStatus FiMatmulProbeTiling(gert::TilingContext *context) {
     if (!IsProbeShape(context->GetInputShape(0)) || !IsProbeShape(context->GetInputShape(1))
         || !IsProbeShape(context->GetOutputShape(0))) return ge::GRAPH_FAILED;
     auto *data = context->GetTilingData<FiMatmulProbeTilingData>();
     if (data == nullptr) return ge::GRAPH_FAILED;
-    data->size = 256;
+    *data = {2, 256};
     context->SetTilingKey(0);
     context->SetBlockDim(FI_BLOCK_DIM);
     context->GetWorkspaceSizes(1)[0] = 0;
     return ge::GRAPH_SUCCESS;
 }
+namespace {
 ge::graphStatus Infer(gert::InferShapeContext *context) {
     *context->GetOutputShape(0) = *context->GetInputShape(0);
     return ge::GRAPH_SUCCESS;
@@ -45,7 +47,7 @@ public:
         Output("c").ParamType(REQUIRED).DataType({ge::DT_FLOAT}).Format({ge::FORMAT_ND})
             .UnknownShapeFormat({ge::FORMAT_ND});
         SetInferShape(Infer).SetInferDataType(InferType);
-        AICore().SetTiling(Tile).AddConfig(FI_STRING(FI_COMPUTE_UNIT));
+        AICore().SetTiling(FiMatmulProbeTiling).AddConfig(FI_STRING(FI_COMPUTE_UNIT));
     }
 };
 FI_REGISTER(FI_PACKAGE_OP_TYPE);

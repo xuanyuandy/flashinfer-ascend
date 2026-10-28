@@ -33,8 +33,15 @@ def test_aot_wheel_modes_are_mutually_exclusive(wheel_setup, monkeypatch, first,
 @pytest.mark.parametrize("all_value", [None, "1"])
 def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, tmp_path, all_value):
     from flashinfer.aot import build
+    from flashinfer.aclnn import build as aclnn_build
 
     monkeypatch.chdir(ROOT)
+    def native_build(output_dir):
+        output_dir.mkdir(parents=True)
+        for name in ("libflashinfer_aclnn.so", "manifest.json", "build.log"):
+            (output_dir / name).write_text("fixture native adapter")
+
+    monkeypatch.setattr(aclnn_build, "build_adapter", native_build)
     if all_value is not None:
         monkeypatch.setenv("FLASHINFER_AOT_ALL", all_value)
     monkeypatch.setenv("FLASHINFER_CATLASS_ROOT", "/explicit-catlass")
@@ -61,6 +68,11 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     destination = tmp_path / "build/flashinfer/data/op_packages"
     assert {path.name for path in destination.iterdir()} == {"a" * 64, "b" * 64}
     assert len(command._aot_outputs) == 2
+    native = tmp_path / "build/flashinfer/data/aclnn"
+    assert {path.name for path in native.iterdir()} == {"libflashinfer_aclnn.so", "manifest.json"}
+    assert set(command._native_outputs) == {str(native / name) for name in
+                                           ("libflashinfer_aclnn.so", "manifest.json")}
+    assert (tmp_path / "aclnn-native-build.log").is_file()
     assert calls[0]["catlass_root"] == "/explicit-catlass"
     assert calls[0]["cache_dir"] == str(tmp_path / "cache")
     assert distribution.has_ext_modules()
@@ -75,6 +87,8 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     command.run()
     assert not destination.exists()
     assert command._aot_outputs == []
+    assert not native.exists()
+    assert command._native_outputs == []
     assert not distribution.has_ext_modules()
 
 

@@ -83,11 +83,20 @@ class BuildPy(build_py):
         config = os.environ.get("FLASHINFER_AOT_CONFIG")
         prebuilt = os.environ.get("FLASHINFER_AOT_PREBUILT")
         destination = Path(self.build_lib) / "flashinfer/data/op_packages"
+        native_destination = Path(self.build_lib) / "flashinfer/data/aclnn"
+        if native_destination.exists():
+            shutil.rmtree(native_destination)
         # Reusing a build directory must never contaminate a later pure wheel.
         if destination.exists():
             shutil.rmtree(destination)
         if mode in {"FLASHINFER_AOT_ALL", "FLASHINFER_AOT_CONFIG"}:
             from flashinfer.aot.build import build_production_packages, compile_and_package
+            from flashinfer.aclnn.build import build_adapter
+
+            build_adapter(native_destination)
+            native_log = native_destination / "build.log"
+            if native_log.is_file():
+                shutil.move(native_log, Path(self.build_lib).parent / "aclnn-native-build.log")
 
             targets = tuple(s.strip() for s in os.environ.get("FLASHINFER_AOT_SOCS", "").split(",") if s.strip())
             options = dict(output_dir=destination, targets=targets,
@@ -109,10 +118,13 @@ class BuildPy(build_py):
             for package in packages:
                 export_op_package(package, destination)
         self._aot_outputs = [str(p) for p in destination.rglob("*") if p.is_file()] if destination.exists() else []
+        self._native_outputs = ([str(p) for p in native_destination.iterdir()
+                                 if p.name in {"libflashinfer_aclnn.so", "manifest.json"}]
+                                if native_destination.exists() else [])
 
     def get_outputs(self, include_bytecode=1):
         return super().get_outputs(include_bytecode) + [
-            str(Path(self.build_lib) / "flashinfer/data/build" / p) for p in build_inputs()] + getattr(self, "_aot_outputs", [])
+            str(Path(self.build_lib) / "flashinfer/data/build" / p) for p in build_inputs()] + getattr(self, "_aot_outputs", []) + getattr(self, "_native_outputs", [])
 
 
 setup(cmdclass={"build_py": BuildPy, "bdist_wheel": AOTWheel}, distclass=AOTDistribution)

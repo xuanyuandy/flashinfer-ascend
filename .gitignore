@@ -28,3 +28,4 @@ CMakeCache.txt
 CMakeFiles/
 cmake-build-*/
 packages/
+flashinfer/data/aclnn/

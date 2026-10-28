@@ -160,6 +160,7 @@ flashinfer/
 │   ├── ascendc.py               # 生产 Ascend C 登记、冻结 spec 与 runner 绑定
 │   ├── attention/ / quantization/ / triton/
 │   ├── cann/                   # CANN aclnn backend 适配
+│   ├── aclnn/                  # 可选 Torch schema、原生适配库构建与延迟加载
 │   ├── runtime/                # dispatcher / registry / capability / signature
 │   ├── jit/
 │   │   ├── artifacts.py / ascendc.py / backends.py / build.py / cache.py / cache_key.py
@@ -169,7 +170,8 @@ flashinfer/
 │   ├── aot/ / data/             # 构建导出；登记表、冻结 spec、随包产物布局
 │   └── tuning/ / utils/
 ├── csrc/
-│   ├── cmake/ / include/flashinfer_ascend/ / launch/
+│   ├── cmake/ / include/flashinfer_ascend/
+│   ├── aclnn_torch_adapter/     # Torch C++ / OpCommand → ACLNN host 桥
 │   ├── kernels/README.md        # 设备源码与配方位置说明
 │   ├── kernels/ascendc/         # 统一的探针与生产设备源码
 │   │   ├── matmul_probe/
@@ -205,7 +207,7 @@ runtime 层的 descriptor/registry 间接关联（API 不直接 import kernel）
 
 **设备源码统一位于 `csrc/kernels/ascendc/`**，位置参考 vLLM-Ascend 的 `csrc/kernels/`；
 flashinfer-ori: `csrc/`、`include/flashinfer/` 也将编译输入集中在源码目录。
-受限档探针迁移时保持源码字节与 ABI 不变，recipe 的 locator 更新后使用新构建身份；既有生产冻结 spec 不变。
+目录归一化阶段保留了探针字节与 ABI；当前对外配方已统一为 v2。原裸指针探针及冻结源码闭包移入 `tests/fixtures/legacy_ascendc/`，不再作为公开构建输入；公共 CMake/loader 改动按身份闭包重新冻结生产 spec。
 完整档交付闭环见 [完整档契约说明](reports/ascendc-contract-v2.md) 与 [接入清单](reports/custom-operator-onboarding.md)。
 
 ### 2.4 与上游的分层对比
@@ -218,7 +220,50 @@ typed export** 四层对齐职责；这是准备与执行的依赖关系，不�
 | wrapper：绑定 workspace，plan 保存 native 调度信息，run 复用 module | 公共 facade + Attention 资源契约，plan 保存选型与资源身份；CANN batch 仍逐请求 gather/FIA/concat，尚非同等 fused scheduler |
 | generator：dtype/head_dim/variant 物化模板源码或编译输入 | Attention generator 目前主要形成特化身份，未接通公共 batch 编译；生产 Ascend C 由 recipe + 冻结 spec 提供可编译输入 |
 | JIT/AOT：查预编译 module，缺失时按策略构建并加载 | 运行期发现 → 身份匹配 → 延迟绑定调用适配器；两条生产登记接入同一 store/loader，不能外推为全部 op 自动编译 |
-| typed export：typed native function 编入库，经 FFI 暴露 plan/run 等属性 | 动态库加载后经适配器调用，沿用 ACLNN 两段式协议；完整档的 Tensor 参数顺序来自 recipe，尚无通用 typed export 生成器 |
+| typed export：typed native function 编入库，经 FFI 暴露 plan/run 等属性 | 动态库加载后经适配器调用，沿用 ACLNN 两段式协议；完整档的 Tensor 参数顺序来自 recipe；完整 wheel 可显式启用 Torch C++/OpCommand 适配，尚无通用 typed export 生成器 |
+
+下图把**准备模块**和**调用已加载模块**分开；typed export 同时涉及编译时注册和运行时入口，不是排在编译后再执行的一次代码生成。
+
+```mermaid
+flowchart LR
+  subgraph CUDA["FlashInfer 上游：CUDA / FA2 代表链"]
+    direction TB
+    CW["wrapper<br/>plan 规划资源与调度信息；run 组织调用"]
+    CG["generator<br/>dtype / head_dim / variant → 模板实例化源码<br/>连同 typed export 注册源码形成 JitSpec"]
+    CJ["JIT / AOT<br/>查找可用模块；缺失时按策略编译链接<br/>加载包含导出函数的 .so"]
+    CE["typed export / FFI 边界<br/>module.plan / module.run 等具名 host 函数<br/>TensorView、标量等按函数签名传入"]
+    CK["C++ launcher → CUDA stream → device kernel"]
+    CW -. "准备 / 获取模块" .-> CG
+    CG --> CJ --> CE
+    CW -->|"调用已缓存的 plan / run"| CE
+    CE --> CK
+  end
+  subgraph ASCEND["本仓：生产 Ascend C / ACLNN 路径"]
+    direction TB
+    AO["可选 torch.ops.flashinfer.*<br/>PrivateUse1 schema / FakeTensor 元数据实现"]
+    AW["wrapper / facade<br/>校验支持域、选择 kernel、组织 Tensor / out<br/>有 plan 的接口另持有资源与执行契约"]
+    AG["recipe + 冻结 spec<br/>源码闭包、宏、目标、Tensor 顺序与 shape 约束<br/>当前生产模板参数主要在源码 / 宏中确定"]
+    AJ["AOT 发现 / JIT store<br/>按身份与完整性匹配；仅缺失才受控构建<br/>加载 host 库和设备二进制组成的 op-package"]
+    AE["当前调用边界<br/>已验证 package_tensor_runner → 可选 Torch C++ / OpCommand<br/>Tensor → aclTensor；绑定两段式 ACLNN API"]
+    AT["GetWorkspaceSize<br/>host 按 shape 计算 tiling / workspace<br/>创建 executor；adapter 准备实际 workspace"]
+    AK["aclnnOp + executor / workspace / stream<br/>CANN 提交 → Ascend C device kernel"]
+    AO --> AW
+    AW -. "准备 / 解析编译单元" .-> AG
+    AG --> AJ --> AE
+    AW -->|"调用已绑定的 runner"| AE
+    AE --> AT --> AK
+  end
+```
+
+- **wrapper** 不只记录内存地址，还承担输入/能力校验、后端与 kernel 选择，以及适用接口的 plan 资源身份和执行约束。Tensor 内容不应为了选型被隐式读回 host。生产 single-prefill 函数也不要求用户先手动 plan。
+- **generator** 的理解基本正确：把 dtype、head dimension、variant、模板常量等变成具体编译输入；不是每个运行期 shape 都要生成一份新 kernel。上游有真实模板物化；本仓生产 Ascend C 主要由已有源码、宏和 recipe 绑定编译单元，Attention 通用 generator 仍以特化身份契约为主。
+- **JIT/AOT** 除了命中缓存，还负责编译、身份/完整性校验和加载。AOT 是提前构建再交付，JIT 是策略允许的缺失补建；本仓损坏产物明确拒绝，不把它当成普通 miss。
+- **typed export** 是可调用的**host 函数导出边界**。例如 flashinfer-ori: `csrc/single_prefill_jit_binding.cu` 的 `TVM_FFI_DLL_EXPORT_TYPED_FUNC(run, single_prefill_with_kv_cache)` 把 C++ 函数按类型签名注册成模块的 `run`。调用该函数后，它才组织并提交 device kernel；导出也可以是 `plan` 等准备函数，因此不能等同于 kernel 本体或一次 launch。
+
+本仓对应的是 CANN 生成的 ACLNN host API 加 Tensor 适配层；完整 wheel 随包提供 Torch C++/OpCommand 适配库，显式启用后使用，原 Python 默认路径保留。尚没有上游那样通用的 typed export 生成器。图中的 ACLNN 第一段执行 host tiling，第二段提交设备工作。CANN 内置算子和 Triton 各有自己的调用/编译路径，不必经过这个 Ascend C 自定义包流程；当前 CANN batch 的 gather/FIA/concat 也不因此变成上游式 fused batch scheduler。
+
+
+Torch 入口由 `flashinfer.aclnn.enable_aclnn()` 显式注册；原 Python API 保留默认路径，显式启用后也走该适配库，复用相同 dispatcher、AOT/JIT 和契约门禁。适配库在真实 NPU 调用时加载，保留同步 eager 生命周期；FakeTensor 仅做形状推导，不提升图能力。构建、调用链和兼容边界见 [Torch/ACLNN 接入](aclnn-torch-adapter.md)。
 
 差异需要分清来源，不能把缺口都归因于硬件：
 
@@ -411,38 +456,52 @@ bucket 声明得到 bucket 空间 → 每个 bucket 构造代表输入 → 加�
 5. **可见性**：用户 kernel 在 `explain_dispatch` / trace 中的呈现与内置 kernel 完全
    一致（候选、过滤原因、选择依据），不做特殊隐藏。
 
-### 3.5 Ascend C 接入契约：受限档与完整档
+### 3.5 Ascend C 统一接入契约与旧产物兼容
 
 自研算子的接入主体是一份声明式 recipe：它描述**怎么编译、需要什么资源、怎么被调用**。
 注册 descriptor 决定算子能否进入候选池；recipe 经 [`recipe.py`](../flashinfer/jit/recipe.py)
 校验后提供实际编译与调用所需的契约。两者须一致，登记成功本身不等于已经可执行。
 
-这是一套契约的两档 profile，代码用 `schema_version=1/2` 区分受限档与完整档。
-**受限档是最小可用面**：定形 tiling、单一核类型、零 workspace、固定三个 Tensor。
+**公开接入只提供完整 v2 契约**：新建、配方读取、配置选择、构建解析和新发布均拒绝 v1。
+早期 v1 受限协议仅作为内部兼容：定形 tiling、单一核类型、零 workspace、固定三个 Tensor。
 最初将接入范围收到最窄，是为了减少变量，以最小代价打通“源码 → 编译 → 产物 → 加载 → 调用”。
-**完整档面向真实算子**：attention、融合 GEMM 需要 host 动态 tiling、混合核、动态
+**统一契约面向真实算子**：attention、融合 GEMM 需要 host 动态 tiling、混合核、动态
 workspace 或变参 Tensor，无法靠给受限档补一个 kernel 文件完成接入。
 
-| 受限档：最小接入面 | 完整档：真实算子所需能力与校验 |
+这里的版本是**本仓 BuildRecipe 的兼容演进**，不是 Ascend C 的两类算子，也不是 flashinfer-ori 要求作者选择的两套接入方式。上游也有个别 JIT 缓存元数据的 schema 版本，但没有与本仓这两个 recipe profile 对应的选型接口。当前所有公开配方（包括五条 ACLNN 探针）均为 v2；内部 artifact reader 保留 v1 原始序列化与拒绝规则，仅承接旧身份兼容。
+
+同一文件中多个版本号各有所属对象，不能用数字是否相同判断能力：
+
+| 所属对象 | 当前示例 | 表达什么 |
+| --- | --- | --- |
+| recipe 的 `schema_version` | 公开生产/探针均为 2；内部旧产物仍可为 1 | 对外统一声明，旧格式只在兼容边界解析 |
+| recipe 的 `tiling_schema_version` | 生产为 2 | host/device 共享 tiling 数据布局版本；动态行为由 `host_dynamic` 和真实 callback 落实 |
+| 冻结声明外层、`JitSpec` 的 `schema_version` | 仍为 1 | 各自的元数据格式，与 recipe 能力档位分开 |
+| `ascendc.op_package.v1` | 生产也使用 | 包产物适配格式，不表示生产算子退回受限 recipe |
+
+**shape 驱动的动态 tiling 已经支持，也是新生产算子的接入基线。** FA 的 `FiFlashAttentionTiling` 按 Q/K/V 的实际 S、T、heads 计算 tiling、block 数和 workspace，同一二进制覆盖声明域内多组 shape；MatmulBiasSiLU 也使用 host callback。FA 当前仅 dense batch=1、FP16、D=128、相同 heads 1..8、S/T 为 128..512 的 128 倍数，不读取 length Tensor 的内容。这里尚未表达/验证的是**数据内容驱动**的 tiling，以及任意变长、任意 scalar/attribute ABI，不应把这个边界写成“框架不支持动态 tiling”。
+
+
+| 内部旧协议的限制 | 公开 v2 的显式能力与校验 |
 | --- | --- |
 | 固定 tiling | op-package 路径声明 `host_dynamic`、tiling schema ≥ 2 与 `tiling_host_entry`；host callback 仍须真实实现 |
 | AIC-only | 可声明 `aic_aiv`，但**强制 `sync_policy == "cross_core_flags"`**；混合核同步不能省略 |
 | 零 workspace | 动态 workspace **必须**有 `workspace_host_entry`，固定 workspace **不许**有；实际大小仍取 GetWorkspaceSize 返回值 |
 | 固定三 Tensor | `tensor_parameters` 有序、名称唯一、input 在 output 前；shape 符号须被 `shape_constraints` **恰好绑定一次** |
 
-受限档的固定 tiling 指 op-package 路径；`host_shared` 路径不声明 tiling。
-**保留受限档是为兼容既有产物**：契约档位是 recipe 指纹的一部分，并绑定编译产物身份。
+旧协议的固定 tiling 指 op-package 路径；旧 `host_shared` 不声明 tiling，已移入底层测试设施。
+**内部 reader 保留原协议是为兼容既有产物**：格式是 recipe 指纹的一部分，并绑定编译产物身份。
 已发布产物必须按构建时的档位重新解析和校验；删掉受限档支持，会让这些产物无法按原身份
-校验命中。因此受限档作为**冻结的兼容档**保留，不继续扩展其能力；完整档独立校验，
+校验命中。因此旧协议作为**内部冻结兼容格式**保留，不再对外新建或发布；统一 v2 独立校验，
 受限档不得携带完整档新增字段，旧序列化身份保持不变。
 
-**最终目标是收敛到单一完整档**：新增算子统一采用完整档，受限档只承接存量兼容，
-待存量产物退场后移除。这是演进目标；当前 schema 校验仍接受合法受限档 recipe，
-尚无禁止新算子使用该档的代码门禁。单份 recipe 的 `version` 是配方修订号，
+**对外已收敛到单一完整档**：`BuildRecipe`、`load_build_recipes`、`resolve_build_recipe`、配置选择及 `export_op_package` 均设 v2 门禁。旧 v1 只由内部 reader 和测试设施使用，存量退场后才可移除。单份 recipe 的 `version` 是配方修订号，
 `ascendc.op_package.v1` 是包容器格式标识，均不表示另一套接入契约。
 
+设计依据见 [接入契约归一评审](reports/recipe-unification-review-2026-10-28.md)，当前实现与回归证据见 [v2 迁移验收](reports/v2-migration-2026-10-28.md)。五条 ACLNN 探针保持 FP32 固定 16×16、AIC-only、零 workspace，以命名 host callback 和显式三 Tensor 表达；不扩大支持域。
+
 完整档使用**变参 Tensor ABI**，参数名和顺序取自 recipe；受限档默认仍为 `(a, b, c)`，
-`matmul_probe` 路径不受影响。差别只在 ACLNN 第一段的 Tensor 参数，workspace/tiling
+当前 `matmul_probe` 也使用该统一路径；旧协议仅留在内部兼容。差别只在 ACLNN 第一段的 Tensor 参数，workspace/tiling
 不是额外用户 Tensor；第二段 executor/workspace/stream launch 沿用原协议。
 
 native 与 catlass **共用编译器、store、loader**；catlass 只多一条固定 Git revision
@@ -711,8 +770,9 @@ wheel 负责把已构建的算子包交付到安装环境。当前实现是**主
 `build_lib/flashinfer/data/op_packages/<spec-sha>/`，安装后位于
 `flashinfer/data/op_packages/<spec-sha>/`。`<spec-sha>` 是完整 `JitSpec` 指纹，
 导出复用 [`export_op_package()`](../flashinfer/aot/build.py) 的校验和复制逻辑。
-可通过 `FLASHINFER_AOT_CONFIG` 编译，或通过 `FLASHINFER_AOT_PREBUILT` 收入预编译包，
-两者互斥；未配置时构建纯框架 wheel，并清除旧构建目录的残留产物。
+普通构建默认编译全部已登记的生产 AOT；也可显式选择 `FLASHINFER_AOT_ALL=1`、
+`FLASHINFER_AOT_CONFIG` 或 `FLASHINFER_AOT_PREBUILT`，这三种显式模式互斥。
+仅源码 wheel 由 `FLASHINFER_AOT_ALL=0` 显式选择；构建会清理旧布局和旧产物残留。
 
 安装后的一个 op-package 示意如下，vendor 子树还可包含头文件、协议库等附属文件：
 
@@ -737,18 +797,40 @@ flashinfer/data/op_packages/<spec-sha>/
 
 `FLASHINFER_AOT_SOCS` 指定的多个 SoC 目标由构建循环逐一导出到同一目录，
 各 spec 子目录**累加在同一个 wheel** 中；目标 SoC、dtype、shape 特化越多，包越大。
-当前通用 CONFIG 构建仍固定为 `matmul_probe`；两条生产算子由各自 build tools 生成
-release 后可走 PREBUILT，不能据此宣称通用构建入口已覆盖全部生产 family。
+CONFIG 按 `recipe_id` 选择配方，省略时保留探针默认值，也可选择两条生产配方或 `all`。
+普通全量生产构建覆盖已冻结的两条 Ascend950 声明；通用目标循环不等于两条生产算子已获多 SoC 验证。
 
 **wheel 里有产物 ≠ 公共 API 自动用得上**：安装后由 §5.5 的运行期发现接手，
 还须命中当前硬件/spec、通过加载校验，并有 descriptor 与 runner 接线。
-这条公共调用链近期才在两条生产登记上接通；现有 pure wheel 检查只证明框架源码与
-冻结登记被收入包，未携带 AOT 二进制，也未完成安装后端到端生产矩阵验收，见
-[生产算子接入交付](reports/custom-operator-onboarding.md)。
+两条生产登记已完成携带 AOT 的 wheel 隔离安装与禁编译数值自检，见
+[目录与分发包验证](reports/kernel-layout-2026-10-27.md)；这仍只是已测 SoC 与样本，
+不能替代完整发布目标矩阵或下游模型验收。
 
 **最终形态**是按目标矩阵决定是否拆分发包：先明确承诺的 SoC 与特化组合、体积预算
 及 runtime-only 安装要求，再决定主 wheel 合包或独立产物包；多 SoC 累加机制不等于
 所有组合已编译、验证或发布。
+
+### 5.7 当前编译配置与新增算子的落点
+
+编译配置按三个来源核对：**recipe 声明 → 公共驱动注入 → CANN SDK 展开**。当前生产配置如下；完整选项、实测 argv 及 vLLM-Ascend 接入对照见 [Ascend C 编译选项](ascendc-compile-options.md)。
+
+| 配置 | MatmulBiasSiLU | FlashAttention |
+| --- | --- | --- |
+| 实现 / dtype | native / BF16 | CATLASS / FP16 |
+| recipe / tiling schema | 2 / 2 | 2 / 2 |
+| 目标 / recipe 架构 | `Ascend950` / `dav-3510` | 同左 |
+| recipe 设备选项 | `-O2` | `-O2` |
+| 额外宏 / 依赖 | 无 | `CATLASS_ARCH=3510`，固定 CATLASS revision 与头树摘要 |
+| task / 同步契约 | `aic_aiv` / `cross_core_flags` | 同左 |
+| tiling / workspace | `host_dynamic` / `dynamic` | 同左 |
+| spec 额外选项 / recipe 链接选项 | 均为空 | 均为空 |
+
+驱动统一配置 C++17、Release、编译器、compute unit、二进制包与失败策略，并注入 `FI_DEVICE_ENTRY`、`FI_HOST_ENTRY`、`FI_BLOCK_DIM` 及 package 相关宏。设备选项交给 `npu_op_kernel_options`；host OpDef/tiling 与生成的 ACLNN API 使用独立的 host target，不能假定 recipe 的设备 `-O2` 自动控制所有 host 编译。
+
+对当前 CANN 9.2.0 的冷构建已记录实际 argv：主设备编译先有 SDK 的 `-O3`，后有 recipe 的 `-O2`；cube/vec 分别使用 `dav-c310-cube/vec`，模板提取辅助步骤另有 `-O3`。当前 argv 带 `--cce-auto-sync`；`sync_policy=cross_core_flags` 不会自动将其改成 `off`，混合核同步仍须由源码真实实现。以上是当前工具链观察值，不外推为所有 CANN 版本的固定参数。
+
+vLLM-Ascend 在 `csrc/build_aclnn.sh` 按 SoC 选择算子，再在算子 CMake 的 `add_ops_compile_options` 中配置选项，补齐 host/device、Torch binding 与 Meta。本仓对应为设备/host 源码、完整 recipe、冻结 descriptor/spec、公共 runner/API 与数值验收；仅新增 `.cpp` 或注册 Meta 不构成完整接入。竞品某个算子的同步、LLVM 特例必须按算子/目标分析，不能复制为公共默认值。
+
 
 ## 6. 图模式支持
 
@@ -1026,7 +1108,7 @@ wrapper.run(...)    # O(1)：校验 + 已缓存 kernel handle 的异步 launch
 
 ### 7.5 已支持能力域内的接口差异
 
-下表对照本地上游源码 `/mnt/fi/flashinfer-ori`，列出本轮逐项核实的接口缺口，
+下表对照本地上游源码（flashinfer-ori: `flashinfer/`），列出本轮逐项核实的接口缺口，
 不是全部上游 symbol 或参数组合的穷举。函数名按所在能力域模块列示，attention 标明
 `decode` / `prefill` 路径；“本仓已有”的 op 数沿用接口面清单口径。
 
@@ -1677,9 +1759,10 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 | --- | --- | --- |
 | JIT | 完整 spec 身份、真实编译/加载、per-spec flock、不可变 generation、原子发布与失败诊断已接通。两条生产算子在限定 envelope 内有 missing → 冷 JIT → 公共 API 数值执行证据，产物复用统一 store/loader。缓存淘汰与旧 generation 自动清理、统一治理仍未完成。 | [JIT 并发与发布验收](reports/T18B-report.md)、[JIT 测试](../tests/test_jit_build.py)、[生产算子接入交付](reports/custom-operator-onboarding.md)、§4 |
 | AOT | 已验证产物可导出为 op-package，运行期发现、硬件/spec 匹配、延迟 runner 绑定与公共调用已接通，两条生产登记复用该链路。corrupt、load error 与 identity 冲突拒绝且不回落，但全部 incompatible 仍可能汇总为 missing 后在 enabled 下转 JIT。CANN runtime 版本校验、多 package identity 与安装真实 wheel 后的生产矩阵仍有缺口。 | [发现说明](aot-runtime-discovery.md)、[AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md)、[生产登记](../flashinfer/ascendc.py)、§5.5 |
-| wheel 打包发布 | `setup.py` 已支持构建期编译或复制预编译产物，按 spec 指纹放入主 wheel 的 `flashinfer/data/op_packages/`，多个 SoC 的产物累加交付。已有 pure wheel 内容检查，但该次未携带 AOT 二进制，不能替代安装后的公共 API 生产验收。生产目标矩阵的发布验收与按矩阵决定是否拆分发包仍待补齐，当前没有独立 provider / cubin 分包。 | [构建入口](../setup.py)、[导出实现](../flashinfer/aot/build.py)、[wheel 验收边界](reports/custom-operator-onboarding.md)、§5.6 |
+| wheel 打包发布 | 普通 `setup.py` 构建默认编译全部已登记生产 AOT，也可显式选择 CONFIG/PREBUILT 或仅源码模式；按 spec 指纹放入主 wheel 的 `flashinfer/data/op_packages/`。两条 Ascend950 生产算子已有携带 AOT 的 wheel 隔离安装、禁编译数值自检与源码布局验收；这不替代完整目标矩阵。是否拆分发包仍待按矩阵决定，当前没有独立 provider / cubin 分包。 | [构建入口](../setup.py)、[导出实现](../flashinfer/aot/build.py)、[wheel 与源码布局验收](reports/kernel-layout-2026-10-27.md)、§5.6 |
 | 入图 | 固定资源、最大 workspace、plan 冻结与重放前参数更新契约已实现，公共 single-decode wrapper 在单一配置上完成调用方捕获与 8 次更新重放，输出/LSE 误差均为 0。当前仅 **1/81** descriptor 可入图，`CAPTURE_SAFE` 为 **0**。两条生产自研、batch 入图及下游完整模型接入仍未完成。 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py)、§6 |
-| 自定义算子接入 | recipe 受限档与完整档独立校验，变参 Tensor ABI、动态 workspace、shape 驱动 host tiling 与混合核同步契约、native/catlass 范本已有实现。两条生产 eager 路径与 33 项清单给出源码、冻结 spec、编译/导出、runner 和公共调用的有限闭环。任意 scalar/attribute ABI、数据内容驱动 tiling、异步生命周期及入图不能由此外推。 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md)、[完整档契约说明](reports/ascendc-contract-v2.md)、§3.5 |
+| 自定义算子接入 | 公开 recipe 统一为 v2，旧格式仅在内部兼容边界校验，变参 Tensor ABI、动态 workspace、shape 驱动 host tiling 与混合核同步契约、native/catlass 范本已有实现。两条生产 eager 路径与 33 项清单给出源码、冻结 spec、编译/导出、runner 和公共调用的有限闭环。任意 scalar/attribute ABI、数据内容驱动 tiling、异步生命周期及入图不能由此外推。 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md)、[完整档契约说明](reports/ascendc-contract-v2.md)、§3.5 |
+| Torch / ACLNN | 完整 wheel 随包提供 C++/OpCommand host 适配库；显式启用后，两条生产算子经原 dispatcher、AOT/JIT 和 Tensor 契约调用，提供 Torch functional/out 与 FakeTensor。保留默认 Python 路径及观测边界，仍为同步 eager；任意参数 ABI、异步返回和生产入图未验证。 | [接入说明](aclnn-torch-adapter.md)、[回归与装后验收](reports/aclnn-integration-2026-10-28.md) |
 
 ### A.2 其它组件
 

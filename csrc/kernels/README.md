@@ -7,7 +7,8 @@ registered before its artifact and capability constraints are real and tested.
 
 All Ascend C device sources live under `csrc/kernels/ascendc/`, grouped by operator:
 
-- `matmul_probe/`: bounded v1 native and CATLASS build/ABI probes.
+- `matmul_probe/`: bounded v2 native and CATLASS ACLNN probes. Frozen v1/raw
+  launch fixtures live in `tests/fixtures/legacy_ascendc/`, outside build inputs.
 - `matmul_bias_silu/`: production native implementation.
 - `flash_attention/`: production CATLASS implementation.
 

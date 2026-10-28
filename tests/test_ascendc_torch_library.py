@@ -13,16 +13,23 @@ from types import SimpleNamespace
 import pytest
 
 from flashinfer._meta.ascendc import matmul_probe_meta
-from flashinfer.jit import JitLoadedModule, JitModuleLoadReceipt, JitResolvedSymbol, JitSpec, load_build_recipes
+from flashinfer.jit import JitLoadedModule, JitModuleLoadReceipt, JitResolvedSymbol, JitSpec
 from flashinfer.jit.core import _canonical_hash
 from flashinfer.jit.op_package import OpPackageModule
-from flashinfer.jit.torch_library import AscendCOp, _MatmulProbeRunner, matmul_probe_op
+from flashinfer.jit.torch_library import AscendCOp
+from flashinfer.jit._legacy_torch_library import _MatmulProbeRunner, matmul_probe_op
 from flashinfer.runtime import SchemaError
 from flashinfer.utils import enable_torch_library
+from tests.legacy_ascendc import ROOT, BuildRecipe, AscendCBuildConfig, load_build_recipes, export_op_package, resolve_build_recipe
 
 
-ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA = "(Tensor a, Tensor b, Tensor(a!) out) -> ()"
+
+
+@pytest.fixture(autouse=True)
+def current_package_in_legacy_children(monkeypatch):
+    monkeypatch.setenv("PYTHONPATH", str(REPO_ROOT))
 
 
 def forbidden(*args, **kwargs):
@@ -267,7 +274,7 @@ def test_module_recipe_and_abi_mismatches_are_rejected(recipes, mismatch):
 @pytest.mark.parametrize("failure", [None, "create", "workspace", "launch"])
 def test_aclnn_bridge_releases_descriptors_after_sync_and_propagates_failures(monkeypatch, failure):
     pytest.importorskip("torch")
-    from flashinfer.jit import torch_library
+    from flashinfer.jit import _legacy_torch_library as torch_library
 
     calls = []
     def create(*args):
@@ -329,7 +336,7 @@ def test_real_native_artifact_compile_fake_memory_namespace_and_positive_control
         script += ["--config", "examples/ascendc_native.json", "--cache-dir", str(tmp_path / "cache"),
                    "--catlass-root", str(tmp_path / "absent-catlass")]
     else:
-        build = subprocess.run([sys.executable, "-m", "flashinfer.aot", "--config",
+        build = subprocess.run([sys.executable, "-m", "tests.legacy_ascendc", "--config",
             "examples/ascendc_aot_native.json", "--soc", "ascend950", "--cache-dir", str(tmp_path / "cache"),
             "--output-dir", str(tmp_path / "release")], cwd=ROOT, capture_output=True, text=True, timeout=180)
         assert build.returncode == 0, build.stdout + build.stderr

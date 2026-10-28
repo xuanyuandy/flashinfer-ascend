@@ -98,7 +98,7 @@ class ShapeConstraint:
 
 
 @dataclass(frozen=True)
-class BuildRecipe:
+class _Recipe:
     recipe_id: str
     version: int
     kernel_id: str
@@ -323,7 +323,32 @@ class BuildRecipe:
 
 
 @dataclass(frozen=True)
-class AscendCBuildConfig:
+class BuildRecipe(_Recipe):
+    """Public Ascend C contract: explicit Tensor ABI and host tiling only.
+
+    Legacy records are decoded only by the internal artifact compatibility
+    reader. New declarations must never silently produce the old probe ABI.
+    """
+
+    output_kind: str = "op_package"
+    output_adapter: str = "ascendc.op_package.v1"
+    schema_version: int = 2
+
+    def __post_init__(self):
+        if type(self.schema_version) is not int or self.schema_version != 2:
+            raise SchemaError("public BuildRecipe requires schema_version=2; legacy v1 is read-only compatibility")
+        super().__post_init__()
+
+
+def _recipe_from_artifact(value):
+    """Decode an existing identity without upgrading its serialized contract."""
+    if value.get("schema_version") == 1:
+        return _Recipe.from_dict(value)
+    return BuildRecipe.from_dict(value)
+
+
+@dataclass(frozen=True)
+class _BuildConfig:
     """Select an existing variant before resolving dependencies or declaring a unit."""
 
     implementation: str = "native"
@@ -371,6 +396,24 @@ def load_build_recipes(path):
     return tuple(BuildRecipe.from_dict(r) for r in json.loads(Path(path).read_text(encoding="utf-8")))
 
 
+@dataclass(frozen=True)
+class AscendCBuildConfig(_BuildConfig):
+    """Select a v2 ACLNN recipe; raw host launch is an internal test facility."""
+
+    output_kind: str = "op_package"
+
+    def __post_init__(self):
+        super().__post_init__()
+        if self.output_kind != "op_package":
+            raise SchemaError("public Ascend C configuration requires v2 op_package; host_shared is internal legacy")
+
+    def select(self, recipes, recipe_id):
+        recipe = super().select(recipes, recipe_id)
+        if not isinstance(recipe, BuildRecipe) or recipe.schema_version != 2:
+            raise SchemaError("public Ascend C configuration cannot select a legacy v1 recipe")
+        return recipe
+
+
 def _source_bytes(root, ref):
     path = (root / ref.locator).resolve(strict=True)
     if not path.is_relative_to(root):
@@ -413,14 +456,14 @@ class ResolvedDependency:
 
 @dataclass(frozen=True)
 class ResolvedBuildRecipe:
-    recipe: BuildRecipe
+    recipe: _Recipe
     source_root: Path
     dependencies: Tuple[ResolvedDependency, ...]
     toolchain_fingerprint: str
     build_files: Tuple[Tuple[str, str], ...]
 
     def __post_init__(self):
-        if not isinstance(self.recipe, BuildRecipe):
+        if not isinstance(self.recipe, _Recipe):
             raise SchemaError("resolved recipe requires BuildRecipe")
         object.__setattr__(self, "source_root", Path(self.source_root))
         dependencies = tuple(self.dependencies)
@@ -450,7 +493,7 @@ def _build_inputs(recipe):
             "csrc/op_package/host/CMakeLists.txt", "csrc/op_package/kernel/CMakeLists.txt")
 
 
-def resolve_build_recipe(recipe: BuildRecipe, *, source_root: Path,
+def _resolve_build_recipe(recipe: _Recipe, *, source_root: Path,
                          toolchain_fingerprint: str, dependency_roots: Optional[Mapping[str, Path]] = None):
     """Read selected inputs, verify pinned commits and hash actual header content.
 
@@ -477,6 +520,15 @@ def resolve_build_recipe(recipe: BuildRecipe, *, source_root: Path,
         dependencies.append(ResolvedDependency(declaration, location, digest))
     build_files = tuple((p, hashlib.sha256((root / p).read_bytes()).hexdigest()) for p in _build_inputs(recipe))
     return ResolvedBuildRecipe(recipe, root, tuple(dependencies), toolchain_fingerprint, build_files)
+
+
+def resolve_build_recipe(recipe: BuildRecipe, *, source_root: Path,
+                         toolchain_fingerprint: str, dependency_roots: Optional[Mapping[str, Path]] = None):
+    """Resolve only a public v2 contract; old artifacts are read-only."""
+    if not isinstance(recipe, BuildRecipe) or recipe.schema_version != 2:
+        raise SchemaError("resolve_build_recipe requires a public v2 recipe; legacy artifacts are read-only")
+    return _resolve_build_recipe(recipe, source_root=source_root,
+        toolchain_fingerprint=toolchain_fingerprint, dependency_roots=dependency_roots)
 
 
 __all__ = ["BuildRecipe", "BuildDependency", "AscendCBuildConfig", "ResolvedBuildRecipe",

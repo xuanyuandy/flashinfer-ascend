@@ -36,5 +36,3 @@ extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
     Kernel kernel;
     kernel(params);
 }
-
-#include "matmul_probe.inc"

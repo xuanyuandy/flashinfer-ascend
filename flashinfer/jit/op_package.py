@@ -21,7 +21,7 @@ from flashinfer.runtime import ArtifactFormat, SchemaError
 
 from ._elf import elf_symbols
 from .core import JitSpec, _canonical_hash
-from .recipe import BuildRecipe, _path
+from .recipe import _Recipe, _recipe_from_artifact, _path
 
 
 OP_PACKAGE_ADAPTER_HASH = _canonical_hash("ascendc.op_package.v1")
@@ -88,7 +88,7 @@ def verify_op_package(directory, spec):
     if set(data) != {"schema_version", "output_adapter", "spec_fingerprint", "recipe",
                      "vendor_path", "api_library", "compute_unit", "run_file"}:
         raise SchemaError("invalid op-package manifest fields")
-    recipe = BuildRecipe.from_dict(data["recipe"])
+    recipe = _recipe_from_artifact(data["recipe"])
     vendor = "packages/vendors/" + str(recipe.package_vendor)
     compute = package_target(recipe.target_soc)[0]
     if (data["schema_version"] != 1 or data["output_adapter"] != "ascendc.op_package.v1"
@@ -182,7 +182,7 @@ class OpPackageModule:
     not claim execution or numerical correctness.
     """
 
-    recipe: BuildRecipe
+    recipe: _Recipe
     vendor_path: Path
     api: object
     # Retain the directory descriptor backing CANN's dot-free /proc alias for

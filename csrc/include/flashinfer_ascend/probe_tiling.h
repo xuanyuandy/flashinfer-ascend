@@ -1,8 +1,9 @@
 #pragma once
 #include <cstdint>
 
-// Consumed only by the op-package adapter; the direct launcher passes no tiling.
+// Public v2 probe tiling. The legacy four-byte layout is a test fixture only.
 struct FiMatmulProbeTilingData {
+    uint32_t version;
     uint32_t size;
 };
 
@@ -10,7 +11,7 @@ struct FiMatmulProbeTilingData {
 #define FI_PROBE_CHECK_TILING() \
     REGISTER_TILING_DEFAULT(FiMatmulProbeTilingData); \
     GET_TILING_DATA(fi_tiling, tiling); \
-    if (fi_tiling.size != 256) return
+    if (fi_tiling.version != 2 || fi_tiling.size != 256) return
 #else
 #define FI_PROBE_CHECK_TILING()
 #endif

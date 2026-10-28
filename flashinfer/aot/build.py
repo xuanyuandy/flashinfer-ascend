@@ -41,6 +41,11 @@ def _for_target(recipe, target):
 
 
 def export_op_package(directory, output_dir):
+    """Export only the public v2 operator contract into new distributions."""
+    return _export_op_package(directory, output_dir, allow_legacy=False)
+
+
+def _export_op_package(directory, output_dir, *, allow_legacy):
     """Copy the exact verified store generation into a read-only release layout.
 
     Release copies are distribution artifacts, never another build cache. Keep
@@ -52,7 +57,9 @@ def export_op_package(directory, output_dir):
     from flashinfer.jit import JitSpec
 
     spec = JitSpec.from_dict(data["spec"])
-    verify_op_package(directory, spec)
+    _, recipe = verify_op_package(directory, spec)
+    if recipe.schema_version != 2 and not allow_legacy:
+        raise SchemaError("new releases require a v2 recipe; legacy v1 artifacts are read-only compatibility")
     output_dir.mkdir(parents=True, exist_ok=True)
     target = output_dir / spec.fingerprint
     if target.exists():

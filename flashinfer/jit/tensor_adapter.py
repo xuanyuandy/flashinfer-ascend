@@ -100,6 +100,13 @@ class TorchOpPackageRunner:
             raise ValueError("Ascend C tensor adapter requires contiguous ND tensors")
         _reject_output_overlap(self.recipe.tensor_parameters, tensors)
 
+        # Explicit enable_aclnn() (or adapter path selection) uses Torch/OpCommand.
+        # Preserve the default Python path, including its workspace observation;
+        # a selected but invalid native bridge must never fall back.
+        from flashinfer.aclnn import _native
+        if _native.available():
+            return _native.execute(self.module, self.recipe, tensors)
+
         api = _acl_tensor_api()
         handles = []
         metadata = []

@@ -12,17 +12,17 @@ import subprocess
 import pytest
 
 from flashinfer.jit import (
-    AscendCBackend, AscendCBuildConfig, AscendCToolchain, BuildDependency, BuildRecipe,
+    AscendCBackend, AscendCToolchain, BuildDependency,
     DiskJitBuildStore, JitCompilationError, JitSpecRegistry, declare_kernel,
-    load_build_recipes, resolve_build_recipe,
+
 )
 from flashinfer.jit.recipe import CATLASS_REVISION
 from flashinfer.runtime import (
     Backend, CompileMode, KernelDescriptor, KernelLaunchABI, KernelRegistry, SchemaError,
 )
+from tests.legacy_ascendc import ROOT, BuildRecipe, AscendCBuildConfig, load_build_recipes, export_op_package, resolve_build_recipe
 
 
-ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture

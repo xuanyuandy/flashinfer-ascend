@@ -7,7 +7,7 @@ import shutil
 
 import pytest
 
-from flashinfer.aot.build import export_op_package
+from flashinfer.jit._legacy_recipe import export_op_package
 from flashinfer.jit import discovery
 from flashinfer.jit import DiskJitBuildStore
 from flashinfer.jit.build import _verify_output

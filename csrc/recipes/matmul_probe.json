@@ -2,144 +2,6 @@
   {
     "recipe_id": "matmul_probe",
     "version": 1,
-    "kernel_id": "ascendc/t13/matmul_probe/native/Ascend950",
-    "implementation": "native",
-    "target_soc": "Ascend950",
-    "npu_arch": "dav-3510",
-    "source": {
-      "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-      "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
-      "schema_version": 1
-    },
-    "sources": [
-      {
-        "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-        "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
-        "schema_version": 1
-      }
-    ],
-    "headers": [
-      {
-        "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
-        "schema_version": 1
-      }
-    ],
-    "include_dirs": [
-      "csrc/include",
-      "csrc/launch"
-    ],
-    "dependencies": [],
-    "definitions": [],
-    "compile_options": [
-      "-O2"
-    ],
-    "link_options": [],
-    "device_entry": "fi_matmul_probe_native_device_v1",
-    "host_entry": "fi_matmul_probe_v1",
-    "launch_abi": "fi.matmul_probe.v1",
-    "tiling_mode": "none",
-    "tiling_schema_version": 1,
-    "block_dim": 1,
-    "workspace_bytes": 0,
-    "task_type": "aic_only",
-    "sync_policy": "compiler_default",
-    "toolchain": "ascendc",
-    "output_kind": "host_shared",
-    "output_adapter": "ascendc.host_shared.v1",
-    "schema_version": 1
-  },
-  {
-    "recipe_id": "matmul_probe",
-    "version": 1,
-    "kernel_id": "ascendc/t13/matmul_probe/catlass/Ascend950",
-    "implementation": "catlass",
-    "target_soc": "Ascend950",
-    "npu_arch": "dav-3510",
-    "source": {
-      "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
-      "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
-      "schema_version": 1
-    },
-    "sources": [
-      {
-        "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
-        "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
-        "schema_version": 1
-      }
-    ],
-    "headers": [
-      {
-        "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
-        "schema_version": 1
-      }
-    ],
-    "include_dirs": [
-      "csrc/include",
-      "csrc/launch"
-    ],
-    "dependencies": [
-      {
-        "name": "catlass",
-        "revision": "41bf90da655bba3c66d0acd7e00abe33960ecfd6",
-        "include_dir": "include"
-      }
-    ],
-    "definitions": [
-      "CATLASS_ARCH=3510"
-    ],
-    "compile_options": [
-      "-O2"
-    ],
-    "link_options": [],
-    "device_entry": "fi_matmul_probe_catlass_device_v1",
-    "host_entry": "fi_matmul_probe_v1",
-    "launch_abi": "fi.matmul_probe.v1",
-    "tiling_mode": "none",
-    "tiling_schema_version": 1,
-    "block_dim": 1,
-    "workspace_bytes": 0,
-    "task_type": "aic_only",
-    "sync_policy": "compiler_default",
-    "toolchain": "ascendc",
-    "output_kind": "host_shared",
-    "output_adapter": "ascendc.host_shared.v1",
-    "schema_version": 1
-  },
-  {
-    "recipe_id": "matmul_probe",
-    "version": 1,
     "kernel_id": "ascendc/t13/matmul_probe/native/op_package/Ascend950",
     "implementation": "native",
     "target_soc": "Ascend950",
@@ -147,34 +9,22 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-      "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+      "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-        "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+        "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
     ],
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
         "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
+        "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
@@ -190,9 +40,9 @@
     "link_options": [],
     "device_entry": "fi_matmul_probe_native",
     "host_entry": "aclnnFiMatmulProbeNative",
-    "launch_abi": "aclnn.matmul_probe.v1",
-    "tiling_mode": "fixed",
-    "tiling_schema_version": 1,
+    "launch_abi": "aclnn.matmul_probe.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
     "block_dim": 1,
     "workspace_bytes": 0,
     "task_type": "aic_only",
@@ -200,17 +50,49 @@
     "toolchain": "ascendc",
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
-    "schema_version": 1,
+    "schema_version": 2,
     "package_vendor": "flashinfer_t13_native",
     "package_op_type": "FiMatmulProbeNative",
     "host_sources": [
       {
         "language": "ascendc",
         "locator": "csrc/op_package/matmul_probe.cpp",
-        "digest": "1e0c9ee01d75abd10daf27c93ceb4ee0cfdb6aeb8af1a09b23b6fe6fdd4015d0",
+        "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
-    ]
+    ],
+    "tiling_host_entry": "FiMatmulProbeTiling",
+    "workspace_host_entry": null,
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "c",
+        "role": "output",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      }
+    ],
+    "shape_constraints": []
   },
   {
     "recipe_id": "matmul_probe",
@@ -222,34 +104,22 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
-      "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
+      "digest": "5c3b23c7107a1871ca6a22d7911acccd085019b2497255a831f5ba2f91532c27",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/matmul_probe/catlass.cpp",
-        "digest": "78859ec7ff7a201501956f64d9922a4d135a7a63a90961464fa0fd086efd9367",
+        "digest": "5c3b23c7107a1871ca6a22d7911acccd085019b2497255a831f5ba2f91532c27",
         "schema_version": 1
       }
     ],
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
         "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
+        "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
@@ -273,9 +143,9 @@
     "link_options": [],
     "device_entry": "fi_matmul_probe_catlass",
     "host_entry": "aclnnFiMatmulProbeCatlass",
-    "launch_abi": "aclnn.matmul_probe.v1",
-    "tiling_mode": "fixed",
-    "tiling_schema_version": 1,
+    "launch_abi": "aclnn.matmul_probe.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
     "block_dim": 1,
     "workspace_bytes": 0,
     "task_type": "aic_only",
@@ -283,17 +153,49 @@
     "toolchain": "ascendc",
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
-    "schema_version": 1,
+    "schema_version": 2,
     "package_vendor": "flashinfer_t13_catlass",
     "package_op_type": "FiMatmulProbeCatlass",
     "host_sources": [
       {
         "language": "ascendc",
         "locator": "csrc/op_package/matmul_probe.cpp",
-        "digest": "1e0c9ee01d75abd10daf27c93ceb4ee0cfdb6aeb8af1a09b23b6fe6fdd4015d0",
+        "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
-    ]
+    ],
+    "tiling_host_entry": "FiMatmulProbeTiling",
+    "workspace_host_entry": null,
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "c",
+        "role": "output",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      }
+    ],
+    "shape_constraints": []
   },
   {
     "recipe_id": "matmul_probe",
@@ -305,34 +207,22 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-      "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+      "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-        "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+        "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
     ],
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
         "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
+        "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
@@ -348,9 +238,9 @@
     "link_options": [],
     "device_entry": "fi_matmul_probe_native",
     "host_entry": "aclnnFiMatmulProbeNative",
-    "launch_abi": "aclnn.matmul_probe.v1",
-    "tiling_mode": "fixed",
-    "tiling_schema_version": 1,
+    "launch_abi": "aclnn.matmul_probe.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
     "block_dim": 1,
     "workspace_bytes": 0,
     "task_type": "aic_only",
@@ -358,17 +248,49 @@
     "toolchain": "ascendc",
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
-    "schema_version": 1,
+    "schema_version": 2,
     "package_vendor": "flashinfer_t13_native",
     "package_op_type": "FiMatmulProbeNative",
     "host_sources": [
       {
         "language": "ascendc",
         "locator": "csrc/op_package/matmul_probe.cpp",
-        "digest": "1e0c9ee01d75abd10daf27c93ceb4ee0cfdb6aeb8af1a09b23b6fe6fdd4015d0",
+        "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
-    ]
+    ],
+    "tiling_host_entry": "FiMatmulProbeTiling",
+    "workspace_host_entry": null,
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "c",
+        "role": "output",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      }
+    ],
+    "shape_constraints": []
   },
   {
     "recipe_id": "matmul_probe",
@@ -380,34 +302,22 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-      "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+      "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-        "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+        "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
     ],
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
         "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
+        "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
@@ -423,9 +333,9 @@
     "link_options": [],
     "device_entry": "fi_matmul_probe_native",
     "host_entry": "aclnnFiMatmulProbeNative",
-    "launch_abi": "aclnn.matmul_probe.v1",
-    "tiling_mode": "fixed",
-    "tiling_schema_version": 1,
+    "launch_abi": "aclnn.matmul_probe.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
     "block_dim": 1,
     "workspace_bytes": 0,
     "task_type": "aic_only",
@@ -433,17 +343,49 @@
     "toolchain": "ascendc",
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
-    "schema_version": 1,
+    "schema_version": 2,
     "package_vendor": "flashinfer_t13_native",
     "package_op_type": "FiMatmulProbeNative",
     "host_sources": [
       {
         "language": "ascendc",
         "locator": "csrc/op_package/matmul_probe.cpp",
-        "digest": "1e0c9ee01d75abd10daf27c93ceb4ee0cfdb6aeb8af1a09b23b6fe6fdd4015d0",
+        "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
-    ]
+    ],
+    "tiling_host_entry": "FiMatmulProbeTiling",
+    "workspace_host_entry": null,
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "c",
+        "role": "output",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      }
+    ],
+    "shape_constraints": []
   },
   {
     "recipe_id": "matmul_probe",
@@ -455,34 +397,22 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-      "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+      "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/matmul_probe/native.cpp",
-        "digest": "6d03765b359054ca1b11ff31a892baf942512d8865e93a25d7e1a064741404f3",
+        "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
     ],
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/include/flashinfer_ascend/launch_abi.h",
-        "digest": "90140a7c2d30fc078729a9b0552690a517c2fc0fc4be1bd9fd89a188dae976c5",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/launch/matmul_probe.inc",
-        "digest": "e1fe8ed022e4a54991b44df922cdfaf0fca60160b6fa523900ee4ce28b36973f",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
         "locator": "csrc/include/flashinfer_ascend/probe_tiling.h",
-        "digest": "0f827962e23d1bab28aadc8d91c183d4a893eaaef67f5cb7bd4522ce74accbfa",
+        "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
@@ -498,9 +428,9 @@
     "link_options": [],
     "device_entry": "fi_matmul_probe_native",
     "host_entry": "aclnnFiMatmulProbeNative",
-    "launch_abi": "aclnn.matmul_probe.v1",
-    "tiling_mode": "fixed",
-    "tiling_schema_version": 1,
+    "launch_abi": "aclnn.matmul_probe.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
     "block_dim": 1,
     "workspace_bytes": 0,
     "task_type": "aic_only",
@@ -508,16 +438,48 @@
     "toolchain": "ascendc",
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
-    "schema_version": 1,
+    "schema_version": 2,
     "package_vendor": "flashinfer_t13_native",
     "package_op_type": "FiMatmulProbeNative",
     "host_sources": [
       {
         "language": "ascendc",
         "locator": "csrc/op_package/matmul_probe.cpp",
-        "digest": "1e0c9ee01d75abd10daf27c93ceb4ee0cfdb6aeb8af1a09b23b6fe6fdd4015d0",
+        "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
-    ]
+    ],
+    "tiling_host_entry": "FiMatmulProbeTiling",
+    "workspace_host_entry": null,
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      },
+      {
+        "name": "c",
+        "role": "output",
+        "dtype": "float32",
+        "shape": [
+          16,
+          16
+        ]
+      }
+    ],
+    "shape_constraints": []
   }
 ]

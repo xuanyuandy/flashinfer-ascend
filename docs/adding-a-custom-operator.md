@@ -9,25 +9,33 @@
 > - **native v2**：`matmul_bias_silu`（`silu(A@B+bias)`，BF16）
 > - **catlass v2**：`flash_attention`（迁自 catlass `49_ascend950_flash_attention_infer`）
 
-## 1. 先做三个选择
+## 1. 先明确接入契约与实现
 
-### 1.1 契约版本：v1 还是 v2
+### 1.1 对外只提供统一 v2 契约
 
-`flashinfer/jit/recipe.py` 对 v1 有一道硬护栏：
+`schema_version=1/2` 是本仓 `BuildRecipe` 的序列化与能力校验版本，不是 Ascend C 的两种编译方式。所核对的 flashinfer-ori 接入链路没有这套 Ascend C recipe 档位；它通过 generator 参数、模板源码和 FFI 导出定义 CUDA 编译单元。
+
+所有公开配方（生产与探针）统一按 v2 接入；`BuildRecipe`、配方读取/解析、配置选择与新发布入口会拒绝 v1。shape 驱动的 host 动态 tiling 是已有能力。旧 v1 仅用于内部 artifact 解析和冻结测试，不是新作者可选的接入方式。
+
+内部兼容 reader 继续保持旧 v1 护栏，排查旧产物时仍可见以下诊断：
 
 ```
 tiling_schema_version != 1 或 workspace_bytes != 0 或 task_type != "aic_only"
   → SchemaError("Ascend C v1 supports explicit fixed tiling, AIC-only, no workspace")
 ```
 
-只要你的算子**沾上下面任意一条**，就必须用 v2：
+统一契约显式描述以下能力：
 
 - 用到 AIV（向量核），或 AIC/AIV 混合 + 跨核同步
 - 需要非零 workspace（哪怕是固定大小）
 - tiling 要在 host 按 shape 算，而不是编译期写死
 - 参数不是恰好三个 aclTensor
 
-反过来，**定形、AIC-only、无 workspace、三参数**的算子继续用 v1 更省事。
+固定 shape、三个 Tensor、零 workspace、AIC-only 同样可用 v2 表达，无需另选一个档位。五条 ACLNN 探针已按该方式迁移；两条裸指针探针及旧源码闭包移入 `tests/fixtures/legacy_ascendc/`，不再作为公开构建输入。内部 v1 的序列化、校验及既有产物身份保持原样。
+
+版本号应按所属对象分别理解：recipe 的 `schema_version=2` 描述接入字段；`tiling_schema_version=2` 描述 host/device 共享的 tiling 布局；冻结声明外层与 `JitSpec` 的 schema 仍可为 1；`ascendc.op_package.v1` 是产物适配格式。这些数字不同不表示存在多套编译器。
+
+FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape 取得 S、T、heads，调用 tiler 并设置 block 数与 workspace。同一份二进制可覆盖其声明域内的多组 shape。它仍限 dense batch=1、D=128、S/T 为 128..512 的 128 倍数；不读取变长 length Tensor 的内容，不能外推为数据内容驱动 tiling 或任意变长 FA。MatmulBiasSiLU 也使用 shape 驱动 callback。
 
 ### 1.2 实现来源：native 还是 catlass
 
@@ -44,9 +52,9 @@ tiling_schema_version != 1 或 workspace_bytes != 0 或 task_type != "aic_only"
 `FLASHINFER_CATLASS_ROOT` 指向它；缺失时构建解析阶段会报
 `catlass dependency headers are missing`。
 
-### 1.3 产物形态：host_shared 还是 op_package
+### 1.3 统一使用 op_package
 
-**v2 只支持 `op_package`。** `host_shared` 仅保留给 v1。
+**公开构建只支持 v2 `op_package`。** `host_shared` 仅存在于内部旧协议测试设施；公开配置会明确拒绝。
 想让算子能被 AOT 运行期自动发现并在无编译器环境命中，也必须是 `op_package`。
 
 ## 2. 按这个顺序做
@@ -81,6 +89,8 @@ tiling_schema_version != 1 或 workspace_bytes != 0 或 task_type != "aic_only"
 ```
 
 ## 3. 这几轮实际踩到的坑
+
+需要 Torch 算子入口时，参考 [Torch/ACLNN 接入说明](aclnn-torch-adapter.md) 与 `flashinfer/aclnn/_ops.py`：用具名 schema、`PrivateUse1` 实现和 FakeTensor 元数据函数复用公共 facade。完整 wheel 的 `package_tensor_runner` 再调用 `csrc/aclnn_torch_adapter/adapter.cpp`，完成 Tensor 描述符、workspace、stream 与 `OpCommand` 生命周期；不要另写一个绕过已验证 loader 的裸 `dlopen` 路径。该适配器当前覆盖完整档的有序 Tensor ABI，新增 scalar/attribute 等参数仍须单独扩展契约。
 
 按踩中频率排，不是理论风险。
 
@@ -139,6 +149,7 @@ envelope 不是文档里的一句话，它同时落在**四个地方**，扩范�
 | `docs/aot-runtime-discovery.md` | AOT 发现/匹配/绑定/回落机制 |
 | `docs/reports/call-stack-layering.md` | wrapper→generator→JIT/AOT→调用 ABI 分层，与上游对比 |
 | `docs/reports/graph-mode-delivery.md` | 图模式接口与资源归属（接入可入图算子时看） |
+| `docs/ascendc-compile-options.md` | 当前生产编译选项、驱动/SDK 的参数边界，以及 vLLM-Ascend 自定义算子接入对照 |
 
 ## 7. 当前尚未支持的
 

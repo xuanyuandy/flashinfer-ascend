@@ -8,7 +8,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from flashinfer.aot.build import export_op_package
+from flashinfer.jit._legacy_recipe import export_op_package
 from flashinfer.jit import op_package as package
 from tests.test_ascendc_op_package import generation, unit  # noqa: F401
 

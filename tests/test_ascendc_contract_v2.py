@@ -5,7 +5,7 @@ and package verification belong to the separately marked real_compile tests.
 """
 
 import ctypes as C
-from dataclasses import replace
+from dataclasses import fields, replace
 import hashlib
 import json
 from pathlib import Path
@@ -15,13 +15,13 @@ import pytest
 
 from flashinfer.jit.core import JitSpec, _canonical_hash
 from flashinfer.jit.op_package import OP_PACKAGE_ADAPTER_HASH, OpPackageModule, verify_op_package
-from flashinfer.jit.recipe import BuildRecipe, ShapeConstraint, TensorParameter, load_build_recipes
+from flashinfer.jit.recipe import BuildRecipe, ShapeConstraint, TensorParameter
 from flashinfer.runtime import SchemaError
 
 from tests.test_ascendc_op_package import elf_fixture, write_fixture
+from tests.legacy_ascendc import ROOT, BuildRecipe as LegacyBuildRecipe, load_build_recipes
 
 
-ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.fixture
@@ -32,7 +32,7 @@ def v1():
 
 @pytest.fixture
 def v2(v1):
-    return replace(v1, schema_version=2, tiling_mode="host_dynamic", tiling_schema_version=2,
+    fixture = replace(v1, schema_version=2, tiling_mode="host_dynamic", tiling_schema_version=2,
         tiling_host_entry="FixtureTiling", workspace_host_entry="FixtureTiling",
         workspace_bytes="dynamic", task_type="aic_aiv", sync_policy="cross_core_flags",
         tensor_parameters=(TensorParameter("a", "input", "bfloat16", ("M", "K")),
@@ -40,6 +40,8 @@ def v2(v1):
                            TensorParameter("bias", "input", "bfloat16", ("N",)),
                            TensorParameter("out", "output", "bfloat16", ("M", "N"))),
         shape_constraints=tuple(ShapeConstraint(n, 16, 256, 16) for n in ("M", "N", "K")))
+
+    return BuildRecipe(**{field.name: getattr(fixture, field.name) for field in fields(fixture)})
 
 
 def metadata(m=16, n=32, k=64):
@@ -50,7 +52,7 @@ def metadata(m=16, n=32, k=64):
 def test_v1_serialization_and_fingerprints_remain_exactly_frozen():
     manifest = json.loads((ROOT / "csrc/recipes/matmul_probe.json").read_text())
     for original in manifest:
-        recipe = BuildRecipe.from_dict(original)
+        recipe = LegacyBuildRecipe.from_dict(original)
         assert json.loads(json.dumps(recipe.to_dict())) == original
         assert recipe.fingerprint == _canonical_hash(original)
         assert recipe.tensor_parameter_names == ("a", "b", "c")

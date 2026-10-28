@@ -15,11 +15,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from flashinfer.aot.build import _for_target, export_op_package
+from flashinfer.aot.build import _for_target
 from flashinfer.jit import (
-    AscendCBackend, AscendCBuildConfig, AscendCToolchain, BuildRecipe, DiskJitBuildStore,
+    AscendCBackend, AscendCToolchain, DiskJitBuildStore,
     JitCacheIndex, JitCompilationPolicy, JitSpecRegistry, build_and_load,
-    declare_kernel, load_build_recipes, resolve_build_recipe,
+    declare_kernel,
 )
 from flashinfer.jit.build import _build_record, _verify_output
 from flashinfer.jit.cache import verify_build_directory
@@ -27,9 +27,9 @@ from flashinfer.jit import op_package as package
 from flashinfer.runtime import (
     ArtifactFormat, Backend, CompileMode, KernelDescriptor, KernelLaunchABI, KernelRegistry, SchemaError,
 )
+from tests.legacy_ascendc import ROOT, BuildRecipe, AscendCBuildConfig, load_build_recipes, export_op_package, resolve_build_recipe
 
 
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def elf_fixture(symbols, *, machine, kind):

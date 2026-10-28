@@ -32,7 +32,7 @@ def probe_descriptor(recipe):
                                for tensor in range(2) for axis in range(2)),
         ),
         compile_mode=CompileMode.AOT, source=recipe.source,
-        target_soc=recipe.target_soc,
+        target_soc=recipe.target_soc, tiling_schema_version=recipe.tiling_schema_version,
         launch_abi=KernelLaunchABI(recipe.launch_abi, recipe.host_entry,
                                   ("workspace", "workspace_bytes", "executor", "stream")),
     )

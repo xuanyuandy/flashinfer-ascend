@@ -1,0 +1,52 @@
+"""Exercise Python/Torch production interfaces through the native ACLNN bridge."""
+
+import json
+import sys
+
+
+def run(case):
+    import torch
+    import torch_npu  # noqa: F401
+    import flashinfer
+    from flashinfer.aclnn import enable_aclnn, _native
+
+    enable_aclnn()
+    torch.manual_seed(20261027)
+    stream = torch.npu.Stream()
+    with torch.npu.stream(stream):
+        if case == "matmul":
+            ac = (torch.randn(17, 48) * .25).bfloat16()
+            bc = (torch.randn(49, 32) * .25).bfloat16()
+            biasc = (torch.randn(33) * .1).bfloat16()
+            expected = torch.nn.functional.silu(ac[1:].double() @ bc[1:].double() + biasc[1:].double())
+            a, b, bias = ac.npu()[1:], bc.npu()[1:], biasc.npu()[1:]
+            result = torch.ops.flashinfer.matmul_bias_silu(a, b, bias)
+            out = torch.empty_like(result)
+            assert torch.ops.flashinfer.matmul_bias_silu_out(a, b, bias, out) is None
+            assert flashinfer.matmul_bias_silu(a, b, bias, out=out) is out
+            atol = rtol = .008
+        elif case == "attention":
+            qc = (torch.rand(129, 2, 128) * 2 - 1).half()
+            kc = (torch.rand(257, 2, 128) * 2 - 1).half()
+            vc = (torch.rand(257, 2, 128) * 2 - 1).half()
+            query, key, value = (t[1:].double().transpose(0, 1) for t in (qc, kc, vc))
+            expected = (torch.softmax(query @ key.transpose(1, 2) / 128**.5, -1) @ value).transpose(0, 1)
+            q, k, v = qc.npu()[1:], kc.npu()[1:], vc.npu()[1:]
+            result = torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)
+            out = torch.empty_like(result)
+            assert torch.ops.flashinfer.single_prefill_with_kv_cache_catlass_out(q, k, v, out) is None
+            assert flashinfer.single_prefill_with_kv_cache_catlass(q, k, v, out=out) is out
+            atol = rtol = .001
+        else:
+            raise ValueError(case)
+    for tensor in (result, out):
+        torch.testing.assert_close(tensor.cpu().double(), expected, atol=atol, rtol=rtol)
+    assert len(_native._owners) == 1
+    assert torch._C._dispatch_has_kernel_for_dispatch_key("flashinfer_aclnn::_execute", "PrivateUse1")
+    print(json.dumps(dict(case=case, result="PASS", adapter="C++/OpCommand",
+                          nondefault_stream=True, nonzero_storage_offset=True,
+                          max_abs=float((result.cpu().double() - expected).abs().max()))))
+
+
+if __name__ == "__main__":
+    run(sys.argv[1])

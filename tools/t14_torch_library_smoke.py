@@ -19,7 +19,9 @@ def prepare(args):
 
         # Preserve T13-II's order: register vendor before torch_npu/ACL init.
         module = load_op_package(args.package, target_soc=args.soc)
-        return matmul_probe_op(module.recipe, module), module.recipe
+        from flashinfer.jit import JitSpec
+        spec = JitSpec.from_dict(json.loads((args.package / "manifest.json").read_text())["spec"])
+        return matmul_probe_op(module.recipe, module, spec=spec), module.recipe
 
     from examples.ascendc_jit_a5 import prepare as prepare_jit
     from flashinfer.jit import (
@@ -54,7 +56,7 @@ def namespace_check(torch, before):
 def memory_check(torch):
     from torch._subclasses.fake_tensor import FakeTensor, FakeTensorMode
     from unittest.mock import patch
-    from flashinfer.jit.torch_library import _MatmulProbeRunner
+    from flashinfer.jit.tensor_adapter import TorchOpPackageRunner
 
     torch.npu.init()
     torch.npu.empty_cache()
@@ -66,7 +68,7 @@ def memory_check(torch):
 
     before = counters()
     assert before == (0, 0, 0, 0), before
-    with patch.object(_MatmulProbeRunner, "__call__", side_effect=AssertionError("fake reached runtime")):
+    with patch.object(TorchOpPackageRunner, "__call__", side_effect=AssertionError("fake reached runtime")):
         with FakeTensorMode(allow_fallback_kernels=False):
             a, b, out = [torch.empty(16, 16, device="npu") for _ in range(3)]
             for _ in range(100):
@@ -176,6 +178,10 @@ def main():
         raise RuntimeError("T14 evidence requires NPU")
     memory_check(torch)
     compile_check(torch, recipe, positive_control=not args.skip_positive_control)
+    from flashinfer.aclnn import _native
+    if _native.available():
+        assert len(_native._owners) == 1
+        print("ACLNN_BRIDGE PASS native=True", flush=True)
 
 
 if __name__ == "__main__":

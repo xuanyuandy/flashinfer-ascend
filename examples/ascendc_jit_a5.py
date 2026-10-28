@@ -1,8 +1,9 @@
-"""Real A5 declaration -> compile -> load -> ACL launch -> numerical check.
+"""Real v2 A5 declaration -> compile -> ACLNN load/launch -> numerical check.
 
 Only --config changes between native and CATLASS. This probe is registered in
-an isolated registry, never added to the 79 production builtin descriptors.
-No torch, torch_npu, Triton, vendor package or operator installer is needed.
+an isolated registry, never added to the production builtin descriptors.
+No torch, torch_npu, Triton or operator installer is needed. The common builder
+produces the verified vendor tree used by the two-stage ACLNN call.
 """
 
 import argparse
@@ -31,7 +32,7 @@ def prepare(args):
         # Real cache reuse with no compiler, source or CATLASS dependency.
         spec = JitSpec.from_dict(json.loads(request.read_text()))
         if (spec.target_soc != config.target_soc
-                or spec.kernel_id != "ascendc/t13/matmul_probe/" + variant + "/" + config.target_soc):
+                or spec.kernel_id != "ascendc/t13/matmul_probe/" + variant + "/op_package/" + config.target_soc):
             raise ValueError("cached request does not match the selected configuration")
         return spec, AscendCBackend()
     package = Path(flashinfer.__file__).parent
@@ -48,10 +49,12 @@ def prepare(args):
     descriptor = KernelDescriptor(recipe.kernel_id, "test.t13.matmul_probe", Backend.ASCENDC,
         capability=CapabilitySpec(op="test.t13.matmul_probe", dtypes=("float32",), soc_models=("Ascend950",)),
         compile_mode=CompileMode.JIT, source=recipe.source, target_soc=recipe.target_soc,
-        launch_abi=KernelLaunchABI(recipe.launch_abi, recipe.host_entry, ("stream", "a", "b", "c")))
+        tiling_schema_version=recipe.tiling_schema_version,
+        launch_abi=KernelLaunchABI(recipe.launch_abi, recipe.host_entry,
+            ("workspace", "workspace_bytes", "executor", "stream")))
     spec = declare_kernel(descriptor.kernel_id, backend=backend,
         registry=KernelRegistry((descriptor,)), spec_registry=JitSpecRegistry(),
-        output_path="matmul_probe/kernel.so", entry_point=recipe.host_entry,
+        output_path="op-package.json", entry_point=recipe.host_entry,
         environment_fingerprint=toolchain.fingerprint,
         specialization_fingerprint=hashlib.sha256(b"float32;M=16;N=16;K=16;row_major").hexdigest())
     args.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -64,59 +67,9 @@ def prepare(args):
 
 
 def execute(module, entry, cann_root):
-    # Loading the runtime is explicit and happens after the build/load receipt.
-    acl = C.CDLL(str(cann_root / "lib64/libascendcl.so"), mode=C.RTLD_GLOBAL)
-    prototypes = {
-        "aclInit": [C.c_char_p], "aclFinalize": [],
-        "aclrtSetDevice": [C.c_int], "aclrtResetDevice": [C.c_int],
-        "aclrtCreateStream": [C.POINTER(C.c_void_p)], "aclrtDestroyStream": [C.c_void_p],
-        "aclrtSynchronizeStream": [C.c_void_p],
-        "aclrtMalloc": [C.POINTER(C.c_void_p), C.c_size_t, C.c_int], "aclrtFree": [C.c_void_p],
-        "aclrtMemcpy": [C.c_void_p, C.c_size_t, C.c_void_p, C.c_size_t, C.c_int],
-    }
-    for name, arguments in prototypes.items():
-        function = getattr(acl, name)
-        function.argtypes, function.restype = arguments, C.c_int
-
-    def call(name, *arguments):
-        result = getattr(acl, name)(*arguments)
-        if result:
-            raise RuntimeError("%s returned %s" % (name, result))
-
-    launcher = getattr(module, entry)
-    launcher.argtypes, launcher.restype = [C.c_void_p] * 4, None
-    call("aclInit", None)
-    stream = C.c_void_p()
-    allocations = []
-    try:
-        call("aclrtSetDevice", 0)
-        call("aclrtCreateStream", C.byref(stream))
-        array = C.c_float * 256
-        ha = array(*(float(i % 7 - 3) for i in range(256)))
-        hb = array(*(float(i % 5 - 2) for i in range(256)))
-        hc = array(*([float("nan")] * 256))
-        for host in (ha, hb, hc):
-            pointer = C.c_void_p()
-            call("aclrtMalloc", C.byref(pointer), C.sizeof(host), 0)
-            allocations.append(pointer)
-            call("aclrtMemcpy", pointer, C.sizeof(host), C.cast(host, C.c_void_p), C.sizeof(host), 1)
-        launcher(stream, *allocations)
-        call("aclrtSynchronizeStream", stream)
-        call("aclrtMemcpy", C.cast(hc, C.c_void_p), C.sizeof(hc), allocations[2], C.sizeof(hc), 2)
-        expected = [sum(ha[m * 16 + k] * hb[k * 16 + n] for k in range(16))
-                    for m in range(16) for n in range(16)]
-        # NaN-filled output catches a no-op launcher as well as wrong results.
-        if not all(hc[i] == expected[i] for i in range(256)):
-            raise AssertionError("NPU output differs from independent CPU GEMM")
-        return dict(shape=[16, 16, 16], device=0, stream_sync=0,
-                    max_abs_error=max(abs(hc[i] - expected[i]) for i in range(256)), first8=list(hc)[:8])
-    finally:
-        for pointer in reversed(allocations):
-            call("aclrtFree", pointer)
-        if stream.value:
-            call("aclrtDestroyStream", stream)
-        call("aclrtResetDevice", 0)
-        call("aclFinalize")
+    # Both JIT and AOT consume the same verified ACLNN module and Tensor ABI.
+    from examples.ascendc_aot_a5 import execute as execute_aclnn
+    return execute_aclnn(module, cann_root)
 
 
 def main():

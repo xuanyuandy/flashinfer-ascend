@@ -1,5 +1,6 @@
 {
   "implementation": "catlass",
-  "output_kind": "host_shared",
-  "target_soc": "Ascend950"
+  "output_kind": "op_package",
+  "target_soc": "Ascend950",
+  "recipe_id": "matmul_probe"
 }

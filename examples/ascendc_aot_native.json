@@ -1,5 +1,6 @@
 {
   "implementation": "native",
   "output_kind": "op_package",
-  "target_soc": "Ascend950"
+  "target_soc": "Ascend950",
+  "recipe_id": "matmul_probe"
 }

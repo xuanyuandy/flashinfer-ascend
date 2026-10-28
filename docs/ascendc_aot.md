@@ -1,20 +1,23 @@
 # T13-II：BuildRecipe 驱动的标准 op-package
 
+当前公开入口已统一为 v2；旧 v1/raw host launch 仅留在内部兼容与测试设施。本文后半的原始日志保留为早期时点证据，最新实现和结果见 [v2 迁移验收](reports/v2-migration-2026-10-28.md)。
+
 本实现提供独立注册的固定 FP32 `16×16×16` GEMM 正确性探针，不把它加入现有
-79 条生产 descriptor，也不改变 auto、图或 attention 语义。native 与 CATLASS
+生产 descriptor，也不改变 auto、图或 attention 语义。native 与 CATLASS
 继续只通过配置选择；CATLASS 探针实例化 `Arch::Ascend950`，不声明其它架构支持。
 
 ## 配方、构建与缓存
 
-`csrc/recipes/matmul_probe.json` 中的同一种 `BuildRecipe` 同时声明
-`host_shared / ascendc.host_shared.v1` 和
-`op_package / ascendc.op_package.v1`。配置的 `output_kind` 决定产物形态，
+`csrc/recipes/matmul_probe.json` 中的公开 `BuildRecipe` 统一声明
+v2 `op_package / ascendc.op_package.v1`，原生构建和新发布均拒绝 v1。
+旧 `host_shared` 仅留在 `tests/fixtures/legacy_ascendc/`。当前产物形态固定为 op-package，
 `implementation` 决定 native/CATLASS；没有第二种 AOT recipe 或构建缓存。
 
 op-package 另绑定 `host_sources`、`package_vendor`、`package_op_type` 和 ACLNN
-`host_entry`，采用 `tiling_mode=fixed`，共享四字节 `FiMatmulProbeTilingData`。
+`host_entry`，采用 `tiling_mode=host_dynamic`、命名 callback 和显式三 Tensor，
+共享带 version/size 的八字节 `FiMatmulProbeTilingData`。
 host tiling 检查两个输入和输出均为 `16×16`，设置 blockDim=1、workspace=0；
-device 核验 tiling 中的 size=256。direct host launcher 仍不消费 tiling。
+device 核验 tiling 中的 version=2、size=256。固定输入对应常量 tiling，不扩大 shape 支持域。
 所有源码、header、CMake 输入、工具链及选中依赖的内容摘要进入冻结配方与 JitSpec。
 
 `flashinfer.aot.build.compile_and_package()` 与 JIT `build_and_load()` 共用
@@ -56,7 +59,7 @@ CATLASS、源树、JIT 缓存或 `.run` 安装。`target_soc` 必须等于发行
 `ASCEND_CUSTOM_OPP_PATH` 到 package 内 vendor 根，显式 dlopen `libcust_opapi.so`。
 两阶段 API 均检查非零状态和有效 executor，不吞掉错误；dlopen 成功仅表示装载成功。
 
-`host_shared` 的入口是 `(stream, a_device, b_device, c_device)`；ACLNN 的第一阶段
+内部旧 `host_shared` 的入口是 `(stream, a_device, b_device, c_device)`；公开 ACLNN 的第一阶段
 接受 `aclTensor*`，返回 workspace 字节数和 `aclOpExecutor*`，第二阶段入口是
 `(workspace, workspace_bytes, executor, stream)`。调用方拥有 tensor/stream/workspace
 及其生命周期，不能把两套 ABI 的参数互传。探针要求输入输出为连续行主序 FP32 ND、固定尺寸；这是构建与
@@ -75,7 +78,7 @@ CANN 的 vendor 注册与环境读取属于进程状态。首次装载前不得�
 每个对照实验使用独立进程。
 
 需要 PyTorch 注册接口时，可用 `flashinfer.jit.torch_library.matmul_probe_op()`
-将上述已装载的 op-package，或 host_shared 的 `JitLoadedModule` 与 `JitSpec`，
+将上述 v2 op-package 的已验证 module 与 `JitSpec`（`spec=...`）
 转换为注册声明，再显式调用 `enable_torch_library(ascendc_ops=(op,))`。
 它暴露 `torch.ops.flashinfer.matmul_probe(a, b, out)`，device kernel 使用
 PrivateUse1，独立 meta 只校验输出元信息；注册不构建或装载产物。
