@@ -1,7 +1,13 @@
-# Attention capability matrix
+# Attention provider-contract capability matrix
 
 This document describes the capabilities represented by the repository. It is
 not a validation log or a claim that an Ascend kernel is available.
+
+These tables describe the optional version-pinned provider-contract track,
+including holistic `BatchAttention`. Ordinary single attention, the three
+production batch CANN facades and Ascend C operators have separate executable
+routes. Their current inventory and verification boundaries are listed in
+[operator coverage](operator-coverage.md); this contract table does not replace it.
 
 ## Status vocabulary
 
@@ -60,7 +66,7 @@ API contains quantization-related parameter names.
 | Ascend C AOT | Artifact, ABI, dispatch and launcher contracts | Disabled; no kernel artifact installed |
 | Ascend C JIT | Spec, cache, artifact verification, module/symbol and active-plan contracts | Disabled; no compiler or concrete loader installed |
 
-The packaged runtime registry is intentionally empty. An NPU route becomes
+The packaged provider-contract runtime registry is intentionally empty. An NPU route becomes
 eligible only after an integration supplies exact package versions, runtime
 environment, capability and numerical evidence, kernel/artifact/ABI
 provenance, tensor materialization and an authorized executor.
@@ -81,8 +87,8 @@ provenance, tensor materialization and an authorized executor.
 
 ## Explicit non-claims
 
-The repository does not currently claim production correctness, performance or
-availability for any Ascend Attention operator. It does not install or call a
-real CANN, flash-attention-npu or Ascend C kernel by default. Capability rows
-describe contracts that a future integration must satisfy, not detected
-hardware support.
+These provider-contract rows do not establish numerical correctness,
+performance or device availability. The holistic `BatchAttention` route has no
+default production NPU provider; ordinary executable CANN/Ascend C routes are
+documented separately. The rows describe integration requirements rather than
+detected hardware support or the full repository's operator availability.

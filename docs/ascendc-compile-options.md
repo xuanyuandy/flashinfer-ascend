@@ -21,7 +21,7 @@
 | `workspace_bytes` / `workspace_host_entry` | 非负固定值或 `dynamic`；动态值由 ACLNN 第一段返回实际大小 |
 | `task_type` / `sync_policy` | 混合核与同步的声明和校验；**不会自动变成 `--cce-auto-sync=off`**，实际 task 宏及同步逻辑仍须在源码中实现 |
 
-实现位置：[recipe 校验与指纹](../flashinfer/jit/recipe.py)、[驱动组装](../flashinfer/jit/ascendc.py)、[设备选项传递](../csrc/op_package/kernel/CMakeLists.txt)、[host 生成与链接](../csrc/op_package/host/CMakeLists.txt)。
+实现位置：[recipe 校验与指纹](../flashinfer/jit/recipe.py)、[驱动组装](../flashinfer/jit/ascendc.py)、[设备选项传递](../csrc/cmake/op_package/kernel/CMakeLists.txt)、[host 生成与链接](../csrc/cmake/op_package/host/CMakeLists.txt)。
 
 ## 2. 当前两条生产算子的明确配置
 

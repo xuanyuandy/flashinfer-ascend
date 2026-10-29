@@ -41,8 +41,10 @@ def isolated_runtime(monkeypatch, unit):
     finally:
         active = package._active_package
         package._active_package = None
-        if active is not None and active[1]._registration_fd is not None:
-            os.close(active[1]._registration_fd)
+        if active is not None:
+            for _, module in active.values():
+                if module._registration_fd is not None:
+                    os.close(module._registration_fd)
 
 
 def test_dotted_store_uses_same_verified_directory_via_retained_fd(generation, isolated_runtime):

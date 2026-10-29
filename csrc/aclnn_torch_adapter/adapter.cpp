@@ -12,6 +12,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "torch_npu/csrc/core/npu/NPUGuard.h"
 #include "torch_npu/csrc/core/npu/NPUStream.h"
@@ -47,9 +48,21 @@ struct Binding {
     Launch launch;
     size_t inputs;
     size_t outputs;
+    std::vector<ffi_type*> argument_types;
+    ffi_cif workspace_signature;
+
+    Binding(std::string op_name, void* query, Launch run, size_t input_count, size_t output_count)
+        : name(std::move(op_name)), workspace(query), launch(run), inputs(input_count),
+          outputs(output_count), argument_types(input_count + output_count + 2, &ffi_type_pointer) {
+        TORCH_CHECK(ffi_prep_cif(&workspace_signature, FFI_DEFAULT_ABI, argument_types.size(),
+                                &ffi_type_uint32, argument_types.data()) == FFI_OK,
+                    "Invalid ACLNN workspace signature");
+    }
 };
 std::mutex bindings_mutex;
-std::unordered_map<std::string, Binding> bindings;
+// A binding never moves: libffi retains its argument_types allocation.
+// Published signatures are immutable and shared by concurrent invocations.
+std::unordered_map<std::string, std::shared_ptr<Binding>> bindings;
 thread_local std::string last_error;
 
 aclDataType acl_dtype(at::ScalarType dtype) {
@@ -85,21 +98,24 @@ struct CallState {
 };
 
 void execute(const std::string& token, at::TensorList inputs, at::TensorList outputs) {
-    Binding binding;
+    std::shared_ptr<Binding> binding;
     {
         std::lock_guard<std::mutex> lock(bindings_mutex);
         const auto found = bindings.find(token);
         TORCH_CHECK(found != bindings.end(), "Unknown verified ACLNN binding");
         binding = found->second;
     }
-    TORCH_CHECK(inputs.size() == binding.inputs && outputs.size() == binding.outputs,
+    TORCH_CHECK(inputs.size() == binding->inputs && outputs.size() == binding->outputs,
                 "ACLNN binding argument count mismatch");
     TORCH_CHECK(!inputs.empty() || !outputs.empty(), "ACLNN requires tensor arguments");
     const auto device = (inputs.empty() ? outputs.front() : inputs.front()).device();
     TORCH_CHECK(device.type() == c10::DeviceType::PrivateUse1, "ACLNN requires NPU tensors");
     c10_npu::NPUGuard guard(device);
     const auto stream = c10_npu::getCurrentNPUStream(device.index());
-    const auto raw_stream = stream.stream(false);
+    // Prepare the stream outside its callback using TorchNPU's exported API.
+    // Draining prior host submissions is consistent with this synchronous
+    // eager boundary and also handles task-queue level 2 safely.
+    const auto raw_stream = stream.stream(true);
     auto state = std::make_shared<CallState>();
     state->tensors.insert(state->tensors.end(), inputs.begin(), inputs.end());
     state->tensors.insert(state->tensors.end(), outputs.begin(), outputs.end());
@@ -109,7 +125,7 @@ void execute(const std::string& token, at::TensorList inputs, at::TensorList out
                     "ACLNN adapter requires contiguous ND tensors");
         c10_npu::NPUCachingAllocator::recordStream(tensor.storage().data_ptr(), stream);
     }
-    for (size_t out = binding.inputs; out < state->tensors.size(); ++out) {
+    for (size_t out = binding->inputs; out < state->tensors.size(); ++out) {
         const auto lo = reinterpret_cast<uintptr_t>(state->tensors[out].data_ptr());
         const auto hi = lo + state->tensors[out].nbytes();
         for (size_t i = 0; i < state->tensors.size(); ++i) {
@@ -119,56 +135,53 @@ void execute(const std::string& token, at::TensorList inputs, at::TensorList out
                         "ACLNN output tensors must not overlap other arguments");
         }
     }
-    // The state owns tensors, descriptors and workspace until device completion.
-    // Keep the existing synchronous eager lifetime contract; no capture claim.
+    // TorchNPU owns command scheduling. The caller retains this state until
+    // RunOpApi(sync=true) has drained the host queue and completed the stream.
+    // Do not synchronize the stream from inside its host queue callback.
     auto call = [state, binding, stream, raw_stream]() -> int {
         auto& api = tensor_api();
-        try {
-            for (const auto& tensor : state->tensors) {
-                const int64_t storage_size = tensor.storage().nbytes() / tensor.element_size();
-                auto* handle = api.create(tensor.sizes().data(), tensor.dim(), acl_dtype(tensor.scalar_type()),
-                    tensor.strides().data(), tensor.storage_offset(), ACL_FORMAT_ND,
-                    &storage_size, 1, const_cast<void*>(tensor.storage().data()));
-                TORCH_CHECK(handle, "aclCreateTensor failed for ", binding.name);
-                state->handles.push_back(handle);
-            }
-            uint64_t workspace_bytes = 0;
-            aclOpExecutor* executor = nullptr;
-            auto* workspace_pointer = &workspace_bytes;
-            auto** executor_pointer = &executor;
-            std::vector<ffi_type*> types(state->handles.size() + 2, &ffi_type_pointer);
-            std::vector<void*> values;
-            for (auto& handle : state->handles) values.push_back(&handle);
-            values.push_back(&workspace_pointer);
-            values.push_back(&executor_pointer);
-            ffi_cif signature;
-            TORCH_CHECK(ffi_prep_cif(&signature, FFI_DEFAULT_ABI, types.size(), &ffi_type_uint32,
-                                    types.data()) == FFI_OK, "Invalid ACLNN workspace signature");
-            ffi_arg status = 0;
-            ffi_call(&signature, FFI_FN(binding.workspace), &status, values.data());
-            TORCH_CHECK(status == 0 && executor, binding.name, "GetWorkspaceSize returned ", status);
-            TORCH_CHECK(workspace_bytes <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
-                        "ACLNN workspace exceeds tensor allocation range");
-            if (workspace_bytes) {
-                state->workspace = at::empty({static_cast<int64_t>(workspace_bytes)},
-                    state->tensors.front().options().dtype(at::kByte));
-                c10_npu::NPUCachingAllocator::recordStream(state->workspace.storage().data_ptr(), stream);
-            }
-            const auto launch_status = binding.launch(
-                workspace_bytes ? state->workspace.data_ptr() : nullptr, workspace_bytes, executor, raw_stream);
-            TORCH_CHECK(launch_status == 0, binding.name, " returned ", launch_status);
-            const auto sync_status = aclrtSynchronizeStream(raw_stream);
-            TORCH_CHECK(sync_status == ACL_SUCCESS, "ACLNN eager stream synchronization returned ", sync_status);
-            const auto destroy_status = state->release();
-            TORCH_CHECK(destroy_status == 0, "aclDestroyTensor returned ", destroy_status);
-        } catch (...) {
-            aclrtSynchronizeStream(raw_stream);
-            state->release();
-            throw;
+        for (const auto& tensor : state->tensors) {
+            const int64_t storage_size = tensor.storage().nbytes() / tensor.element_size();
+            auto* handle = api.create(tensor.sizes().data(), tensor.dim(), acl_dtype(tensor.scalar_type()),
+                tensor.strides().data(), tensor.storage_offset(), ACL_FORMAT_ND,
+                &storage_size, 1, const_cast<void*>(tensor.storage().data()));
+            TORCH_CHECK(handle, "aclCreateTensor failed for ", binding->name);
+            state->handles.push_back(handle);
         }
+        uint64_t workspace_bytes = 0;
+        aclOpExecutor* executor = nullptr;
+        auto* workspace_pointer = &workspace_bytes;
+        auto** executor_pointer = &executor;
+        std::vector<void*> values;
+        for (auto& handle : state->handles) values.push_back(&handle);
+        values.push_back(&workspace_pointer);
+        values.push_back(&executor_pointer);
+        ffi_arg status = 0;
+        ffi_call(&binding->workspace_signature, FFI_FN(binding->workspace), &status, values.data());
+        TORCH_CHECK(status == 0 && executor, binding->name, "GetWorkspaceSize returned ", status);
+        TORCH_CHECK(workspace_bytes <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
+                    "ACLNN workspace exceeds tensor allocation range");
+        if (workspace_bytes) {
+            state->workspace = at::empty({static_cast<int64_t>(workspace_bytes)},
+                state->tensors.front().options().dtype(at::kByte));
+            c10_npu::NPUCachingAllocator::recordStream(state->workspace.storage().data_ptr(), stream);
+        }
+        const auto launch_status = binding->launch(
+            workspace_bytes ? state->workspace.data_ptr() : nullptr, workspace_bytes, executor, raw_stream);
+        TORCH_CHECK(launch_status == 0, binding->name, " returned ", launch_status);
         return 0;
     };
-    at_npu::native::OpCommand::RunOpApi(binding.name, call, true);
+    try {
+        at_npu::native::OpCommand::RunOpApi(binding->name, call, true);
+        const auto destroy_status = state->release();
+        TORCH_CHECK(destroy_status == 0, "aclDestroyTensor returned ", destroy_status);
+    } catch (...) {
+        // A failed launch may already have submitted work. Keep the original
+        // exception while completing best-effort cleanup of retained resources.
+        aclrtSynchronizeStream(raw_stream);
+        state->release();
+        throw;
+    }
 }
 } // namespace
 
@@ -181,14 +194,19 @@ extern "C" __attribute__((visibility("default"))) int fi_aclnn_register(
         TORCH_CHECK(token && name && workspace && launch && (inputs || outputs),
                     "Invalid verified ACLNN registration");
         std::lock_guard<std::mutex> lock(bindings_mutex);
-        auto result = bindings.emplace(token, Binding{name, workspace, reinterpret_cast<Launch>(launch),
-                                                       static_cast<size_t>(inputs), static_cast<size_t>(outputs)});
-        if (!result.second) {
-            const auto& prior = result.first->second;
+        const auto found = bindings.find(token);
+        if (found != bindings.end()) {
+            const auto& prior = *found->second;
             TORCH_CHECK(prior.name == name && prior.workspace == workspace &&
                         prior.launch == reinterpret_cast<Launch>(launch) &&
                         prior.inputs == inputs && prior.outputs == outputs,
                         "Cannot replace an immutable ACLNN binding");
+        } else {
+            TORCH_CHECK(inputs <= std::numeric_limits<unsigned int>::max() - 2 &&
+                        outputs <= std::numeric_limits<unsigned int>::max() - 2 - inputs,
+                        "ACLNN binding has too many arguments");
+            bindings.emplace(token, std::make_shared<Binding>(name, workspace,
+                reinterpret_cast<Launch>(launch), static_cast<size_t>(inputs), static_cast<size_t>(outputs)));
         }
         last_error.clear();
         return 0;

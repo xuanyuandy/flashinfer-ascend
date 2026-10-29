@@ -96,20 +96,26 @@ class AotPackageMatch:
     record: JitCacheRecord
     recipe: BuildRecipe
 
-    def load(self):
+    def load(self, *, companions=()):
         """Use the existing loader; corruption and activation failures are fatal.
 
-        CANN registrations are process-scoped. The existing loader enforces a
-        single record identity per process; its fresh-process diagnostic and
-        original exception are preserved as AotLoadError. Multiple identities
-        are deliberately not attempted by discovery after a load failure.
+        CANN registrations are process-scoped. Trusted companion matches may
+        share the initial activation group; active generations are immutable.
+        Load failures retain their original cause and never authorize JIT.
 
         Known gap: neither this matcher nor load_op_package compares the
         currently installed CANN version against the build environment. Exact
         recorded spec/ABI equality does not establish runtime CANN compatibility.
         """
         _verify(self.directory, spec=self.spec, record=self.record)
+        for companion in companions:
+            _verify(companion.directory, spec=companion.spec, record=companion.record)
         try:
+            if companions:
+                from .op_package import load_op_packages
+
+                return load_op_packages((self.directory, *(item.directory for item in companions)),
+                                        target_soc=self.spec.target_soc)[0]
             return load_op_package(self.directory, target_soc=self.spec.target_soc)
         except Exception as error:
             raise AotLoadError(self.directory, error) from error

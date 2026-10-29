@@ -12,14 +12,14 @@
         "npu_arch": "dav-3510",
         "source": {
           "language": "ascendc",
-          "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+          "locator": "csrc/kernels/ascendc/matmul_bias_silu/op_kernel/native.cpp",
           "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
           "schema_version": 1
         },
         "sources": [
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+            "locator": "csrc/kernels/ascendc/matmul_bias_silu/op_kernel/native.cpp",
             "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
             "schema_version": 1
           }
@@ -27,13 +27,13 @@
         "headers": [
           {
             "language": "ascendc",
-            "locator": "csrc/include/flashinfer_ascend/matmul_bias_silu_tiling.h",
+            "locator": "csrc/kernels/ascendc/matmul_bias_silu/include/flashinfer_ascend/matmul_bias_silu_tiling.h",
             "digest": "34f5b59d3cc602f0d0fbee7b08f62a3f7aa07fff7ab15cc253f30a51f306dfd9",
             "schema_version": 1
           }
         ],
         "include_dirs": [
-          "csrc/include"
+          "csrc/kernels/ascendc/matmul_bias_silu/include"
         ],
         "dependencies": [],
         "definitions": [],
@@ -57,7 +57,7 @@
         "host_sources": [
           {
             "language": "ascendc",
-            "locator": "csrc/op_package/matmul_bias_silu.cpp",
+            "locator": "csrc/kernels/ascendc/matmul_bias_silu/op_host/matmul_bias_silu.cpp",
             "digest": "19135b1ec435f68d3b48748ea45baede4ae9cb01ebbe8b15d61ce4862616ab69",
             "schema_version": 1
           }
@@ -126,21 +126,21 @@
       },
       "spec": {
         "schema_version": 1,
-        "name": "kernel.d3535fddb2aff1a8bcd5b5900271b5dc80876ca5746bf2115d132aa65e278f3b",
+        "name": "kernel.db94cf8fcdee9e2e15d7c9ab0097ba058469738906cbdb8f4382d1f11cce1093",
         "domain": "kernel",
         "generator_id": "ascendc",
         "generator_version": "2",
         "target_soc": "Ascend950",
-        "environment_fingerprint": "e3ffa08572a756f7999952e35d2080285216d280f9f0a72c489c4b51ba66d62a",
+        "environment_fingerprint": "a119d499eac60507535edead3a80be6520daa5a99d4976861dd980d741f10939",
         "specialization_fingerprint": "20030d0e01a3877c31891af31a041d341210acd1af3b6252fabd4ff6cafe4fda",
         "input_fingerprints": [
           [
             "build_recipe",
-            "98fae660c68ab744db8952b823d8348dff244fea3c8318dab3d4418aa8b25079"
+            "89932ddfdcdecd42217dc5165a68308c7b02263b487788e2722daccf7011c1c3"
           ],
           [
             "kernel",
-            "86458a1bd892dc2d5facc5dafd6aacb678a5a008130c3792319fb0ac2bb1e666"
+            "f3aed3bb441512d0a7856bd365e74ce9421e21b08c4024c8777e3fbd95368fa7"
           ],
           [
             "output_adapter",
@@ -152,7 +152,7 @@
           ],
           [
             "resolved_recipe",
-            "208d59460ffe8439d8c27ad236d439fc3e6c6fadd44bf0389339a244b3b5ec62"
+            "28235fa044278444ad4e459912f1cf593fdb983d41391fc97cc3925173490f2c"
           ]
         ],
         "source_artifacts": [],
@@ -163,7 +163,7 @@
         "kernel_id": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
         "source": {
           "language": "ascendc",
-          "locator": "csrc/kernels/ascendc/matmul_bias_silu/native.cpp",
+          "locator": "csrc/kernels/ascendc/matmul_bias_silu/op_kernel/native.cpp",
           "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
           "schema_version": 1
         },
@@ -181,14 +181,14 @@
         "npu_arch": "dav-3510",
         "source": {
           "language": "ascendc",
-          "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+          "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
           "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
           "schema_version": 1
         },
         "sources": [
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+            "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
             "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
             "schema_version": 1
           }
@@ -196,37 +196,39 @@
         "headers": [
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel.h",
+            "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel.h",
             "digest": "4e729565d1035e17cc9fc118dccd86248bf83b147dff33736f27d790f899c814",
             "schema_version": 1
           },
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel_utils.h",
+            "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel_utils.h",
             "digest": "17a78609674d72d71c75eefaab2d8cce99ab2b398ad46e603f1999a49b10ef09",
             "schema_version": 1
           },
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/flash_attention/fai_tiling.h",
+            "locator": "csrc/kernels/ascendc/flash_attention/op_host/fai_tiling.h",
             "digest": "c606564e57045621c7b6e28e9019d391c131a07baa8573a561307060be940175",
             "schema_version": 1
           },
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/flash_attention/tiling_data_def.h",
+            "locator": "csrc/kernels/ascendc/flash_attention/include/tiling_data_def.h",
             "digest": "dd5639fda933be255cb160df44ea3efb1c29e7be1edfe53bd16d2b559911a5ea",
             "schema_version": 1
           },
           {
             "language": "ascendc",
-            "locator": "csrc/kernels/ascendc/flash_attention/CANN_LICENSE.h",
+            "locator": "csrc/kernels/ascendc/flash_attention/include/CANN_LICENSE.h",
             "digest": "06f070fb72f5fcd2e58e72813a10182edcb76e87177d6d4c7eccf2ca654deaf5",
             "schema_version": 1
           }
         ],
         "include_dirs": [
-          "csrc/kernels/ascendc/flash_attention"
+          "csrc/kernels/ascendc/flash_attention/op_kernel",
+          "csrc/kernels/ascendc/flash_attention/op_host",
+          "csrc/kernels/ascendc/flash_attention/include"
         ],
         "dependencies": [
           {
@@ -258,7 +260,7 @@
         "host_sources": [
           {
             "language": "ascendc",
-            "locator": "csrc/op_package/flash_attention.cpp",
+            "locator": "csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp",
             "digest": "6e808537d0508e99e1686146f76a92910138b755a7c1fe2a137fe7d9943a872f",
             "schema_version": 1
           }
@@ -338,21 +340,21 @@
       },
       "spec": {
         "schema_version": 1,
-        "name": "kernel.d2c30e627abe38315d4c68bcebfe454969e88444adeca30259d86bf6c43c9d48",
+        "name": "kernel.b0bd8a8783edb917531797934ae5b3484e75fe261be00e0947a2197a274bc8db",
         "domain": "kernel",
         "generator_id": "ascendc",
         "generator_version": "2",
         "target_soc": "Ascend950",
-        "environment_fingerprint": "e3ffa08572a756f7999952e35d2080285216d280f9f0a72c489c4b51ba66d62a",
+        "environment_fingerprint": "a119d499eac60507535edead3a80be6520daa5a99d4976861dd980d741f10939",
         "specialization_fingerprint": "5de2dc30e9a7c423646cacb69a1840a6cdee64f8622f5ff2bc232be885fbb46d",
         "input_fingerprints": [
           [
             "build_recipe",
-            "5b2d4f29510c11a9a6f7890a73ded5e0ac411ffc887bd0063b4d7fa4864192a3"
+            "7a64b6b1c9730f05a6636b0f73be245aa4412fda2f9b7eaa968573acfa9997e0"
           ],
           [
             "kernel",
-            "287031ecb28c7cb05c364fa496568308803d9e3324207f2596f950a8c980a83a"
+            "6937e258b1eb51e1db78b9c68ba1c0fe2288f05a3dba3c34c53d457b914a9eab"
           ],
           [
             "output_adapter",
@@ -364,7 +366,7 @@
           ],
           [
             "resolved_recipe",
-            "3fd799fe00ad7a8b8ffde76984fefb2171e68a7236221f6199e37e4d1e29bd0c"
+            "1cd2fdd2bf7e0e432d678ad44ab64b9fe5208564f13ac85bacd472fda24cff70"
           ]
         ],
         "source_artifacts": [],
@@ -375,7 +377,7 @@
         "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
         "source": {
           "language": "ascendc",
-          "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+          "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
           "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
           "schema_version": 1
         },

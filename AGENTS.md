@@ -34,6 +34,9 @@ $P -B -m pytest -p no:cacheprovider -q -m real_compile     # 基线 80 passed / 
 ```
 
 - **`pytest-timeout` 未安装**，传 `--timeout` 会报 unrecognized arguments。
+- 日常迭代默认执行 `python3 -B tools/run_regression.py --profile quick`：运行全部非 `real_compile` 用例，编译用例记为 deselected，不把它称为完整回归。此档仍可能使用 NPU，并非 CPU-only。
+- 修改编译、缓存、ACLNN 桥或设备源码时，补充受影响的 `--profile compile` 用例；发布或跨层重构执行一次 `--profile full`。**full 已包含 real_compile，不要紧接着重复运行相同编译矩阵。** 只有新增改动、失败定位或专项验证需要才重复。
+- 该入口保存完整日志、JUnit、pytest 原始退出码和最终状态；有 skip 或没有执行用例时明确失败。只改文档或清单生成工具时，执行相应静态检查及受影响 UT，无需重复冷构建和 wheel 安装。
 - **`0 skipped` 比 `passed` 更重要**：真机用例在没有设备时会静默跳过，此时 `passed` 仍是绿的。
 - 装后验证用 `python -m flashinfer selftest`（不依赖源码树）。
 

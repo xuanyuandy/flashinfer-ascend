@@ -1,13 +1,18 @@
 # FlashInfer
 
 FlashInfer is a work-in-progress inference kernel library for the Ascend
-software stack. It follows FlashInfer's API domains and plan/run execution
+software stack. It follows FlashInfer's API domains, direct functions and stateful plan/run interfaces
 model while implementing kernels for Ascend AI Core rather than translating
 CUDA kernels.
 
 For building an AOT wheel and testing it in a fresh conda environment, see
 [`README-wheel-conda.md`](README-wheel-conda.md).
 Ordinary wheel builds compile and bundle the registered production Ascend C operators.
+
+For the current operator/interface inventory, upstream call patterns and Ascend
+implementation gaps, see [operator coverage](docs/operator-coverage.md) and
+[public API lifecycle tests](docs/operator-call-patterns.md). Not every operator
+requires a wrapper or a public `plan()` step.
 
 For runnable A5 (Ascend950) CANN/Triton operators, environment setup and a map
 of the current code, see [`docs/a5.md`](docs/a5.md). From an initialized CANN
@@ -25,7 +30,7 @@ semantics, and a zero-dependency
 scalar reference oracle for small conformance cases. Its provider and artifact
 contracts are separate from the runnable operator backends described above.
 
-The intended public lifecycle matches FlashInfer: users call `plan()` once and
+The stateful Attention lifecycle matches FlashInfer: users call `plan()` once and
 then call `run()` without passing a plan or provider handle. Provider selection,
 page-table materialization, operation-version binding and callable authorization
 remain internal to the wrapper:

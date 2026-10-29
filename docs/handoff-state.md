@@ -3,6 +3,14 @@
 > 更新于 2026-10-26，HEAD `8cfbe72`。
 > 协作约定见仓库根目录 `AGENTS.md`（代理开工必读）。
 
+## 0. 2026-10-28 调用方式与测试策略增量
+
+优先参考 [调用模式与公共 UT](operator-call-patterns.md) 和 [完整接口对比](operator-coverage.md)。上游并非全部采用 wrapper/plan/run；本仓公共 UT 按直接函数、有状态 wrapper、run-only 等对应生命周期执行。
+
+当前实查为 **81 descriptor / 45 op，其中 43 个绑定 NPU runner、2 个仅 reference**。下文历史块中的“43 op”混用了口径，不能作为当前登记表总数。`BatchAttention` 已导出但默认 NPU provider 未接通，普通 batch CANN wrapper 与之分开统计。
+
+日常执行 `python3 -B tools/run_regression.py --profile quick`，编译改动补充受影响 `compile`，完整验收执行一次 `full`；full 已包含 real_compile，不机械重复。下文全量数字保留历史时点，本轮实际检查见 [审计报告](reports/operator-audit-2026-10-28.md)。
+
 ## 1. 已验证基线（真机 8× Ascend950PR / CANN 9.2.0-beta.2）
 
 ```

@@ -48,7 +48,9 @@ class BatchAttentionFrontendTests(unittest.TestCase):
         self.assertIs(flashinfer.BatchAttention, BatchAttention)
 
     def test_mixed_prefill_decode_run_always_returns_output_and_lse(self):
-        wrapper = BatchAttention(device="cpu")
+        # Exercise the same public constructor -> plan -> run boundary as the
+        # upstream mixed-batch UT. This is explicitly the Host oracle.
+        wrapper = flashinfer.BatchAttention(device="cpu")
         wrapper.plan(
             index([0, 1, 3]),
             index([0, 1, 2]),
@@ -70,6 +72,11 @@ class BatchAttentionFrontendTests(unittest.TestCase):
         self.assertEqual(lse.shape, (3, 1))
         self.assertAlmostEqual(lse.data[0], 0.0)
         self.assertAlmostEqual(lse.data[1], math.log(2.0))
+        plan = wrapper.plan_state
+        fresh_v = tensor([[[[20.0]], [[40.0]]], [[[7.0]], [[999.0]]]])
+        fresh_output, _ = wrapper.run(q, (k, fresh_v))
+        self.assertEqual(fresh_output.data, (7.0, 30.0, 30.0))
+        self.assertIs(wrapper.plan_state, plan)
 
     def test_mixed_run_writes_caller_buffers_and_applies_value_scale(self):
         wrapper = BatchAttention(device="cpu")

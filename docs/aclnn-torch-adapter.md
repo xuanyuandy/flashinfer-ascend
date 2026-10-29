@@ -20,7 +20,7 @@ out = torch.empty_like(result)
 torch.ops.flashinfer.matmul_bias_silu_out(a, b, bias, out)
 ```
 
-FlashAttention 在另一个进程调用，示例见 [wheel 编译与直接调用](../README-wheel-conda.md)。当前 loader 保留单进程一个 op-package identity 的限制，注册多个 schema 不会提前加载包。`enable_aclnn()` 可重复调用，导入/注册不加载本仓适配库及算子包、不编译、不申请设备内存；真实 NPU 调用时才加载。Torch 自身的 backend 自动导入行为取决于其运行环境。
+FlashAttention 与 MatmulBiasSiLU 可在同一进程按任意顺序调用，示例见 [wheel 编译与直接调用](../README-wheel-conda.md)。完整 AOT wheel 首次使用时按可信声明一次性校验并激活当前随包的生产 vendor 集合，之后可复用两个包。每个 vendor/op type/API 只允许一个不可变 generation；同名替换或追加新 vendor 要求新进程，注册 schema 不会提前加载包。缺失的同组项不触发 JIT；多个冷 JIT 包须预先构建，再通过 `load_op_packages` 一次性激活。`enable_aclnn()` 可重复调用，导入/注册不加载本仓适配库及算子包、不编译、不申请设备内存；真实 NPU 调用时才加载。Torch 自身的 backend 自动导入行为取决于其运行环境。
 
 | Torch 入口 | 返回与参数 |
 | --- | --- |
@@ -38,16 +38,17 @@ torch.ops.flashinfer.* (PrivateUse1) 或原 Python 公共接口
   → 原公共 facade / dispatcher：有限支持域、后端选择、out 约束
   → LazyKernelRunner：冻结 spec、AOT 发现或受控 JIT、完整性校验
   → package_tensor_runner：已验证 module + recipe 的 Tensor ABI 校验
-  → libflashinfer_aclnn.so / torch.ops.flashinfer_aclnn._execute
+  → 首次绑定并复用 libflashinfer_aclnn.so / torch.ops.flashinfer_aclnn._execute
+  → TorchNPU OpCommand::RunOpApi callback（按框架配置入队或直接执行）
   → Tensor → aclTensor（storage 基址、offset、shape、stride、dtype）
   → aclnnOpGetWorkspaceSize → host dynamic tiling / executor
   → workspace 分配、recordStream → aclnnOp(workspace, executor, stream)
-  → 当前 stream 同步、描述符释放
+  → TorchNPU 完成同步后返回 caller，释放描述符及 workspace
 ```
 
-内部注册只接受已经通过原 loader 验证的 API 函数地址，公共 Torch schema 不接收任意动态库路径或裸指针。适配器不重新查找不受验证的 vendor 库，不绕过损坏拒绝、禁编译策略、缓存身份或 package identity 门禁。有序 Tensor 参数来自完整 recipe，使用 libffi 调用对应的第一段 ABI。
+内部注册只接受已经通过原 loader 验证的 API 函数地址，公共 Torch schema 不接收任意动态库路径或裸指针。适配器不重新查找不受验证的 vendor 库，不绕过损坏拒绝、禁编译策略、缓存身份或 package identity 门禁。有序 Tensor 参数来自完整 recipe，使用首次准备的 libffi 签名调用对应的第一段 ABI。TorchNPU 启用任务队列时提交 `EXECUTE_OPAPI`；框架关闭队列或使用同步 launch stream 时按其直接执行路径处理。本仓不修改全局队列策略。同步 eager 边界通过已导出的 `NPUStream::stream(true)` 在 callback 外准备 stream；callback 内不自行同步，`RunOpApi(sync=true)` 返回后才清理资源。
 
-与参考实现的差异：本仓使用 TorchNPU 的格式查询 API，不复制私有 `NPUStorageImpl` 布局；保持原有同步 eager 生命周期，描述符、Tensor、workspace 到设备完成后才释放。没有启用参考实现的 executor 缓存、任意 scalar/attribute/optional Tensor/Tensor list 转换，不能声称通用接入这些参数。
+与参考实现的差异：本仓使用 TorchNPU 的格式查询 API，不复制私有 `NPUStorageImpl` 布局；保持原有同步 eager 生命周期，描述符、Tensor、workspace 到设备完成后才释放。当前没有 executor 缓存，也没有任意 scalar/attribute/optional Tensor/Tensor list 转换，不能声称通用接入这些参数。原生桥只使用 TorchNPU 已导出的调用/stream 接口，不复制其任务队列。
 
 ## 构建与兼容
 
@@ -71,4 +72,4 @@ python3 -B -m flashinfer.aclnn.build --output-dir flashinfer/data/aclnn
 
 新增 [主机测试](../tests/test_aclnn_adapter.py) 验证延迟导入、重复注册、FakeTensor、CPU 拒绝、缺失和损坏拒绝；[真机测试](../tests/test_aclnn_adapter_real.py) 冷构建适配库及两条生产 AOT 后，在禁编译策略下执行原 API、Torch functional/out、非默认 stream 与非零 storage offset。
 
-现有 CANN、Triton、plan/run、图资源契约继续由原测试覆盖。生产自研算子的 capture/replay、异步返回、自动微分、完整模型接入、跨 Torch/CANN 版本和其他 SoC 未验证；FakeTensor 注册不提升 `graph_capability`，两条自研路径仍为 `NOT_CAPTURABLE`。实际回归与安装结果见 [接入验收记录](reports/aclnn-integration-2026-10-28.md)。
+现有 CANN、Triton、plan/run、图资源契约继续由原测试覆盖。生产自研算子的 capture/replay、异步返回、自动微分、完整模型接入、跨 Torch/CANN 版本和其他 SoC 未验证；FakeTensor 注册不提升 `graph_capability`，两条自研路径仍为 `NOT_CAPTURABLE`。实际回归与安装结果见 [初始接入验收](reports/aclnn-integration-2026-10-28.md) 和 [队列及架构重构验收](reports/architecture-refactor-2026-10-28.md)。

@@ -489,8 +489,12 @@ class ResolvedBuildRecipe:
 def _build_inputs(recipe):
     if recipe.output_kind == "host_shared":
         return ("csrc/CMakeLists.txt", "csrc/cmake/HostShared.cmake")
+    if recipe.schema_version == 1:
+        # Internal frozen fixtures retain their original paths and identity.
+        return ("csrc/CMakeLists.txt", "csrc/cmake/OpPackage.cmake",
+                "csrc/op_package/host/CMakeLists.txt", "csrc/op_package/kernel/CMakeLists.txt")
     return ("csrc/CMakeLists.txt", "csrc/cmake/OpPackage.cmake",
-            "csrc/op_package/host/CMakeLists.txt", "csrc/op_package/kernel/CMakeLists.txt")
+            "csrc/cmake/op_package/host/CMakeLists.txt", "csrc/cmake/op_package/kernel/CMakeLists.txt")
 
 
 def _resolve_build_recipe(recipe: _Recipe, *, source_root: Path,

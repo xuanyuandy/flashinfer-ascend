@@ -64,6 +64,9 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     stale_source = build_inputs / "kernels/ascendc/matmul_probe/native.cpp"
     stale_source.parent.mkdir(parents=True)
     stale_source.write_text("stale source from the previous layout")
+    stale_operator = build_inputs / "csrc/kernels/ascendc/matmul_probe/native.cpp"
+    stale_operator.parent.mkdir(parents=True)
+    stale_operator.write_text("stale source before per-operator host/kernel grouping")
     command.run()
     destination = tmp_path / "build/flashinfer/data/op_packages"
     assert {path.name for path in destination.iterdir()} == {"a" * 64, "b" * 64}
@@ -78,8 +81,9 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     assert distribution.has_ext_modules()
     assert (tmp_path / "build/flashinfer/data/build/csrc/recipes/flash_attention.json").is_file()
     assert not (build_inputs / "kernels").exists()
+    assert not stale_operator.exists()
     for name in ("native.cpp", "catlass.cpp"):
-        relative = Path("csrc/kernels/ascendc/matmul_probe") / name
+        relative = Path("csrc/kernels/ascendc/matmul_probe/op_kernel") / name
         assert (build_inputs / relative).read_bytes() == (ROOT / relative).read_bytes()
 
     # A later source-only build in the same directory must not retain AOT bytes.

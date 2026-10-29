@@ -124,6 +124,14 @@ def test_segment_gemm_matches_reference(column_major):
     ref = wr.run(x, w, 3, column_major, seg_lens=seg_lens, backend="reference")
     assert got.shape == (int(seg_lens.sum()), d_out)
     assert _rel(got, ref) < 2e-2
+    # Upstream SegmentGEMMWrapper has no plan(): the segment metadata belongs
+    # to each run. Reuse the wrapper with fresh input and explicit output.
+    next_x = x + 0.125
+    out = torch.empty_like(got)
+    returned = wr.run(next_x, w, 3, column_major, seg_lens=seg_lens, out=out, backend="cann")
+    expected = wr.run(next_x, w, 3, column_major, seg_lens=seg_lens, backend="reference")
+    assert returned is out
+    assert _rel(out, expected) < 2e-2
 
 
 @requires_npu

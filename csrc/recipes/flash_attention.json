@@ -8,14 +8,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+      "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
       "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/catlass.cpp",
+        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
         "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
         "schema_version": 1
       }
@@ -23,37 +23,39 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel.h",
+        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel.h",
         "digest": "4e729565d1035e17cc9fc118dccd86248bf83b147dff33736f27d790f899c814",
         "schema_version": 1
       },
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/fai_kernel_utils.h",
+        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel_utils.h",
         "digest": "17a78609674d72d71c75eefaab2d8cce99ab2b398ad46e603f1999a49b10ef09",
         "schema_version": 1
       },
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/fai_tiling.h",
+        "locator": "csrc/kernels/ascendc/flash_attention/op_host/fai_tiling.h",
         "digest": "c606564e57045621c7b6e28e9019d391c131a07baa8573a561307060be940175",
         "schema_version": 1
       },
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/tiling_data_def.h",
+        "locator": "csrc/kernels/ascendc/flash_attention/include/tiling_data_def.h",
         "digest": "dd5639fda933be255cb160df44ea3efb1c29e7be1edfe53bd16d2b559911a5ea",
         "schema_version": 1
       },
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/CANN_LICENSE.h",
+        "locator": "csrc/kernels/ascendc/flash_attention/include/CANN_LICENSE.h",
         "digest": "06f070fb72f5fcd2e58e72813a10182edcb76e87177d6d4c7eccf2ca654deaf5",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/flash_attention"
+      "csrc/kernels/ascendc/flash_attention/op_kernel",
+      "csrc/kernels/ascendc/flash_attention/op_host",
+      "csrc/kernels/ascendc/flash_attention/include"
     ],
     "dependencies": [
       {
@@ -87,7 +89,7 @@
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/op_package/flash_attention.cpp",
+        "locator": "csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp",
         "digest": "6e808537d0508e99e1686146f76a92910138b755a7c1fe2a137fe7d9943a872f",
         "schema_version": 1
       }

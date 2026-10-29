@@ -99,6 +99,7 @@ def ascendc_descriptors():
     from .jit.runtime import bind_aot_kernel
     from .jit.tensor_adapter import package_tensor_runner
 
+    peers = tuple((descriptor, spec) for descriptor, _, spec in _contracts().values())
     return tuple(
         bind_aot_kernel(
             descriptor, spec=spec,
@@ -106,6 +107,7 @@ def ascendc_descriptors():
                 module, recipe, spec=loaded_spec,
             ),
             jit_backend_factory=lambda recipe=recipe, spec=spec: _jit_backend(recipe, spec),
+            package_peers=peers,
         )
         for descriptor, recipe, spec in _contracts().values()
     )

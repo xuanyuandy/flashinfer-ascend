@@ -6,8 +6,9 @@ executor; its device buffer is an implicit final kernel argument. Eager calls
 are synchronous, so this adapter makes no graph-capture claim.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
+from threading import RLock
 
 from flashinfer.runtime import SchemaError
 
@@ -77,6 +78,8 @@ def package_tensor_runner(module, recipe, *, spec):
 class TorchOpPackageRunner:
     module: object
     recipe: object
+    _native_runner: object = field(default=None, init=False, repr=False, compare=False)
+    _native_lock: object = field(default_factory=RLock, init=False, repr=False, compare=False)
 
     def __call__(self, *tensors):
         import ctypes as C
@@ -105,7 +108,11 @@ class TorchOpPackageRunner:
         # a selected but invalid native bridge must never fall back.
         from flashinfer.aclnn import _native
         if _native.available():
-            return _native.execute(self.module, self.recipe, tensors)
+            if self._native_runner is None:
+                with self._native_lock:
+                    if self._native_runner is None:
+                        object.__setattr__(self, "_native_runner", _native.prepare(self.module, self.recipe))
+            return self._native_runner(tensors)
 
         api = _acl_tensor_api()
         handles = []

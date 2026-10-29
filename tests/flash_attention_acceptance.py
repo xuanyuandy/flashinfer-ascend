@@ -17,7 +17,7 @@ import sys
 
 
 ROOT = Path(__file__).resolve().parents[1]
-PYTHON = Path(os.environ.get("FLASHINFER_TEST_PYTHON", "/root/miniforge3/envs/flashinfer-a5/bin/python"))
+PYTHON = Path(os.environ.get("FLASHINFER_TEST_PYTHON", sys.executable))
 CATLASS_ROOT = Path(os.environ.get(
     "FLASHINFER_TEST_CATLASS_ROOT", os.environ.get("FLASHINFER_CATLASS_ROOT", "/mnt/fi/catlass-ref"),
 ))

@@ -6,15 +6,16 @@ import torch
 import flashinfer
 from flashinfer._single_attention import single_attention
 from flashinfer.attention.schema import AttentionMode
+from flashinfer.attention import AttentionStateError
 from flashinfer.cann.attention import dense_attention
 from flashinfer.runtime import SchemaError
 
 
 @pytest.fixture(scope="module")
 def npu():
-    pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(0):
-        pytest.skip("requires verified Ascend950")
+    import torch_npu  # noqa: F401
+    assert torch.npu.is_available(), "public operator UT requires an available NPU"
+    assert "950" in torch.npu.get_device_name(0), "requires verified Ascend950"
     return torch.device("npu:0")
 
 
@@ -67,17 +68,21 @@ def test_batch_prefill_segments_pages_outputs_and_lse(npu, layout, ragged):
     cls = flashinfer.BatchPrefillWithRaggedKVCacheWrapper if ragged else flashinfer.BatchPrefillWithPagedKVCacheWrapper
     wrapper = cls(torch.empty(1024, dtype=torch.uint8, device=npu), kv_layout=layout)
     if ragged:
-        wrapper.plan(torch.tensor([0, 1, 3], dtype=torch.int32), torch.tensor([0, 1, 4], dtype=torch.int32), 4, 2, 64, causal=True)
+        plan_args = (torch.tensor([0, 1, 3], dtype=torch.int32), torch.tensor([0, 1, 4], dtype=torch.int32), 4, 2, 64)
         k, v = torch.cat(dense_k), torch.cat(dense_v)
         if layout == "HND":
             k, v = k.transpose(0, 1), v.transpose(0, 1)
         args = (q.to(npu), k.to(npu), v.to(npu))
     else:
-        wrapper.plan(torch.tensor([0, 1, 3], dtype=torch.int32), torch.tensor([0, 1, 3], dtype=torch.int32),
-                     torch.tensor([2, 0, 1], dtype=torch.int32), torch.tensor([1, 1], dtype=torch.int32), 4, 2, 64, 2, causal=True)
+        plan_args = (torch.tensor([0, 1, 3], dtype=torch.int32), torch.tensor([0, 1, 3], dtype=torch.int32),
+                     torch.tensor([2, 0, 1], dtype=torch.int32), torch.tensor([1, 1], dtype=torch.int32), 4, 2, 64, 2)
         if layout == "HND":
             keys, values = keys.transpose(1, 2), values.transpose(1, 2)
         args = (q.to(npu), (keys.to(npu), values.to(npu)))
+    with pytest.raises(AttentionStateError, match="has not been planned"):
+        wrapper.run(*args)
+    wrapper.plan(*plan_args, causal=True)
+    plan = wrapper.plan_state
     out = torch.empty(3, 4, 64, dtype=dtype, device=npu)
     lse = torch.empty(4, 3, dtype=torch.float32, device=npu)
     actual, actual_lse = wrapper.run(*args, out=out, lse=lse, return_lse=True, lse_base="ln", lse_layout="HN", enable_pdl=True)
@@ -87,6 +92,19 @@ def test_batch_prefill_segments_pages_outputs_and_lse(npu, layout, ragged):
     assert wrapper.resolved_backend == "cann"
     assert wrapper.plan_selection.route == "builtin"
     assert wrapper.plan_selection.kernel_id.startswith("cann/")
+    # Match upstream's stateful public lifecycle: plan once, run fresh data,
+    # then replan on the same wrapper. A saved output is not a valid run cache.
+    next_q = q + 0.125
+    next_expected = torch.cat([
+        dense_attention(next_q[:1], dense_k[0], dense_v[0], native=False, causal=True),
+        dense_attention(next_q[1:], dense_k[1], dense_v[1], native=False, causal=True),
+    ])
+    next_args = (next_q.to(npu), *args[1:])
+    torch.testing.assert_close(wrapper.run(*next_args).cpu(), next_expected, rtol=0.01, atol=0.01)
+    assert wrapper.plan_state is plan
+    wrapper.plan(*plan_args, causal=True)
+    assert wrapper.plan_state.generation == plan.generation + 1
+    torch.testing.assert_close(wrapper.run(*next_args).cpu(), next_expected, rtol=0.01, atol=0.01)
 
 
 @pytest.mark.parametrize("layout", ["NHD", "HND"])
@@ -103,6 +121,8 @@ def test_paged_decode_plan_metadata_and_workspace_reset(npu, layout, q_len, dtyp
                                 native=False, causal=q_len > 1, return_lse=True) for r in range(2)]
     ws = torch.empty(1024, dtype=torch.uint8, device=npu)
     wrapper = flashinfer.BatchDecodeWithPagedKVCacheWrapper(ws, layout, use_tensor_cores=q_len > 1)
+    with pytest.raises(AttentionStateError, match="has not been planned"):
+        wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)))
     wrapper.plan(torch.tensor([0, 1, 3], dtype=torch.int32), torch.tensor([2, 0, 1], dtype=torch.int32),
                  torch.tensor([3, 1], dtype=torch.int32), 4, 2, 64, 4, q_data_type=dtype, q_len_per_req=q_len)
     plan = wrapper.plan_state
@@ -113,5 +133,13 @@ def test_paged_decode_plan_metadata_and_workspace_reset(npu, layout, q_len, dtyp
     output, lse = wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)), return_lse=True, q_len_per_req=q_len)
     torch.testing.assert_close(output.cpu(), torch.cat([x[0] for x in expected]), rtol=0.02, atol=0.02)
     torch.testing.assert_close(lse.cpu(), torch.cat([x[1] for x in expected]), rtol=0.02, atol=0.02)
+    next_q = q + 0.125
+    next_expected = torch.cat([
+        dense_attention(next_q[r * q_len:(r + 1) * q_len], gathered_k[r], gathered_v[r],
+                        native=False, causal=q_len > 1) for r in range(2)
+    ])
+    actual = wrapper.run(next_q.to(npu), (keys.to(npu), vals.to(npu)), q_len_per_req=q_len)
+    torch.testing.assert_close(actual.cpu(), next_expected, rtol=0.02, atol=0.02)
+    assert wrapper.plan_state is plan
     with pytest.raises(SchemaError, match="q_len_per_req"):
         wrapper.run(q.to(npu), (keys.to(npu), vals.to(npu)), q_len_per_req=q_len + 1)

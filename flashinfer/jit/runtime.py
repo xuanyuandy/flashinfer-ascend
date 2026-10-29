@@ -47,7 +47,7 @@ class AotKernelRunner:
     """
 
     def __init__(self, descriptor, *, spec, runner_factory, jit_backend_factory=None,
-                 store=None, policy=None, index=None):
+                 store=None, policy=None, index=None, package_peers=()):
         if not isinstance(descriptor, KernelDescriptor) or not isinstance(spec, JitSpec):
             raise TypeError("AOT binding requires KernelDescriptor and JitSpec")
         if descriptor.runner is not None:
@@ -73,6 +73,11 @@ class AotKernelRunner:
         self.store = store
         self.policy = None if policy is None else JitCompilationPolicy(policy)
         self.index = index
+        self.package_peers = tuple(package_peers)
+        for peer_descriptor, peer_spec in self.package_peers:
+            peer_spec.validate_descriptor(peer_descriptor)
+            if dict(peer_spec.input_fingerprints).get("kernel") != peer_descriptor.fingerprint:
+                raise SchemaError("AOT companion spec must bind its trusted descriptor")
         self._lock = RLock()
         self._runner = None
         self._module = None
@@ -126,7 +131,19 @@ class AotKernelRunner:
                 # package identity conflicts propagate; none enter the except
                 # AotMissingError branch above. CANN runtime version comparison
                 # remains a known gap in load_op_package, not claimed here.
-                module = match.load()
+                companions = []
+                for peer_descriptor, peer_spec in self.package_peers:
+                    if peer_spec.kernel_id == self.spec.kernel_id or peer_spec.target_soc != self.spec.target_soc:
+                        continue
+                    try:
+                        companion = index.find(peer_spec, descriptor=peer_descriptor,
+                                               target_soc=peer_spec.target_soc)
+                    except AotMissingError:
+                        # A CONFIG/single-op wheel may omit an optional peer.
+                        # Preparing a group must never compile another operator.
+                        continue
+                    companions.append(companion)
+                module = match.load(companions=tuple(companions)) if companions else match.load()
                 provenance = RuntimeProvenance("aot", match.directory, self.spec.fingerprint)
                 try:
                     runner = self.runner_factory(module, self.spec)
@@ -150,19 +167,20 @@ class AotKernelRunner:
 
 
 def bind_aot_kernel(descriptor, *, spec, runner_factory, jit_backend_factory=None,
-                    store=None, policy=None, index=None):
+                    store=None, policy=None, index=None, package_peers=()):
     """Return a descriptor ready for ordinary KernelRegistry registration.
 
     This is an operator-author registration hook, not an application setup
     requirement: installed operators should register it alongside their static
     descriptor. Their users call the existing public API with no package paths.
-    The production Ascend C registry is still empty; this hook does not claim
-    production operator coverage. It performs no I/O and preserves the frozen
+    Optional peers supply trusted declarations for a shared CANN activation;
+    missing peers are not compiled. This performs no I/O and preserves the frozen
     descriptor fingerprint because runners are not serialized ABI fields.
     """
     return replace(descriptor, runner=AotKernelRunner(
         descriptor, spec=spec, runner_factory=runner_factory,
-        jit_backend_factory=jit_backend_factory, store=store, policy=policy, index=index))
+        jit_backend_factory=jit_backend_factory, store=store, policy=policy, index=index,
+        package_peers=package_peers))
 
 
 __all__ = ["AotKernelRunner", "RuntimeProvenance", "bind_aot_kernel"]

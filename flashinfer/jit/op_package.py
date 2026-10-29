@@ -2,8 +2,8 @@
 
 No SDK discovery, optional imports, installers or filesystem work at import.
 The release directory is a copy of a verified JitBuildStore generation, not a
-second cache. Activate before the first custom-op execution; one package
-identity is supported per process, including lazy activation after NPU init.
+second cache. Each vendor/op type retains one immutable identity per process;
+distinct operators can coexist, including lazy activation after NPU init.
 """
 
 from dataclasses import dataclass, field
@@ -215,68 +215,102 @@ class OpPackageModule:
             raise RuntimeError("%s returned %s" % (self.recipe.host_entry, status))
 
 
-def load_op_package(directory, *, target_soc):
-    """Load a verified release/cache generation without sources or a compiler.
+def load_op_packages(directories, *, target_soc):
+    """Activate a complete, verified CANN vendor set before its first execution.
 
-    Set ASCEND_CUSTOM_OPP_PATH before custom-op execution; no .run installation.
-    CANN caches vendor registrations, so changing packages in-process is rejected.
-    CANN runtime/driver shared libraries must be on the library search path.
-    Known gap: this loader does not compare the current CANN version with the
-    recorded build environment; target/spec checks are not that comparison.
+    CANN snapshots custom vendor paths. New vendors cannot be appended to an
+    active set; prepare them together or use a fresh process. Each op/API and
+    vendor has one immutable generation. No installer or compiler is invoked.
+    Current CANN runtime version comparison remains an independent known gap.
     """
     import ctypes as C
     from .cache import verify_build_directory
 
-    directory = Path(directory).resolve(strict=True)
-    record = verify_build_directory(directory)
-    if record.artifact.format != ArtifactFormat.ASCENDC_OP_PACKAGE or record.artifact.target_soc != target_soc:
-        raise SchemaError("release is not an op-package for the requested SOC")
-    spec = JitSpec.from_dict(json.loads((directory / "manifest.json").read_text())["spec"])
-    data, recipe = verify_op_package(directory, spec)
+    directories = tuple(dict.fromkeys(Path(path).resolve(strict=True) for path in directories))
+    if not directories:
+        raise SchemaError("op-package activation requires at least one directory")
+    verified = []
+    for directory in directories:
+        record = verify_build_directory(directory)
+        if (record.artifact.format != ArtifactFormat.ASCENDC_OP_PACKAGE
+                or record.artifact.target_soc != target_soc):
+            raise SchemaError("release is not an op-package for the requested SOC")
+        spec = JitSpec.from_dict(json.loads((directory / "manifest.json").read_text())["spec"])
+        data, recipe = verify_op_package(directory, spec)
+        verified.append((directory, record, data, recipe))
+
     global _active_package
     with _load_lock:
-        identity = record.fingerprint
-        if _active_package is not None:
-            if _active_package[0] != identity:
-                raise SchemaError("CANN op-package registration is process-scoped; load another package in a fresh process")
-            return _active_package[1]
-        vendor = _file(directory, data["vendor_path"])
+        registrations = _active_package if _active_package is not None else {}
+        identities = {name: (identity, module.recipe) for name, (identity, module) in registrations.items()}
+        pending = {}
+        for directory, record, data, recipe in verified:
+            prior = identities.get(recipe.package_vendor)
+            if prior is not None:
+                if prior[0] != record.fingerprint:
+                    raise SchemaError("CANN vendor registration is process-scoped; load another generation in a fresh process")
+                continue
+            for _, loaded_recipe in identities.values():
+                if (loaded_recipe.package_op_type == recipe.package_op_type
+                        or loaded_recipe.host_entry == recipe.host_entry):
+                    raise SchemaError("CANN op type/ACLNN entry is already registered; use a fresh process")
+            identities[recipe.package_vendor] = record.fingerprint, recipe
+            pending[recipe.package_vendor] = directory, record, data, recipe
+        if registrations and pending:
+            raise SchemaError("CANN vendor paths are already active; prepare all operators together in a fresh process")
         previous = os.environ.get("ASCEND_CUSTOM_OPP_PATH")
-        registration_fd = None
-        registration_path = vendor
+        aliases = {}
+        loaded = {}
         try:
-            if "." in str(vendor):
-                # CANN 9.2's NnopbaseReadJsonConfig derives the companion JSON
-                # from the first '.' in a full binary path. Ordinary JIT store
-                # paths (.objects, ~/.cache) consequently become e.g. jit/.json.
-                # Expose the SAME verified directory through a stable Linux fd;
-                # preserve the vendor basename, which CANN uses as its identity.
-                # Keep this fd alive with the process-scoped active package.
-                registration_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
-                registration_path = (Path("/proc") / str(os.getpid()) / "fd"
-                                     / str(registration_fd) / data["vendor_path"])
+            # Set every verified vendor path before the first host dlopen/API;
+            # appending paths after the first custom execution is too late.
+            for name, (directory, record, data, recipe) in pending.items():
+                vendor = _file(directory, data["vendor_path"])
+                registration_path, registration_fd = vendor, None
+                if "." in str(vendor):
+                    # CANN 9.2 derives binary JSON paths from the first dot.
+                    # Retain a dot-free /proc alias to the SAME verified bytes.
+                    registration_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
+                    registration_path = (Path("/proc") / str(os.getpid()) / "fd"
+                                         / str(registration_fd) / data["vendor_path"])
+                aliases[name] = vendor, registration_path, registration_fd
                 if not registration_path.is_dir():
                     raise SchemaError("CANN op-package dotted paths require Linux /proc directory fd access")
-            os.environ["ASCEND_CUSTOM_OPP_PATH"] = str(registration_path) + (os.pathsep + previous if previous else "")
-            api = C.CDLL(str(_file(directory, data["api_library"])), mode=C.RTLD_LOCAL)
-            workspace = getattr(api, recipe.host_entry + "GetWorkspaceSize")
-            workspace.argtypes = ([C.c_void_p] * len(recipe.tensor_parameter_names)
-                                  + [C.POINTER(C.c_uint64), C.POINTER(C.c_void_p)])
-            workspace.restype = C.c_int
-            launch = getattr(api, recipe.host_entry)
-            launch.argtypes = [C.c_void_p, C.c_uint64, C.c_void_p, C.c_void_p]
-            launch.restype = C.c_int
+            if pending:
+                paths = [str(alias[1]) for alias in aliases.values()]
+                if previous:
+                    paths.append(previous)
+                os.environ["ASCEND_CUSTOM_OPP_PATH"] = os.pathsep.join(paths)
+            for name, (directory, record, data, recipe) in pending.items():
+                api = C.CDLL(str(_file(directory, data["api_library"])), mode=C.RTLD_LOCAL)
+                workspace = getattr(api, recipe.host_entry + "GetWorkspaceSize")
+                workspace.argtypes = ([C.c_void_p] * len(recipe.tensor_parameter_names)
+                                      + [C.POINTER(C.c_uint64), C.POINTER(C.c_void_p)])
+                workspace.restype = C.c_int
+                launch = getattr(api, recipe.host_entry)
+                launch.argtypes = [C.c_void_p, C.c_uint64, C.c_void_p, C.c_void_p]
+                launch.restype = C.c_int
+                vendor, registration_path, registration_fd = aliases[name]
+                loaded[name] = record.fingerprint, OpPackageModule(
+                    recipe, vendor, api, registration_path, registration_fd)
         except Exception:
-            if registration_fd is not None:
-                os.close(registration_fd)
+            for _, _, fd in aliases.values():
+                if fd is not None:
+                    os.close(fd)
             if previous is None:
                 os.environ.pop("ASCEND_CUSTOM_OPP_PATH", None)
             else:
                 os.environ["ASCEND_CUSTOM_OPP_PATH"] = previous
             raise
-        module = OpPackageModule(recipe, vendor, api, registration_path, registration_fd)
-        _active_package = identity, module
-        return module
+        if loaded:
+            registrations = dict(registrations, **loaded)
+            _active_package = registrations
+        return tuple(registrations[recipe.package_vendor][1] for _, _, _, recipe in verified)
 
 
-__all__ = ["OpPackageModule", "OpPackageSymbolError", "load_op_package"]
+def load_op_package(directory, *, target_soc):
+    """Load one package; callers needing several prepare one activation group."""
+    return load_op_packages((directory,), target_soc=target_soc)[0]
+
+
+__all__ = ["OpPackageModule", "OpPackageSymbolError", "load_op_package", "load_op_packages"]

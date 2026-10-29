@@ -55,7 +55,7 @@ FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape
 ### 1.3 统一使用 op_package
 
 **公开构建只支持 v2 `op_package`。** `host_shared` 仅存在于内部旧协议测试设施；公开配置会明确拒绝。
-想让算子能被 AOT 运行期自动发现并在无编译器环境命中，也必须是 `op_package`。
+想让算子能被 AOT 运行期自动发现并在无编译器环境命中，也必须是 `op_package`。该产物包含 ACLNN host API、tiling 库、设备二进制及索引元数据；AOT/JIT 共用同一包格式，源码仍按算子组织。
 
 ## 2. 按这个顺序做
 
@@ -66,8 +66,9 @@ FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape
      明确 dtype / shape / layout / mask / batch 支持范围，以及数值容差
      ↓
 ② 写 kernel TU 与 host TU
-     csrc/kernels/ascendc/<name>/      设备侧
-     csrc/op_package/<name>.cpp        OpDef / InferShape / tiling 回调 / workspace 回调
+     csrc/kernels/ascendc/<name>/op_kernel/    设备侧
+     csrc/kernels/ascendc/<name>/op_host/      OpDef / InferShape / tiling / workspace 回调
+     csrc/kernels/ascendc/<name>/include/      host/device 共享 tiling 布局
      ↓
 ③ 写 recipe
      csrc/recipes/<name>.json          照抄 matmul_bias_silu.json 的字段
@@ -102,7 +103,7 @@ FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape
 | **把 skip 当 pass** | 真机用例静默跳过还以为通过 | 跑前自检 `torch.npu.is_available()` 应为 `True 8`；`-m real_compile` 应 **0 skipped** |
 | **登记表计数断言被撞** | 新增生产条目后若干测试失败 | **这是设计如此**。断言钉死了精确集合，新增 kernel 必须被显式确认。更新时继续钉死精确集合，**不要放宽成 `>= 1` 或"包含"** |
 | **虚报入图能力** | `graph_capability` 写了 `CAPTURE_SAFE` 却没验证 | 没做过捕获/重放验证就写 `NOT_CAPTURABLE`。类名带 `CUDAGraph`、参数带 `use_cuda_graph` **都不构成证据** |
-| **单进程多包** | 第二个不同 op-package 加载被拒 | `load_op_package` 目前限单进程一个 package identity，已知缺口 |
+| **同名注册替换** | 同 vendor 的新 generation 或跨 vendor 的重复 op/API 被拒 | 首次激活前组装完整 vendor 集合；同组不同算子可共存，同名升级或追加 vendor 须新进程 |
 | **CANN 路径含点** | vendor 注册找不到 JSON | CANN 9.2 的 `NnopbaseReadJsonConfig` 按路径**第一个 `.`** 推导 JSON 名（`.objects`、`~/.cache` 都会中招）。loader 已用 `/proc` 目录 fd 别名绕开，接入方不必自己处理 |
 | **传 `--timeout`** | pytest 报 unrecognized arguments | `pytest-timeout` **未安装** |
 | **把 tiling 的数据依赖当 shape** | 契约表达不了 | `shape_constraints` 绑定的是 **shape 符号**。tiling 若依赖张量**内容**（如 `actual_seq_lengths`），当前契约**无法表达**——要么缩范围，要么另扩一档契约并写独立校验。**不要硬编码常量绕过** |

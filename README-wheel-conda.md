@@ -42,7 +42,7 @@ python3 -m pip install --force-reinstall --no-deps \
 | `flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)` | catlass Ascend C，wheel 内 AOT | FP16，`q[128,2,128]`、`k/v[256,2,128]` |
 | `torch.ops.flashinfer.rmsnorm(out, x, w, ...)` | CANN RMSNorm，经 torch.library 注册 | FP32，`x[4,128]`、`w[128]` |
 
-前两个公共函数直接接收和返回 `torch.Tensor`，保持原有默认调用路径。完整 wheel 提供 C++/OpCommand → ACLNN 适配库，显式启用后可使用 Torch 算子接口，原公共函数也会走同一适配库；每个生产算子在独立进程测试：
+前两个公共函数直接接收和返回 `torch.Tensor`，保持原有默认调用路径。完整 wheel 提供 C++/OpCommand → ACLNN 适配库，显式启用后可使用 Torch 算子接口，原公共函数也会走同一适配库；两个生产算子可同进程调用；也可分别执行下面的测试命令：
 
 ```python
 import torch
@@ -203,7 +203,7 @@ test "$FI_SELFTEST_RC" -eq 0
 
 ## 5. 自己用 torch Tensor / torch.ops 调用并对照 CPU
 
-在当前测试目录创建以下脚本。三个 case 分别启动 Python 进程：当前 CANN 自定义包加载器只允许单进程激活一个 package identity。
+在当前测试目录创建以下脚本。以下三个 case 可分别执行；应用可在同一进程调用两个生产算子。完整 AOT wheel 首次使用时一次性激活当前随包的生产 vendor 集合。加载器保持该集合及各 vendor/op type/API 的不可变注册，同名 generation 升级或追加新 vendor 须新进程。
 
 ```bash
 cat > wheel_smoke.py <<'PY'
@@ -301,6 +301,6 @@ python -B wheel_smoke.py rmsnorm
 | wheel 没有两个 AOT manifest | 检查是否遗留 `FLASHINFER_AOT_ALL=0` 或空值，以及安装的 wheel 是否来自本次输出目录 |
 | `flashinfer.__file__` 指向源码树 | 在源码目录外执行，使用新 conda 环境并 `--force-reinstall` 安装本次 wheel |
 | `GetWorkspaceSize returned 561002` | 检查 CANN 运行时变量及继承的 `ASCEND_CUSTOM_OPP_PATH`；日志中的具体原因需要进一步定位 |
-| `process-scoped` / package identity 冲突 | 按上面三条独立 Python 命令执行，每次测试一个生产包 |
+| `process-scoped` / package identity 冲突 | 同 vendor 的新 generation 或重复 op/API 不可覆盖；升级该算子后启动新进程 |
 
 构建日志保存在 `$FI_WHEEL_RUN`，selftest 日志和示例脚本保存在 `$FI_RUN_DIR`。最新 Torch/ACLNN、全量回归及 wheel 安装证据见 [接入验收记录](docs/reports/aclnn-integration-2026-10-28.md)。普通构建与 `dy_test` 的既有实测证据见 [默认 AOT wheel 验证报告](docs/reports/default-aot-wheel-2026-10-27.md)；迁移后的早期验证见 [目标机器回归报告](docs/reports/regression-target-2026-10-27.md)。

@@ -37,7 +37,7 @@ registry.register(bind_aot_kernel(
   `verify_build_directory` / `verify_op_package` 校验。第一次绑定之后直接使用已经
   加载的模块与 runner，不在每次算子调用时扫描或 hash 文件。
 - 索引失效不会卸载已经绑定的模块。替换磁盘文件不会改变旧 runner 的执行来源；
-  切换 package identity 必须启动新进程。
+  切换同一 vendor 的 package generation 必须启动新进程；首次激活集合中的不同 op type/API 可共存；激活后追加 vendor 仍需新进程。
 
 匹配要求 target SoC、完整 spec fingerprint 一致，且 spec 中的 `kernel` 指纹等于
 可信 descriptor 指纹（包含 launch/binary ABI）。同时复用 spec 和 recipe 对 descriptor
@@ -65,12 +65,10 @@ registry.register(bind_aot_kernel(
 
 ## 范围与已知缺口
 
-- **生产算子登记未做**，公共 GEMM 测试只注入 probe descriptor，不能据此宣称生产
-  GEMM、attention 或其他 Ascend C 算子已支持。
+- 最初发现机制的验收只使用 probe；目前生产登记有 MatmulBiasSiLU 与 CATLASS FlashAttention。两者仍限定各自的 dtype/shape/语义域，不由发现能力扩大支持范围。
 - **当前 CANN 版本兼容校验未做**。记录中的完整 spec 一致并不能证明当前 CANN 与
   构建时环境兼容；既有加载器不重新比较当前版本。
-- **多 package identity 支持未做**。仍复用既有单进程唯一 identity 限制；第二个不同
-  identity 明确拒绝，保留 fresh-process 提示，不改为 JIT。
+- 生产 AOT 首次解析会按可信声明匹配当前随包的同目标生产项，整组校验并激活 vendor 路径；该组不同 op type/API 的产物允许同进程共存。未随包的同组项不编译。同 vendor 另一 generation 或跨 vendor 同名注册仍明确拒绝，保留 fresh-process 提示，不改为 JIT。激活后追加 vendor 也要求新进程。整组失败恢复环境并关闭新 FD；多个冷 JIT 包须先构建，再用 `load_op_packages` 一次性准备。
 - 其他设备/CANN 版本、真实 wheel 安装环境、graph capture 下的延迟绑定，以及已激活
   模块跨 fork 的复用均为**未验证**。当前真机证据与可复现命令见
   [P0-2 验收报告](p0-2-aot-runtime-validation-2026-10-25.md)。

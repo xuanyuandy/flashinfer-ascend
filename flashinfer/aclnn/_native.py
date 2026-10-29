@@ -9,6 +9,7 @@ from threading import RLock
 
 _lock = RLock()
 _owners = {}
+_runners = {}
 _required = False
 
 
@@ -61,16 +62,17 @@ def load_adapter():
     return api
 
 
-def execute(module, recipe, tensors):
+def prepare(module, recipe):
+    """Bind one verified module once; invocation only supplies Tensor lists."""
     import ctypes as C
     import torch
 
-    api = load_adapter()
     inputs = sum(parameter.role == "input" for parameter in recipe.tensor_parameters)
-    outputs = len(tensors) - inputs
+    outputs = len(recipe.tensor_parameters) - inputs
     token = recipe.fingerprint + ":" + str(id(module.api))
     with _lock:
-        if token not in _owners:
+        if token not in _runners:
+            api = load_adapter()
             workspace = C.cast(getattr(module.api, recipe.host_entry + "GetWorkspaceSize"), C.c_void_p)
             launch = C.cast(getattr(module.api, recipe.host_entry), C.c_void_p)
             status = api.fi_aclnn_register(token.encode(), recipe.host_entry.encode(),
@@ -78,4 +80,14 @@ def execute(module, recipe, tensors):
             if status:
                 raise RuntimeError(api.fi_aclnn_last_error().decode())
             _owners[token] = module
-    torch.ops.flashinfer_aclnn._execute(token, list(tensors[:inputs]), list(tensors[inputs:]))
+            operation = torch.ops.flashinfer_aclnn._execute
+
+            def run(tensors):
+                return operation(token, list(tensors[:inputs]), list(tensors[inputs:]))
+
+            _runners[token] = run
+        return _runners[token]
+
+
+def execute(module, recipe, tensors):
+    return prepare(module, recipe)(tensors)
