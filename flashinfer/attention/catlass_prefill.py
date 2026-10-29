@@ -18,12 +18,12 @@ def single_prefill_with_kv_cache_catlass(
 ):
     """Compute dense ``softmax(q @ k.T / sqrt(128)) @ v`` on Ascend950.
 
-    Inputs are contiguous FP16 NPU ND tensors: ``q[S,H,128]`` and
+    Inputs are contiguous FP16 or BF16 NPU ND tensors sharing one dtype: ``q[S,H,128]`` and
     ``k[T,H,128]``, ``v[T,H,128]``. S and T are multiples of 128 in
     [128, 512]; H is in [1, 8], shared by Q/K/V. The implicit batch is 1.
     Only NHD, noncausal, unmasked attention is supported. Sequence lengths
     come from complete dense shapes; runtime length tensors are not accepted.
-    Optional ``out`` has Q's shape and FP16 dtype; output/input aliasing is
+    Optional ``out`` has Q's shape and dtype; output/input aliasing is
     rejected at dispatch before the lazy package runner resolves.
 
     Unsupported metadata/options fail at dispatch before output allocation.
@@ -37,7 +37,7 @@ def single_prefill_with_kv_cache_catlass(
     from ..ascendc import FLASH_ATTENTION_KERNEL_ID, load_contract, tensor_contract_specialization
 
     output_metadata = out if out is not None else SimpleNamespace(
-        shape=tuple(q.shape), dtype=torch.float16, device=q.device,
+        shape=tuple(q.shape), dtype=q.dtype, device=q.device,
         is_contiguous=lambda: True,
     )
     tensors = (q, k, v, output_metadata)
@@ -62,7 +62,7 @@ def single_prefill_with_kv_cache_catlass(
     )
     if out is None:
         signature = replace(
-            signature, dtypes=signature.dtypes + ("float16",),
+            signature, dtypes=signature.dtypes + (str(output_metadata.dtype).removeprefix("torch."),),
             shapes=signature.shapes + (output_metadata.shape,),
             layouts=signature.layouts + ("",),
             physical_layouts=tuple(
@@ -73,7 +73,7 @@ def single_prefill_with_kv_cache_catlass(
         )
     decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
     if out is None:
-        out = torch.empty(output_metadata.shape, dtype=torch.float16, device=q.device)
+        out = torch.empty(output_metadata.shape, dtype=output_metadata.dtype, device=q.device)
     _run_selected(decision.kernel_id, q, k, v, out)
     return out
 

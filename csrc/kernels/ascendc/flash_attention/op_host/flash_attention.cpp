@@ -81,7 +81,11 @@ ge::graphStatus Infer(gert::InferShapeContext *context) {
     return ge::GRAPH_SUCCESS;
 }
 ge::graphStatus InferType(gert::InferDataTypeContext *context) {
-    context->SetOutputDataType(0, ge::DT_FLOAT16);
+    const auto dtype = context->GetInputDataType(0);
+    if ((dtype != ge::DT_FLOAT16 && dtype != ge::DT_BF16) ||
+        context->GetInputDataType(1) != dtype || context->GetInputDataType(2) != dtype)
+        return ge::GRAPH_FAILED;
+    context->SetOutputDataType(0, dtype);
     return ge::GRAPH_SUCCESS;
 }
 }
@@ -90,14 +94,14 @@ namespace ops {
 class FI_PACKAGE_OP_TYPE : public OpDef {
 public:
     explicit FI_PACKAGE_OP_TYPE(const char *name) : OpDef(name) {
-        Input("q").ParamType(REQUIRED).DataType({ge::DT_FLOAT16}).Format({ge::FORMAT_ND})
-            .UnknownShapeFormat({ge::FORMAT_ND});
-        Input("k").ParamType(REQUIRED).DataType({ge::DT_FLOAT16}).Format({ge::FORMAT_ND})
-            .UnknownShapeFormat({ge::FORMAT_ND});
-        Input("v").ParamType(REQUIRED).DataType({ge::DT_FLOAT16}).Format({ge::FORMAT_ND})
-            .UnknownShapeFormat({ge::FORMAT_ND});
-        Output("out").ParamType(REQUIRED).DataType({ge::DT_FLOAT16}).Format({ge::FORMAT_ND})
-            .UnknownShapeFormat({ge::FORMAT_ND});
+        Input("q").ParamType(REQUIRED).DataType({ge::DT_FLOAT16, ge::DT_BF16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND}).UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
+        Input("k").ParamType(REQUIRED).DataType({ge::DT_FLOAT16, ge::DT_BF16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND}).UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
+        Input("v").ParamType(REQUIRED).DataType({ge::DT_FLOAT16, ge::DT_BF16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND}).UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
+        Output("out").ParamType(REQUIRED).DataType({ge::DT_FLOAT16, ge::DT_BF16})
+            .Format({ge::FORMAT_ND, ge::FORMAT_ND}).UnknownShapeFormat({ge::FORMAT_ND, ge::FORMAT_ND});
         SetInferShape(Infer).SetInferDataType(InferType);
         AICore().SetTiling(FiFlashAttentionTiling).AddConfig(FI_STRING(FI_COMPUTE_UNIT));
     }

@@ -87,7 +87,8 @@ def execute(scenario, tmp_path, *, search_root=None):
 @pytest.mark.real_compile
 def test_flash_attention_golden_multiple_shapes(flash_attention_release, tmp_path):
     evidence = execute("numerical", tmp_path, search_root=flash_attention_release)
-    assert len(evidence["errors"]) == len(GOLDEN_SHAPES)
+    assert len(evidence["errors"]) == len(GOLDEN_SHAPES) * 2
+    assert {entry["dtype"] for entry in evidence["errors"]} == {"float16", "bfloat16"}
     assert evidence["source"] == "aot" and evidence["compiler_calls"] == 0
 
 

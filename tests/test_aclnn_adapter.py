@@ -48,14 +48,19 @@ with FakeTensorMode():
  result=torch.ops.flashinfer.matmul_bias_silu(a,b,bias)
  assert result.shape==(16,32) and result.dtype==a.dtype
  assert torch.ops.flashinfer.matmul_bias_silu_out(a,b,bias,result) is None
- q=torch.empty((128,2,128),dtype=torch.float16)
- kv=torch.empty((256,2,128),dtype=torch.float16)
- out=torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv)
- assert out.shape==q.shape and out.dtype==q.dtype
- assert torch.ops.flashinfer.single_prefill_with_kv_cache_catlass_out(q,kv,kv,out) is None
- try: torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv,causal=True)
- except (ValueError,RuntimeError): pass
- else: raise AssertionError('unsupported causal mode accepted')
+ for dtype in (torch.float16,torch.bfloat16):
+  q=torch.empty((128,2,128),dtype=dtype)
+  kv=torch.empty((256,2,128),dtype=dtype)
+  out=torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv)
+  assert out.shape==q.shape and out.dtype==q.dtype
+  assert torch.ops.flashinfer.single_prefill_with_kv_cache_catlass_out(q,kv,kv,out) is None
+  try: torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv,causal=True)
+  except (ValueError,RuntimeError): pass
+  else: raise AssertionError('unsupported causal mode accepted')
+  other=torch.bfloat16 if dtype==torch.float16 else torch.float16
+  try: torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q,kv.to(other),kv)
+  except (ValueError,RuntimeError): pass
+  else: raise AssertionError('mixed dtype accepted by fake implementation')
 assert 'torch_npu' not in sys.modules
 ''')
 

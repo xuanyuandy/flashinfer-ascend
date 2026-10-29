@@ -141,6 +141,29 @@ envelope 不是文档里的一句话，它同时落在**四个地方**，扩范�
 **漏掉任何一处，结果都是"声明支持但算错"或"能算却被拒"。**
 扩完要补对应的数值用例，不能只放开约束。
 
+### 5.1 扩展 dtype：以 FP16/BF16 FlashAttention 为例
+
+`InputSignature` 逐参数记录本次调用的真实 dtype/shape；它不是支持组合清单。公开 v2 recipe 可用可选的 `dtype_signatures` 声明 **按 `tensor_parameters` 顺序排列的完整合法组合**。省略时保持原来逐参数固定 dtype 的契约及序列化身份；显式声明必须完整、无重复，并包含 `tensor_parameters` 的基础 dtype 组合。
+
+```json
+"dtype_signatures": [
+  ["float16", "float16", "float16", "float16"],
+  ["bfloat16", "bfloat16", "bfloat16", "bfloat16"]
+]
+```
+
+上述顺序为 Q/K/V/out，只接受全 FP16 或全 BF16，不会展开成可任意混用的笛卡尔积。其他算子可以显式声明自己的混合组合；该契约能力不等于相应设备 kernel 已实现或验证。
+
+| 接入层 | FA 扩展时的具体修改 |
+| --- | --- |
+| 测试脚本 / 公共入口 | 同一脚本循环两种 dtype；输出元数据和真实分配使用输入 dtype，Torch FakeTensor 规则同步；FP16 原容差保留，BF16 使用单独容差及精确量化输入的 CPU 参考 |
+| recipe / 登记 / spec | recipe 声明完整 dtype 组合，capability 声明 dtype 集合，manifest constraints 保留整组组合；更新源码摘要并重新冻结 spec，调用 signature 无需手写枚举 |
+| op_host / op_kernel | OpDef 的 dtype 与 format 列表按组合对齐，InferType 保持输入 dtype；设备模板使用 CANN 的 `DTYPE_Q` 编译特化 |
+| 构建 / 包校验 | 一个 FA op_package 携带两种 dtype 的设备二进制，CANN 按实际 dtype 匹配；校验器逐 binary 验证完整组合，并拒绝缺少任一声明组合的包 |
+| 回归 / wheel | 验证双 dtype、多 shape、缺省/显式 out、混合 dtype 拒绝、Torch functional/FakeTensor；安装 wheel 后无参数执行 `python3 flash_attention_acceptance.py`，selftest 的 FA 项也覆盖两种 dtype |
+
+FA 的公共函数、kernel_id、ACLNN Tensor 参数顺序和 tiling 数据布局保持一致。扩展 dtype 不要求新增 kernel_id；同一 dtype 的多组 shape 仍可复用二进制，由 host tiling 处理。该路径依然是同步 eager，图能力仍为 `NOT_CAPTURABLE`。实际验证范围见 [FA 双 dtype 验证](reports/fa-dual-dtype-2026-10-29.md)。
+
 ## 6. 相关文档
 
 | 文档 | 用途 |

@@ -33,13 +33,14 @@ python3 -m pip install --force-reinstall --no-deps \
 ```
 
 两个脚本都会自行生成 torch Tensor，调用已安装的算子，并与 CPU 结果比较。
+FA 脚本无参数时依次测试 FP16、BF16，经 TorchNPU 原生桥调用 Torch functional 与 Python out 入口；输出 dtype 与输入相同，混合 dtype 会拒绝。
 `python3 flash_attention_acceptance.py` 和 `python3 matmul_bias_silu_acceptance.py`
 在 `tests/` 下无参数执行也会运行对应示例；带参数时保留原有回归验收入口。
 
 | 测试入口 | 实现 | 本文测试输入 |
 | --- | --- | --- |
 | `flashinfer.matmul_bias_silu(a, b, bias)` | native Ascend C，wheel 内 AOT | BF16，`a[16,48]`、`b[48,32]`、`bias[32]` |
-| `flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)` | catlass Ascend C，wheel 内 AOT | FP16，`q[128,2,128]`、`k/v[256,2,128]` |
+| `flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)` | catlass Ascend C，wheel 内 AOT | FP16/BF16，Q/K/V/out 同 dtype，`q[128,2,128]`、`k/v[256,2,128]` |
 | `torch.ops.flashinfer.rmsnorm(out, x, w, ...)` | CANN RMSNorm，经 torch.library 注册 | FP32，`x[4,128]`、`w[128]` |
 
 前两个公共函数直接接收和返回 `torch.Tensor`，保持原有默认调用路径。完整 wheel 提供 C++/OpCommand → ACLNN 适配库，显式启用后可使用 Torch 算子接口，原公共函数也会走同一适配库；两个生产算子可同进程调用；也可分别执行下面的测试命令：

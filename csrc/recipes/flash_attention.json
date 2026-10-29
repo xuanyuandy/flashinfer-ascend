@@ -9,14 +9,14 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
-      "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+      "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
-        "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+        "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
         "schema_version": 1
       }
     ],
@@ -90,7 +90,7 @@
       {
         "language": "ascendc",
         "locator": "csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp",
-        "digest": "6e808537d0508e99e1686146f76a92910138b755a7c1fe2a137fe7d9943a872f",
+        "digest": "cc4c94200179f43850c1c24b127c63c4776d90892a0274dfb82e8f88803eb45d",
         "schema_version": 1
       }
     ],
@@ -163,6 +163,20 @@
         "maximum": 128,
         "multiple_of": 128
       }
+    ],
+    "dtype_signatures": [
+      [
+        "float16",
+        "float16",
+        "float16",
+        "float16"
+      ],
+      [
+        "bfloat16",
+        "bfloat16",
+        "bfloat16",
+        "bfloat16"
+      ]
     ]
   }
 ]

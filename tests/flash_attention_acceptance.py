@@ -44,11 +44,18 @@ def golden_generator():
     return module
 
 
-def golden_inputs(generator, root, shape):
+def golden_inputs(generator, root, shape, dtype="float16"):
     import numpy as np
     import torch
 
     s, t, heads = shape
+    if dtype == "bfloat16":
+        torch.manual_seed(1)
+        cpu = tuple((torch.rand(length, heads, 128) * 2 - 1).bfloat16() for length in (s, t, t))
+        query, key, value = (tensor.double().transpose(0, 1) for tensor in cpu)
+        reference = (torch.softmax(query @ key.transpose(1, 2) / 128**.5, -1) @ value).transpose(0, 1)
+        return tuple(tensor.npu() for tensor in cpu), reference.float()
+    assert dtype == "float16"
     destination = root / ("s%d-t%d-h%d" % shape)
     (destination / "data").mkdir(parents=True, exist_ok=True)
     generator.WORKSPACE = str(destination)
@@ -162,7 +169,7 @@ def run_scenario(scenario, store_root):
                           v[:, :, :64].contiguous()), {}),
             ("heads_maximum", tuple(t.repeat(1, 9, 1) for t in tensors), {}),
             ("unequal_heads", (q.repeat(1, 2, 1), k, v), {}),
-            ("dtype", tuple(t.bfloat16() for t in tensors), {}),
+            ("dtype", tuple(t.float() for t in tensors), {}),
             ("batch_rank", tuple(t.unsqueeze(0) for t in tensors), {}),
             ("noncontiguous", tuple(t.transpose(0, 2) for t in tensors), {}),
             ("causal", tensors, {"causal": True}),
@@ -211,13 +218,14 @@ def run_scenario(scenario, store_root):
         assert provenance.directory.parent == ROOT / "flashinfer/data/op_packages"
     errors = []
 
-    def compare(shape, expected, result):
+    def compare(shape, expected, result, dtype="float16"):
         actual = result.cpu().float()
-        atol, rtol = 0.001, 0.001
+        assert str(result.dtype).removeprefix("torch.") == dtype
+        atol, rtol = (0.001, 0.001) if dtype == "float16" else (0.004, 0.008)
         torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
         assert workspace_requests[-1] > 0
         error = (actual - expected).abs()
-        errors.append(dict(shape=[shape[0], shape[1], shape[2], 128],
+        errors.append(dict(shape=[shape[0], shape[1], shape[2], 128], dtype=dtype,
                            max_abs_golden=error.max().item(),
                            max_tolerance_ratio=(error / (atol + rtol * expected.abs())).max().item(),
                            aclnn_workspace_bytes=workspace_requests[-1], atol=atol, rtol=rtol))
@@ -230,6 +238,12 @@ def run_scenario(scenario, store_root):
             result = flashinfer.single_prefill_with_kv_cache_catlass(*device_case, out=supplied_out)
             assert result is supplied_out
             compare(shape, expected, result)
+    for shape in (GOLDEN_SHAPES if scenario == "numerical" else GOLDEN_SHAPES[:1]):
+        device_case, expected = golden_inputs(generator, store_root.parent / "golden", shape, "bfloat16")
+        supplied_out = torch.empty_like(device_case[0])
+        result = flashinfer.single_prefill_with_kv_cache_catlass(*device_case, out=supplied_out)
+        assert result is supplied_out
+        compare(shape, expected, result, "bfloat16")
     again = flashinfer.single_prefill_with_kv_cache_catlass(*tensors)
     torch.testing.assert_close(again.cpu(), output.cpu(), atol=0, rtol=0)
     assert descriptor.runner.provenance is provenance
@@ -242,7 +256,7 @@ def run_scenario(scenario, store_root):
              graph_capability=descriptor.graph_capability.value, repeated_public_call=True,
              golden_generator=str(GENERATOR), golden_generator_sha256=GENERATOR_SHA256,
              catlass_revision=CATLASS_REVISION,
-             golden_precision="upstream ref_output rounded to float16, stored as float32")
+             golden_precision="FP16: pinned upstream ref_output rounded to float16; BF16: CPU FP64 from exact BF16 inputs")
 
 
 if __name__ == "__main__":

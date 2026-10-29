@@ -79,17 +79,22 @@ def _matmul_bias_silu(torch, kernel_id):
 def _flash_attention(torch, kernel_id):
     from .attention.catlass_prefill import single_prefill_with_kv_cache_catlass
 
-    q = (torch.rand(128, 2, 128) * 2 - 1).half()
-    k = (torch.rand(256, 2, 128) * 2 - 1).half()
-    v = (torch.rand(256, 2, 128) * 2 - 1).half()
-    actual = single_prefill_with_kv_cache_catlass(
-        *(tensor.npu() for tensor in (q, k, v)), kernel_id=kernel_id,
-    )
-    # CPU FP64 reference uses the exact FP16 values copied to the NPU.
-    query, key, value = (tensor.double().transpose(0, 1) for tensor in (q, k, v))
-    probability = torch.softmax((query @ key.transpose(1, 2)) / (128 ** 0.5), dim=-1)
-    expected = (probability @ value).transpose(0, 1)
-    return _compare(torch, actual, expected, atol=0.001, rtol=0.001)
+    comparisons = []
+    for dtype in (torch.float16, torch.bfloat16):
+        cpu = tuple((torch.rand(shape) * 2 - 1).to(dtype) for shape in
+                    ((128, 2, 128), (256, 2, 128), (256, 2, 128)))
+        actual = single_prefill_with_kv_cache_catlass(
+            *(tensor.npu() for tensor in cpu), kernel_id=kernel_id,
+        )
+        if actual.dtype != dtype:
+            raise ValueError("FlashAttention output dtype must match its inputs")
+        # CPU FP64 reference uses the exact quantized values copied to the NPU.
+        query, key, value = (tensor.double().transpose(0, 1) for tensor in cpu)
+        probability = torch.softmax((query @ key.transpose(1, 2)) / (128 ** 0.5), dim=-1)
+        expected = (probability @ value).transpose(0, 1)
+        atol, rtol = (0.001, 0.001) if dtype == torch.float16 else (0.004, 0.008)
+        comparisons.append(str(dtype) + ": " + _compare(torch, actual, expected, atol=atol, rtol=rtol))
+    return "; ".join(comparisons)
 
 
 # This maps numerical oracles, not the operator inventory: every registry entry

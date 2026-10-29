@@ -22,7 +22,7 @@ def _descriptor(recipe):
 
     # The kernel keeps intermediate tiles in L1/UB. Dynamic ACLNN workspace
     # includes CANN's 16 MiB system prefix; eager uses the exact callback size.
-    return production_descriptor(recipe, op="ascendc.single_prefill_catlass", dtype="float16",
+    return production_descriptor(recipe, op="ascendc.single_prefill_catlass", dtype=("float16", "bfloat16"),
                                  workspace_bytes=16 << 20)
 
 
@@ -41,7 +41,7 @@ def freeze_contract():
     return freeze_declaration(
         ROOT, recipe_name="flash_attention", kernel_id=FLASH_ATTENTION_KERNEL_ID,
         descriptor_factory=_descriptor, dependency_roots=_dependency_roots,
-        specialization=(b"flash_attention;catlass-example49;contract-v2;fp16;NHD;B1;"
+        specialization=(b"flash_attention;catlass-example49;contract-v2;fp16,bf16;NHD;B1;"
                         b"D128;H1..8;S,T128..512:128;unmasked;fixed-length"),
     )
 

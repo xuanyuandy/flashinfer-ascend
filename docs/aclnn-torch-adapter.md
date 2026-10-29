@@ -26,10 +26,10 @@ FlashAttention 与 MatmulBiasSiLU 可在同一进程按任意顺序调用，示�
 | --- | --- |
 | `torch.ops.flashinfer.matmul_bias_silu(a, b, bias)` | 返回 BF16 Tensor |
 | `torch.ops.flashinfer.matmul_bias_silu_out(a, b, bias, out)` | 写入 `out`，返回 `None` |
-| `torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q, k, v, causal=False, kv_layout="NHD", custom_mask=None)` | 返回 FP16 Tensor |
+| `torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q, k, v, causal=False, kv_layout="NHD", custom_mask=None)` | 返回与 Q 相同 dtype 的 FP16/BF16 Tensor |
 | `torch.ops.flashinfer.single_prefill_with_kv_cache_catlass_out(q, k, v, out, causal=False, kv_layout="NHD", custom_mask=None)` | 写入 `out`，返回 `None` |
 
-MatmulBiasSiLU 支持连续 BF16，M/N/K 为 16..256 的 16 倍数；FlashAttention 支持连续 FP16 NHD、batch=1、D=128、heads=1..8，S/T 为 128..512 的 128 倍数、非 causal 且无 mask。越界输入、输出重叠、跨设备和非 ND 格式继续拒绝。没有 CPU 数值回退；FakeTensor 实现只校验元数据并推导形状，不执行算子。
+MatmulBiasSiLU 支持连续 BF16，M/N/K 为 16..256 的 16 倍数；FlashAttention 支持连续 FP16/BF16 NHD，Q/K/V/out 必须同 dtype，batch=1、D=128、heads=1..8，S/T 为 128..512 的 128 倍数、非 causal 且无 mask。越界输入、输出重叠、跨设备和非 ND 格式继续拒绝。没有 CPU 数值回退；FakeTensor 实现只校验元数据并推导形状，不执行算子。
 
 ## 实际调用链与职责
 

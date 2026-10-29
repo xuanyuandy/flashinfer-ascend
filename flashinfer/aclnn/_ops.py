@@ -64,7 +64,7 @@ def _attention_out_meta(q, k, v, out, causal=False, kv_layout="NHD", custom_mask
 
 def _attention_meta(q, k, v, causal=False, kv_layout="NHD", custom_mask=None):
     import torch
-    prospective = SimpleNamespace(shape=tuple(q.shape), dtype=torch.float16, device=q.device,
+    prospective = SimpleNamespace(shape=tuple(q.shape), dtype=q.dtype, device=q.device,
                                   is_contiguous=lambda: True)
     _attention_out_meta(q, k, v, prospective, causal, kv_layout, custom_mask)
     return torch.empty_like(q)

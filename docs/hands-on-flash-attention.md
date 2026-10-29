@@ -46,7 +46,7 @@ FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref \
 当前应同时产出：
 
 - `gemm.matmul_bias_silu`：native Ascend C，BF16；
-- `ascendc.single_prefill_catlass`：catlass FlashAttention，FP16。
+- `ascendc.single_prefill_catlass`：catlass FlashAttention，FP16/BF16，Q/K/V/out 同 dtype。
 
 每个产物导出到 `/tmp/t10-release/<spec-sha>/`，输出中会列出各自 kernel、
 spec 与 package 路径。新增生产 AOT 算子会自动纳入全量构建。
@@ -233,7 +233,7 @@ FA 当前只承诺下表范围，超出的在 **dispatch 阶段**拒绝，不会
 | 维度 | 支持 |
 | --- | --- |
 | SoC | Ascend950 |
-| dtype | FP16（Q/K/V/out） |
+| dtype | FP16 或 BF16（Q/K/V/out 必须同 dtype） |
 | layout | 连续 NHD |
 | batch | 隐式 batch=1 |
 | Q | `(S, H, 128)` |

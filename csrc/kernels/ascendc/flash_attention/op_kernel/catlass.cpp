@@ -1,6 +1,6 @@
 // Migrated from catlass example 49 at revision
 // 41bf90da655bba3c66d0acd7e00abe33960ecfd6. See LICENSE in this directory.
-// Only dense batch=1, equal heads, FP16 D=128, unmasked attention is exposed.
+// Only dense batch=1, equal heads, FP16/BF16 D=128, unmasked attention is exposed.
 #ifndef K_MAX_SHAPE_DIM
 #define K_MAX_SHAPE_DIM 0
 #endif
@@ -15,5 +15,6 @@ extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
     SetSysWorkspace(workspace);
     // Mask and block table views are formed by upstream templates, but never
     // read when both compile-time flags are false. Use a valid device address.
-    FAInferTla<half, false, false>(q, k, v, q, q, out, nullptr, nullptr, tiling);
+    // CANN compiles a distinct binary for each registered ordered dtype tuple.
+    FAInferTla<DTYPE_Q, false, false>(q, k, v, q, q, out, nullptr, nullptr, tiling);
 }

@@ -23,13 +23,13 @@ def aclnn_release(tmp_path_factory):
 
 
 @pytest.mark.real_compile
-@pytest.mark.parametrize("case", ["matmul", "attention"])
-def test_native_aclnn_public_interfaces(aclnn_release, case):
+@pytest.mark.parametrize("case,dtype", [("matmul", "bfloat16"), ("attention", "float16"), ("attention", "bfloat16")])
+def test_native_aclnn_public_interfaces(aclnn_release, case, dtype):
     environment = dict(os.environ, FLASHINFER_ACLNN_ADAPTER_PATH=str(aclnn_release / "adapter"),
                        FLASHINFER_AOT_PATHS=str(aclnn_release / "release"),
                        FLASHINFER_NPU_JIT_DISABLE="1")
     environment.pop("ASCEND_CUSTOM_OPP_PATH", None)
-    result = subprocess.run([sys.executable, "-B", "-m", "tests.aclnn_acceptance", case],
+    result = subprocess.run([sys.executable, "-B", "-m", "tests.aclnn_acceptance", case, dtype],
                             cwd=Path(__file__).resolve().parents[1], env=environment,
                             capture_output=True, text=True, timeout=180)
     print(result.stdout, end="")

@@ -126,12 +126,12 @@
       },
       "spec": {
         "schema_version": 1,
-        "name": "kernel.db94cf8fcdee9e2e15d7c9ab0097ba058469738906cbdb8f4382d1f11cce1093",
+        "name": "kernel.4aaa2b8e028c9b9c56ed7eae683ba2a99b61500a6d90ed14d296fb460f4d02d2",
         "domain": "kernel",
         "generator_id": "ascendc",
         "generator_version": "2",
         "target_soc": "Ascend950",
-        "environment_fingerprint": "a119d499eac60507535edead3a80be6520daa5a99d4976861dd980d741f10939",
+        "environment_fingerprint": "defb5a5e7ab492612c4bb426fba3309068eecf8611c6f6402efab9dbafb76cac",
         "specialization_fingerprint": "20030d0e01a3877c31891af31a041d341210acd1af3b6252fabd4ff6cafe4fda",
         "input_fingerprints": [
           [
@@ -152,7 +152,7 @@
           ],
           [
             "resolved_recipe",
-            "28235fa044278444ad4e459912f1cf593fdb983d41391fc97cc3925173490f2c"
+            "e43c682c8669bd13182470694c2102dde39643122fbcd3f3722d8e4224eb3229"
           ]
         ],
         "source_artifacts": [],
@@ -182,14 +182,14 @@
         "source": {
           "language": "ascendc",
           "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
-          "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+          "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
           "schema_version": 1
         },
         "sources": [
           {
             "language": "ascendc",
             "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
-            "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+            "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
             "schema_version": 1
           }
         ],
@@ -261,7 +261,7 @@
           {
             "language": "ascendc",
             "locator": "csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp",
-            "digest": "6e808537d0508e99e1686146f76a92910138b755a7c1fe2a137fe7d9943a872f",
+            "digest": "cc4c94200179f43850c1c24b127c63c4776d90892a0274dfb82e8f88803eb45d",
             "schema_version": 1
           }
         ],
@@ -336,25 +336,39 @@
           }
         ],
         "tiling_host_entry": "FiFlashAttentionTiling",
-        "workspace_host_entry": "FiFlashAttentionTiling"
+        "workspace_host_entry": "FiFlashAttentionTiling",
+        "dtype_signatures": [
+          [
+            "float16",
+            "float16",
+            "float16",
+            "float16"
+          ],
+          [
+            "bfloat16",
+            "bfloat16",
+            "bfloat16",
+            "bfloat16"
+          ]
+        ]
       },
       "spec": {
         "schema_version": 1,
-        "name": "kernel.b0bd8a8783edb917531797934ae5b3484e75fe261be00e0947a2197a274bc8db",
+        "name": "kernel.1c4063ebff52bf94a1695e5c78c425df481b77ae526dc65088c200ab42c5f1d5",
         "domain": "kernel",
         "generator_id": "ascendc",
         "generator_version": "2",
         "target_soc": "Ascend950",
-        "environment_fingerprint": "a119d499eac60507535edead3a80be6520daa5a99d4976861dd980d741f10939",
-        "specialization_fingerprint": "5de2dc30e9a7c423646cacb69a1840a6cdee64f8622f5ff2bc232be885fbb46d",
+        "environment_fingerprint": "defb5a5e7ab492612c4bb426fba3309068eecf8611c6f6402efab9dbafb76cac",
+        "specialization_fingerprint": "46ce88f35781eae3f762e257a63445328a8339f36b4b8fc9902496b72b8eb5f7",
         "input_fingerprints": [
           [
             "build_recipe",
-            "7a64b6b1c9730f05a6636b0f73be245aa4412fda2f9b7eaa968573acfa9997e0"
+            "39008b44a75c4e55a6643c941625402c3e50089cc451e53ff4219371c6b4c8a9"
           ],
           [
             "kernel",
-            "6937e258b1eb51e1db78b9c68ba1c0fe2288f05a3dba3c34c53d457b914a9eab"
+            "b3d657fce62aa7c3bd841bd07a5f4771df75ad724be7f48bbc5eaaf9977f442e"
           ],
           [
             "output_adapter",
@@ -366,7 +380,7 @@
           ],
           [
             "resolved_recipe",
-            "1cd2fdd2bf7e0e432d678ad44ab64b9fe5208564f13ac85bacd472fda24cff70"
+            "87e033f6a2607f7c306b059d7b29cafa6ba98c29aad5ee631e4e12aef4f52804"
           ]
         ],
         "source_artifacts": [],
@@ -378,7 +392,7 @@
         "source": {
           "language": "ascendc",
           "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
-          "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+          "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
           "schema_version": 1
         },
         "output_path": "op-package.json"

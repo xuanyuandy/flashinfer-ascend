@@ -45,7 +45,7 @@
   ],
   "raw_inventory_sha256": "0e95a01b83d59bc9c42192bab0138b19a253dc895d36772aeb41dc463709eb0a",
   "rules_sha256": "c3bd151f00de635f95916a7d2d8353f05be13681c9b2cc937a3d79e382b0d237",
-  "local_registry_sha256": "562308723a104cf72ed2e51768a8a9ba8fbd1c946e8b5fa0c7824bee24a27c88",
+  "local_registry_sha256": "f5b36eef7ac99eb87d9c38d41fa76b594988bd59ecee6c566968da55fbc97d0b",
   "upstream_source_sha256": {
     "flashinfer/__init__.py": "d86fcd061a4350165a6f36449272d4fabfc7db4c47c320fb99bc492fc62cc8aa",
     "flashinfer/__main__.py": "4cc898f7e41f12ca2330c4b2a713d8f86204fee7bf3f4c9cb7722d4775433c97",

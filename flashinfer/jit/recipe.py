@@ -20,6 +20,9 @@ from .core import _canonical_hash, _sha256
 
 CATLASS_REVISION = "41bf90da655bba3c66d0acd7e00abe33960ecfd6"
 _SYMBOL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
+_TENSOR_DTYPES = frozenset({
+    "bfloat16", "float16", "float32", "float64", "int8", "uint8", "int16", "int32", "int64", "bool",
+})
 
 
 def _path(value):
@@ -70,8 +73,7 @@ class TensorParameter:
             raise SchemaError("invalid/reserved tensor parameter name")
         if not isinstance(self.role, str) or self.role not in {"input", "output"}:
             raise SchemaError("tensor parameter role must be input or output")
-        if (not isinstance(self.dtype, str) or self.dtype not in {
-                "bfloat16", "float16", "float32", "float64", "int8", "uint8", "int16", "int32", "int64", "bool"}):
+        if not isinstance(self.dtype, str) or self.dtype not in _TENSOR_DTYPES:
             raise SchemaError("unsupported tensor parameter dtype")
         if (not isinstance(self.shape, (tuple, list))
                 or any(not ((type(d) is int and d > 0)
@@ -133,6 +135,7 @@ class _Recipe:
     shape_constraints: Tuple[ShapeConstraint, ...] = ()
     tiling_host_entry: Optional[str] = None
     workspace_host_entry: Optional[str] = None
+    dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
 
     def __post_init__(self):
         if (type(self.schema_version) is not int or self.schema_version not in {1, 2}
@@ -180,6 +183,10 @@ class _Recipe:
             raise SchemaError("recipe entries must be C symbols")
         object.__setattr__(self, "tensor_parameters", tuple(self.tensor_parameters))
         object.__setattr__(self, "shape_constraints", tuple(self.shape_constraints))
+        if (not isinstance(self.dtype_signatures, (tuple, list))
+                or any(not isinstance(signature, (tuple, list)) for signature in self.dtype_signatures)):
+            raise SchemaError("dtype_signatures must be an array of ordered dtype arrays")
+        object.__setattr__(self, "dtype_signatures", tuple(tuple(s) for s in self.dtype_signatures))
         if self.schema_version == 1:
             # Do not relax the frozen v1 protocol when adding a new contract.
             expected_tiling = "none" if self.output_kind == "host_shared" else "fixed"
@@ -189,7 +196,7 @@ class _Recipe:
                     or self.sync_policy != "compiler_default"):
                 raise SchemaError("Ascend C v1 supports explicit fixed tiling, AIC-only, no workspace")
             if (self.tensor_parameters or self.shape_constraints or self.tiling_host_entry is not None
-                    or self.workspace_host_entry is not None):
+                    or self.workspace_host_entry is not None or self.dtype_signatures):
                 raise SchemaError("Ascend C v1 cannot declare v2 tensor/host contracts")
         else:
             self._validate_v2()
@@ -221,6 +228,12 @@ class _Recipe:
         roles = [p.role for p in parameters]
         if roles != sorted(roles):
             raise SchemaError("ACLNN tensor_parameters must declare inputs before outputs")
+        signatures = self.dtype_signatures
+        if (any(len(s) != len(parameters) or any(not isinstance(d, str) or d not in _TENSOR_DTYPES
+                                               for d in s) for s in signatures)
+                or len(set(signatures)) != len(signatures)
+                or (signatures and tuple(p.dtype for p in parameters) not in signatures)):
+            raise SchemaError("dtype_signatures require unique complete supported dtype tuples including the base signature")
         constraints = self.shape_constraints
         symbols = {d for p in parameters for d in p.shape if isinstance(d, str)}
         if (any(not isinstance(c, ShapeConstraint) for c in constraints)
@@ -238,6 +251,26 @@ class _Recipe:
         """Device GM arguments; CANN supplies workspace and tiling via executor."""
         return self.tensor_parameter_names + ("workspace", "tiling")
 
+    @property
+    def tensor_dtype_signatures(self):
+        """Exact legal combinations in Tensor ABI order; omission preserves the fixed-type contract."""
+        return self.dtype_signatures or (tuple(p.dtype for p in self.tensor_parameters),)
+
+    def validate_tensor_dtypes(self, dtypes):
+        if set(dtypes) != set(self.tensor_parameter_names):
+            raise SchemaError("dispatch tensor arguments must match recipe parameters: " + ", ".join(self.tensor_parameter_names))
+        actual = tuple(dtypes[name] for name in self.tensor_parameter_names)
+        if actual not in self.tensor_dtype_signatures:
+            for index, parameter in enumerate(self.tensor_parameters):
+                allowed = tuple(dict.fromkeys(s[index] for s in self.tensor_dtype_signatures))
+                if actual[index] not in allowed:
+                    expected = allowed[0] if len(allowed) == 1 else str(allowed)
+                    raise SchemaError("dispatch dtype for %s must be %s; got %s"
+                                      % (parameter.name, expected, actual[index]))
+            raise SchemaError("dispatch dtype signature %s is not a declared combination for %s"
+                              % (actual, self.tensor_parameter_names))
+        return actual
+
     def validate_tensor_metadata(self, *, shapes, dtypes):
         """Reject unsupported v2 metadata before dispatch can resolve/build a unit.
 
@@ -249,11 +282,9 @@ class _Recipe:
         names = set(self.tensor_parameter_names)
         if set(shapes) != names or set(dtypes) != names:
             raise SchemaError("dispatch tensor arguments must match recipe parameters: " + ", ".join(self.tensor_parameter_names))
+        self.validate_tensor_dtypes(dtypes)
         dimensions = {}
         for parameter in self.tensor_parameters:
-            if dtypes[parameter.name] != parameter.dtype:
-                raise SchemaError("dispatch dtype for %s must be %s; got %s"
-                                  % (parameter.name, parameter.dtype, dtypes[parameter.name]))
             shape = tuple(shapes[parameter.name])
             if len(shape) != len(parameter.shape):
                 raise SchemaError("dispatch shape for %s requires rank %d; got %s"
@@ -278,6 +309,11 @@ class _Recipe:
 
     def to_dict(self):
         value = asdict(self)
+        # An absent extension preserves every existing v1/v2 serialized identity.
+        if not self.dtype_signatures:
+            value.pop("dtype_signatures")
+        else:
+            value["dtype_signatures"] = [list(s) for s in self.dtype_signatures]
         value["source"] = self.source.to_dict()
         for name in ("sources", "headers", "host_sources"):
             value[name] = [r.to_dict() for r in getattr(self, name)]

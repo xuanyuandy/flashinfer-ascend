@@ -497,7 +497,7 @@ workspace 或变参 Tensor，无法靠给受限档补一个 kernel 文件完成�
 | 冻结声明外层、`JitSpec` 的 `schema_version` | 仍为 1 | 各自的元数据格式，与 recipe 能力档位分开 |
 | `ascendc.op_package.v1` | 生产也使用 | 包产物适配格式，不表示生产算子退回受限 recipe |
 
-**shape 驱动的动态 tiling 已经支持，也是新生产算子的接入基线。** FA 的 `FiFlashAttentionTiling` 按 Q/K/V 的实际 S、T、heads 计算 tiling、block 数和 workspace，同一二进制覆盖声明域内多组 shape；MatmulBiasSiLU 也使用 host callback。FA 当前仅 dense batch=1、FP16、D=128、相同 heads 1..8、S/T 为 128..512 的 128 倍数，不读取 length Tensor 的内容。这里尚未表达/验证的是**数据内容驱动**的 tiling，以及任意变长、任意 scalar/attribute ABI，不应把这个边界写成“框架不支持动态 tiling”。
+**shape 驱动的动态 tiling 已经支持，也是新生产算子的接入基线。** FA 的 `FiFlashAttentionTiling` 按 Q/K/V 的实际 S、T、heads 计算 tiling、block 数和 workspace，同一二进制覆盖声明域内多组 shape；MatmulBiasSiLU 也使用 host callback。FA 当前支持 FP16/BF16（Q/K/V/out 同 dtype），仅 dense batch=1、D=128、相同 heads 1..8、S/T 为 128..512 的 128 倍数，不读取 length Tensor 的内容。这里尚未表达/验证的是**数据内容驱动**的 tiling，以及任意变长、任意 scalar/attribute ABI，不应把这个边界写成“框架不支持动态 tiling”。
 
 
 | 内部旧协议的限制 | 公开 v2 的显式能力与校验 |
@@ -521,6 +521,8 @@ workspace 或变参 Tensor，无法靠给受限档补一个 kernel 文件完成�
 完整档使用**变参 Tensor ABI**，参数名和顺序取自 recipe；受限档默认仍为 `(a, b, c)`，
 当前 `matmul_probe` 也使用该统一路径；旧协议仅留在内部兼容。差别只在 ACLNN 第一段的 Tensor 参数，workspace/tiling
 不是额外用户 Tensor；第二段 executor/workspace/stream launch 沿用原协议。
+
+**dtype 组合与编译特化分开表达。** `InputSignature` 记录一次调用的逐参数 dtype/shape；v2 recipe 的可选 `dtype_signatures` 精确列出完整 Tensor dtype 组合，省略时保留原固定 dtype 契约和序列化身份。FA 仅接受全 FP16 或全 BF16，输出遵循 Q 的 dtype，混合组合继续拒绝。OpDef 将 dtype/format 列表按组合对齐，设备模板使用 `DTYPE_Q`，一个 op_package 携带两种 dtype 二进制，由 CANN 按实参匹配；包校验要求全部声明组合均有对应设备产物。shape 驱动 tiling、统一 kernel_id、ACLNN 参数顺序及图能力不因此改变。新增 dtype 的源码摘要、descriptor 和 spec 仍需重新冻结，不能仅扩大白名单。接入步骤见 [dtype 扩展指南](adding-a-custom-operator.md#51-扩展-dtype以-fp16bf16-flashattention-为例)，证据见 [FA 双 dtype 验证](reports/fa-dual-dtype-2026-10-29.md)。
 
 native 与 catlass **共用编译器、store、loader**；catlass 只多一条固定 Git revision
 的依赖声明，并校验头树摘要，**wheel 不自带 catlass 头树**。当前两条生产 eager 路径为
@@ -832,7 +834,7 @@ CONFIG 按 `recipe_id` 选择配方，省略时保留探针默认值，也可选
 
 | 配置 | MatmulBiasSiLU | FlashAttention |
 | --- | --- | --- |
-| 实现 / dtype | native / BF16 | CATLASS / FP16 |
+| 实现 / dtype | native / BF16 | CATLASS / FP16、BF16 |
 | recipe / tiling schema | 2 / 2 | 2 / 2 |
 | 目标 / recipe 架构 | `Ascend950` / `dav-3510` | 同左 |
 | recipe 设备选项 | `-O2` | `-O2` |

@@ -5,6 +5,8 @@
 
 ## 0. 2026-10-28 调用方式与测试策略增量
 
+2026-10-29 dtype 扩展验证：公开 v2 recipe 增加可选的完整 `dtype_signatures`，旧配方省略时身份保持兼容；FA 同一 kernel_id/op_package 编译 FP16、BF16 两个设备特化，混合 dtype 拒绝。已完成 202 项受影响 UT、12 组 FA 真机数值、隔离 wheel 双 dtype Torch 调用及 selftest；按用户速度要求未重跑全量和完整 real_compile 矩阵，见 [FA 双 dtype 验证](reports/fa-dual-dtype-2026-10-29.md)。
+
 优先参考 [调用模式与公共 UT](operator-call-patterns.md) 和 [完整接口对比](operator-coverage.md)。上游并非全部采用 wrapper/plan/run；本仓公共 UT 按直接函数、有状态 wrapper、run-only 等对应生命周期执行。
 
 当前实查为 **81 descriptor / 45 op，其中 43 个绑定 NPU runner、2 个仅 reference**。下文历史块中的“43 op”混用了口径，不能作为当前登记表总数。`BatchAttention` 已导出但默认 NPU provider 未接通，普通 batch CANN wrapper 与之分开统计。

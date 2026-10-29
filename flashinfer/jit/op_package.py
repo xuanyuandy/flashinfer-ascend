@@ -113,6 +113,7 @@ def verify_op_package(directory, spec):
     binaries = config[recipe.package_op_type]["binaryList"]
     if not binaries:
         raise SchemaError("op-package contains no precompiled kernel")
+    dtype_signatures = set()
     for item in binaries:
         for key in ("binPath", "jsonPath"):
             if not item[key].startswith(compute + "/"):
@@ -151,15 +152,21 @@ def verify_op_package(directory, spec):
             if support.get("opMode") != "dynamic":
                 raise SchemaError("v2 package metadata must declare dynamic host tiling")
             for role, key in (("input", "inputs"), ("output", "outputs")):
-                declared = [(p.name, p.dtype) for p in recipe.tensor_parameters if p.role == role]
-                packaged = [(p.get("name"), p.get("dtype")) for p in support.get(key, ())]
+                declared = [p.name for p in recipe.tensor_parameters if p.role == role]
+                packaged = [p.get("name") for p in support.get(key, ())]
                 if packaged != declared:
                     raise SchemaError("v2 package tensor parameter order/types differ from recipe: " + role)
+            signature = tuple(p.get("dtype") for key in ("inputs", "outputs") for p in support.get(key, ()))
+            if signature not in recipe.tensor_dtype_signatures:
+                raise SchemaError("v2 package tensor parameter order/types differ from recipe: dtype signature")
+            dtype_signatures.add(signature)
             if (recipe.workspace_bytes == "dynamic"
                     and metadata.get("workspace", {}).get("size") != [-1]):
                 raise SchemaError("v2 dynamic workspace must have a host-computed metadata size")
         if metadata.get("sha256") != hashlib.sha256(binary).hexdigest():
             raise SchemaError("CANN kernel metadata digest does not match its NPU executable")
+    if recipe.schema_version == 2 and dtype_signatures != set(recipe.tensor_dtype_signatures):
+        raise SchemaError("v2 package is missing a declared dtype signature executable")
     _file(directory, data["run_file"])
     return data, recipe
 

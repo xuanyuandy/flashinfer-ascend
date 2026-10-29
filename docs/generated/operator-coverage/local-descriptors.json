@@ -136,7 +136,20 @@
     "backend": "ascendc",
     "constraints": {
       "supported_socs": [],
-      "dtype_signatures": [],
+      "dtype_signatures": [
+        [
+          "float16",
+          "float16",
+          "float16",
+          "float16"
+        ],
+        [
+          "bfloat16",
+          "bfloat16",
+          "bfloat16",
+          "bfloat16"
+        ]
+      ],
       "layout_signatures": [],
       "required_features": [],
       "quant_storage_dtypes": [],
@@ -176,7 +189,7 @@
     "source": {
       "language": "ascendc",
       "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
-      "digest": "69e10e9482a48a5f1499730a3e5b59589161f4eb574a57cadabc7d288616cbfd",
+      "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
       "schema_version": 1
     },
     "target_soc": "Ascend950",
@@ -184,7 +197,8 @@
     "capability": {
       "op": "ascendc.single_prefill_catlass",
       "dtypes": [
-        "float16"
+        "float16",
+        "bfloat16"
       ],
       "layouts": [],
       "soc_models": [

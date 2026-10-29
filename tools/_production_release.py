@@ -10,7 +10,7 @@ from pathlib import Path
 def production_descriptor(recipe, *, op, dtype, workspace_bytes):
     from flashinfer.runtime import (
         Backend, CapabilitySpec, CompileMode, GraphCapability, KernelDescriptor,
-        KernelLaunchABI, ShapeRange, WorkspaceFormula,
+        KernelConstraints, KernelLaunchABI, ShapeRange, WorkspaceFormula,
     )
 
     bounds = {bound.name: bound for bound in recipe.shape_constraints}
@@ -21,8 +21,10 @@ def production_descriptor(recipe, *, op, dtype, workspace_bytes):
     )
     return KernelDescriptor(
         recipe.kernel_id, op, Backend.ASCENDC,
+        constraints=KernelConstraints(dtype_signatures=recipe.dtype_signatures),
         capability=CapabilitySpec(
-            op=op, dtypes=(dtype,), soc_models=("Ascend950",), physical_layouts=("ND",),
+            op=op, dtypes=(dtype,) if isinstance(dtype, str) else tuple(dtype),
+            soc_models=("Ascend950",), physical_layouts=("ND",),
             shape_ranges=ranges, specializations=(("tensor_contract", ("supported",)),),
         ),
         compile_mode=CompileMode.AOT, source=recipe.source,

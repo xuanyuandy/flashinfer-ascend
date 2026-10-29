@@ -76,12 +76,14 @@ def test_frozen_catlass_declaration_requires_no_dependency_or_compiler(monkeypat
     assert dict(spec.input_fingerprints)["build_recipe"] == contract.fingerprint
 
 
+@pytest.mark.parametrize("dtype", ["float16", "bfloat16"])
 @pytest.mark.parametrize("s,t,h", [(128, 128, 1), (256, 512, 3), (512, 128, 8), (512, 512, 8)])
-def test_supported_envelope_dispatches_without_resolving_runner(monkeypatch, s, t, h):
+def test_supported_envelope_dispatches_without_resolving_runner(monkeypatch, s, t, h, dtype):
     from flashinfer.jit.runtime import AotKernelRunner
 
     monkeypatch.setattr(AotKernelRunner, "resolve", forbidden)
-    result = dispatch(signature(arguments(s, t, h)), HardwareSignature("Ascend950"))
+    tensors = tuple(replace(tensor, dtype=dtype) for tensor in arguments(s, t, h))
+    result = dispatch(signature(tensors), HardwareSignature("Ascend950"))
     assert result.kernel_id == FLASH_ATTENTION_KERNEL_ID
 
 
@@ -105,7 +107,7 @@ def test_shape_envelope_rejected_in_dispatch(monkeypatch, s, t, h, d, diagnostic
     (1, {"shape": (256, 1, 128)}, "inconsistent"),
     (2, {"shape": (128, 2, 128)}, "inconsistent"),
     (3, {"shape": (256, 2, 128)}, "inconsistent"),
-    (0, {"dtype": "bfloat16"}, "dtype for q"),
+    (0, {"dtype": "bfloat16"}, "dtype signature"),
     (3, {"dtype": "float32"}, "dtype for out"),
     (1, {"contiguous": False}, "contiguous"),
     (2, {"device": "npu:1"}, "share one device"),
@@ -129,18 +131,19 @@ def _mock_npu_dispatch(monkeypatch):
 
 
 @pytest.mark.parametrize("supply_output", [False, True])
-def test_public_entry_uses_selected_package_runner(monkeypatch, supply_output):
+@pytest.mark.parametrize("dtype", ["float16", "bfloat16"])
+def test_public_entry_uses_selected_package_runner(monkeypatch, supply_output, dtype):
     import torch
     import flashinfer
 
     entry = _mock_npu_dispatch(monkeypatch)
     calls = []
     monkeypatch.setattr(entry, "_run_selected", lambda *args: calls.append(args))
-    tensors = tuple(torch.empty(item.shape, dtype=torch.float16) for item in arguments())
+    tensors = tuple(torch.empty(item.shape, dtype=getattr(torch, dtype)) for item in arguments())
     out = flashinfer.single_prefill_with_kv_cache_catlass(
         *tensors[:3], out=tensors[3] if supply_output else None,
     )
-    assert out.shape == tensors[0].shape and out.dtype == torch.float16
+    assert out.shape == tensors[0].shape and out.dtype == tensors[0].dtype
     assert len(calls) == 1 and calls[0][0] == FLASH_ATTENTION_KERNEL_ID
     assert all(actual is expected for actual, expected in zip(calls[0][1:4], tensors[:3]))
     assert calls[0][4] is out

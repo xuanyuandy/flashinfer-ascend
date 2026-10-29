@@ -63,6 +63,7 @@ def test_v1_serialization_and_fingerprints_remain_exactly_frozen():
     dict(workspace_bytes="dynamic"), dict(task_type="aic_aiv"),
     dict(sync_policy="cross_core_flags"), dict(tiling_host_entry="Tiling"),
     dict(tensor_parameters=(TensorParameter("x", "input", "float32", (16,)),)),
+    dict(dtype_signatures=(("float16",),)),
 ])
 def test_v1_does_not_inherit_v2_capabilities(v1, change):
     with pytest.raises(SchemaError, match="v1"):
@@ -160,6 +161,43 @@ def test_dispatch_metadata_validation_checks_cross_tensor_dimensions_dtype_and_b
         v2.validate_tensor_metadata(**missing)
 
 
+def test_dtype_signatures_preserve_old_serialization_and_bind_new_identity(v2):
+    old = v2.to_dict()
+    assert "dtype_signatures" not in old
+    assert v2.tensor_dtype_signatures == (("bfloat16",) * 4,)
+    extended = replace(v2, dtype_signatures=(("bfloat16",) * 4, ("float16",) * 4))
+    assert extended.fingerprint != v2.fingerprint
+    assert BuildRecipe.from_dict(json.loads(json.dumps(extended.to_dict()))) == extended
+    for dtype in ("bfloat16", "float16"):
+        data = metadata()
+        data["dtypes"] = dict.fromkeys(extended.tensor_parameter_names, dtype)
+        assert extended.validate_tensor_metadata(**data) == dict(M=16, K=64, N=32)
+    data["dtypes"]["bias"] = "bfloat16"
+    with pytest.raises(SchemaError, match="dtype signature"):
+        extended.validate_tensor_metadata(**data)
+
+
+def test_dtype_signatures_express_exact_mixed_combinations_without_cartesian_expansion(v2):
+    mixed = ("float16", "bfloat16", "float32", "float16")
+    extended = replace(v2, dtype_signatures=(("bfloat16",) * 4, mixed))
+    data = metadata()
+    data["dtypes"] = dict(zip(extended.tensor_parameter_names, mixed))
+    assert extended.validate_tensor_metadata(**data)["N"] == 32
+    data["dtypes"]["bias"] = "bfloat16"
+    with pytest.raises(SchemaError, match="dtype signature"):
+        extended.validate_tensor_metadata(**data)
+
+
+@pytest.mark.parametrize("signatures", [
+    None, "float16", ["float16"], [("bfloat16",) * 3],
+    [("bfloat16",) * 4, ("bfloat16",) * 4], [("float16",) * 4],
+    [("bfloat16",) * 4, ("opaque",) * 4], [("bfloat16",) * 4, ([],) * 4],
+])
+def test_dtype_signatures_reject_malformed_or_ambiguous_combinations(v2, signatures):
+    with pytest.raises(SchemaError, match="dtype_signatures"):
+        replace(v2, dtype_signatures=signatures)
+
+
 @pytest.mark.parametrize("input_count", [0, 1, 3, 5])
 def test_generic_aclnn_adapter_forwards_recipe_order_for_arbitrary_tensor_counts(v2, input_count):
     parameters = tuple(TensorParameter("arg%d" % i, "input", "float32", (16,))
@@ -224,6 +262,54 @@ def mixed_package(v2, tmp_path):
 def test_mixed_package_verifies_both_core_entries_and_declared_abi(mixed_package):
     directory, spec, recipe, _, _ = mixed_package
     assert verify_op_package(directory, spec)[1] == recipe
+
+
+@pytest.fixture
+def dual_dtype_package(mixed_package):
+    directory, spec, recipe, paths, metadata = mixed_package
+    recipe = replace(recipe, dtype_signatures=(("bfloat16",) * 4, ("float16",) * 4))
+    spec = replace(spec, input_fingerprints=tuple(
+        (key, recipe.fingerprint if key == "build_recipe" else value)
+        for key, value in spec.input_fingerprints))
+    manifest_path = directory / spec.output_path
+    manifest = json.loads(manifest_path.read_text())
+    manifest.update(recipe=recipe.to_dict(), spec_fingerprint=spec.fingerprint)
+    manifest_path.write_text(json.dumps(manifest))
+    other_metadata = json.loads(json.dumps(metadata))
+    for key in ("inputs", "outputs"):
+        for parameter in other_metadata["supportInfo"][key]:
+            parameter["dtype"] = "float16"
+    other_path = directory / paths["metadata"].replace("kernel.json", "float16.json")
+    other_path.write_text(json.dumps(other_metadata))
+    config_path = directory / paths["config"]
+    config = json.loads(config_path.read_text())
+    original = config[recipe.package_op_type]["binaryList"][0]
+    config[recipe.package_op_type]["binaryList"].append(dict(
+        original, jsonPath=original["jsonPath"].replace("kernel.json", "float16.json")))
+    config_path.write_text(json.dumps(config))
+    return directory, spec, recipe, config_path, config, other_path, other_metadata
+
+
+def test_package_requires_executables_for_every_declared_dtype_combination(dual_dtype_package):
+    directory, spec, recipe, *_ = dual_dtype_package
+    assert verify_op_package(directory, spec)[1] == recipe
+
+
+@pytest.mark.parametrize("missing", [0, 1])
+def test_package_rejects_either_missing_dtype_variant(dual_dtype_package, missing):
+    directory, spec, recipe, config_path, config, *_ = dual_dtype_package
+    config[recipe.package_op_type]["binaryList"].pop(missing)
+    config_path.write_text(json.dumps(config))
+    with pytest.raises(SchemaError, match="missing a declared dtype signature"):
+        verify_op_package(directory, spec)
+
+
+def test_package_rejects_mixed_dtype_even_when_each_dtype_is_allowed(dual_dtype_package):
+    directory, spec, _, _, _, metadata_path, metadata = dual_dtype_package
+    metadata["supportInfo"]["inputs"][0]["dtype"] = "bfloat16"
+    metadata_path.write_text(json.dumps(metadata))
+    with pytest.raises(SchemaError, match="order/types"):
+        verify_op_package(directory, spec)
 
 
 @pytest.mark.parametrize("change,message", [
