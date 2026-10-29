@@ -11,6 +11,8 @@ from pathlib import Path
 from .runtime import SchemaError
 
 
+# Compatibility names for existing public facades. Registration and compilation
+# enumerate manifests; new operators do not require another constant here.
 MATMUL_BIAS_SILU_KERNEL_ID = "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950"
 FLASH_ATTENTION_KERNEL_ID = "ascendc/t4/flash_attention/catlass/op_package/Ascend950"
 _DATA = Path(__file__).parent / "data/kernels"
@@ -55,19 +57,10 @@ def load_contract(kernel_id=MATMUL_BIAS_SILU_KERNEL_ID):
 
 
 def _dependency_roots(recipe, source_root):
-    """Resolve explicit build dependencies only after JIT/build is authorized."""
-    import os
+    """Compatibility entry into the shared AOT/JIT dependency resolver."""
+    from .jit.dependencies import dependency_roots
 
-    if not any(dependency.name == "catlass" for dependency in recipe.dependencies):
-        return {}
-    location = Path(os.environ.get("FLASHINFER_CATLASS_ROOT", Path(source_root) / "3rdparty/catlass"))
-    dependency = next(item for item in recipe.dependencies if item.name == "catlass")
-    if not (location / dependency.include_dir).is_dir():
-        raise SchemaError(
-            "catlass dependency headers are missing at %s; set FLASHINFER_CATLASS_ROOT "
-            "to the pinned catlass checkout (headers are not bundled in the wheel)" % location
-        )
-    return {"catlass": location}
+    return dependency_roots(recipe, source_root)
 
 
 def _jit_backend(recipe, spec):
@@ -76,12 +69,10 @@ def _jit_backend(recipe, spec):
 
     toolchain = AscendCToolchain.discover()
     if toolchain.fingerprint != spec.environment_fingerprint:
-        freeze_tool = ("build_flash_attention.py" if recipe.kernel_id == FLASH_ATTENTION_KERNEL_ID
-                       else "build_matmul_bias_silu.py")
         raise SchemaError(
             "installed Ascend C declaration requires its frozen build environment; "
             "current toolchain fingerprint does not match; rebuild/freeze the release "
-            "with tools/%s --freeze" % freeze_tool
+            "with python -m flashinfer.aot --freeze --kernel-id %s" % recipe.kernel_id
         )
     source_root = _source_root()
     resolved = resolve_build_recipe(

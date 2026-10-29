@@ -16,28 +16,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-def _descriptor(recipe):
-    from tools._production_release import production_descriptor
-
-    bounds = {bound.name: bound for bound in recipe.shape_constraints}
-    # The validated release reserves 16 MiB for system workspace. Planning
-    # declares a finite-contract upper bound; eager uses the dynamic ACLNN size.
-    workspace_bytes = (16 << 20) + 4 * bounds["M"].maximum * bounds["N"].maximum
-    return production_descriptor(recipe, op="gemm.matmul_bias_silu", dtype="bfloat16",
-                                 workspace_bytes=workspace_bytes)
-
-
 def freeze_contract():
-    """Write registry and frozen recipe/spec using the current verified SDK."""
+    """Compatibility selector; capability/workspace/ABI come from the catalog."""
     from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID
-    from tools._production_release import freeze_declaration
+    from flashinfer.aot.declarations import freeze_production_kernels
 
-    return freeze_declaration(
-        ROOT, recipe_name="matmul_bias_silu", kernel_id=MATMUL_BIAS_SILU_KERNEL_ID,
-        descriptor_factory=_descriptor,
-        specialization=b"matmul_bias_silu;contract-v2;bf16;row-major;M,N,K=16..256:16",
-        append=True, generated_at="2026-10-25", allow_new_frozen=True,
-    )
+    return freeze_production_kernels(source_root=ROOT, kernel_ids=(MATMUL_BIAS_SILU_KERNEL_ID,))[0]
 
 
 def build_release(root):

@@ -7,33 +7,9 @@ are synchronous, so this adapter makes no graph-capture claim.
 """
 
 from dataclasses import dataclass, field
-from functools import lru_cache
 from threading import RLock
 
 from flashinfer.runtime import SchemaError
-
-
-# aclDataType values from acl/acl_base.h; this is independent of operator names.
-_ACL_DTYPES = {
-    "float32": 0, "float16": 1, "int8": 2, "int32": 3, "uint8": 4,
-    "int16": 6, "uint16": 7, "uint32": 8, "int64": 9, "uint64": 10,
-    "float64": 11, "bool": 12, "bfloat16": 27,
-}
-
-
-@lru_cache(maxsize=1)
-def _acl_tensor_api():
-    import ctypes as C
-
-    api = C.CDLL("libnnopbase.so", mode=C.RTLD_LOCAL)
-    api.aclCreateTensor.argtypes = [
-        C.POINTER(C.c_int64), C.c_uint64, C.c_int, C.POINTER(C.c_int64),
-        C.c_int64, C.c_int, C.POINTER(C.c_int64), C.c_uint64, C.c_void_p,
-    ]
-    api.aclCreateTensor.restype = C.c_void_p
-    api.aclDestroyTensor.argtypes = [C.c_void_p]
-    api.aclDestroyTensor.restype = C.c_int
-    return api
 
 
 def _dtype_name(tensor):
@@ -82,7 +58,6 @@ class TorchOpPackageRunner:
     _native_lock: object = field(default_factory=RLock, init=False, repr=False, compare=False)
 
     def __call__(self, *tensors):
-        import ctypes as C
         import torch
         import torch_npu
 
@@ -103,56 +78,13 @@ class TorchOpPackageRunner:
             raise ValueError("Ascend C tensor adapter requires contiguous ND tensors")
         _reject_output_overlap(self.recipe.tensor_parameters, tensors)
 
-        # Explicit enable_aclnn() (or adapter path selection) uses Torch/OpCommand.
-        # Preserve the default Python path, including its workspace observation;
-        # a selected but invalid native bridge must never fall back.
         from flashinfer.aclnn import _native
-        if _native.available():
-            if self._native_runner is None:
-                with self._native_lock:
-                    if self._native_runner is None:
-                        object.__setattr__(self, "_native_runner", _native.prepare(self.module, self.recipe))
-            return self._native_runner(tensors)
 
-        api = _acl_tensor_api()
-        handles = []
-        metadata = []
-        workspace = None
-        with torch.npu.device(device):
-            stream = torch.npu.current_stream(device)
-            try:
-                for tensor in tensors:
-                    tensor.record_stream(stream)
-                    dims = (C.c_int64 * tensor.ndim)(*tensor.shape)
-                    strides = (C.c_int64 * tensor.ndim)(*tensor.stride())
-                    metadata.append((dims, strides))
-                    dtype = _ACL_DTYPES.get(_dtype_name(tensor))
-                    if dtype is None:
-                        raise SchemaError("unsupported ACL tensor dtype: " + _dtype_name(tensor))
-                    handle = api.aclCreateTensor(
-                        dims, tensor.ndim, dtype, strides, 0, 2, dims, tensor.ndim,
-                        tensor.data_ptr(),
-                    )
-                    if not handle:
-                        raise RuntimeError("aclCreateTensor failed")
-                    handles.append(handle)
-                size, executor = self.module.get_workspace_size(*handles)
-                if size:
-                    workspace = torch.empty(size, device=device, dtype=torch.uint8)
-                    workspace.record_stream(stream)
-                self.module.launch(
-                    workspace.data_ptr() if workspace is not None else None,
-                    size, executor, stream.npu_stream,
-                )
-            finally:
-                # All inputs, descriptors, workspace and host dimension arrays
-                # remain live until queued device work finishes, even on error.
-                try:
-                    stream.synchronize()
-                finally:
-                    statuses = [api.aclDestroyTensor(handle) for handle in reversed(handles)]
-                    if any(statuses):
-                        raise RuntimeError("aclDestroyTensor returned %s" % statuses)
+        if self._native_runner is None:
+            with self._native_lock:
+                if self._native_runner is None:
+                    object.__setattr__(self, "_native_runner", _native.prepare(self.module, self.recipe))
+        return self._native_runner(tensors)
 
 
 __all__ = ["TorchOpPackageRunner", "package_tensor_runner"]

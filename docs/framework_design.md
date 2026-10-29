@@ -5,6 +5,8 @@
 > 范围：新仓总体框架——对外 API 对标、多 backend 调度、Ascend C / Triton 算子实现体系、
 > AOT / JIT 双模式与 kernel 缓存设计。
 
+运行时数据模型、调度算法、AOT/JIT 产物生命周期及 FA 接入要求见 [运行时与编译系统技术设计](runtime-and-compilation-design.md)。[架构介绍提纲](expert-architecture-overview.md) 保留为思路整理资料。
+
 ## 1. 概述
 
 ### 1.1 项目定位
@@ -18,7 +20,7 @@
 - **接口对标 flashinfer**：对外包名为 `flashinfer`，调用形式为
   `flashinfer.xx`（如 `flashinfer.prefill.single_prefill_with_kv_cache`），
   名称、参数与语义尽量与 flashinfer 保持一致，降低 CUDA serving 栈迁移成本。
-- **一个接口、多个 backend**：每个接口存在多个候选后端，具体路由到哪个 kernel 由
+- **一个接口、多个 backend**：同一接口可以接入多个候选后端，具体路由到哪个 kernel 由
   **输入数据**（数据类型、shape、layout 等）与**当前硬件型号**共同决定；目标 kernel
   可能是 CANN 内置算子（aclnn），也可能是本仓自研算子。
 - **自研算子双语言**：本仓算子支持 **Ascend C** 与 **Triton（triton-ascend）** 两种实现。
@@ -160,7 +162,7 @@ flashinfer/
 │   ├── ascendc.py               # 生产 Ascend C 登记、冻结 spec 与 runner 绑定
 │   ├── attention/ / quantization/ / triton/
 │   ├── cann/                   # CANN aclnn backend 适配
-│   ├── aclnn/                  # 可选 Torch schema、原生适配库构建与延迟加载
+│   ├── aclnn/                  # 统一 Torch schema、原生适配库构建与延迟加载
 │   ├── runtime/                # dispatcher / registry / capability / signature
 │   ├── jit/
 │   │   ├── artifacts.py / ascendc.py / backends.py / build.py / cache.py / cache_key.py
@@ -221,7 +223,7 @@ typed export** 四层对齐职责；这是准备与执行的依赖关系，不�
 | wrapper：绑定 workspace，plan 保存 native 调度信息，run 复用 module | 公共 facade + Attention 资源契约，plan 保存选型与资源身份；CANN batch 仍逐请求 gather/FIA/concat，尚非同等 fused scheduler |
 | generator：dtype/head_dim/variant 物化模板源码或编译输入 | Attention generator 目前主要形成特化身份，未接通公共 batch 编译；生产 Ascend C 由 recipe + 冻结 spec 提供可编译输入 |
 | JIT/AOT：查预编译 module，缺失时按策略构建并加载 | 运行期发现 → 身份匹配 → 延迟绑定调用适配器；两条生产登记接入同一 store/loader，不能外推为全部 op 自动编译 |
-| typed export：typed native function 编入库，经 FFI 暴露 plan/run 等属性 | 动态库加载后绑定 ACLNN 两段式 API；显式启用的原生桥通过 TorchNPU `OpCommand::RunOpApi` 管理下发；尚无通用 typed export 生成器 |
+| typed export：typed native function 编入库，经 FFI 暴露 plan/run 等属性 | 动态库加载后绑定 ACLNN 两段式 API；统一原生桥通过 TorchNPU `OpCommand::RunOpApi` 管理下发；尚无通用 typed export 生成器 |
 | 跨实现 tuning：同一负载比较可比实现/配置，执行时查询结果 | 独立于 backend 的服务；能力过滤后消费有效记录，未命中使用确定性排序；当前没有 Triton FA 候选，发布记录仍为空 |
 
 下图把**准备模块**和**调用已加载模块**分开；typed export 同时涉及编译时注册和运行时入口，不是排在编译后再执行的一次代码生成。
@@ -242,14 +244,13 @@ flowchart LR
   end
   subgraph ASCEND["本仓：生产 Ascend C / ACLNN 路径"]
     direction TB
-    AO["可选 torch.ops.flashinfer.*<br/>PrivateUse1 schema / FakeTensor 元数据实现"]
-    AW["wrapper / facade<br/>校验支持域、选择 kernel、组织 Tensor / out<br/>有 plan 的接口另持有资源与执行契约"]
+    AO["torch.ops.flashinfer.*：唯一公共执行边界<br/>Python 薄封装自动注册并转发"]
+    AW["PrivateUse1 实现 / wrapper<br/>校验支持域、选择 kernel、组织 Tensor / out<br/>有 plan 的接口另持有资源与执行契约"]
     AU["统一逻辑算子的实现选择<br/>能力过滤 → tuning 记录 / 确定性排序<br/>只查询，不现场测量"]
     AG["recipe + 冻结 spec<br/>源码闭包、宏、目标、Tensor 顺序与 shape 约束<br/>当前生产模板参数主要在源码 / 宏中确定"]
     AJ["AOT 发现 / JIT store<br/>按身份与完整性匹配；仅缺失才受控构建<br/>加载 host 库和设备二进制组成的 op-package"]
     AE["已验证 Tensor runner<br/>首次绑定 ACLNN API；稳定调用复用绑定"]
-    AQ["启用原生桥：TorchNPU RunOpApi<br/>按框架 queue / stream 配置下发"]
-    AP["默认 Python 兼容路径<br/>ctypes 调用同一 ACLNN 协议"]
+    AQ["统一原生桥：TorchNPU RunOpApi<br/>按框架 queue / stream 配置下发"]
     AT["GetWorkspaceSize<br/>host 按 shape 计算 tiling / workspace<br/>创建 executor；adapter 准备实际 workspace"]
     AK["aclnnOp + executor / workspace / stream<br/>CANN 提交 → Ascend C device kernel"]
     AO --> AW
@@ -257,10 +258,8 @@ flowchart LR
     AU -. "选定实现 / 编译特化" .-> AG
     AG --> AJ --> AE
     AW -->|"调用已绑定的 runner"| AE
-    AE -->|"原生桥已启用"| AQ
-    AE -->|"兼容路径"| AP
+    AE --> AQ
     AQ --> AT
-    AP --> AT
     AT --> AK
   end
 ```
@@ -276,12 +275,12 @@ flowchart LR
 - **JIT/AOT** 除了命中缓存，还负责编译、身份/完整性校验和加载。AOT 是提前构建再交付，JIT 是策略允许的缺失补建；本仓损坏产物明确拒绝，不把它当成普通 miss。
 - **typed export** 是可调用的**host 函数导出边界**。例如 flashinfer-ori: `csrc/single_prefill_jit_binding.cu` 的 `TVM_FFI_DLL_EXPORT_TYPED_FUNC(run, single_prefill_with_kv_cache)` 把 C++ 函数按类型签名注册成模块的 `run`。调用该函数后，它才组织并提交 device kernel；导出也可以是 `plan` 等准备函数，因此不能等同于 kernel 本体或一次 launch。
 
-本仓对应的是 CANN 生成的 ACLNN host API 加 Tensor 适配层；完整 wheel 随包提供 Torch C++/OpCommand 适配库，显式启用后使用，原 Python 默认路径保留。尚没有上游那样通用的 typed export 生成器。图中的 ACLNN 第一段执行 host tiling，第二段提交设备工作。CANN 内置算子和 Triton 各有自己的调用/编译路径，不必经过这个 Ascend C 自定义包流程；当前 CANN batch 的 gather/FIA/concat 也不因此变成上游式 fused batch scheduler。
+本仓对应的是 CANN 生成的 ACLNN host API 加 Tensor 适配层；完整 wheel 随包提供 Torch C++/OpCommand 适配库，两条生产接口统一经 Torch 注册后调用该桥，已移除 Python ctypes 执行分支。尚没有上游那样通用的 typed export 生成器。图中的 ACLNN 第一段执行 host tiling，第二段提交设备工作。CANN 内置算子和 Triton 各有自己的调用/编译路径，不必经过这个 Ascend C 自定义包流程；当前 CANN batch 的 gather/FIA/concat 也不因此变成上游式 fused batch scheduler。
 
 
 **导出边界的核心是接入 TorchNPU 的下发机制。** 原生桥通过 `OpCommand::RunOpApi` 提交 callback；框架启用任务队列且当前 stream 允许时，TorchNPU 将其作为 `EXECUTE_OPAPI` 入队，关闭队列时使用框架的直接执行路径。应用拥有全局队列策略，本仓不强制覆盖；同步 eager 边界使用已导出的 `NPUStream::stream(true)` 在 callback 外准备 stream，覆盖 level 2 的队列排空要求。绑定与 libffi 签名只在首次建立，callback 负责 ACLNN tiling/workspace/launch，`RunOpApi(sync=true)` 完成后释放描述符和 workspace。当前仍是同步 eager，接入队列不代表异步返回、图支持或性能优势。
 
-Torch 入口由 `flashinfer.aclnn.enable_aclnn()` 显式注册；原 Python API 保留默认路径，显式启用后也走该适配库，复用相同 dispatcher、AOT/JIT 和契约门禁。适配库在真实 NPU 调用时加载，保留同步 eager 生命周期；FakeTensor 仅做形状推导，不提升图能力。构建、调用链和兼容边界见 [Torch/ACLNN 接入](aclnn-torch-adapter.md)。
+Torch 入口由 `flashinfer.aclnn.enable_aclnn()` 幂等注册，Python API 是自动注册并转发的薄封装；该函数只注册，不再切换全局执行模式，也不更改其他 norm 接口的路由。Torch functional/out 的 PrivateUse1 实现复用同一 dispatcher、AOT/JIT 和契约门禁，关键字 `backend`、`kernel_id` 继续参与选型；缺失或损坏的桥明确失败。适配库在真实 NPU 调用时加载，保留同步 eager 生命周期；FakeTensor 仅做形状推导，不提升图能力。构建、调用链和兼容边界见 [Torch/ACLNN 接入](aclnn-torch-adapter.md)。
 
 差异需要分清来源，不能把缺口都归因于硬件：
 
@@ -481,6 +480,8 @@ bucket 声明得到 bucket 空间 → 每个 bucket 构造代表输入 → 加�
 自研算子的接入主体是一份声明式 recipe：它描述**怎么编译、需要什么资源、怎么被调用**。
 注册 descriptor 决定算子能否进入候选池；recipe 经 [`recipe.py`](../flashinfer/jit/recipe.py)
 校验后提供实际编译与调用所需的契约。两者须一致，登记成功本身不等于已经可执行。
+
+**统一声明与批量编译入口。** `python -m flashinfer.aot --freeze --all` 按 kernel_id 关联集中 descriptor 与 recipe，批量生成冻结 spec；提供 `--output-dir` 后接着构建，`--kernel-id` 可重复选择子集。声明实现位于 `flashinfer/aot/declarations.py`，AOT/JIT 共享 `flashinfer/jit/dependencies.py` 的依赖定位并保留 revision/头树校验。批量构建在编译任何项之前完成全部所选项的源闭包/spec 检查；缓存与产物仍按 kernel 独立，不合并 CMake 工程或 vendor 包。新增算子不再要求专用 Python 构建脚本；能力、workspace 和 ABI 由 descriptor 显式维护，冻结工具不自动扩大。现有脚本仅作兼容选择入口，接入步骤见 [算子接入指南](adding-a-custom-operator.md#14-使用统一声明与批量入口)。
 
 **公开接入只提供完整 v2 契约**：新建、配方读取、配置选择、构建解析和新发布均拒绝 v1。
 早期 v1 受限协议仅作为内部兼容：定形 tiling、单一核类型、零 workspace、固定三个 Tensor。
@@ -1782,7 +1783,7 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 | wheel 打包发布 | 普通 `setup.py` 构建默认编译全部已登记生产 AOT，也可显式选择 CONFIG/PREBUILT 或仅源码模式；按 spec 指纹放入主 wheel 的 `flashinfer/data/op_packages/`。两条 Ascend950 生产算子已有携带 AOT 的 wheel 隔离安装、禁编译数值自检与源码布局验收；这不替代完整目标矩阵。是否拆分发包仍待按矩阵决定，当前没有独立 provider / cubin 分包。 | [构建入口](../setup.py)、[导出实现](../flashinfer/aot/build.py)、[wheel 与源码布局验收](reports/kernel-layout-2026-10-27.md)、§5.6 |
 | 入图 | 固定资源、最大 workspace、plan 冻结与重放前参数更新契约已实现，公共 single-decode wrapper 在单一配置上完成调用方捕获与 8 次更新重放，输出/LSE 误差均为 0。当前仅 **1/81** descriptor 可入图，`CAPTURE_SAFE` 为 **0**。两条生产自研、batch 入图及下游完整模型接入仍未完成。 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py)、§6 |
 | 自定义算子接入 | 公开 recipe 统一为 v2，旧格式仅在内部兼容边界校验，变参 Tensor ABI、动态 workspace、shape 驱动 host tiling 与混合核同步契约、native/catlass 范本已有实现。两条生产 eager 路径与 33 项清单给出源码、冻结 spec、编译/导出、runner 和公共调用的有限闭环。任意 scalar/attribute ABI、数据内容驱动 tiling、异步生命周期及入图不能由此外推。 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md)、[完整档契约说明](reports/ascendc-contract-v2.md)、§3.5 |
-| Torch / ACLNN | 完整 wheel 提供 TorchNPU OpCommand host 桥；显式启用后首次准备原生绑定并复用，按框架 queue/stream 下发，保持同步 eager。生产 AOT 首次激活可信 vendor 集合以支持同进程多算子；默认 Python 兼容路径保留。任意参数 ABI、异步返回和生产入图未验证。 | [接入说明](aclnn-torch-adapter.md)、[架构重构验收](reports/architecture-refactor-2026-10-28.md) |
+| Torch / ACLNN | 完整 wheel 提供 TorchNPU OpCommand host 桥；所有生产 Ascend C 调用首次准备原生绑定并复用，按框架 queue/stream 下发，保持同步 eager。生产 AOT 首次激活可信 vendor 集合以支持同进程多算子；Python 公共函数统一转发至 Torch schema。任意参数 ABI、异步返回和生产入图未验证。 | [接入说明](aclnn-torch-adapter.md)、[架构重构验收](reports/architecture-refactor-2026-10-28.md) |
 
 ### A.2 其它组件
 

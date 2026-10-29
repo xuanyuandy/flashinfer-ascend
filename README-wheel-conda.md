@@ -43,7 +43,7 @@ FA 脚本无参数时依次测试 FP16、BF16，经 TorchNPU 原生桥调用 Tor
 | `flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)` | catlass Ascend C，wheel 内 AOT | FP16/BF16，Q/K/V/out 同 dtype，`q[128,2,128]`、`k/v[256,2,128]` |
 | `torch.ops.flashinfer.rmsnorm(out, x, w, ...)` | CANN RMSNorm，经 torch.library 注册 | FP32，`x[4,128]`、`w[128]` |
 
-前两个公共函数直接接收和返回 `torch.Tensor`，保持原有默认调用路径。完整 wheel 提供 C++/OpCommand → ACLNN 适配库，显式启用后可使用 Torch 算子接口，原公共函数也会走同一适配库；两个生产算子可同进程调用；也可分别执行下面的测试命令：
+前两个公共函数直接接收和返回 `torch.Tensor`，自动注册并转发到同名 Torch 算子。完整 wheel 统一通过 C++/OpCommand → ACLNN 适配库执行；直接使用 `torch.ops` 时先注册一次，`enable_aclnn()` 不再切换执行模式。两个生产算子可同进程调用，也可分别执行下面的测试命令：
 
 ```python
 import torch

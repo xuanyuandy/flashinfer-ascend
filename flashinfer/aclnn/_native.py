@@ -10,12 +10,6 @@ from threading import RLock
 _lock = RLock()
 _owners = {}
 _runners = {}
-_required = False
-
-
-def require_native():
-    global _required
-    _required = True
 
 
 def adapter_directory():
@@ -24,18 +18,19 @@ def adapter_directory():
 
 
 def available():
-    # Preserve existing Python execution/observation unless explicitly enabled.
-    # Once selected, a missing/corrupt library must fail rather than fall back.
-    return _required or "FLASHINFER_ACLNN_ADAPTER_PATH" in os.environ
+    """Compatibility query: native Torch execution is always required.
+
+    This does not probe whether the library is present; loading validates it.
+    """
+    return True
 
 
-@lru_cache(maxsize=1)
-def load_adapter():
-    import ctypes as C
+def verified_adapter(directory=None):
+    """Verify prebuilt bytes and build identity without loading the library."""
     import torch
     import torch_npu
 
-    directory = adapter_directory()
+    directory = adapter_directory() if directory is None else Path(directory)
     manifest = directory / "manifest.json"
     if not manifest.is_file():
         raise RuntimeError("ACLNN Torch adapter is not bundled; build a normal AOT wheel or run "
@@ -52,6 +47,15 @@ def load_adapter():
         raise RuntimeError("ACLNN Torch adapter library must not be a symlink")
     if hashlib.sha256(library.read_bytes()).hexdigest() != record["sha256"]:
         raise RuntimeError("ACLNN Torch adapter library digest mismatch")
+    return library, manifest
+
+
+@lru_cache(maxsize=1)
+def load_adapter():
+    import ctypes as C
+    import torch
+
+    library, _ = verified_adapter()
     torch.ops.load_library(str(library))
     api = C.CDLL(str(library))
     api.fi_aclnn_register.argtypes = [C.c_char_p, C.c_char_p, C.c_void_p, C.c_void_p,
@@ -59,6 +63,10 @@ def load_adapter():
     api.fi_aclnn_register.restype = C.c_int
     api.fi_aclnn_last_error.argtypes = []
     api.fi_aclnn_last_error.restype = C.c_char_p
+    if not hasattr(api, "fi_aclnn_last_workspace_size"):
+        raise RuntimeError("ACLNN Torch adapter is outdated; rebuild the adapter or the AOT wheel")
+    api.fi_aclnn_last_workspace_size.argtypes = [C.c_char_p, C.POINTER(C.c_uint64)]
+    api.fi_aclnn_last_workspace_size.restype = C.c_int
     return api
 
 
@@ -91,3 +99,15 @@ def prepare(module, recipe):
 
 def execute(module, recipe, tensors):
     return prepare(module, recipe)(tensors)
+
+
+def last_workspace_size(module, recipe):
+    """Observe the last real GetWorkspaceSize result of a prepared binding."""
+    import ctypes as C
+
+    api = load_adapter()
+    size = C.c_uint64()
+    token = recipe.fingerprint + ":" + str(id(module.api))
+    if api.fi_aclnn_last_workspace_size(token.encode(), C.byref(size)):
+        raise RuntimeError(api.fi_aclnn_last_error().decode())
+    return size.value

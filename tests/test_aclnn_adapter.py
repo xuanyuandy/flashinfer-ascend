@@ -5,6 +5,8 @@ import os
 import subprocess
 import sys
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -35,11 +37,13 @@ import flashinfer.aclnn._ops
 def test_aclnn_registration_and_fake_execution_do_not_load_native():
     run('''
 import sys,torch
+import flashinfer.norm
 from torch._subclasses.fake_tensor import FakeTensorMode
 from flashinfer.aclnn import enable_aclnn,_native
 def forbidden(): raise AssertionError('native execution from FakeTensor')
 _native.load_adapter=forbidden
 enable_aclnn();enable_aclnn()
+assert flashinfer.norm._torch_library_ops is None, 'production registration must not reroute unrelated norm ops'
 assert 'torch_npu' not in sys.modules
 with FakeTensorMode():
  a=torch.empty((16,48),dtype=torch.bfloat16)
@@ -101,11 +105,82 @@ import os,sys,tempfile,types
 from flashinfer.aclnn import _native
 sys.modules['torch_npu']=types.SimpleNamespace(__version__='fixture')
 os.environ.pop('FLASHINFER_ACLNN_ADAPTER_PATH',None)
-assert not _native.available(), 'bundled native library must not change the default Python path'
+assert _native.available(), 'the native Torch bridge is the only execution path'
 with tempfile.TemporaryDirectory() as temporary:
  os.environ['FLASHINFER_ACLNN_ADAPTER_PATH']=temporary
- _native.require_native()
  try: _native.load_adapter()
  except RuntimeError as error: assert 'not bundled' in str(error)
  else: raise AssertionError('missing native adapter accepted')
 ''')
+
+
+def test_python_facades_register_and_use_the_same_torch_fake_operators():
+    run('''
+import sys,torch,flashinfer
+from torch._subclasses.fake_tensor import FakeTensorMode
+from flashinfer.aclnn import _native
+def forbidden(*args,**kwargs): raise AssertionError('fake execution loaded native code')
+_native.load_adapter=forbidden
+assert not hasattr(torch.ops.flashinfer,'matmul_bias_silu')
+with FakeTensorMode(allow_fallback_kernels=False):
+ a=torch.empty((16,48),dtype=torch.bfloat16)
+ b=torch.empty((48,32),dtype=torch.bfloat16)
+ bias=torch.empty(32,dtype=torch.bfloat16)
+ result=flashinfer.matmul_bias_silu(a,b,bias)
+ direct=torch.ops.flashinfer.matmul_bias_silu(a,b,bias)
+ assert result.shape==direct.shape==(16,32)
+ assert result.dtype==direct.dtype==torch.bfloat16
+ assert flashinfer.matmul_bias_silu(a,b,bias,out=result) is result
+ for dtype in (torch.float16,torch.bfloat16):
+  q=torch.empty((128,2,128),dtype=dtype)
+  kv=torch.empty((256,2,128),dtype=dtype)
+  result=flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv)
+  direct=torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv)
+  assert result.shape==direct.shape==q.shape and result.dtype==direct.dtype==dtype
+  assert flashinfer.single_prefill_with_kv_cache_catlass(q,kv,kv,out=result) is result
+assert 'torch_npu' not in sys.modules
+assert flashinfer.norm._torch_library_ops is None
+''')
+
+
+def test_python_facade_has_no_cpu_numerical_fallback():
+    run('''
+import torch,flashinfer
+for call,args in (
+ (flashinfer.matmul_bias_silu,(torch.zeros((16,16),dtype=torch.bfloat16),)*2+(torch.zeros(16,dtype=torch.bfloat16),)),
+ (flashinfer.single_prefill_with_kv_cache_catlass,(torch.zeros((128,1,128),dtype=torch.float16),)*3),
+):
+ try: call(*args)
+ except NotImplementedError: pass
+ else: raise AssertionError('Python facade bypassed the Torch device dispatcher')
+''')
+
+
+def test_prebuilt_bridge_bundling_is_compiler_free_and_keeps_source_identity(tmp_path, monkeypatch):
+    import hashlib
+    import json
+    from flashinfer.aclnn import _native
+    from flashinfer.aclnn.build import bundle_adapter
+
+    source = ROOT / "csrc/aclnn_torch_adapter/adapter.cpp"
+    supplied = tmp_path / "supplied"
+    supplied.mkdir()
+    library = supplied / "libflashinfer_aclnn.so"
+    manifest = supplied / "manifest.json"
+    library.write_bytes(b"verified fixture bytes")
+    manifest.write_text(json.dumps(dict(source_sha256=hashlib.sha256(source.read_bytes()).hexdigest())))
+    monkeypatch.setattr(_native, "verified_adapter", lambda directory: (library, manifest))
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("prebuilt bundling invoked a compiler or loaded a library")
+
+    monkeypatch.setattr(subprocess, "Popen", forbidden)
+    import ctypes
+    monkeypatch.setattr(ctypes, "CDLL", forbidden)
+    outputs = bundle_adapter(tmp_path / "bundled", directory=supplied)
+    assert {path.name for path in outputs} == {library.name, manifest.name}
+    assert all(path.read_bytes() == (supplied / path.name).read_bytes() for path in outputs)
+    manifest.write_text(json.dumps(dict(source_sha256="0" * 64)))
+    with pytest.raises(RuntimeError, match="source identity mismatch"):
+        bundle_adapter(tmp_path / "rejected", directory=supplied)
+    assert not (tmp_path / "rejected").exists()

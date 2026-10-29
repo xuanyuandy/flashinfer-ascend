@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import tempfile
 
@@ -75,27 +76,22 @@ def _export_op_package(directory, output_dir, *, allow_legacy):
     return target
 
 
-def _dependencies(recipe, source_root, catlass_root=None, *, require_explicit=False):
-    """Report a missing explicitly selected dependency before starting a build."""
-    roots = {}
-    for dependency in recipe.dependencies:
-        variable = "FLASHINFER_%s_ROOT" % dependency.name.upper()
-        override = catlass_root if dependency.name == "catlass" else None
-        explicit = override or os.environ.get(variable)
-        if require_explicit and not explicit:
-            raise SchemaError(
-                "%s not built due to missing dependency %s: %s is not set; "
-                "set %s to the pinned checkout or pass --%s-root"
-                % (recipe.kernel_id, dependency.name, variable, variable, dependency.name)
-            )
-        location = Path(explicit or source_root / "3rdparty" / dependency.name)
-        if not (location / dependency.include_dir).is_dir():
-            raise SchemaError(
-                "%s not built due to missing dependency %s: headers are missing at %s; "
-                "set %s to the pinned checkout (dependency headers are not bundled in the wheel)"
-                % (recipe.kernel_id, dependency.name, location, variable)
-            )
-        roots[dependency.name] = location
+def _dependencies(recipe, source_root, catlass_root=None, *, require_explicit=False,
+                  dependency_roots=None):
+    """Compatibility arguments delegate to the common AOT/JIT resolver."""
+    from flashinfer.jit.dependencies import dependency_roots as resolve_roots
+
+    return resolve_roots(recipe, source_root,
+        overrides=_dependency_overrides(dependency_roots, catlass_root),
+        require_explicit=require_explicit)
+
+
+def _dependency_overrides(dependency_roots=None, catlass_root=None):
+    roots = dict(dependency_roots or {})
+    if catlass_root is not None:
+        if "catlass" in roots and Path(roots["catlass"]) != Path(catlass_root):
+            raise SchemaError("conflicting catlass-root and dependency-root catlass")
+        roots["catlass"] = catlass_root
     return roots
 
 
@@ -112,7 +108,8 @@ def _publish(recipe, spec, backend, store, output_dir):
 
 
 def build_production_packages(*, output_dir, targets=(), source_root=None, cache_dir=None,
-                              cann_root=None, catlass_root=None, kernel_ids=()):
+                              cann_root=None, catlass_root=None, kernel_ids=(),
+                              dependency_roots=None):
     """Build every registered production AOT entry using its frozen identity.
 
     The installed production registry and frozen declarations are the sole
@@ -126,6 +123,8 @@ def build_production_packages(*, output_dir, targets=(), source_root=None, cache
     selected = tuple(kernel_ids) if kernel_ids else tuple(contracts)
     if not selected:
         raise SchemaError("production AOT registry contains no kernels")
+    if len(selected) != len(set(selected)):
+        raise SchemaError("production build requires unique kernel_id values")
     unknown = set(selected) - set(contracts)
     if unknown:
         raise SchemaError("no frozen production AOT declaration for " + ", ".join(sorted(unknown)))
@@ -137,9 +136,10 @@ def build_production_packages(*, output_dir, targets=(), source_root=None, cache
         if targets and set(targets) != {recipe.target_soc}:
             raise SchemaError("frozen production kernel %s requires target %s; requested %s"
                               % (kernel_id, recipe.target_soc, ", ".join(targets)))
-        dependencies[kernel_id] = _dependencies(recipe, root, catlass_root, require_explicit=True)
+        dependencies[kernel_id] = _dependencies(recipe, root, catlass_root,
+            dependency_roots=dependency_roots, require_explicit=True)
     store = DiskJitBuildStore(cache_dir)
-    outputs = []
+    prepared = []
     for kernel_id in selected:
         _, recipe, spec = contracts[kernel_id]
         if toolchain.fingerprint != spec.environment_fingerprint:
@@ -154,14 +154,20 @@ def build_production_packages(*, output_dir, targets=(), source_root=None, cache
         if dict(spec.input_fingerprints).get("resolved_recipe") != resolved.fingerprint:
             raise SchemaError("installed Ascend C declaration does not match resolved build sources: " + kernel_id)
         backend = AscendCBackend(recipes=(resolved,), toolchain=toolchain)
-        outputs.append(_publish(recipe, spec, backend, store, output_dir))
+        prepared.append((recipe, spec, backend))
+    # A later invalid source/spec must fail before compiling an earlier kernel.
+    outputs = [
+        _publish(recipe, spec, backend, store, output_dir)
+        for recipe, spec, backend in prepared
+    ]
     print(json.dumps(dict(summary=dict(requested=len(selected), built=len(outputs),
         failed=0, skipped=0)), sort_keys=True), flush=True)
     return tuple(outputs)
 
 
 def compile_and_package(config, *, output_dir, targets=(), source_root=None, cache_dir=None,
-                        cann_root=None, catlass_root=None, recipe_id=None):
+                        cann_root=None, catlass_root=None, recipe_id=None,
+                        dependency_roots=None):
     """Build a selected recipe, or all frozen production entries.
 
     Config ``recipe_id`` selects any recipe manifest; omitted selectors retain
@@ -174,7 +180,8 @@ def compile_and_package(config, *, output_dir, targets=(), source_root=None, cac
     recipe_id = recipe_id or config.recipe_id
     if recipe_id == "all":
         return build_production_packages(output_dir=output_dir, targets=targets or (config.target_soc,),
-            source_root=source_root, cache_dir=cache_dir, cann_root=cann_root, catlass_root=catlass_root)
+            source_root=source_root, cache_dir=cache_dir, cann_root=cann_root, catlass_root=catlass_root,
+            dependency_roots=dependency_roots)
     root = Path(source_root) if source_root else _source_root()
     available = tuple(recipe for path in sorted((root / "csrc/recipes").glob("*.json"))
                       for recipe in load_build_recipes(path))
@@ -195,15 +202,17 @@ def compile_and_package(config, *, output_dir, targets=(), source_root=None, cac
             raise SchemaError("recipe differs from frozen production declaration: " + template.kernel_id)
         return build_production_packages(output_dir=output_dir, targets=tuple(r.target_soc for r in recipes),
             source_root=root, cache_dir=cache_dir, cann_root=cann_root, catlass_root=catlass_root,
-            kernel_ids=(template.kernel_id,))
+            kernel_ids=(template.kernel_id,), dependency_roots=dependency_roots)
     toolchain = AscendCToolchain.discover(cann_root)
     store = DiskJitBuildStore(cache_dir)
     outputs = []
     for recipe in recipes:
         resolved = resolve_build_recipe(recipe, source_root=root, toolchain_fingerprint=toolchain.fingerprint,
-            dependency_roots=_dependencies(recipe, root, catlass_root))
+            dependency_roots=_dependencies(recipe, root, catlass_root,
+                                           dependency_roots=dependency_roots))
         backend = AscendCBackend(recipes=(resolved,), toolchain=toolchain)
-        op = "test.t13.matmul_probe" if recipe.recipe_id == AscendCBuildConfig().recipe_id else recipe.recipe_id
+        legacy_probe = recipe.recipe_id == AscendCBuildConfig().recipe_id
+        op = "test.t13.matmul_probe" if legacy_probe else recipe.recipe_id
         descriptor = KernelDescriptor(recipe.kernel_id, op, Backend.ASCENDC,
             compile_mode=CompileMode.AOT, target_soc=recipe.target_soc, source=recipe.source,
             tiling_schema_version=recipe.tiling_schema_version,
@@ -213,7 +222,9 @@ def compile_and_package(config, *, output_dir, targets=(), source_root=None, cac
             registry=KernelRegistry((descriptor,)), spec_registry=JitSpecRegistry(),
             output_path="op-package.json", entry_point=recipe.host_entry,
             environment_fingerprint=toolchain.fingerprint,
-            specialization_fingerprint=hashlib.sha256(b"float32;M=16;N=16;K=16;row_major").hexdigest())
+            specialization_fingerprint=(
+                hashlib.sha256(b"float32;M=16;N=16;K=16;row_major").hexdigest()
+                if legacy_probe else recipe.fingerprint))
         outputs.append(_publish(recipe, spec, backend, store, output_dir))
     return tuple(outputs)
 
@@ -224,25 +235,61 @@ def main():
     selector = parser.add_mutually_exclusive_group()
     selector.add_argument("--all", action="store_true", help="build every frozen production AOT entry")
     selector.add_argument("--recipe", dest="recipe_id", help="override config recipe_id (legacy default: matmul_probe)")
+    selector.add_argument("--kernel-id", action="append", dest="kernel_ids", default=[],
+                          help="select a production kernel; repeat to select a batch")
+    parser.add_argument("--freeze", action="store_true",
+                        help="freeze selected descriptors/recipes; compile only if --output-dir is also given")
     parser.add_argument("--soc", action="append", dest="targets", default=[])
-    parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--cache-dir", type=Path)
     parser.add_argument("--source-root", type=Path)
     parser.add_argument("--cann-root", type=Path)
     parser.add_argument("--catlass-root", type=Path)
+    parser.add_argument("--dependency-root", action="append", default=[], metavar="NAME=PATH",
+                        help="locate any recipe dependency; repeat for multiple dependencies")
     args = vars(parser.parse_args())
     all_production = args.pop("all")
-    if all_production:
+    freeze = args.pop("freeze")
+    kernel_ids = args.pop("kernel_ids")
+    raw_roots = args.pop("dependency_root")
+    roots = {}
+    for value in raw_roots:
+        name, separator, location = value.partition("=")
+        if not separator or not re.fullmatch(r"[a-z][a-z0-9_-]*", name) or not location or name in roots:
+            parser.error("--dependency-root requires unique NAME=PATH values")
+        roots[name] = Path(location)
+    if roots:
+        args["dependency_roots"] = roots
+    if not freeze and args["output_dir"] is None:
+        parser.error("building requires --output-dir")
+    if freeze and (not (all_production or kernel_ids) or args["config"] is not None):
+        parser.error("--freeze requires --all or --kernel-id without --config")
+    if all_production or kernel_ids:
         if args.pop("config") is not None:
-            parser.error("select --all or --config (a config may instead use recipe_id=all)")
+            parser.error("select --all/--kernel-id or --config (a config may instead use recipe_id=all)")
         args.pop("recipe_id")
+        if kernel_ids:
+            args["kernel_ids"] = kernel_ids
         operation = build_production_packages
     else:
         if args["config"] is None:
             parser.error("supply --all or --config")
         operation = compile_and_package
     try:
-        operation(**args)
+        if freeze:
+            from .declarations import freeze_production_kernels
+
+            declarations = freeze_production_kernels(
+                source_root=args["source_root"], kernel_ids=kernel_ids,
+                cann_root=args["cann_root"], targets=args["targets"],
+                dependency_roots=_dependency_overrides(roots, args["catlass_root"]),
+            )
+            print(json.dumps(dict(frozen=[
+                dict(kernel_id=d.kernel_id, recipe=r.fingerprint, spec=s.fingerprint)
+                for d, r, s in declarations
+            ]), sort_keys=True), flush=True)
+        if args["output_dir"] is not None:
+            operation(**args)
     except (SchemaError, RuntimeError, OSError) as error:
         parser.exit(1, "AOT build failed: %s\n" % error)
 

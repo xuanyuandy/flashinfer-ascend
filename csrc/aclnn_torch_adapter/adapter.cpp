@@ -5,6 +5,7 @@
 #include <torch/library.h>
 #include <acl/acl.h>
 #include <algorithm>
+#include <atomic>
 #include <dlfcn.h>
 #include <ffi.h>
 #include <limits>
@@ -50,6 +51,8 @@ struct Binding {
     size_t outputs;
     std::vector<ffi_type*> argument_types;
     ffi_cif workspace_signature;
+    std::atomic<uint64_t> last_workspace_bytes{0};
+    std::atomic<bool> workspace_observed{false};
 
     Binding(std::string op_name, void* query, Launch run, size_t input_count, size_t output_count)
         : name(std::move(op_name)), workspace(query), launch(run), inputs(input_count),
@@ -159,6 +162,8 @@ void execute(const std::string& token, at::TensorList inputs, at::TensorList out
         ffi_arg status = 0;
         ffi_call(&binding->workspace_signature, FFI_FN(binding->workspace), &status, values.data());
         TORCH_CHECK(status == 0 && executor, binding->name, "GetWorkspaceSize returned ", status);
+        binding->last_workspace_bytes.store(workspace_bytes);
+        binding->workspace_observed.store(true);
         TORCH_CHECK(workspace_bytes <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
                     "ACLNN workspace exceeds tensor allocation range");
         if (workspace_bytes) {
@@ -217,6 +222,24 @@ extern "C" __attribute__((visibility("default"))) int fi_aclnn_register(
 }
 extern "C" __attribute__((visibility("default"))) const char* fi_aclnn_last_error() noexcept {
     return last_error.c_str();
+}
+
+// Diagnostics observe the actual native query without rerunning host tiling.
+extern "C" __attribute__((visibility("default"))) int fi_aclnn_last_workspace_size(
+    const char* token, uint64_t* size) noexcept {
+    try {
+        TORCH_CHECK(token && size, "Invalid ACLNN workspace observation");
+        std::lock_guard<std::mutex> lock(bindings_mutex);
+        const auto found = bindings.find(token);
+        TORCH_CHECK(found != bindings.end() && found->second->workspace_observed.load(),
+                    "ACLNN binding has no observed workspace query");
+        *size = found->second->last_workspace_bytes.load();
+        last_error.clear();
+        return 0;
+    } catch (const std::exception& error) {
+        last_error = error.what();
+        return -1;
+    }
 }
 
 TORCH_LIBRARY(flashinfer_aclnn, m) {

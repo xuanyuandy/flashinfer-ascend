@@ -57,6 +57,31 @@ FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape
 **公开构建只支持 v2 `op_package`。** `host_shared` 仅存在于内部旧协议测试设施；公开配置会明确拒绝。
 想让算子能被 AOT 运行期自动发现并在无编译器环境命中，也必须是 `op_package`。该产物包含 ACLNN host API、tiling 库、设备二进制及索引元数据；AOT/JIT 共用同一包格式，源码仍按算子组织。
 
+### 1.4 使用统一声明与批量入口
+
+新算子提供 host/kernel 源码和 recipe，并在 `flashinfer/data/kernels/registry.json` 增加明确的 descriptor，包含能力、workspace 与 ABI。框架按 kernel_id 将集中登记表与 `csrc/recipes/*.json` 关联；不需要新增 `tools/build_<name>.py`，也不需要在 `flashinfer/ascendc.py` 增加算子分支。
+
+在源码仓库与已初始化的构建环境中执行：
+
+```bash
+# 批量冻结声明，不编译设备代码。
+python3 -B -m flashinfer.aot --freeze --all \
+  --dependency-root catlass="$FLASHINFER_CATLASS_ROOT"
+
+# 构建所有冻结生产项，逐 kernel 复用自己的缓存。
+python3 -B -m flashinfer.aot --all \
+  --dependency-root catlass="$FLASHINFER_CATLASS_ROOT" \
+  --cache-dir build/aot-cache --output-dir build/aot-release
+```
+
+也可给 `--freeze` 同时传 `--output-dir`，完成冻结后构建；`--kernel-id` 可重复指定批量子集。冻结前会检查所选项的依赖与源码，批量构建也先完成全部所选项的源闭包/spec 校验，再开始编译；某项检查失败不会先编译前面的项。
+
+`flashinfer/aot/declarations.py` 使用登记表中显式维护的 capability/workspace/ABI，更新 recipe 对应的 SourceRef，并生成 `ascendc_specs.json`。已有项保留显式的 specialization_fingerprint 和 spec 编译选项，新项以 recipe 身份生成默认特化标识；完整源码、配方、依赖和工具链摘要继续参与 spec 身份。descriptor 的能力和 ABI 不会被工具自动扩大。
+
+依赖定位由 `flashinfer/jit/dependencies.py` 在 AOT 与 JIT 间复用：按声明名使用 `--dependency-root NAME=PATH` 或 `FLASHINFER_<NAME>_ROOT`，随后仍校验固定 revision 和实际头文件摘要。原 `--catlass-root` 与两个算子专用脚本仅保留兼容入口。公开 wrapper、Torch schema 和数值验收仍由算子作者提供，编译登记不代替这些交付件。
+
+批量入口保留按 kernel 的 spec、缓存和 op_package；当前不会将多个算子合并到同一次 CMake 配置或同一个 vendor 包。
+
 ## 2. 按这个顺序做
 
 顺序是有讲究的——先把**不支持的输入拒绝干净**，再谈扩大范围。
@@ -70,16 +95,17 @@ FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape
      csrc/kernels/ascendc/<name>/op_host/      OpDef / InferShape / tiling / workspace 回调
      csrc/kernels/ascendc/<name>/include/      host/device 共享 tiling 布局
      ↓
-③ 写 recipe
+③ 写 recipe 与集中 descriptor
      csrc/recipes/<name>.json          照抄 matmul_bias_silu.json 的字段
+     flashinfer/data/kernels/registry.json   能力 / workspace / ABI
      ↓
 ④ 冻结 spec 并构建
-     tools/build_<name>.py             declare_kernel() → export_op_package()
+     python -m flashinfer.aot --freeze --all  统一声明入口
+     python -m flashinfer.aot --all --output-dir <release-dir>
      ↓
-⑤ 进登记表 + 接公共入口
-     flashinfer/data/kernels/registry.json
-     flashinfer/data/kernels/ascendc_specs.json
-     flashinfer/ascendc.py             lazy 绑定
+⑤ 自动绑定 + 接公共入口
+     flashinfer/data/kernels/ascendc_specs.json   工具生成的冻结声明
+     flashinfer/ascendc.py             按 manifest 自动 lazy 绑定
      公共 wrapper（命名与同域现有接口一致）
      ↓
 ⑥ host 侧测试（不需要真机）
@@ -91,7 +117,7 @@ FA 已使用 `host_dynamic`：`FiFlashAttentionTiling` 从实际 Q/K/V 的 shape
 
 ## 3. 这几轮实际踩到的坑
 
-需要 Torch 算子入口时，参考 [Torch/ACLNN 接入说明](aclnn-torch-adapter.md) 与 `flashinfer/aclnn/_ops.py`：用具名 schema、`PrivateUse1` 实现和 FakeTensor 元数据函数复用公共 facade。完整 wheel 的 `package_tensor_runner` 再调用 `csrc/aclnn_torch_adapter/adapter.cpp`，完成 Tensor 描述符、workspace、stream 与 `OpCommand` 生命周期；不要另写一个绕过已验证 loader 的裸 `dlopen` 路径。该适配器当前覆盖完整档的有序 Tensor ABI，新增 scalar/attribute 等参数仍须单独扩展契约。
+Ascend C 生产接口统一通过 Torch 算子接入，参考 [Torch/ACLNN 接入说明](aclnn-torch-adapter.md) 与 `flashinfer/aclnn/_ops.py`：登记具名 schema、`PrivateUse1` 实现和 FakeTensor 元数据函数，Python 公共 facade 仅自动注册并转发。PrivateUse1 实现负责 signature / dispatch / out / runner，不再回调公共 facade；选型参数通过 schema 的可选关键字传入，避免递归或绕过 Torch。完整 wheel 的 `package_tensor_runner` 再调用 `csrc/aclnn_torch_adapter/adapter.cpp`，完成 Tensor 描述符、workspace、stream 与 `OpCommand` 生命周期；不要另写一个绕过已验证 loader 的裸 `dlopen` 路径。该适配器当前覆盖完整档的有序 Tensor ABI，新增 scalar/attribute 等参数仍须单独扩展契约。
 
 按踩中频率排，不是理论风险。
 

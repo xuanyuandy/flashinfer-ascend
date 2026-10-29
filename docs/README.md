@@ -24,6 +24,10 @@
 
 ## 阅读顺序
 
+运行时数据模型、实现选择、AOT/JIT 产物管理、执行边界和 FA 接入规范见
+[运行时与编译系统技术设计](runtime-and-compilation-design.md)。
+[架构介绍提纲](expert-architecture-overview.md) 用于整理介绍思路，不作为正式设计规范。
+
 运行 A5 上已有的 CANN/Triton 算子及了解当前源码布局，先阅读
 [`a5.md`](a5.md)。
 

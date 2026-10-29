@@ -18,7 +18,8 @@ def aclnn_release(tmp_path_factory):
     assert torch.npu.is_available() and torch.npu.device_count() == 8
     root = tmp_path_factory.mktemp("native-aclnn")
     build_adapter(root / "adapter")
-    build_production_packages(output_dir=root / "release", cache_dir=root / "cache")
+    build_production_packages(output_dir=root / "release",
+                              cache_dir=os.environ.get("FLASHINFER_AOT_CACHE_DIR", root / "cache"))
     return root
 
 

@@ -32,9 +32,9 @@ kernel_id    = ascendc/t4/flash_attention/catlass/op_package/Ascend950
 
 ```mermaid
 flowchart TD
-    T["可选 torch.ops.flashinfer 接口"] --> P
-    P["single_prefill_with_kv_cache_catlass"]
-    P --> S["校验契约，构造 InputSignature"]
+    P["Python 薄封装：自动注册、转发参数"] --> T
+    T["torch.ops.flashinfer：唯一公共执行边界"]
+    T --> S["PrivateUse1 实现：校验契约，构造 InputSignature"]
     S --> D["dispatch：过滤候选、查询 tuning、选择 kernel_id"]
     D --> O["准备 out，调用 descriptor.runner"]
     O --> R["AotKernelRunner：首次解析，随后复用绑定"]
@@ -46,7 +46,7 @@ flowchart TD
     C -->|"命中"| L
     C -->|"未命中"| B["按冻结 recipe/spec 编译、校验、发布"]
     B --> L
-    L --> V["Tensor adapter：默认 Python 路径或显式 C++ 桥"]
+    L --> V["Tensor adapter：统一 C++ TorchNPU 桥"]
     V --> W["ACLNN GetWorkspaceSize：host tiling、workspace、executor"]
     W --> K["ACLNN launch：workspace、executor、stream"]
     K --> N["Ascend C / CATLASS device kernel"]
@@ -59,30 +59,30 @@ flowchart TD
 
 ### 3.1 Python 与 Torch 适配入口
 
-公共 Python 函数可以直接调用；需要 `torch.ops` 时，在初始化阶段显式启用 Torch/ACLNN 接入。下面假设 Q/K/V 已按支持范围准备在同一 NPU：
+公共 Python 函数自动注册并转发到同名 Torch 算子；直接使用 `torch.ops` 时也可在初始化阶段先注册。两者始终走同一原生桥。下面假设 Q/K/V 已按支持范围准备在同一 NPU：
 
 ```python
 import flashinfer
 import torch
 from flashinfer.aclnn import enable_aclnn
 
-# 默认 Python Tensor/ACLNN 路径。
+# Python 薄封装：自动注册并进入 Torch 算子。
 result = flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)
 
-# 显式注册 Torch schema，并让后续公共调用使用原生桥。
+# 直接 Torch 写法；重复注册安全，不切换执行模式。
 enable_aclnn()
 result = torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)
 out = torch.empty_like(q)
 flashinfer.single_prefill_with_kv_cache_catlass(q, k, v, out=out)
 ```
 
-[Torch 声明](../flashinfer/aclnn/_ops.py) 的 `_attention / _attention_out` 最终进入同一个 [Python facade](../flashinfer/attention/catlass_prefill.py)，当前固定传入 `backend="ascendc"`。Torch schema、PrivateUse1 实现和 FakeTensor 推导在这里登记，不另外建立一套 AOT/JIT 流程。FakeTensor 仅处理元数据。
+[Torch 声明](../flashinfer/aclnn/_ops.py) 的 `_attention / _attention_out` 进入同一个 [PrivateUse1 实现](../flashinfer/attention/catlass_prefill.py) `_single_prefill_impl`，不回调公共封装，避免递归。四个生产 Torch schema 支持关键字 `backend="auto"`、`kernel_id=None`；Python 封装原样传递选型参数。Torch schema、PrivateUse1 实现和 FakeTensor 推导在这里登记，不另外建立一套 AOT/JIT 流程。FakeTensor 仅处理元数据。
 
-`enable_aclnn()` 不编译或提前加载算子包；原生桥在真实调用时加载。启用后，原 Python 公共函数也使用原生桥。完整安装流程见 [wheel 编译与直接调用](../README-wheel-conda.md)。
+`enable_aclnn()` 不编译或提前加载算子包；原生桥在真实调用时加载。`enable_aclnn()` 只负责注册；Python 封装与直接 Torch 调用都必须使用原生桥。完整安装流程见 [wheel 编译与直接调用](../README-wheel-conda.md)。
 
 ### 3.2 校验 Tensor 契约并构造 signature
 
-facade 使用 `tensor_contract_specialization(FLASH_ATTENTION_KERNEL_ID, tensors)` 检查 recipe 的 dtype 组合、shape 符号及边界，并检查同设备和连续性。提供 out 时，还检查输出与其他参数的地址范围是否重叠。随后检查 causal、kv_layout、custom_mask 等选项。
+Torch 的 PrivateUse1 实现使用 `tensor_contract_specialization(FLASH_ATTENTION_KERNEL_ID, tensors)` 检查 recipe 的 dtype 组合、shape 符号及边界，并检查同设备和连续性。提供 out 时，还检查输出与其他参数的地址范围是否重叠。随后检查 causal、kv_layout、custom_mask 等选项。
 
 没有提供 out 时，先用 Q 的 shape、dtype、device 构造输出元数据。dispatch 成功后才通过 `torch.empty` 分配真实输出，避免为不支持的调用提前分配输出。
 
@@ -164,18 +164,17 @@ JIT 分支先通过 `_jit_backend()` 检查冻结工具链身份、源码摘要�
 
 | 路径 | 实际下发 |
 | --- | --- |
-| 默认 Python Tensor adapter | 创建 aclTensor，使用 ctypes 调用同一 ACLNN 两段式 API |
-| 显式启用原生桥 | `_native.prepare()` 首次绑定已验证的 API 地址，随后调用 `torch.ops.flashinfer_aclnn._execute` |
+| 统一 TorchNPU 原生桥 | `_native.prepare()` 首次绑定已验证的 API 地址，随后调用 `torch.ops.flashinfer_aclnn._execute` |
 
 [原生绑定](../flashinfer/aclnn/_native.py) 只向 [C++ adapter](../csrc/aclnn_torch_adapter/adapter.cpp) 登记已验证模块的函数指针和 Tensor 参数数量。公共 Torch schema 不接受任意库路径或裸函数地址。
 
-C++ adapter 使用 TorchNPU 当前 stream，通过 `OpCommand::RunOpApi(..., true)` 提交 callback，按应用的队列配置下发。callback 创建描述符、查询 workspace/executor、分配实际 workspace 并 launch；Tensor、描述符和 workspace 保持存活到同步执行完成后再释放。Python 路径同样在 stream 同步后释放资源。
+C++ adapter 使用 TorchNPU 当前 stream，通过 `OpCommand::RunOpApi(..., true)` 提交 callback，按应用的队列配置下发。callback 创建描述符、查询 workspace/executor、分配实际 workspace 并 launch；Tensor、描述符和 workspace 保持存活到同步执行完成后再释放。已移除 Python ctypes 执行分支；缺失或损坏的桥明确失败。
 
-当前支持有序 Tensor ABI，新增 scalar/attribute 等参数须扩展契约与适配器。两条路径都是同步 eager；接入 TorchNPU 队列不提升图能力。
+当前支持有序 Tensor ABI，新增 scalar/attribute 等参数须扩展契约与适配器。当前路径是同步 eager；接入 TorchNPU 队列不提升图能力。
 
 ### 3.7 ACLNN host tiling 与设备执行
 
-两条执行路径最终调用同一协议：
+统一原生桥调用以下协议：
 
 ```text
 aclnnFiFlashAttentionGetWorkspaceSize(q, k, v, out, ...)
@@ -196,7 +195,9 @@ tiling 数据由 CANN executor 传递为设备 kernel 的隐式末尾 GM 参数�
 
 当前生产 FA 使用已提供的 C++ 模板源码、recipe 和编译宏绑定编译单元；没有在每次调用时运行一个通用模板 generator。
 
-[发布工具](../tools/build_flash_attention.py) 通过 [freeze_declaration()](../tools/_production_release.py) 解析源码和依赖，用 `declare_kernel()` 形成 JitSpec，再冻结 descriptor、recipe 和 spec。spec 绑定会改变编译结果的特化及源码/环境闭包；动态 tiling 能处理的 shape 变化无需自动产生新 spec。修改源码、能力或依赖时仍须更新摘要并重新冻结。
+[统一声明入口](../flashinfer/aot/declarations.py) 的 `freeze_production_kernels()` 按 kernel_id 关联集中 descriptor 和 recipe，解析源码与依赖，使用 `declare_kernel()` 形成 JitSpec。已有显式特化标识和 spec 编译选项在重新冻结时保留；完整 recipe、源码、依赖和环境身份仍约束实际编译结果。动态 tiling 能处理的 shape 变化无需自动产生新 spec。修改源码、能力或依赖时仍须更新摘要并重新冻结。
+
+`python3 -B -m flashinfer.aot --freeze --all` 批量冻结而不编译；同时提供 `--output-dir` 可接着构建。普通 `--all` 只构建已有冻结声明，`--kernel-id` 可重复选择子集。新算子提供 recipe 和集中 descriptor 后即可进入同一流程，不需要新增构建脚本；原 [FA 发布脚本](../tools/build_flash_attention.py) 仅保留兼容选择入口。依赖定位由 [共享解析器](../flashinfer/jit/dependencies.py) 处理，AOT/JIT 不再各自维护 CATLASS 专用定位逻辑。
 
 提前编译和打包的实际路径为：
 
@@ -210,6 +211,8 @@ setup.py 的 BuildPy
 ```
 
 [AOT 发布](../flashinfer/aot/build.py) 与 [运行期 JIT](../flashinfer/jit/build.py) 共用 `_build_record` 和 [Ascend C 编译驱动](../flashinfer/jit/ascendc.py)。store 使用 per-spec 锁、私有 staging、不可变 generation 和原子发布。产物包含 ACLNN host API、tiling 库、设备 binary 与索引/完整性元数据；AOT/JIT 的区别是触发时机和交付位置。
+
+批量构建先校验所有所选项，再逐 kernel 构建或复用缓存。当前保留独立 op_package，不合并 CMake 工程或 vendor 包。`ascendc.py` 中两个既有 kernel_id 常量和无参 `load_contract()` 是存量 facade 的兼容接口，不参与通用构建流程的算子选择；新增算子不需要增加对应分支。
 
 AOT 命中无需源码或编译器。JIT 补建仍受冻结环境与依赖约束；完整 wheel 不自带 CATLASS 头树。
 
@@ -251,7 +254,7 @@ CANN 当前运行时版本与构建版本的兼容比较尚未接通。以上候
 | 数学语义、公共参数、signature、输出组织 | [CATLASS facade](../flashinfer/attention/catlass_prefill.py) |
 | host OpDef、infer、tiling 与设备实现 | [FA 算子目录](../csrc/kernels/ascendc/flash_attention/) |
 | Tensor 顺序、dtype 组合、shape、源码摘要、编译配置 | [FA recipe](../csrc/recipes/flash_attention.json) |
-| descriptor、冻结 spec 和 lazy runner | [生产声明与绑定](../flashinfer/ascendc.py)、[发布工具](../tools/build_flash_attention.py) |
+| descriptor、冻结 spec 和 lazy runner | [集中声明与冻结](../flashinfer/aot/declarations.py)、[生产声明与绑定](../flashinfer/ascendc.py) |
 | AOT/JIT 构建、导出与校验 | [共享构建](../flashinfer/jit/build.py)、[AOT 发布](../flashinfer/aot/build.py) |
 | Torch schema、FakeTensor、原生下发 | [Torch 声明](../flashinfer/aclnn/_ops.py)、[Tensor adapter](../flashinfer/jit/tensor_adapter.py) |
 | 非法输入、策略、数值和安装后验证 | [算子接入指南](adding-a-custom-operator.md)、[FA 双 dtype 验证](reports/fa-dual-dtype-2026-10-29.md) |

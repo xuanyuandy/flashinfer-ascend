@@ -132,7 +132,7 @@ def _mock_npu_dispatch(monkeypatch):
 
 @pytest.mark.parametrize("supply_output", [False, True])
 @pytest.mark.parametrize("dtype", ["float16", "bfloat16"])
-def test_public_entry_uses_selected_package_runner(monkeypatch, supply_output, dtype):
+def test_torch_device_implementation_uses_selected_package_runner(monkeypatch, supply_output, dtype):
     import torch
     import flashinfer
 
@@ -140,7 +140,7 @@ def test_public_entry_uses_selected_package_runner(monkeypatch, supply_output, d
     calls = []
     monkeypatch.setattr(entry, "_run_selected", lambda *args: calls.append(args))
     tensors = tuple(torch.empty(item.shape, dtype=getattr(torch, dtype)) for item in arguments())
-    out = flashinfer.single_prefill_with_kv_cache_catlass(
+    out = entry._single_prefill_impl(
         *tensors[:3], out=tensors[3] if supply_output else None,
     )
     assert out.shape == tensors[0].shape and out.dtype == tensors[0].dtype
@@ -163,7 +163,7 @@ def test_unsupported_options_rejected_before_allocation_or_runner(monkeypatch, o
     monkeypatch.setattr(torch, "empty", forbidden)
     monkeypatch.setattr(entry, "_run_selected", forbidden)
     with pytest.raises(DispatchError, match=diagnostic):
-        entry.single_prefill_with_kv_cache_catlass(*arguments()[:3], **options)
+        entry._single_prefill_impl(*arguments()[:3], **options)
 
 
 def test_oversized_input_rejected_before_output_allocation(monkeypatch):
@@ -173,7 +173,7 @@ def test_oversized_input_rejected_before_output_allocation(monkeypatch):
     monkeypatch.setattr(torch, "empty", forbidden)
     monkeypatch.setattr(entry, "_run_selected", forbidden)
     with pytest.raises(DispatchError, match="1099511627776"):
-        entry.single_prefill_with_kv_cache_catlass(*arguments(s=1 << 40)[:3])
+        entry._single_prefill_impl(*arguments(s=1 << 40)[:3])
 
 
 def test_output_alias_rejected_before_lazy_runner(monkeypatch):
@@ -185,7 +185,7 @@ def test_output_alias_rejected_before_lazy_runner(monkeypatch):
     monkeypatch.setattr(entry, "_run_selected", forbidden)
     monkeypatch.setattr(AotKernelRunner, "resolve", forbidden)
     with pytest.raises(DispatchError, match="must not overlap"):
-        entry.single_prefill_with_kv_cache_catlass(*tensors, out=tensors[0])
+        entry._single_prefill_impl(*tensors, out=tensors[0])
 
 
 def test_missing_external_dependency_is_explicit_and_native_is_unaffected(monkeypatch, tmp_path):

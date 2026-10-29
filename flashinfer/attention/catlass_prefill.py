@@ -32,6 +32,25 @@ def single_prefill_with_kv_cache_catlass(
     graph capturable. It does not claim support for data-dependent tiling.
     """
     import torch
+    from ..aclnn import enable_aclnn
+    from ..runtime import Backend
+
+    enable_aclnn()
+    options = dict(causal=causal, kv_layout=kv_layout, custom_mask=custom_mask,
+                   backend=backend.value if isinstance(backend, Backend) else backend,
+                   kernel_id=kernel_id)
+    if out is None:
+        return torch.ops.flashinfer.single_prefill_with_kv_cache_catlass(q, k, v, **options)
+    torch.ops.flashinfer.single_prefill_with_kv_cache_catlass_out(q, k, v, out, **options)
+    return out
+
+
+def _single_prefill_impl(
+    q, k, v, *, causal=False, kv_layout="NHD", custom_mask=None, out=None,
+    backend="auto", kernel_id=None,
+):
+    """PrivateUse1 implementation; public calls enter through Torch schemas."""
+    import torch
     from dataclasses import replace
     from types import SimpleNamespace
     from ..ascendc import FLASH_ATTENTION_KERNEL_ID, load_contract, tensor_contract_specialization

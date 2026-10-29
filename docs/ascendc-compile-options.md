@@ -74,7 +74,7 @@ op_package 另加 FI_OP_PACKAGE=1 + FI_PACKAGE_OP_TYPE + FI_COMPUTE_UNIT
 
 host 侧由 `npu_op_code_gen` 生成 ACLNN API 和注册代码，再构建 `cust_opapi`、`cust_op_proto`、`cust_optiling`；本仓显式加 `-fvisibility=hidden`，其他基础选项由 CANN target 决定。设备侧通过 `npu_op_kernel_options` 接收上述设备选项、宏和 include。配置为 Release 不足以推断最终 host 一定用 `-O3`。
 
-这些 host target 是 CANN 的调用/注册/tiling 库；完整 wheel 提供本仓 Torch/ACLNN C++ 适配库，显式启用后调用它们，原 Python Tensor 默认路径保留。vLLM-Ascend 另有 Torch/pybind 的 `vllm_ascend_C` 扩展，其 Torch include、链接库和 C++ ABI 选项不能直接当作本仓设备 target 的默认配置。
+这些 host target 是 CANN 的调用/注册/tiling 库；完整 wheel 提供本仓 Torch/ACLNN C++ 适配库，两条生产接口统一通过 Torch 注册及该桥调用它们；Python 函数只做自动注册与参数转发。vLLM-Ascend 另有 Torch/pybind 的 `vllm_ascend_C` 扩展，其 Torch include、链接库和 C++ ABI 选项不能直接当作本仓设备 target 的默认配置。
 
 驱动清除 `CPATH`、`CPLUS_INCLUDE_PATH`、`C_INCLUDE_PATH`、`LIBRARY_PATH`、`CXXFLAGS`、`CFLAGS`、`LDFLAGS`、`ASCEND_CUSTOM_OPP_PATH`，避免外部隐式选项或 vendor 污染构建。临时 `export CXXFLAGS=...` 不是本仓为算子配置选项的入口。
 
@@ -105,7 +105,7 @@ host 侧由 `npu_op_code_gen` 生成 ACLNN API 和注册代码，再构建 `cust
 | SoC 选择 | `csrc/build_aclnn.sh` 的对应 SoC 分支选 `CUSTOM_OPS_ARRAY`，再以 `build.sh --pkg --ops=... --soc=...` 构建 | recipe 的目标/依赖/支持域与冻结声明共同决定构建；新生产条目进入登记后被普通 wheel 的全量生产构建包含 |
 | 算子级编译选项 | `add_ops_compile_options(OP_NAME ... COMPUTE_UNIT ... OPTIONS ...)`，有全局选项和按 SoC 分支的特例 | `definitions`、`include_dirs`、`compile_options` 写入该算子 recipe；同一驱动传递并计入身份 |
 | host tiling | OpDef 与 host callback、tiling 结构、workspace 配置共同交付 | v2 的 callback 字段必须与实际 host 源码及设备 tiling 结构一致 |
-| Python 调用边界 | `torch_binding.cpp` 注册 schema 和 `PrivateUse1` 实现，经 adapter 调 ACLNN | 可选 Torch schema 复用公共函数选型；已验证的 `package_tensor_runner` 经 Torch C++/OpCommand 适配到 ACLNN；不是自动生成同一套 C++ typed export |
+| Python 调用边界 | `torch_binding.cpp` 注册 schema 和 `PrivateUse1` 实现，经 adapter 调 ACLNN | Torch schema 的 PrivateUse1 实现统一负责选型；已验证的 `package_tensor_runner` 经 Torch C++/OpCommand 适配到 ACLNN；不是自动生成同一套 C++ typed export |
 | Meta / 图 | `torch_binding_meta.cpp` 提供 Meta/FakeTensor 形状推导 | Meta、动态 tiling 与图 capture/replay 分别验收；Meta 注册成功本身不证明可入图 |
 
 具体例子：
@@ -140,7 +140,7 @@ host 侧由 `npu_op_code_gen` 生成 ACLNN API 和注册代码，再构建 `cust
 | 头文件 | Torch、TorchNPU、CANN、系统 libffi 开发头文件 |
 | 链接 | `torch`、`torch_cpu`、`c10`、`torch_npu`、`ascendcl`、`ffi`、`dl` |
 | 产物 | `flashinfer/data/aclnn/libflashinfer_aclnn.so` 和 SHA-256 / Torch 版本 manifest |
-| 非编译模式 | 源码模式 / PREBUILT 不构建适配库，保留原 Python ACLNN 路径 |
+| 非编译模式 | 源码模式需另行构建桥；PREBUILT 验证并复制预编译桥，不调用编译器 |
 
 适配库不复制竞品的私有 NPU storage 布局，使用 TorchNPU 格式 API；保留同步 eager 语义。任意 scalar/attribute 转换、异步返回及图 capture/replay 未验证，详细边界与调用方式见 [Torch/ACLNN 接入](aclnn-torch-adapter.md)。
 

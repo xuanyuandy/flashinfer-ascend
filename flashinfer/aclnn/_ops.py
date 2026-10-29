@@ -3,6 +3,8 @@
 from functools import lru_cache
 from types import SimpleNamespace
 
+_registered = False
+
 
 def _metadata(kernel_id, tensors):
     from flashinfer.ascendc import load_contract
@@ -17,17 +19,17 @@ def _metadata(kernel_id, tensors):
         raise ValueError("ACLNN tensors must be contiguous and share one device")
 
 
-def _matmul(a, b, bias):
-    from flashinfer.gemm import matmul_bias_silu
-    return matmul_bias_silu(a, b, bias, backend="ascendc")
+def _matmul(a, b, bias, *, backend="auto", kernel_id=None):
+    from flashinfer.gemm import _matmul_bias_silu_impl
+    return _matmul_bias_silu_impl(a, b, bias, backend=backend, kernel_id=kernel_id)
 
 
-def _matmul_out(a, b, bias, out):
-    from flashinfer.gemm import matmul_bias_silu
-    matmul_bias_silu(a, b, bias, out=out, backend="ascendc")
+def _matmul_out(a, b, bias, out, *, backend="auto", kernel_id=None):
+    from flashinfer.gemm import _matmul_bias_silu_impl
+    _matmul_bias_silu_impl(a, b, bias, out=out, backend=backend, kernel_id=kernel_id)
 
 
-def _matmul_meta(a, b, bias):
+def _matmul_meta(a, b, bias, *, backend="auto", kernel_id=None):
     import torch
     from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID
 
@@ -38,31 +40,31 @@ def _matmul_meta(a, b, bias):
     return torch.empty(shape, dtype=torch.bfloat16, device=a.device)
 
 
-def _matmul_out_meta(a, b, bias, out):
+def _matmul_out_meta(a, b, bias, out, *, backend="auto", kernel_id=None):
     from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID
     _metadata(MATMUL_BIAS_SILU_KERNEL_ID, (a, b, bias, out))
 
 
-def _attention(q, k, v, causal=False, kv_layout="NHD", custom_mask=None):
-    from flashinfer.attention.catlass_prefill import single_prefill_with_kv_cache_catlass
-    return single_prefill_with_kv_cache_catlass(q, k, v, causal=causal, kv_layout=kv_layout,
-                                              custom_mask=custom_mask, backend="ascendc")
+def _attention(q, k, v, causal=False, kv_layout="NHD", custom_mask=None, *, backend="auto", kernel_id=None):
+    from flashinfer.attention.catlass_prefill import _single_prefill_impl
+    return _single_prefill_impl(q, k, v, causal=causal, kv_layout=kv_layout,
+                                custom_mask=custom_mask, backend=backend, kernel_id=kernel_id)
 
 
-def _attention_out(q, k, v, out, causal=False, kv_layout="NHD", custom_mask=None):
-    from flashinfer.attention.catlass_prefill import single_prefill_with_kv_cache_catlass
-    single_prefill_with_kv_cache_catlass(q, k, v, out=out, causal=causal,
-                                       kv_layout=kv_layout, custom_mask=custom_mask, backend="ascendc")
+def _attention_out(q, k, v, out, causal=False, kv_layout="NHD", custom_mask=None, *, backend="auto", kernel_id=None):
+    from flashinfer.attention.catlass_prefill import _single_prefill_impl
+    _single_prefill_impl(q, k, v, out=out, causal=causal, kv_layout=kv_layout,
+                         custom_mask=custom_mask, backend=backend, kernel_id=kernel_id)
 
 
-def _attention_out_meta(q, k, v, out, causal=False, kv_layout="NHD", custom_mask=None):
+def _attention_out_meta(q, k, v, out, causal=False, kv_layout="NHD", custom_mask=None, *, backend="auto", kernel_id=None):
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID
     if causal is not False or kv_layout != "NHD" or custom_mask is not None:
         raise ValueError("CATLASS prefill requires noncausal, unmasked NHD inputs")
     _metadata(FLASH_ATTENTION_KERNEL_ID, (q, k, v, out))
 
 
-def _attention_meta(q, k, v, causal=False, kv_layout="NHD", custom_mask=None):
+def _attention_meta(q, k, v, causal=False, kv_layout="NHD", custom_mask=None, *, backend="auto", kernel_id=None):
     import torch
     prospective = SimpleNamespace(shape=tuple(q.shape), dtype=q.dtype, device=q.device,
                                   is_contiguous=lambda: True)
@@ -74,23 +76,34 @@ def _attention_meta(q, k, v, causal=False, kv_layout="NHD", custom_mask=None):
 def _declarations():
     from flashinfer.jit.torch_library import AscendCOp
     return (
-        AscendCOp("flashinfer::matmul_bias_silu", "(Tensor a, Tensor b, Tensor bias) -> Tensor",
+        AscendCOp("flashinfer::matmul_bias_silu", '(Tensor a, Tensor b, Tensor bias, *, str? backend="auto", str? kernel_id=None) -> Tensor',
                   _matmul, _matmul_meta),
         AscendCOp("flashinfer::matmul_bias_silu_out",
-                  "(Tensor a, Tensor b, Tensor bias, Tensor(a!) out) -> ()",
+                  '(Tensor a, Tensor b, Tensor bias, Tensor(a!) out, *, str? backend="auto", str? kernel_id=None) -> ()',
                   _matmul_out, _matmul_out_meta, ("out",)),
         AscendCOp("flashinfer::single_prefill_with_kv_cache_catlass",
-                  '(Tensor q, Tensor k, Tensor v, bool causal=False, str kv_layout="NHD", Tensor? custom_mask=None) -> Tensor',
+                  '(Tensor q, Tensor k, Tensor v, bool causal=False, str kv_layout="NHD", Tensor? custom_mask=None, *, str? backend="auto", str? kernel_id=None) -> Tensor',
                   _attention, _attention_meta),
         AscendCOp("flashinfer::single_prefill_with_kv_cache_catlass_out",
-                  '(Tensor q, Tensor k, Tensor v, Tensor(a!) out, bool causal=False, str kv_layout="NHD", Tensor? custom_mask=None) -> ()',
+                  '(Tensor q, Tensor k, Tensor v, Tensor(a!) out, bool causal=False, str kv_layout="NHD", Tensor? custom_mask=None, *, str? backend="auto", str? kernel_id=None) -> ()',
                   _attention_out, _attention_out_meta, ("out",)),
     )
 
 
 def enable():
-    from flashinfer.utils import enable_torch_library
-    from . import _native
+    global _registered
+    if _registered:
+        return
+    import torch
+    from flashinfer.utils import _registration_lock
+    from flashinfer._torch_library import _register_ascendc_ops, _validate_ascendc_ops
 
-    enable_torch_library(ascendc_ops=_declarations())
-    _native.require_native()
+    if not (hasattr(torch.library, "custom_op") and hasattr(torch.library, "register_fake")):
+        raise RuntimeError("enable_aclnn requires torch >= 2.4")
+    with _registration_lock:
+        if _registered:
+            return
+        declarations = _declarations()
+        _validate_ascendc_ops(declarations)
+        _register_ascendc_ops(declarations)
+        _registered = True

@@ -141,7 +141,7 @@ def test_generic_tensor_adapter_accepts_adjacent_storage():
 
 
 @pytest.mark.parametrize("supply_output", [False, True])
-def test_public_entry_dispatches_default_registered_runner(monkeypatch, supply_output):
+def test_torch_device_implementation_dispatches_selected_runner(monkeypatch, supply_output):
     import torch
     from flashinfer import gemm
 
@@ -157,7 +157,7 @@ def test_public_entry_dispatches_default_registered_runner(monkeypatch, supply_o
         (kernel_id, tensors)))
     tensors = tuple(torch.empty(shape, dtype=torch.bfloat16)
                     for shape in ((16, 32), (32, 48), (48,), (16, 48)))
-    output = gemm.matmul_bias_silu(*tensors[:3], out=tensors[3] if supply_output else None)
+    output = gemm._matmul_bias_silu_impl(*tensors[:3], out=tensors[3] if supply_output else None)
     if supply_output:
         assert output is tensors[3]
     assert tuple(output.shape) == (16, 48) and output.dtype == torch.bfloat16
@@ -178,7 +178,7 @@ def test_public_oversized_shape_rejected_before_output_allocation(monkeypatch):
     monkeypatch.setattr(torch, "empty", forbidden)
     monkeypatch.setattr(gemm, "_run_selected", forbidden)
     with pytest.raises(DispatchError, match="1099511627776"):
-        gemm.matmul_bias_silu(a, b, bias)
+        gemm._matmul_bias_silu_impl(a, b, bias)
 
 
 def test_list_kernels_reports_runtime_aot_without_compiler(monkeypatch, capsys):

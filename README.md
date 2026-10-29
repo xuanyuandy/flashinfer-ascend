@@ -1,100 +1,102 @@
 # FlashInfer Ascend
 
-FlashInfer Ascend is an inference operator library and kernel integration
-framework for Ascend NPU. It follows FlashInfer's API domains, direct functions
-and stateful plan/run interfaces, with CANN, Ascend C and Triton implementations.
-The project is under active development; supported parameters and execution
-modes are defined per operator.
+FlashInfer Ascend 是面向昇腾 NPU 的推理算子库与 kernel 接入框架，参考 FlashInfer
+的 API 分类、直接函数和有状态 plan/run 接口，接入 CANN、Ascend C、Triton 等实现。
+项目仍在开发中，各算子的 dtype、shape、布局、设备和执行模式以具体契约及验证记录为准。
 
-[Features](#core-features) · [Operators](#supported-operators) ·
-[Getting started](#getting-started) · [Testing](#testing) ·
-[Documentation](#documentation)
+[核心功能](#核心功能) · [算子范围](#算子范围) ·
+[快速开始](#快速开始) · [测试与验证](#测试与验证) · [文档导航](#文档导航)
 
-For building an AOT wheel and testing it in a fresh conda environment, see
-[`README-wheel-conda.md`](README-wheel-conda.md).
-Ordinary wheel builds compile and bundle the registered production Ascend C operators.
+编译 AOT wheel、创建独立 conda 环境并直接运行测试脚本，见
+[wheel 编译与 conda 安装指南](README-wheel-conda.md)。未设置其他构建模式时，
+普通 wheel 构建会编译并打包当前登记的两条生产 Ascend C 算子。
 
-For the current operator/interface inventory, upstream call patterns and Ascend
-implementation gaps, see [operator coverage](docs/operator-coverage.md) and
-[public API lifecycle tests](docs/operator-call-patterns.md). Not every operator
-requires a wrapper or a public `plan()` step.
+完整接口清单、上游调用方式及实现差距见 [算子覆盖对比](docs/operator-coverage.md)
+和 [公共接口生命周期与测试要求](docs/operator-call-patterns.md)。
+不同接口有不同调用方式，直接函数、plan/run wrapper 和 run-only wrapper 均有对应实现。
 
-## Core features
+## 核心功能
 
-- **FlashInfer-style Tensor APIs**: direct functions for single-request attention,
-  GEMM, normalization, RoPE and sampling; plan/run wrappers for paged/ragged batch
-  attention; a run-only `SegmentGEMMWrapper`.
-- **Backend selection**: input and hardware signatures, a kernel registry,
-  capability filtering, explicit `backend`/`kernel_id` selection and explainable
-  dispatch. Valid measured tuning records can guide selection; otherwise the
-  dispatcher uses a deterministic policy, without benchmarking during a call.
-- **Ascend C AOT and controlled JIT**: ordinary wheel builds compile and bundle
-  the registered production operators. Verified AOT hits require no compiler;
-  missing artifacts may trigger JIT when policy permits. Corrupt artifacts fail
-  explicitly.
-- **TorchNPU / ACLNN integration**: opt-in Torch functional/out schemas,
-  FakeTensor metadata and a C++ `OpCommand` bridge for production Ascend C
-  operators. The existing Python/ACLNN execution path remains the default.
-- **Extensible dtype contracts**: v2 recipes can declare exact ordered
-  `dtype_signatures`. FA exercises FP16/BF16 compilation, package verification,
-  dispatch and installed-wheel execution; undeclared mixed combinations fail.
-- **Developer tooling**: artifact integrity checks, installed-wheel selftest,
-  regression profiles with logs/JUnit/exit codes, and operator/interface inventories.
+- **FlashInfer 风格的 Tensor API**：single attention、GEMM、归一化、RoPE、采样等提供
+  直接函数；paged/ragged batch attention 提供 plan/run wrapper；
+  `SegmentGEMMWrapper` 通过 `run()` 接收分段元数据。
+- **多后端选择**：基于输入 signature、硬件 signature 和 kernel registry 过滤能力，
+  支持显式指定 `backend`、`kernel_id` 并解释选择结果。调优层位于实现选择层，
+  可使用有效的测量记录；当前随包调优记录为空，未命中时使用确定性策略，不在算子调用中现场测量。
+- **通用 Ascend C 编译框架**：集中 descriptor 与 recipe 按 `kernel_id` 关联，统一冻结声明、
+  解析依赖和批量构建。普通 wheel 随包提供生产 AOT；运行期优先加载已验证 AOT，
+  缺失时按策略使用 JIT。缓存和产物仍按 kernel 保存，损坏或加载失败明确报错。
+- **统一 TorchNPU / ACLNN 执行**：FA 与 MatmulBiasSiLU 的 Python 公共函数是自动注册的
+  薄封装，统一进入 `torch.ops.flashinfer.*`，再经 C++ `OpCommand` 桥调用 ACLNN。
+  提供 functional/out schema 与 FakeTensor 元数据实现；`enable_aclnn()` 仅做幂等注册，
+  已移除默认 Python ctypes 执行分支。
+- **可扩展 dtype 契约**：公开 Ascend C recipe 使用 `schema_version=2`，可用
+  `dtype_signatures` 声明按参数顺序排列的完整合法 dtype 组合。FA 已验证 FP16/BF16
+  的编译、打包、分发和装后执行，未声明的混合组合明确拒绝。
+- **开发与交付工具**：产物完整性校验、装后 selftest、保存日志/JUnit/退出码的分档回归，
+  以及算子和公共接口清单。
 
-## Supported operators
+两条生产 Ascend C 算子的统一调用链为：Python 薄封装或直接 Torch 调用 → Torch schema /
+PrivateUse1 实现 → signature / dispatch → AOT/JIT → 已验证 Tensor runner →
+C++ TorchNPU `OpCommand` → ACLNN host tiling / workspace / launch → device kernel。
+CANN 内置算子与 Triton 保留各自的执行路线。逐层职责见 [FA 完整调用链](docs/flash-attention-call-chain.md)。
 
-The current registry contains **45 logical ops and 81 implementation descriptors**.
-Of these, **43 ops bind at least one NPU runner**; two internal Attention ops are
-reference-only. These are registration counts: dtype, shape, layout, SoC and
-graph support remain bounded by each implementation's contract and evidence.
+## 算子范围
 
-| Family | Representative public APIs | Current scope |
-| --- | --- | --- |
-| Attention | `single_prefill_with_kv_cache`, `single_decode_with_kv_cache`, paged/ragged batch wrappers, `single_prefill_with_kv_cache_catlass` | CANN single/batch routes and bounded CATLASS FA; ordinary batch routes compose gather/FIA/concatenation |
-| GEMM and linear operations | `mm_bf16`, `bmm_bf16`, `bmm_fp8`, `gemm_fp8_nt_groupwise`, `SegmentGEMMWrapper`, `matmul_bias_silu` | CANN BF16/FP8 routes, run-time segment metadata, Ascend C fused MatmulBiasSiLU |
-| Mixture of Experts | `fused_moe`, `fp8_per_tensor_scale_moe`, `fp8_block_scale_moe` | CANN-based routing/expert computation with interface-specific constraints; distributed EP numerics unverified |
-| Normalization | `rmsnorm`, `fused_add_rmsnorm`, `gemma_rmsnorm`, `gemma_fused_add_rmsnorm`, `layernorm` | CANN routes and a Triton implementation of Gemma fused Add RMSNorm |
-| Activations | `silu_and_mul`, `gelu_and_mul`, `gelu_tanh_and_mul` | Gated activation routes |
-| RoPE | `apply_rope`, `apply_rope_pos_ids`, `apply_rope_with_cos_sin_cache` and in-place forms | Position/frequency/cache and mutation contracts are checked separately |
-| Sampling and decoding | sampling from logits/probabilities, top-k/top-p/min-p, renormalization, `chain_speculative_sampling` | Device filtering/sampling compositions; no cross-platform RNG equivalence claim |
-| KV cache | `append_paged_kv_cache` | Ordinary paged KV append |
-| Attention state merge | `merge_state`, `merge_states` | Output/LSE merging; multi-level cascade wrappers are a separate gap |
+当前运行时登记表包含 **45 个逻辑 op、81 条实现描述（descriptor）**，其中
+**43 个 op 至少绑定一个 NPU runner**；内部 `attention.decode`、`attention.prefill`
+仅有 reference 实现。81 条描述由 40 条 CANN、2 条 Ascend C、1 条 Triton 和 38 条 reference 组成。
+这些是登记数量，各实现的实际支持域与验证范围另行限定。
 
-See the [complete local op list](docs/generated/operator-coverage/local-operators.md)
-and [upstream interface comparison](docs/operator-coverage.md) for per-interface
-details. Compatibility names such as `cudnn_batch_decode_with_kv_cache` do not
-require a CUDA backend on Ascend.
+同一逻辑算子可以有多个后端实现；同一实现也可以提供多个公共入口。
+别名、functional/out、直接函数与 wrapper 的数量不能直接当作数学算子或物理 kernel 的数量。
 
-### Precompiled Ascend C operators
+| 能力域 | 绑定 NPU runner 的 op 数 | 代表性公共接口 | 当前实现范围 |
+| --- | --- | --- | --- |
+| Attention | 7 | `single_prefill_with_kv_cache`、`single_decode_with_kv_cache`、paged/ragged batch wrapper、`single_prefill_with_kv_cache_catlass` | CANN single/batch 路线与限定支持域的 CATLASS FA；普通 batch 路线组合 gather/FIA/concat |
+| GEMM 与线性计算 | 6 | `mm_bf16`、`bmm_bf16`、`bmm_fp8`、`gemm_fp8_nt_groupwise`、`SegmentGEMMWrapper`、`matmul_bias_silu` | CANN BF16/FP8 路线、运行期分段元数据、Ascend C 融合 MatmulBiasSiLU |
+| MoE | 3 | `fused_moe`、`fp8_per_tensor_scale_moe`、`fp8_block_scale_moe` | 基于 CANN 的路由与专家计算，受各接口契约限制；分布式 EP 数值未验证 |
+| 归一化 | 5 | `rmsnorm`、`fused_add_rmsnorm`、`gemma_rmsnorm`、`gemma_fused_add_rmsnorm`、`layernorm` | CANN 路线；Gemma fused Add RMSNorm 使用 Triton |
+| 激活 | 3 | `silu_and_mul`、`gelu_and_mul`、`gelu_tanh_and_mul` | 门控激活与逐元素乘法 |
+| RoPE | 6 | `apply_rope`、`apply_rope_pos_ids`、`apply_rope_with_cos_sin_cache` 及各自原地版本 | 位置、频率、缓存和原地修改契约分别校验 |
+| 采样与解码 | 10 | logits/probabilities 采样、top-k/top-p/min-p、重归一化、`chain_speculative_sampling` | 设备侧过滤与采样的组合实现；未声明跨平台随机数位级一致 |
+| KV cache | 1 | `append_paged_kv_cache` | 普通 paged KV 追加 |
+| Attention 状态合并 | 2 | `merge_state`、`merge_states` | output/LSE 合并；完整多级 cascade wrapper 尚未接齐 |
 
-These two production operators are compiled into a normal AOT wheel; CANN
-operators use the installed TorchNPU/CANN stack, and Triton has its own JIT route.
+逐接口信息见 [完整本地 op 清单](docs/generated/operator-coverage/local-operators.md)
+和 [上游接口对比](docs/operator-coverage.md)。`cudnn_batch_decode_with_kv_cache`
+等兼容名称在昇腾侧使用本仓后端，不要求 CUDA/cuDNN。
 
-| Operator | Dtype and supported inputs |
+### 随包预编译的 Ascend C 算子
+
+普通 AOT wheel 会编译并携带以下两条生产算子。CANN 算子使用已安装的 TorchNPU/CANN
+组件，Triton 使用自己的 JIT 路线。Ascend C 的 `op_package` 是 CANN 生成的算子交付包，
+包含 host 调用/注册/tiling 库与设备二进制，由 manifest 及摘要绑定身份。
+
+| 算子 | dtype 与支持范围 |
 | --- | --- |
-| CATLASS FlashAttention | FP16 or BF16, Q/K/V/out sharing one dtype; contiguous NHD/ND, batch=1, Q `[S,H,128]`, K/V `[T,H,128]`; S/T are multiples of 128 in 128..512, H=1..8; noncausal, unmasked |
-| MatmulBiasSiLU | BF16, contiguous ND; A `[M,K]`, B `[K,N]`, bias `[N]`; M/N/K are multiples of 16 in 16..256; computes `silu(A @ B + bias)` |
+| CATLASS FlashAttention | FP16 或 BF16，Q/K/V/out 必须同 dtype；连续 Tensor，逻辑布局 NHD、物理格式 ND，batch=1；Q 为 `[S,H,128]`，K/V 为 `[T,H,128]`；S/T 是 128..512 范围内的 128 倍数，H=1..8；非 causal、无 mask |
+| MatmulBiasSiLU | BF16、连续 ND；A 为 `[M,K]`，B 为 `[K,N]`，bias 为 `[N]`；M/N/K 是 16..256 范围内的 16 倍数；计算 `silu(A @ B + bias)` |
 
-Both currently expose synchronous eager execution and are `NOT_CAPTURABLE`.
+两者当前均为同步 eager 执行，图能力保持 `NOT_CAPTURABLE`。
 
-## Getting started
+## 快速开始
 
-### Environment
+### 环境要求
 
-The latest targeted hardware and wheel checks used **Ascend950**, Python 3.12,
-Torch `2.10.0+cpu`, TorchNPU `2.10.0.post7` and CANN 9.2. Other version combinations
-need their own verification. AOT probes have been cross-compiled for other SoCs;
-that does not establish numerical support on those devices.
+最近的定向真机与 wheel 验证使用 **Ascend950**、Python 3.12、Torch `2.10.0+cpu`、
+TorchNPU `2.10.0.post7` 和 CANN 9.2.0。其他版本组合需单独验证；其他 SoC 的探针
+交叉编译结果不能作为该设备数值执行已通过的证据。
 
-For a source build, prepare matching Torch/TorchNPU libraries and headers, CANN
-with `bisheng` and its packaging tools, CMake, a C++17 compiler, and libffi
-development headers/libraries. Activate that environment and source the local
-CANN `set_env.sh` before building. CATLASS builds use the pinned checkout declared
-in [the FA recipe](csrc/recipes/flash_attention.json).
+源码构建需要匹配的 Torch/TorchNPU 库与头文件、包含 `bisheng` 和打包工具的 CANN、
+CMake、C++17 编译器，以及 libffi 开发头文件和库。先激活构建环境，再加载本机
+CANN `set_env.sh`。CATLASS 使用 [FA recipe](csrc/recipes/flash_attention.json) 声明的固定 revision。
+安装完整 AOT wheel 后，执行仍需要匹配的 Torch/TorchNPU、CANN runtime 和 libffi，
+无需编译器或 CATLASS 头文件。
 
-### Build the wheel
+### 编译 wheel
 
-Run from the repository root in the prepared build environment:
+在已准备好的构建环境中，从仓库根目录执行：
 
 ```bash
 export FLASHINFER_CATLASS_ROOT=../catlass-ref
@@ -102,18 +104,28 @@ python3 -B -c "import torch, torch_npu; print(torch.npu.is_available(), torch.np
 python3 -B setup.py bdist_wheel
 ```
 
-The default build includes both production AOT packages, their source inputs and
-the native TorchNPU adapter. CATLASS headers are needed at build time and are not
-bundled as a dependency checkout. `FLASHINFER_AOT_ALL=0` produces a source-only
-wheel; `FLASHINFER_AOT_PREBUILT` imports verified existing packages.
-The [wheel and conda guide](README-wheel-conda.md) covers environment preparation,
-alternative build modes and toolchain/spec refreshes when changing build inputs.
+默认构建包含两条生产 AOT 算子包、构建源码输入和原生 TorchNPU 桥。
+CATLASS 头文件仅在构建时使用，wheel 不携带完整 CATLASS 依赖 checkout。
 
-### Install and verify
+编译框架也提供独立批量入口，保留按 kernel 的缓存和产物，无需为每个算子复制构建脚本：
 
-Activate a **clean runtime environment** with the matching Torch/TorchNPU and CANN
-runtime, then install the wheel produced above. The following example uses the
-current Linux x86-64 wheel name and starts from the repository root:
+```bash
+python3 -B -m flashinfer.aot --all --cache-dir build/aot-cache --output-dir build/aot-release
+```
+
+集中登记、依赖定位、源码摘要更新及冻结 spec 的流程见 [新增算子指南](docs/adding-a-custom-operator.md)。
+当前批量入口不把多个算子合并成一次 CMake 构建或同一个 vendor 包。
+
+`FLASHINFER_AOT_ALL=0` 生成源码 wheel，不携带生产 AOT 和原生桥；执行 Ascend C 算子前须
+另行准备桥及算子产物，或按策略构建缺失算子。`FLASHINFER_AOT_PREBUILT` 使用已验证算子包
+和匹配的预编译桥，不调用编译器；桥通过 `FLASHINFER_ACLNN_ADAPTER_PATH` 指定，未设置时
+使用源码树默认目录。缺桥或身份不符会明确失败。环境准备、其他构建模式和工具链/spec 更新
+见 [wheel 与 conda 指南](README-wheel-conda.md) 和 [Torch/ACLNN 接入](docs/aclnn-torch-adapter.md)。
+
+### 安装与验证
+
+激活已准备好匹配 Torch/TorchNPU 与 CANN runtime 的**干净运行环境**，安装上一步生成的 wheel。
+以下示例使用当前 Linux x86-64 的 wheel 文件名，从仓库根目录开始执行：
 
 ```bash
 python3 -m pip install --no-deps --force-reinstall dist/flashinfer-0.1.0.dev0-py3-none-linux_x86_64.whl
@@ -123,14 +135,13 @@ python3 -B matmul_bias_silu_acceptance.py
 python3 -B -m flashinfer selftest
 ```
 
-The FA script tests FP16 and BF16 through the native bridge. The standalone
-selftest uses the installed package's bundled AOT operators with JIT disabled.
-The scripts check that `flashinfer` comes from the runtime environment;
-[editable-install isolation](README-wheel-conda.md) matters when validating a wheel.
+FA 脚本通过原生桥测试 FP16/BF16；独立 selftest 禁用 JIT，只运行安装包随附的 AOT 算子。
+脚本会检查 `flashinfer` 是否来自运行环境。验证 wheel 时应避免 editable 安装抢先导入源码，
+隔离方法见 [安装说明](README-wheel-conda.md)。纯路径依赖共享不等于使用 `--system-site-packages`。
 
-### Basic usage
+### 基本调用
 
-After installing a complete AOT wheel:
+安装完整 AOT wheel 后，可使用同一执行链的 Torch 入口和 Python 薄封装：
 
 ```python
 import torch
@@ -138,7 +149,7 @@ import torch_npu
 import flashinfer
 from flashinfer.aclnn import enable_aclnn
 
-enable_aclnn()  # Register Torch schemas and select the native TorchNPU bridge.
+enable_aclnn()  # 幂等注册 Torch schema，不切换执行模式。
 
 for dtype in (torch.float16, torch.bfloat16):
     q = (torch.rand(128, 2, 128) * 2 - 1).to(dtype).npu()
@@ -150,42 +161,40 @@ for dtype in (torch.float16, torch.bfloat16):
     print(output.shape, output.dtype)
 ```
 
-The Python public function also accepts Torch tensors without `enable_aclnn()`;
-it then uses the default Python/ACLNN adapter. Details and functional/out schemas
-are in the [Torch/ACLNN guide](docs/aclnn-torch-adapter.md).
+Python 公共函数自动注册并转发到同名 Torch 算子；直接调用 `torch.ops` 时可在初始化阶段
+显式注册一次。两种写法都必须经过原生 TorchNPU/ACLNN 桥，`enable_aclnn()` 不再切换模式。
+`backend`、`kernel_id` 继续传入同一 dispatcher；Python 的 `out=` 返回原 Tensor，
+Torch `_out` 原地写入后返回 `None`。缺桥、损坏或加载失败明确报错。
+functional/out schema 及边界见 [Torch/ACLNN 指南](docs/aclnn-torch-adapter.md)。
 
-### Calling styles
+### 调用方式
 
-| Style | Use it for |
+| 方式 | 适用接口 |
 | --- | --- |
-| Direct function | Single-request attention, normalization, RoPE, activations, sampling and ordinary GEMM |
-| Construct → `plan()` → `run()` | `BatchDecodeWithPagedKVCacheWrapper`, `BatchPrefillWithPagedKVCacheWrapper`, `BatchPrefillWithRaggedKVCacheWrapper` |
-| Construct → `run()` | `SegmentGEMMWrapper`; metadata is supplied to `run()`, without a public plan step |
+| 直接函数 | single attention、归一化、RoPE、激活、采样和普通 GEMM |
+| 创建 → `plan()` → `run()` | `BatchDecodeWithPagedKVCacheWrapper`、`BatchPrefillWithPagedKVCacheWrapper`、`BatchPrefillWithRaggedKVCacheWrapper` |
+| 创建 → `run()` | `SegmentGEMMWrapper`；分段元数据在 `run()` 时提供，没有公开 plan 步骤 |
 
-A batch wrapper's plan retains the metadata and configuration needed for later
-runs. New tensor contents may reuse a compatible plan; request structure or
-configuration changes must satisfy that wrapper's replan/update contract.
-Examples and public UT requirements are in [operator calling patterns](docs/operator-call-patterns.md).
+batch wrapper 的 plan 保存后续运行需要的元数据和配置。兼容的新 Tensor 内容可以复用 plan；
+请求结构或配置变化时需遵守对应 wrapper 的重新 plan/update 契约，具体缓存内容与失效规则
+由 wrapper 定义。上述生产 FA/MatmulBiasSiLU 是直接 eager 接口，ACLNN host tiling/workspace
+查询仍逐次执行。示例与公共 UT 要求见 [算子调用方式](docs/operator-call-patterns.md)。
 
-## Current boundaries
+## 当前边界
 
-- The holistic `BatchAttention` facade has Host/reference lifecycle coverage;
-  its default production NPU provider is not connected. It is separate from the
-  ordinary executable CANN batch wrappers.
-- Graph capture/replay evidence covers one bounded single-decode configuration.
-  Production Ascend C FA/MatmulBiasSiLU and ordinary batch capture are unverified;
-  class names containing `CUDAGraph` do not extend that evidence.
-- The upstream MLA, sparse/POD attention, complete shared-prefix/cascade wrappers,
-  FP4/MX quantization, communication and distributed operator families are not
-  fully implemented here. The [gap inventory](docs/operator-coverage.md) distinguishes
-  missing interfaces, Host contracts and available backend components.
-- Kernel availability remains specific to dtype, shape, layout, hardware and
-  installed dependencies. Reference execution requires explicit selection;
-  unsupported input and missing required dependencies fail explicitly.
+- 混合 `BatchAttention` 已有 Host/reference 生命周期覆盖，默认生产 NPU provider 尚未接通；
+  普通可执行的 CANN batch wrapper 属于另一条已接入路线。
+- 图 capture/replay 证据只覆盖一组受限 single-decode 配置。生产 Ascend C FA/MatmulBiasSiLU
+  和普通 batch 的入图未验证；类名含 `CUDAGraph` 不会扩大验证范围。
+- 上游 MLA、sparse/POD attention、完整 shared-prefix/cascade wrapper、FP4/MX 量化、通信与
+  分布式算子族尚未完整实现。[差距清单](docs/operator-coverage.md) 分别记录缺失接口、
+  Host 契约与可利用的后端组件。
+- kernel 是否可用取决于 dtype、shape、布局、硬件和依赖。reference 执行需显式选择；
+  不支持的输入、缺失的必要依赖均明确失败。当前未提供同口径性能对比结论。
 
-## Testing
+## 测试与验证
 
-Choose a scope for the change being made:
+按改动范围选择回归档位：
 
 ```bash
 python3 -B tools/run_regression.py --profile quick
@@ -193,50 +202,54 @@ python3 -B tools/run_regression.py --profile compile tests/test_flash_attention_
 python3 -B tools/run_regression.py --profile full
 ```
 
-`quick` excludes `real_compile` tests but may use an NPU. For compilation changes,
-run the affected compile tests. `full` already includes them, so a release run
-does not need the same compile matrix repeated afterwards. The runner records
-full logs, JUnit and the original pytest exit code, and treats skips or an empty
-run as failure. Published verification scopes are in
-[the architecture report](docs/reports/architecture-refactor-2026-10-28.md) and
-[the FA dtype extension report](docs/reports/fa-dual-dtype-2026-10-29.md);
-their results apply to their recorded baselines.
+`quick` 排除 `real_compile` 用例，但仍可能使用 NPU。编译相关改动补充受影响的 compile 用例；
+`full` 已包含编译用例，发布验证后无需重复相同矩阵。入口保存完整日志、JUnit 和 pytest 原始
+退出码，将 skip 或没有执行用例视为失败。
 
-## Documentation
+2026-10-29 的统一 Torch 执行验证记录为：定向 quick **181 passed**、定向 real_compile
+**9 passed**，均为 **0 skipped**；隔离安装 wheel 的 selftest 为 **2 PASS、0 FAIL、0 SKIP**。
+该记录包含 FA 双 dtype、MatmulBiasSiLU、AOT/冷 JIT、非默认 stream、非零 storage offset
+和 TorchNPU 队列模式 0/1/2 的验证，**不是全仓完整回归结果**。
+完整命令与未验证事项见 [统一 Torch 执行验收](docs/reports/torch-only-execution-2026-10-29.md)，
+通用批量构建见 [编译框架验收](docs/reports/ascendc-framework-2026-10-29.md)。此前证据见
+[架构重构报告](docs/reports/architecture-refactor-2026-10-28.md) 和
+[FA dtype 扩展报告](docs/reports/fa-dual-dtype-2026-10-29.md)，各报告仅对应其记录的基线。
 
-| Topic | Entry point |
+## 文档导航
+
+| 主题 | 入口 |
 | --- | --- |
-| Build, install and call an operator | [Wheel/conda quick start](README-wheel-conda.md) |
-| Runnable CANN/Triton examples | [Ascend950 guide](docs/a5.md), [smoke script](examples/a5_smoke.py) |
-| Framework architecture and implementation boundaries | [Framework design](docs/framework_design.md) |
-| FA call chain and multi-backend integration | [Facade, dispatch, AOT/JIT and ACLNN](docs/flash-attention-call-chain.md) |
-| Operator inventory and upstream comparison | [Coverage overview](docs/operator-coverage.md), [generated op list](docs/generated/operator-coverage/local-operators.md) |
-| Add a kernel or dtype | [Operator onboarding](docs/adding-a-custom-operator.md), [source layout](csrc/kernels/README.md) |
-| TorchNPU queue and ACLNN integration | [Torch/ACLNN adapter](docs/aclnn-torch-adapter.md) |
-| Public wrapper lifecycles | [Calling patterns and UT](docs/operator-call-patterns.md) |
-| AOT loading and JIT policy | [Artifact discovery](docs/aot-runtime-discovery.md) |
-| Detailed Attention contracts | [Documentation index](docs/README.md), [Host contracts below](#attention-framework-contracts) |
+| 编译、安装与直接调用算子 | [wheel/conda 快速开始](README-wheel-conda.md) |
+| CANN/Triton 可运行示例 | [Ascend950 指南](docs/a5.md)、[冒烟脚本](examples/a5_smoke.py) |
+| 框架架构与实现边界 | [框架设计](docs/framework_design.md) |
+| 运行时与编译系统技术设计 | [数据模型、调度、AOT/JIT 与 FA 接入](docs/runtime-and-compilation-design.md) |
+| 架构介绍提纲 | [项目定位与概念整理](docs/expert-architecture-overview.md) |
+| FA 调用链与多后端接入 | [适配层、分发、AOT/JIT 与 ACLNN](docs/flash-attention-call-chain.md) |
+| 算子全集与上游对比 | [覆盖总览](docs/operator-coverage.md)、[生成的 op 清单](docs/generated/operator-coverage/local-operators.md) |
+| 新增 kernel 或 dtype | [算子接入指南](docs/adding-a-custom-operator.md)、[源码组织](csrc/kernels/README.md) |
+| TorchNPU 队列与 ACLNN 接入 | [Torch/ACLNN 适配层](docs/aclnn-torch-adapter.md) |
+| 公共 wrapper 生命周期 | [调用方式与 UT](docs/operator-call-patterns.md) |
+| AOT 加载与 JIT 策略 | [产物发现](docs/aot-runtime-discovery.md) |
+| Attention 详细契约 | [文档索引](docs/README.md)、[下方 Host 契约说明](#attention-框架契约) |
 
-## Contributing and license
+## 参与开发与许可证
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) and the [operator onboarding guide](docs/adding-a-custom-operator.md).
-The README organization follows flashinfer-ori: `README.md`; all capability
-descriptions above refer to the Ascend implementation. The project uses
-[Apache-2.0](LICENSE). The migrated CATLASS FA implementation retains its
-[source license](csrc/kernels/ascendc/flash_attention/LICENSE) and notices.
+参与开发前请阅读 [协作指南](CONTRIBUTING.md) 和 [算子接入指南](docs/adding-a-custom-operator.md)。
+README 的组织参考 flashinfer-ori: `README.md`，能力描述以本仓 Ascend 实现为准。
+项目使用 [Apache-2.0](LICENSE)；迁移的 CATLASS FA 实现保留其
+[源码许可证](csrc/kernels/ascendc/flash_attention/LICENSE) 与声明。
 
-## Attention framework contracts
+## Attention 框架契约
 
 <details>
-<summary>Reference environment, Host framework contracts and detailed developer documentation</summary>
+<summary>参考开发环境、Host 框架契约与详细开发文档</summary>
 
-### Reference development environment
+### 参考开发环境
 
-For runnable A5 (Ascend950) CANN/Triton operators, environment setup and a map
-of the current code, see [`docs/a5.md`](docs/a5.md). From an initialized CANN
-shell with CATLASS configured, the reference conda recipe (Python 3.11, editable
-development install) can be used as follows. The latest hardware checks above
-used a separate Python 3.12 environment:
+可运行的 A5（Ascend950）CANN/Triton 算子、环境配置及代码位置见
+[Ascend950 开发指南](docs/a5.md)。加载 CANN 环境并配置 CATLASS 后，可使用参考 conda 配置
+（Python 3.11、editable 开发安装）执行以下步骤。上文最近真机验证使用的是独立 Python 3.12
+环境，参考配置不等于该版本组合已完成本轮 wheel 验证：
 
 ```bash
 conda env create -f environment-a5.yml
@@ -244,16 +257,13 @@ conda activate flashinfer-a5
 python examples/a5_smoke.py
 ```
 
-The FlashInfer-compatible Attention framework track covers single/batch
-prefill and decode, paged/ragged KV metadata, mixed `BatchAttention`, plan/run
-semantics, and a zero-dependency
-scalar reference oracle for small conformance cases. Its provider and artifact
-contracts are separate from the runnable operator backends described above.
+FlashInfer 风格的 Attention 框架契约覆盖 single/batch prefill、decode、paged/ragged KV
+元数据、mixed `BatchAttention`、plan/run 语义，以及用于小规模一致性用例的零依赖标量参考实现。
+其 provider 与产物契约和前文可运行的算子后端分别维护。
 
-The stateful Attention lifecycle matches FlashInfer: users call `plan()` once and
-then call `run()` without passing a plan or provider handle. Provider selection,
-page-table materialization, operation-version binding and callable authorization
-remain internal to the wrapper:
+有状态 Attention 接口由 wrapper 持有 plan：用户先调用 `plan()`，后续 `run()` 不传 plan
+或 provider 句柄。provider 选择、页表物化、operation 版本绑定和调用授权均由 wrapper 内部维护。
+**下面是接口契约示意，mixed BatchAttention 默认生产 NPU provider 尚未接通：**
 
 ```python
 from flashinfer.attention import BatchAttention
@@ -274,126 +284,79 @@ attention.plan(
 output, lse = attention.run(q, (k_cache, v_cache))
 ```
 
-After `plan()`, `attention.plan_selection` provides optional read-only
-diagnostics about the chosen mode, provider operation, backend and registry
-generation. It never contains an executable plan, module, callable or provider
-handle, and callers never pass it to `run()`.
+`plan()` 后可通过 `attention.plan_selection` 读取所选模式、provider operation、backend 和
+registry generation 的诊断信息，其中不包含可执行 plan、module、callable 或 provider 句柄，
+也不需要传给 `run()`。
 
-This example documents the target interface. Internally, a declarative
-bootstrap composes exact package versions, capability evidence, kernel/ABI
-provenance, provider adapters and tensor materializers into the automatic NPU
-resolver. The packaged declaration set is intentionally empty today: no real
-CANN or flash-attention-npu package is imported or called until a separately
-verified integration is installed.
+框架内部通过声明式 bootstrap 组合精确 package 版本、能力证据、kernel/ABI 来源、provider
+adapter 和 Tensor 物化器，形成自动 NPU resolver。当前该框架随包的集成声明为空；只有安装
+经过独立验证的集成后，才会导入或调用真实 CANN/flash-attention-npu provider 包。
+此处为空不影响前文普通 CANN batch wrapper 与两条生产 Ascend C 算子的执行路线。
 
-Provider integrations are installed atomically at process bootstrap. Each NPU
-`BatchAttention` instance captures one immutable resolver generation when it is
-constructed, so a later integration update cannot change an already-created
-wrapper's plan/run authority. This bootstrap control remains separate from the
-model-facing API.
+provider 集成在进程 bootstrap 阶段原子安装。每个 NPU `BatchAttention` 实例在创建时捕获
+一个不可变 resolver generation，后续集成更新不会改变已有 wrapper 的 plan/run 授权。
+bootstrap 控制与面向模型的 API 分开。
 
-Quantized provider candidates have an additional admission boundary: every
-capability `QuantSpec` must map key/value scale and, when applicable,
-independent zero-point sources to exact quantization arguments in the selected
-catalog operation. Merely exposing quantization-named package parameters is
-not treated as runtime support.
+量化 provider 候选还需通过额外准入：每个能力 `QuantSpec` 必须将 K/V scale，以及适用时独立的
+zero-point 来源，映射到所选 catalog operation 的精确量化参数。仅有量化命名参数不构成运行支持。
 
-The unchanged paged/mixed `kv_cache` run slot can carry an
-`AttentionOperatorQuantizedKVInput` for a future provider integration. Single
-prefill/decode and ragged prefill keep their upstream-style separate `k` and
-`v` positions; each carries an `AttentionOperatorQuantizedTensorInput` with an
-explicit logical shape, and the facade or wrapper combines them privately.
-The framework unwraps K/V storage and injects only the scale, zero-point and
-optional runtime multiplier arguments authorized by the selected exact
-binding; neither public input exposes a provider plan or callable handle.
+paged/mixed 的 `kv_cache` 参数位可承载面向未来 provider 集成的
+`AttentionOperatorQuantizedKVInput`。single prefill/decode 和 ragged prefill 保留独立 `k`、`v`
+参数位，各自可携带带明确逻辑 shape 的 `AttentionOperatorQuantizedTensorInput`，再由 facade
+或 wrapper 内部组合。框架解包 K/V 存储，只注入精确绑定授权的 scale、zero-point 和可选运行期
+乘数；这些公共输入均不暴露 provider plan 或 callable 句柄。
 
-The documentation map and content policy are in
-[`docs/README.md`](docs/README.md). The authoritative design is in
-[`docs/framework_design.md`](docs/framework_design.md); the Host Attention contract
-architecture is in [`docs/architecture.md`](docs/architecture.md). The Attention architecture
-includes host-side framework contracts. Production Ascend C build and installed-wheel
-execution are described in the wheel guide above.
+文档结构与内容规则见 [文档索引](docs/README.md)，总体设计见
+[框架设计](docs/framework_design.md)，Host Attention 契约架构见
+[Attention 架构](docs/architecture.md)。生产 Ascend C 构建与装后执行见前文 wheel 指南。
 
-The Attention-specific framework contract is documented in
-[`docs/attention/framework.md`](docs/attention/framework.md).
-The FlashInfer-aligned wrapper-owned plan/run lifecycle and the boundary for
-future CANN/flash-attention-npu provider selection are documented in
-[`docs/attention/plan_run_dispatch_design.md`](docs/attention/plan_run_dispatch_design.md).
-The executable Host contract for INT8/UINT8/packed-INT4 KV Cache is documented
-in [`docs/attention/quantization.md`](docs/attention/quantization.md).
-Versioned correctness trace and replay semantics are documented in
-[`docs/attention/trace.md`](docs/attention/trace.md).
-The separate lifecycle/stream/resource-ownership trace schema for injected JIT
-and provider routes is documented in
-[`docs/attention/protocol_trace.md`](docs/attention/protocol_trace.md).
-Workspace capacity/query/lifecycle semantics are documented in
-[`docs/attention/workspace.md`](docs/attention/workspace.md).
-The joint plan/workspace/tensor/capability identity used to guard execution
-reuse is documented in
-[`docs/attention/execution_identity.md`](docs/attention/execution_identity.md).
-The framework-independent tensor/stride/alias/stream adapter target is in
-[`docs/attention/tensor_contract.md`](docs/attention/tensor_contract.md).
-The optional metadata-only Torch adapter and its explicit runtime verification
-boundary are documented in
-[`docs/attention/torch_adapter.md`](docs/attention/torch_adapter.md).
-The versioned exceptional-value and metadata admission policies are in
-[`docs/attention/numerics.md`](docs/attention/numerics.md) and
-[`docs/attention/resource_limits.md`](docs/attention/resource_limits.md).
-The evidence-bearing backend support declaration and dispatch gate are defined
-in [`docs/attention/capability_profile.md`](docs/attention/capability_profile.md).
-The revalidatable plan-to-profile-to-kernel selection record is specified in
-[`docs/attention/dispatch_receipt.md`](docs/attention/dispatch_receipt.md).
-Structured kernel provenance and launcher ABI requirements are documented in
-[`docs/attention/kernel_artifact.md`](docs/attention/kernel_artifact.md).
-The frozen Attention C/POD/error ABI and address-generation/event lease state
-machine are specified in
-[`docs/attention/launcher_abi.md`](docs/attention/launcher_abi.md).
-The canonical six-mode CSR/page-table plan metadata wire format is documented
-in [`docs/attention/plan_metadata_wire.md`](docs/attention/plan_metadata_wire.md).
-The validated auxiliary/run-options contract and TensorView/KV/aux POD
-materialization path are documented in
-[`docs/attention/launch_binding.md`](docs/attention/launch_binding.md).
-The ownership-complete Host/device lease model and canonical 13-argument
-submission record are documented in
-[`docs/attention/launch_packet.md`](docs/attention/launch_packet.md).
-The Host-only artifact verification, symbol resolution, provider submission,
-completion-event, and unload lifecycle are documented in
-[`docs/attention/launcher_provider.md`](docs/attention/launcher_provider.md).
-The two single-request injected-JIT compatibility entries model upstream scratch,
-output/LSE allocation and argument ordering only; they do not compile or load an
-Ascend artifact and remain `framework` parity.
-The independent FlashInfer-style JIT framework package—immutable specs,
-registry, explicit environment, cache identity and Attention specialization—is
-documented in
-[`docs/attention/jit_framework.md`](docs/attention/jit_framework.md). It is
-Host-only and deliberately exposes no compiler or default dynamic loader. An internally
-selected `ascendc_jit` route must now produce an exact cache-hit binding during
-wrapper `plan()`, then reverify the selected artifact bytes through an injected
-reader and resolve its exact internal module symbols through an injected loader
-before package callable import. An injected planner binder binds the loaded
-module's `plan` entry point to the provider plan factory; an executor binder then
-binds the same module, exact package callable and executor. All identities are
-frozen into the active plan and revalidated by `run()` before any provider
-executor may be called.
-Untrusted trace/corpus decoding limits are specified in
-[`docs/attention/json_envelope.md`](docs/attention/json_envelope.md).
-Independent quantization-drift and future backend-error budgets are specified
-in [`docs/attention/accuracy.md`](docs/attention/accuracy.md), with a replayable
-paired accuracy corpus.
-Explicit quantized storage/scale/zero-point blocking, padding, layout catalogs,
-and non-executing converter plans are specified in
-[`docs/attention/quant_physical_layout.md`](docs/attention/quant_physical_layout.md).
-The two single-request APIs, the three paged/ragged batch wrappers and mixed
-`BatchAttention` share the same internal provider-selection policy while
-keeping Host reference execution explicit. Their public contract and remaining
-capability boundaries are documented in
-[`docs/attention/frontend_contract.md`](docs/attention/frontend_contract.md).
+下列文档分别定义各项 Host 框架契约：
 
-### Framework diagnostics
+- [Attention 框架](docs/attention/framework.md)：Attention 专用框架契约。
+- [plan/run 分发设计](docs/attention/plan_run_dispatch_design.md)：wrapper 持有 plan 的生命周期，
+  以及未来 CANN/flash-attention-npu provider 选择边界。
+- [量化输入](docs/attention/quantization.md)：INT8/UINT8/packed-INT4 KV cache 的可执行 Host 契约。
+- [正确性 trace](docs/attention/trace.md)：带版本的正确性记录与回放语义。
+- [协议 trace](docs/attention/protocol_trace.md)：注入式 JIT/provider 的生命周期、stream 与资源所有权记录。
+- [workspace](docs/attention/workspace.md)：容量、查询与生命周期。
+- [执行身份](docs/attention/execution_identity.md)：约束复用的 plan/workspace/Tensor/capability 联合身份。
+- [Tensor 契约](docs/attention/tensor_contract.md)：独立于框架的 Tensor/stride/alias/stream 适配目标。
+- [Torch 元数据适配](docs/attention/torch_adapter.md)：可选的纯元数据 adapter 及显式运行验证边界。
+- [数值语义](docs/attention/numerics.md) 与 [资源限制](docs/attention/resource_limits.md)：异常值和元数据准入规则。
+- [能力证据](docs/attention/capability_profile.md)：带证据的后端能力声明和分发门禁。
+- [分发回执](docs/attention/dispatch_receipt.md)：可重新校验的 plan/profile/kernel 选择记录。
+- [kernel 产物](docs/attention/kernel_artifact.md)：结构化来源与 launcher ABI 要求。
+- [launcher ABI](docs/attention/launcher_abi.md)：冻结的 Attention C/POD/error ABI、地址生成和 event lease 状态机。
+- [plan 元数据格式](docs/attention/plan_metadata_wire.md)：六种模式的 CSR/页表规范线格式。
+- [launch 绑定](docs/attention/launch_binding.md)：aux/run-options 契约及 TensorView/KV/aux POD 物化。
+- [launch packet](docs/attention/launch_packet.md)：完整资源所有权的 Host/device lease 模型与规范 13 参数提交记录。
+- [launcher/provider 生命周期](docs/attention/launcher_provider.md)：Host 产物校验、符号解析、provider 提交、完成事件和卸载。
 
-The regression command below selects the current quick scope. The CLI commands
-inspect or validate the separate Host framework contracts; case/protocol paths
-are placeholders for caller-supplied files:
+两个 single-request 注入式 JIT 兼容入口仅建模上游 scratch、output/LSE 分配及参数顺序，
+不编译或加载 Ascend 产物，其对标状态仍为 `framework`。
+
+[Attention JIT 框架](docs/attention/jit_framework.md) 记录独立的不可变 spec、registry、显式环境、
+缓存身份与特化契约。这里的注入式 Attention 路线是 Host-only，没有自行提供编译器或默认动态
+加载器；它与前文生产 Ascend C 的真实 AOT/JIT 编译框架分别维护。内部选中的 `ascendc_jit`
+路线必须在 wrapper `plan()` 时形成精确缓存命中绑定，再通过注入 reader 重新验证所选产物
+字节、通过注入 loader 解析精确内部 module 符号，之后才能导入 package callable。
+注入的 planner binder 把已加载 module 的 `plan` 入口绑定到 provider plan factory，
+executor binder 再绑定同一 module、精确 package callable 与 executor。相关身份冻结到活动
+plan 中，每次 `run()` 都在调用 provider executor 前重新校验。
+
+[JSON 信封](docs/attention/json_envelope.md) 定义不可信 trace/corpus 的解码限制；
+[精度验收](docs/attention/accuracy.md) 定义独立的量化漂移与未来后端误差预算，并提供可回放的
+配对精度语料。[量化物理布局](docs/attention/quant_physical_layout.md) 定义显式存储、scale、
+zero-point 的分块、padding、布局 catalog 与不执行转换的 converter plan。
+
+两个 single-request API、三个 paged/ragged batch wrapper 与 mixed `BatchAttention` 共享内部
+provider 选择策略，同时保留显式 Host reference 执行。公共契约和剩余能力边界见
+[前端契约](docs/attention/frontend_contract.md)。
+
+### 框架诊断
+
+下面的回归命令运行当前 quick 档。CLI 命令用于检查或验证独立的 Host 框架契约；
+case/protocol 路径是占位符，需替换为调用方的实际文件：
 
 ```bash
 python3 -B tools/run_regression.py --profile quick
@@ -409,8 +372,7 @@ python3 -m flashinfer attention-accuracy-corpus --pretty
 python3 -m flashinfer attention-protocol-validate path/to/protocol.json
 ```
 
-The framework diagnostics validate contracts and injected substitutes. Their
-success does not establish NPU operator correctness or graph support. Quick
-regression is a separate scope and can execute NPU tests.
+这些框架诊断验证契约和注入的替代实现，其成功不代表 NPU 算子数值正确或已支持入图。
+quick 回归属于独立测试范围，仍可能执行 NPU 用例。
 
 </details>

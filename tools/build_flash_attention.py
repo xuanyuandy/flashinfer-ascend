@@ -17,33 +17,12 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 
-def _descriptor(recipe):
-    from tools._production_release import production_descriptor
-
-    # The kernel keeps intermediate tiles in L1/UB. Dynamic ACLNN workspace
-    # includes CANN's 16 MiB system prefix; eager uses the exact callback size.
-    return production_descriptor(recipe, op="ascendc.single_prefill_catlass", dtype=("float16", "bfloat16"),
-                                 workspace_bytes=16 << 20)
-
-
-def _upsert(records, record):
-    """Replace T4 in place while preserving all other frozen records."""
-    from tools._production_release import upsert
-
-    upsert(records, record)
-
-
 def freeze_contract():
-    """Resolve the pinned dependency and freeze only T4's descriptor/spec."""
-    from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID, _dependency_roots
-    from tools._production_release import freeze_declaration
+    """Compatibility selector; new operators use the catalog-driven CLI."""
+    from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID
+    from flashinfer.aot.declarations import freeze_production_kernels
 
-    return freeze_declaration(
-        ROOT, recipe_name="flash_attention", kernel_id=FLASH_ATTENTION_KERNEL_ID,
-        descriptor_factory=_descriptor, dependency_roots=_dependency_roots,
-        specialization=(b"flash_attention;catlass-example49;contract-v2;fp16,bf16;NHD;B1;"
-                        b"D128;H1..8;S,T128..512:128;unmasked;fixed-length"),
-    )
+    return freeze_production_kernels(source_root=ROOT, kernel_ids=(FLASH_ATTENTION_KERNEL_ID,))[0]
 
 
 def build_release(root):

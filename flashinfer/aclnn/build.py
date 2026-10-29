@@ -10,6 +10,24 @@ import subprocess
 import tempfile
 
 
+def bundle_adapter(output_dir, *, directory=None):
+    """Copy a verified, compatible prebuilt bridge without invoking a compiler."""
+    from ._native import verified_adapter
+
+    library, manifest = verified_adapter(directory)
+    root = Path(__file__).resolve().parents[2]
+    source = root / "csrc/aclnn_torch_adapter/adapter.cpp"
+    if not source.is_file():
+        source = Path(__file__).resolve().parents[1] / "data/build/csrc/aclnn_torch_adapter/adapter.cpp"
+    if json.loads(manifest.read_text()).get("source_sha256") != hashlib.sha256(source.read_bytes()).hexdigest():
+        raise RuntimeError("Prebuilt ACLNN Torch adapter source identity mismatch; rebuild the adapter")
+    destination = Path(output_dir)
+    destination.mkdir(parents=True, exist_ok=True)
+    for path in (library, manifest):
+        shutil.copyfile(path, destination / path.name)
+    return tuple(destination / path.name for path in (library, manifest))
+
+
 def build_adapter(output_dir, *, source_root=None):
     import torch
     import torch_npu

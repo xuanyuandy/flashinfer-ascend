@@ -83,7 +83,7 @@ def run_scenario(scenario, store_root):
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID, load_contract
     from flashinfer.jit import AscendCBackend, AscendCToolchain, DiskJitBuildStore
     from flashinfer.jit.discovery import AotCorruptError, AotMissingError
-    from flashinfer.jit.op_package import OpPackageModule
+    from flashinfer.aclnn import _native
     from flashinfer.runtime import SchemaError, get_global_registry
     from flashinfer.runtime.schema import DispatchError
 
@@ -94,7 +94,6 @@ def run_scenario(scenario, store_root):
     counts = {"compile": 0, "toolchain": 0}
     original_compile = AscendCBackend.compile
     original_discover = AscendCToolchain.discover
-    original_workspace = OpPackageModule.get_workspace_size
     workspace_requests = []
 
     def counted_compile(self, spec, *, build_directory):
@@ -108,15 +107,8 @@ def run_scenario(scenario, store_root):
         )
         return original_discover(*args, **kwargs)
 
-    def recorded_workspace(self, *args, **kwargs):
-        size, executor = original_workspace(self, *args, **kwargs)
-        assert len(args) == 4 and not kwargs
-        workspace_requests.append(size)
-        return size, executor
-
     AscendCBackend.compile = counted_compile
     AscendCToolchain.discover = counted_discover
-    OpPackageModule.get_workspace_size = recorded_workspace
     os.environ["FLASHINFER_NPU_CACHE_DIR"] = str(store_root)
     enabled = scenario in {"missing_enabled", "corrupt", "missing_dependency"}
     os.environ["FLASHINFER_NPU_JIT_DISABLE"] = "0" if enabled else "1"
@@ -223,6 +215,8 @@ def run_scenario(scenario, store_root):
         assert str(result.dtype).removeprefix("torch.") == dtype
         atol, rtol = (0.001, 0.001) if dtype == "float16" else (0.004, 0.008)
         torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
+        binding = next(iter(_native._owners.values()))
+        workspace_requests.append(_native.last_workspace_size(binding, recipe))
         assert workspace_requests[-1] > 0
         error = (actual - expected).abs()
         errors.append(dict(shape=[shape[0], shape[1], shape[2], 128], dtype=dtype,

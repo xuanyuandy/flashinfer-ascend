@@ -109,7 +109,11 @@ class BuildPy(build_py):
                 compile_and_package(config, **options)
         elif prebuilt:
             from flashinfer.aot.build import export_op_package
+            from flashinfer.aclnn.build import bundle_adapter
 
+            # PREBUILT remains compiler-free, but the single execution path
+            # requires a compatible prebuilt Torch bridge as well as packages.
+            bundle_adapter(native_destination)
             release = Path(prebuilt).resolve(strict=True)
             packages = (release,) if (release / "manifest.json").is_file() else tuple(
                 p for p in sorted(release.iterdir()) if p.is_dir() and (p / "manifest.json").is_file())

@@ -197,6 +197,20 @@ def matmul_bias_silu(
     compile only when JIT is enabled. This eager entry is not graph capturable.
     """
     import torch
+    from .aclnn import enable_aclnn
+
+    enable_aclnn()
+    options = dict(backend=backend.value if isinstance(backend, Backend) else backend,
+                   kernel_id=kernel_id)
+    if out is None:
+        return torch.ops.flashinfer.matmul_bias_silu(a, b, bias, **options)
+    torch.ops.flashinfer.matmul_bias_silu_out(a, b, bias, out, **options)
+    return out
+
+
+def _matmul_bias_silu_impl(a, b, bias, out=None, *, backend="auto", kernel_id=None):
+    """PrivateUse1 implementation shared by the functional and out schemas."""
+    import torch
     from dataclasses import replace
     from types import SimpleNamespace
     from .ascendc import MATMUL_BIAS_SILU_KERNEL_ID, tensor_contract_specialization

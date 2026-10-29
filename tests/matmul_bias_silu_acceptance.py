@@ -22,7 +22,7 @@ def run_scenario(scenario, store_root):
     from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, load_contract
     from flashinfer.jit import AscendCBackend, AscendCToolchain, DiskJitBuildStore
     from flashinfer.jit.discovery import AotCorruptError, AotMissingError
-    from flashinfer.jit.op_package import OpPackageModule
+    from flashinfer.aclnn import _native
     from flashinfer.runtime import get_global_registry
     from flashinfer.runtime.schema import DispatchError
 
@@ -30,7 +30,6 @@ def run_scenario(scenario, store_root):
     counts = {"compile": 0, "toolchain": 0}
     original_compile = AscendCBackend.compile
     original_discover = AscendCToolchain.discover
-    original_workspace = OpPackageModule.get_workspace_size
     workspace_requests = []
 
     def counted_compile(self, spec, *, build_directory):
@@ -42,15 +41,8 @@ def run_scenario(scenario, store_root):
         assert scenario == "missing_enabled", "compiler discovery on a forbidden path"
         return original_discover(*args, **kwargs)
 
-    def recorded_workspace(self, *args, **kwargs):
-        size, executor = original_workspace(self, *args, **kwargs)
-        assert len(args) == 4 and not kwargs
-        workspace_requests.append(size)
-        return size, executor
-
     AscendCBackend.compile = counted_compile
     AscendCToolchain.discover = counted_discover
-    OpPackageModule.get_workspace_size = recorded_workspace
     os.environ["FLASHINFER_NPU_CACHE_DIR"] = str(store_root)
     enabled = scenario in {"missing_enabled", "corrupt"}
     os.environ["FLASHINFER_NPU_JIT_DISABLE"] = "0" if enabled else "1"
@@ -134,6 +126,8 @@ def run_scenario(scenario, store_root):
         expected64 = torch.nn.functional.silu(a.double() @ b.double() + bias.double())
         expected32 = torch.nn.functional.silu(a.float() @ b.float() + bias.float())
         actual = result.cpu().double()
+        binding = next(iter(_native._owners.values()))
+        workspace_requests.append(_native.last_workspace_size(binding, recipe))
         assert workspace_requests[-1] >= 4 * a.shape[0] * b.shape[1]
         # BF16 output rounding dominates; explicitly compare both references.
         atol, rtol = 0.008, 0.008
