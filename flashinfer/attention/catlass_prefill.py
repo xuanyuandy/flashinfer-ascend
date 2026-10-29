@@ -51,6 +51,19 @@ def _single_prefill_impl(
 ):
     """PrivateUse1 implementation; public calls enter through Torch schemas."""
     import torch
+
+    signature, output_metadata = prefill_signature(
+        q, k, v, causal=causal, kv_layout=kv_layout, custom_mask=custom_mask, out=out,
+    )
+    decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
+    if out is None:
+        out = torch.empty(output_metadata.shape, dtype=output_metadata.dtype, device=q.device)
+    _run_selected(decision.kernel_id, q, k, v, out)
+    return out
+
+
+def prefill_signature(q, k, v, *, causal=False, kv_layout="NHD", custom_mask=None, out=None):
+    """Build the identical validated workload for dispatch and offline tuning."""
     from dataclasses import replace
     from types import SimpleNamespace
     from ..ascendc import FLASH_ATTENTION_KERNEL_ID, load_contract, tensor_contract_specialization
@@ -90,11 +103,7 @@ def _single_prefill_impl(
                 for index in range(3)
             ) + ("ND",),
         )
-    decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
-    if out is None:
-        out = torch.empty(output_metadata.shape, dtype=output_metadata.dtype, device=q.device)
-    _run_selected(decision.kernel_id, q, k, v, out)
-    return out
+    return signature, output_metadata
 
 
 __all__ = ["single_prefill_with_kv_cache_catlass"]

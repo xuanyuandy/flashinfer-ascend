@@ -142,7 +142,11 @@ def _machine_delta(before, after):
                 per_cpu_busy_percent=busy)
 
 
-def _bucket(signature, descriptors):
+def _bucket(signature, descriptors, *, exact=False):
+    if exact:
+        semantics = signature.to_dict()
+        semantics.pop("op")
+        return dict(signature=semantics, shape_ranges=[])
     # Reuse actual T6.3 ShapeRange declarations and their intersection.
     # Unranged axes remain exact; no guessed size/power-of-two grid.
     ranges = {}
@@ -160,13 +164,15 @@ def _bucket(signature, descriptors):
 
 
 def collect_tuning_record(signature, hardware, candidates, *, synchronize,
-                          config=BenchmarkConfig(), metadata=None):
+                          config=BenchmarkConfig(), metadata=None, exact_shapes=False):
     """Measure explicitly supplied implementations, synchronizing timed wall work.
 
     Callers must validate semantic correctness before collection. Compilation,
     fixture setup, and correctness checks stay outside timing. Timings include
     Python launch and final synchronization: this is caller-observed latency.
     """
+    from .identity import candidate_identity
+
     candidates = sorted(candidates, key=lambda c: c.descriptor.kernel_id)
     if len(candidates) < 2 or len({c.descriptor.kernel_id for c in candidates}) != len(candidates):
         raise ValueError("need at least two distinct comparable candidates")
@@ -208,11 +214,9 @@ def collect_tuning_record(signature, hardware, candidates, *, synchronize,
     after = _machine_snapshot()
     return dict(schema_version=1, record_id=uuid.uuid4().hex, op=signature.op,
                 signature=signature.to_dict(), hardware=asdict(hardware),
-                bucket=_bucket(signature, [c.descriptor for c in candidates]),
-                candidates={c.descriptor.kernel_id: dict(
-                    descriptor_fingerprint=c.descriptor.fingerprint,
-                    capability_fingerprint=c.descriptor.capability.fingerprint,
-                ) for c in candidates},
+                bucket=_bucket(signature, [c.descriptor for c in candidates], exact=exact_shapes),
+                candidates={c.descriptor.kernel_id: candidate_identity(c.descriptor, signature, hardware)
+                            for c in candidates},
                 measurement=dict(config=asdict(config), started_at=started, finished_at=_utc(),
                                  timer="synchronized_wall/perf_counter_ns", unit="us/invocation",
                                  samples_us=samples, sample_times=sample_times, orders=orders,

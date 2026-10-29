@@ -229,6 +229,9 @@ def _triton_files(directory: Path, artifact: ArtifactRef, spec_fingerprint: str)
     if (metadata["name"] != artifact.entry_point or metadata["kernel_name"] != artifact.entry_point
             or metadata["hash"] != data["hash"] or metadata["target"] != data["target"]):
         raise SchemaError("Triton compiler metadata entry/hash/target mismatch")
+    mode = data.get("binary_mode", "single")
+    if mode not in {"single", "mix"} or ((mode == "mix") != (metadata["mix_mode"] == "mix")):
+        raise SchemaError("Triton binary mode does not match compiler metadata")
     for name in ("npu_utils", "launcher"):
         path = _relative_file(directory, data[name])
         # These are CPU Python extensions, unlike the device npubin.
@@ -311,9 +314,9 @@ class DefaultJitModuleLoader:
         device = torch.npu.current_device()
         if torch.npu.get_device_name(device) != data["target"]["arch"]:
             raise RuntimeError("Triton target differs from the current NPU device")
-        symbols = elf_symbols((directory / record.artifact.locator).read_bytes(), machine=0x1029, elf_type=2)
-        if record.artifact.entry_point not in symbols:
-            raise LookupError("device ELF has no defined symbol %r" % record.artifact.entry_point)
+        from ._triton_abi import verify_triton_symbols
+        verify_triton_symbols((directory / record.artifact.locator).read_bytes(),
+                              record.artifact.entry_point, data.get("binary_mode", "single"))
         # CompiledKernel accepts a launch-source description; compilation and
         # the original Python source are deliberately absent on a disk hit.
         source = SimpleNamespace(signature=data["signature"], constants=data["constexprs"])

@@ -41,6 +41,10 @@ PrivateUse1 实现 → signature / dispatch → AOT/JIT → 已验证 Tensor run
 C++ TorchNPU `OpCommand` → ACLNN host tiling / workspace / launch → device kernel。
 CANN 内置算子与 Triton 保留各自的执行路线。逐层职责见 [FA 完整调用链](docs/flash-attention-call-chain.md)。
 
+CATLASS AOT 与新增 Triton JIT FA 可在独立 registry 中比较，并通过同一个 FA 接口使用
+精确 shape 调优记录；默认生产登记集合保持不变。使用方法、同步执行边界与无显著差异时的
+回退规则见 [FA 隔离调优](docs/runtime-and-compilation-design.md#94-catlass-aot-与-triton-jit-的隔离调优)。
+
 ## 算子范围
 
 当前运行时登记表包含 **45 个逻辑 op、81 条实现描述（descriptor）**，其中

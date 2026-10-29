@@ -123,8 +123,9 @@ class _SourceBackend:
 class TritonBackend(_SourceBackend):
     """Compile a standalone Triton Python source in an isolated subprocess.
 
-    Options are explicit ``signature=<JSON>``, ``constexprs=<JSON>`` and
-    ``options=<JSON>`` objects. All three are part of the unchanged spec identity.
+    Options are explicit ``signature=<JSON>``, ``constexprs=<JSON>``,
+    ``options=<JSON>`` and optional ``binary={"mode":"mix"}`` objects.
+    Every option participates in the spec identity; single-entry is the default.
     Construction and declaration perform no I/O or optional imports.
     """
 
@@ -149,13 +150,15 @@ class TritonBackend(_SourceBackend):
             config = {}
             for item in spec.compile_options:
                 key, separator, value = item.partition("=")
-                if not separator or key not in {"signature", "constexprs", "options"} or key in config:
-                    raise ValueError("expected unique signature/constexprs/options=<JSON> compile options: %r" % item)
+                if not separator or key not in {"signature", "constexprs", "options", "binary"} or key in config:
+                    raise ValueError("expected unique signature/constexprs/options/binary=<JSON> compile options: %r" % item)
                 config[key] = json.loads(value)
                 if not isinstance(config[key], dict):
                     raise ValueError("%s must be a JSON object" % key)
             if not config.get("signature"):
                 raise ValueError("Triton compilation requires an explicit signature=<JSON>")
+            from ._triton_abi import triton_binary_mode
+            triton_binary_mode(config)
             root = self.source_root.resolve()
             source_path = (root / spec.source.locator).resolve()
             if not source_path.is_relative_to(root):

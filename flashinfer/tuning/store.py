@@ -110,6 +110,9 @@ def _validate(record):
         if any(not re.fullmatch(r"[0-9a-f]{64}", identity[key])
                for key in ("descriptor_fingerprint", "capability_fingerprint")):
             raise ValueError("invalid candidate identity")
+        if ("execution_fingerprint" in identity
+                and not re.fullmatch(r"[0-9a-f]{64}", identity["execution_fingerprint"])):
+            raise ValueError("invalid execution fingerprint")
     for snapshot in (measurement["machine_before"], measurement["machine_after"]):
         load = snapshot["load_average"]
         if len(load) != 3 or any(not 0 <= value < float("inf") for value in load):
@@ -180,15 +183,16 @@ def _identity_reasons(record, hardware, identities):
         reasons.append("HardwareSignature 不匹配：" + ", ".join(differences))
     elif not _known_hardware(hardware):
         reasons.append("HardwareSignature 信息不完整（SoC、核数、UB 必须已知）")
-    current = {key: (descriptor, capability) for key, descriptor, capability in identities}
+    current = {identity[0]: identity[1:] for identity in identities}
     for key, saved in sorted(record["candidates"].items()):
         if key not in current:
             reasons.append("比较候选已移除或未注册：%s" % key)
             continue
-        for name, value in zip(("descriptor_fingerprint", "capability_fingerprint"), current[key]):
-            if saved[name] != value:
+        for name, value in zip(("descriptor_fingerprint", "capability_fingerprint",
+                                "execution_fingerprint"), current[key]):
+            if saved.get(name) != value:
                 reasons.append("实现指纹不匹配：%s %s saved=%s current=%s" % (
-                    key, name, saved[name][:12], value[:12]))
+                    key, name, str(saved.get(name))[:12], str(value)[:12]))
     return reasons
 
 
@@ -287,7 +291,9 @@ def _resolve_tuning_records(signature, hardware, registry=None):
     if registry is None:
         from ..runtime.registry import get_global_registry
         registry = get_global_registry()
-    identities = tuple((d.kernel_id, d.fingerprint, d.capability.fingerprint)
+    from .identity import candidate_identity
+    identities = tuple((d.kernel_id, d.fingerprint, d.capability.fingerprint,
+                        candidate_identity(d, signature, hardware).get("execution_fingerprint"))
                        for d in registry.descriptors(op=signature.op))
     return _lookup(*tuning_cache_token(), signature, hardware, identities)
 

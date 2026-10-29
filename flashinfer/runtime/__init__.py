@@ -16,6 +16,7 @@ from .registry import (
     ImplementationStack,
     KernelRegistry,
     get_global_registry,
+    kernel_registry_scope,
     register_custom_kernel,
     register_external_kernel,
 )
@@ -61,6 +62,7 @@ __all__ = [
     "dispatch",
     "explain_dispatch",
     "get_global_registry",
+    "kernel_registry_scope",
     "register_custom_kernel",
     "register_external_kernel",
     "ArtifactFormat", "ArtifactKind", "ArtifactRef", "ArtifactVerificationError",

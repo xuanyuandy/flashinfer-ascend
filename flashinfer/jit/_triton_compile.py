@@ -19,6 +19,7 @@ def main(request_path: Path) -> None:
 
     from flashinfer.jit.core import JitSpec
     from flashinfer.runtime.hardware import _normalize_soc_model
+    from flashinfer.jit._triton_abi import triton_binary_mode, verify_triton_symbols
 
     directory = request_path.parent
     request = json.loads(request_path.read_text())
@@ -59,6 +60,10 @@ def main(request_path: Path) -> None:
     if kernel.name != entry or kernel.metadata.kernel_name != entry:
         raise ValueError("compiler exported %r/%r instead of declared entry %r"
                          % (kernel.name, kernel.metadata.kernel_name, entry))
+    binary_mode = triton_binary_mode(config)
+    if ((binary_mode == "mix") != (kernel.metadata.mix_mode == "mix")):
+        raise ValueError("Triton binary declaration does not match compiler mix_mode")
+    verify_triton_symbols(kernel.kernel, entry, binary_mode)
     # Prebuild both CPU runtime extensions under the same per-spec build lock.
     # This loads the device kernel for validation, without launching it.
     kernel._init_handles()
@@ -85,6 +90,7 @@ def main(request_path: Path) -> None:
     (directory / "triton.json").write_text(json.dumps({
         "schema_version": 1, "spec_fingerprint": spec.fingerprint,
         "entry_point": entry, "hash": kernel.hash,
+        "binary_mode": binary_mode,
         "target": {"backend": target.backend, "arch": target.arch, "warp_size": target.warp_size},
         "versions": versions, "arg_names": function.arg_names,
         "signature": signature, "constexprs": constants,

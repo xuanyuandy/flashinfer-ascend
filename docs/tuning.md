@@ -6,6 +6,28 @@ keeps the existing T6 filtering, T7 deterministic ordering, and T19A stack
 structure. A measurement with no significant difference is useful evidence;
 it has `winner: null` and does not override the heuristic.
 
+## FA：CATLASS AOT 与 Triton JIT 隔离接入
+
+`tools/tune_flash_attention.py` 使用独立 registry，不修改默认 81 条实现或生产精确集合断言。
+先检查匹配的 CATLASS AOT 及两种候选的数值，再采集精确 dtype/shape 记录。默认测量公共
+Torch out 接口；`--timing-boundary runner` 测量已选定 runner，两者均包含同步 eager 下发，
+须按记录中的边界解释，不能作为纯设备执行时间。轮数、噪声门槛及显著性规则保持不变。
+
+```bash
+python3 -B tools/tune_flash_attention.py --output-dir build/fa-tuning \
+  --dtype float16 bfloat16 --shape 128,128,1 --shape 512,512,8
+export FLASHINFER_NPU_TUNING_DB=build/fa-tuning/tuning.sqlite3
+```
+
+运行端在 `kernel_registry_scope(flash_attention_registry())` 中调用原 FA 接口即可使用记录。
+FP16/BF16、shape、descriptor/capability、spec 或执行身份不匹配时拒绝复用；登记作用域退出后
+恢复默认候选。软件身份是进程内快照，替换软件包或执行代码须重启进程。未测 shape、无显著
+差异及过期记录沿用原确定性选择。`--require-both-backends` 仅验收实际选择是否包含两者，
+不会人为指定冠军，未达到条件以非零状态退出并保留全部记录。
+
+真机路由 UT 中的合成计时仅用于验证两条 shape 记录能驱动两个真实 runner，不构成性能证据，
+不能发布或作为生产调优记录。实际测量与未验证事项见 [隔离验证报告](reports/triton-fa-isolated-2026-10-29.md)。
+
 ## Collect the two existing Gemma configurations
 
 Use a free NPU, the same CPU affinity in both runs, and paths outside the

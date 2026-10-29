@@ -1,6 +1,7 @@
 """Explicit lazy build -> verify -> publish -> load orchestration."""
 
 import hashlib
+import json
 import os
 import platform
 import traceback
@@ -40,7 +41,20 @@ def _verify_output(spec: JitSpec, directory: Path) -> ArtifactRef:
         symbols = spec.entry_points  # verified against the package's host ELF
     elif spec.source.language == "triton":
         format = ArtifactFormat.TRITON_NPUBIN
-        symbols = elf_symbols(payload, machine=0x1029, elf_type=2)
+        from ._triton_abi import triton_binary_mode, verify_triton_symbols
+        config = {key: json.loads(value) for key, _, value in (
+            option.partition("=") for option in spec.compile_options) if key == "binary"}
+        binary_mode = triton_binary_mode(config)
+        data = json.loads((directory / "triton.json").read_text())
+        if data.get("binary_mode", "single") != binary_mode:
+            raise SchemaError("Triton binary mode does not match the declared spec")
+        try:
+            verify_triton_symbols(payload, spec.entry_points[0], binary_mode)
+        except SchemaError as error:
+            raise JitSymbolError(str(error), kernel_id=spec.kernel_id,
+                spec_fingerprint=spec.fingerprint, log_path=directory / "build.log") from error
+        # The logical entry binds either one entry or the complete mixed pair.
+        symbols = spec.entry_points
     else:
         format = ArtifactFormat.SHARED_LIBRARY
         machines = {"x86_64": 62, "aarch64": 183}

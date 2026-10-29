@@ -7,6 +7,7 @@ probes sources, a toolchain, or a compiler. There are no operator-name switches.
 """
 
 from dataclasses import dataclass, replace
+from functools import lru_cache
 import logging
 from pathlib import Path
 from threading import RLock
@@ -87,6 +88,22 @@ class AotKernelRunner:
     def provenance(self):
         """None until a verified module has been adapted successfully."""
         return self._provenance
+
+    @lru_cache(maxsize=8)
+    def _tuning_identity(self, adapter_path):
+        import hashlib
+        from ..tuning.identity import execution_sources, fingerprint, runtime_identity
+
+        manifest = Path(adapter_path) / "manifest.json"
+        return fingerprint(dict(spec=self.spec.fingerprint, runtime=runtime_identity(),
+                                runner=execution_sources(("jit/runtime.py", "jit/tensor_adapter.py",
+                                                          "aclnn/_native.py")),
+                                adapter=hashlib.sha256(manifest.read_bytes()).hexdigest()
+                                if manifest.is_file() else "missing"))
+
+    def tuning_identity(self, signature, hardware):
+        from ..aclnn._native import adapter_directory
+        return self._tuning_identity(str(adapter_directory()))
 
     def resolve(self):
         """Only AotMissingError authorizes the explicitly enabled JIT branch."""

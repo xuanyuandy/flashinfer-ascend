@@ -1634,6 +1634,8 @@ flashinfer/data/
 }
 ```
 
+CATLASS AOT 与 Triton JIT FA 通过独立 registry 开展跨实现调优；默认生产登记集合不变。两个候选复用同一公共 Torch 接口及 FP16/BF16 契约，离线验证数值后采集精确 shape 记录，运行期只查询有效记录，不现场计时。记录绑定编译 spec、软件栈与 runner/桥身份，无显著差异时保留确定性排序；不预设不同 shape 一定选中不同 backend。Triton 使用自身 launcher 和当前 NPU stream，同步 eager，不经过 ACLNN，图能力为 NOT_CAPTURABLE。接入方式见 [FA 隔离调优](runtime-and-compilation-design.md#94-catlass-aot-与-triton-jit-的隔离调优)。
+
 ### 11.4 在线探索 tuning（默认关闭）
 
 - 开启方式：环境变量（§14）或 wrapper 参数；
@@ -1794,7 +1796,7 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 | CANN backend | 40 条 descriptor，是公共执行主线；batch attention 逐请求组合 FIA，尚非 fused batch scheduler | [分层对比](reports/call-stack-layering.md)、[实现](../flashinfer/cann/attention.py) |
 | Triton backend | 1 条 descriptor，`gemma_fused_add_rmsnorm` 有真机数值证据；原生 Triton 与统一 store 路径并存，不能声称全域统一 | [接口面](reports/api-surface-by-category.md)、[JIT 说明](jit.md) |
 | Ascend C 自研 | 两条生产 eager：`matmul_bias_silu` 原生实现、`flash_attention` catlass 实现，均使用完整档；此前生产 `registry.json` 的 `kernels` 为 `[]`，目前两条均不可入图 | [完整档契约说明](reports/ascendc-contract-v2.md)、[生产算子接入交付](reports/custom-operator-onboarding.md) |
-| tuning | 采集、store、query 及失效测试已有；发布库为空、软件身份不完整，公开 autotuner 未补齐 | [机制说明](tuning.md)、[测试](../tests/test_tuning.py)、[发布测试](../tests/test_tuning_release.py)、[接口面](reports/api-surface-by-category.md) |
+| tuning | 采集、store、query 及失效测试已有；FA 隔离调优绑定精确 shape 与执行身份；发布库为空，通用公开 autotuner 未补齐 | [机制说明](tuning.md)、[测试](../tests/test_tuning.py)、[发布测试](../tests/test_tuning_release.py)、[接口面](reports/api-surface-by-category.md) |
 | ABI 契约 | 重新冻结后当前契约自洽、结构尺寸未变；原定义未恢复，**不能声称新旧契约语义等价** | [ABI 重冻记录](reports/abi-refreeze-2026-10-25.md) |
 | 测试基线 | 全量 **1975 passed / 0 failed**，`-m real_compile` **80 passed / 0 skipped**；8× Ascend950PR、CANN 9.2.0-beta.2，是已核实基线引用，本次文档扩展未重跑 | [测试目录](../tests/)、上述逐项验收；历史报告总量仅代表当时快照 |
 

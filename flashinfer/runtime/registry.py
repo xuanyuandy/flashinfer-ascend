@@ -12,6 +12,8 @@
 from __future__ import annotations
 
 import threading
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -24,6 +26,7 @@ CUSTOM_KERNEL_PREFIX = "custom/"
 
 _GLOBAL_LOCK = threading.Lock()
 _GLOBAL_REGISTRY: Optional["KernelRegistry"] = None
+_SCOPED_REGISTRY = ContextVar("flashinfer_kernel_registry", default=None)
 
 
 @dataclass(frozen=True)
@@ -300,6 +303,9 @@ def _builtin_descriptors() -> Tuple[KernelDescriptor, ...]:
 
 def get_global_registry() -> KernelRegistry:
     """进程级单例：首次访问时注册内置 kernel 并冻结。"""
+    scoped = _SCOPED_REGISTRY.get()
+    if scoped is not None:
+        return scoped
     global _GLOBAL_REGISTRY
     if _GLOBAL_REGISTRY is None:
         with _GLOBAL_LOCK:
@@ -313,6 +319,22 @@ def get_global_registry() -> KernelRegistry:
                 registry.freeze()
                 _GLOBAL_REGISTRY = registry
     return _GLOBAL_REGISTRY
+
+
+@contextmanager
+def kernel_registry_scope(registry: KernelRegistry):
+    """Use a frozen experimental registry in this execution context only.
+
+    Dispatch and runner lookup share the same registry. The process default is
+    untouched; nested scopes restore their parent even when execution fails.
+    """
+    if not isinstance(registry, KernelRegistry) or not registry.frozen:
+        raise ValueError("kernel_registry_scope requires a frozen KernelRegistry")
+    token = _SCOPED_REGISTRY.set(registry)
+    try:
+        yield registry
+    finally:
+        _SCOPED_REGISTRY.reset(token)
 
 
 def register_custom_kernel(descriptor: KernelDescriptor) -> None:

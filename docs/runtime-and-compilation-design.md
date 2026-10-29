@@ -63,7 +63,7 @@ AOT 发布：build_production_packages → _publish → _build_record → 校验
 JIT 运行：build_and_load → _build_record → 校验与加载
 ```
 
-公共构建入口为 [`_build_record`](../flashinfer/jit/build.py#L61)。AOT 将已验证产物导出到交付目录并随 wheel 发布；JIT 将产物保存在本地构建缓存，供后续调用或进程复用。现有批量构建入口保留按 kernel 的缓存和产物，不合并为单次 CMake 构建或同一 vendor 包。
+公共构建入口为 [`_build_record`](../flashinfer/jit/build.py#L75)。AOT 将已验证产物导出到交付目录并随 wheel 发布；JIT 将产物保存在本地构建缓存，供后续调用或进程复用。现有批量构建入口保留按 kernel 的缓存和产物，不合并为单次 CMake 构建或同一 vendor 包。
 
 ## 3. 总体架构
 
@@ -147,7 +147,7 @@ InputSignature 是不可变的调用元数据快照，不包含 Tensor 内容或
 
 descriptor 的静态信息与进程内 runner 绑定分开，延迟绑定不改变其序列化身份。registry revision 参与决策缓存，避免登记变化后继续复用旧候选集合。
 
-CapabilitySpec 提供通用选型条件，BuildRecipe 提供完整 Tensor 参数与构建契约。二者存在重叠约束时必须保持一致，不能分别扩张支持范围。定义见 [schema.py:689](../flashinfer/runtime/schema.py#L689)、[schema.py:914](../flashinfer/runtime/schema.py#L914) 和 [registry.py:58](../flashinfer/runtime/registry.py#L58)。
+CapabilitySpec 提供通用选型条件，BuildRecipe 提供完整 Tensor 参数与构建契约。二者存在重叠约束时必须保持一致，不能分别扩张支持范围。定义见 [schema.py:689](../flashinfer/runtime/schema.py#L689)、[schema.py:914](../flashinfer/runtime/schema.py#L914) 和 [registry.py:61](../flashinfer/runtime/registry.py#L61)。
 
 ### 4.4 编译与产物模型
 
@@ -235,7 +235,7 @@ AOT 使用公共构建缓存获得已验证产物，再导出 op-package。普�
 
 ### 6.3 JIT 解析与构建
 
-[AotKernelRunner.resolve](../flashinfer/jit/runtime.py#L91) 在首次真实执行时解析产物。现有行为如下：
+[AotKernelRunner.resolve](../flashinfer/jit/runtime.py#L108) 在首次真实执行时解析产物。现有行为如下：
 
 | 状态 | 处理 |
 | --- | --- |
@@ -246,7 +246,7 @@ AOT 使用公共构建缓存获得已验证产物，再导出 op-package。普�
 | 无匹配 AOT，策略为 DISABLED 或 CACHE_ONLY | 报 missing，不使用 JIT 缓存替代缺失的安装产物 |
 | AOT 损坏、加载失败、包身份冲突或执行失败 | 保留错误，不自动转 JIT 或其他实现 |
 
-源码入口为 [_jit_backend](../flashinfer/ascendc.py#L66) → [build_and_load](../flashinfer/jit/build.py#L109) → [_build_record](../flashinfer/jit/build.py#L61)。进程内解析锁避免同一 runner 重复绑定；构建存储锁避免同一 spec 的并发重复构建，锁内再次检查缓存。
+源码入口为 [_jit_backend](../flashinfer/ascendc.py#L66) → [build_and_load](../flashinfer/jit/build.py#L123) → [_build_record](../flashinfer/jit/build.py#L75)。进程内解析锁避免同一 runner 重复绑定；构建存储锁避免同一 spec 的并发重复构建，锁内再次检查缓存。
 
 在当前生产路径中，JIT 磁盘查询之前会核验冻结工具链、源码和外部依赖。即使命中磁盘缓存，也需要这些构建条件。AOT 命中不经过该准备步骤。
 
@@ -366,11 +366,11 @@ specializations = (("tensor_contract", "supported"),)
 | Torch 注册与回调 | [_ops.py:76](../flashinfer/aclnn/_ops.py#L76)、[enable:93](../flashinfer/aclnn/_ops.py#L93)、[_attention:48](../flashinfer/aclnn/_ops.py#L48) | 定义 schema 并分发至 PrivateUse1 私有实现 |
 | 参数校验 | [_single_prefill_impl:48](../flashinfer/attention/catlass_prefill.py#L48)、[tensor_contract_specialization:107](../flashinfer/ascendc.py#L107) | 校验 recipe、选项和输出别名，形成 tensor_contract |
 | 签名与硬件 | [build_signature:104](../flashinfer/runtime/signature.py#L104)、[current_hardware:101](../flashinfer/runtime/hardware.py#L101) | 生成实际负载与硬件输入 |
-| 实现登记 | [get_global_registry:301](../flashinfer/runtime/registry.py#L301)、[ascendc_descriptors:88](../flashinfer/ascendc.py#L88) | 首次初始化元数据并绑定 lazy runner，不编译其他算子 |
-| 实现选择 | [catlass_prefill.py:93](../flashinfer/attention/catlass_prefill.py#L93) → [dispatch.py:130](../flashinfer/runtime/dispatch.py#L130) | 返回选中 kernel_id 与选择依据 |
-| 输出与调用 | [catlass_prefill.py:94](../flashinfer/attention/catlass_prefill.py#L94)、[_run_selected:11](../flashinfer/attention/catlass_prefill.py#L11) | 分配或复用 out，调用 descriptor.runner |
-| AOT/JIT 解析 | [AotKernelRunner.resolve:91](../flashinfer/jit/runtime.py#L91)、[AotPackageIndex.find:235](../flashinfer/jit/discovery.py#L235) | 发现、匹配并加载产物，必要时按策略 JIT |
-| JIT 构建分支 | [_jit_backend:66](../flashinfer/ascendc.py#L66) → [build_and_load:109](../flashinfer/jit/build.py#L109) → [compile:255](../flashinfer/jit/backends.py#L255) → [compile_recipe:102](../flashinfer/jit/ascendc.py#L102) | 验证构建环境和输入，复用缓存或调用公共 driver |
+| 实现登记 | [get_global_registry:304](../flashinfer/runtime/registry.py#L304)、[ascendc_descriptors:88](../flashinfer/ascendc.py#L88) | 首次初始化元数据并绑定 lazy runner，不编译其他算子 |
+| 实现选择 | [catlass_prefill.py:58](../flashinfer/attention/catlass_prefill.py#L58) → [dispatch.py:130](../flashinfer/runtime/dispatch.py#L130) | 返回选中 kernel_id 与选择依据 |
+| 输出与调用 | [catlass_prefill.py:59](../flashinfer/attention/catlass_prefill.py#L59)、[_run_selected:11](../flashinfer/attention/catlass_prefill.py#L11) | 分配或复用 out，调用 descriptor.runner |
+| AOT/JIT 解析 | [AotKernelRunner.resolve:108](../flashinfer/jit/runtime.py#L108)、[AotPackageIndex.find:235](../flashinfer/jit/discovery.py#L235) | 发现、匹配并加载产物，必要时按策略 JIT |
+| JIT 构建分支 | [_jit_backend:66](../flashinfer/ascendc.py#L66) → [build_and_load:123](../flashinfer/jit/build.py#L123) → [compile:258](../flashinfer/jit/backends.py#L258) → [compile_recipe:102](../flashinfer/jit/ascendc.py#L102) | 验证构建环境和输入，复用缓存或调用公共 driver |
 | Tensor adapter | [package_tensor_runner:32](../flashinfer/jit/tensor_adapter.py#L32)、[TorchOpPackageRunner.__call__:60](../flashinfer/jit/tensor_adapter.py#L60) | 校验已加载模块并进行执行边界检查 |
 | native 绑定 | [_native.prepare:73](../flashinfer/aclnn/_native.py#L73)，内部 Torch 入口位于 [91](../flashinfer/aclnn/_native.py#L91) | 登记可信 API 地址，复用 native 绑定 |
 | TorchNPU 提交 | [adapter.cpp execute:103](../csrc/aclnn_torch_adapter/adapter.cpp#L103)、[RunOpApi:180](../csrc/aclnn_torch_adapter/adapter.cpp#L180) | 按当前 stream 与框架队列策略提交同步调用 |
@@ -410,7 +410,7 @@ flowchart TD
     RB --> OUT
 ```
 
-该图定义扩展接入关系，不表示当前已有 Triton FA 或生产纯 JIT FA。新增实现必须交付以下内容：
+该图的 Triton 路线已有隔离接入，生产默认登记集合尚未扩展。新增实现必须交付以下内容：
 
 | 交付项 | 接入要求 |
 | --- | --- |
@@ -425,13 +425,82 @@ Triton 实现不使用 Ascend C 的 ACLNN Tensor adapter 作为通用 launcher�
 
 ### 9.3 对现有接入点的扩展要求
 
-当前生产 Ascend C freezer 在 [declarations.py:74](../flashinfer/aot/declarations.py#L74) 仅接受 backend=ascendc、compile_mode=AOT；[AotKernelRunner](../flashinfer/jit/runtime.py#L35) 也限定 AOT 优先登记。新增纯 JIT 生产 descriptor 不能只修改 JSON 的 compile_mode，必须同时提供对应 runner 和登记接线。
+当前生产 Ascend C freezer 在 [declarations.py:74](../flashinfer/aot/declarations.py#L74) 仅接受 backend=ascendc、compile_mode=AOT；[AotKernelRunner](../flashinfer/jit/runtime.py#L36) 也限定 AOT 优先登记。新增纯 JIT 生产 descriptor 不能只修改 JSON 的 compile_mode，必须同时提供对应 runner 和登记接线。
 
-公共 `build_and_load`、构建存储和 compiler backend 可以复用。采用已有 Triton launcher 方式时，可参考 [Triton norm 登记](../flashinfer/triton/norm.py#L29)，但仍需实现并验证 FA 本身。
+公共 `build_and_load`、构建存储和 compiler backend 已被 [Triton FA](../flashinfer/triton/attention.py) 复用。其独立 manifest 位于 `flashinfer/data/kernels/triton_registry.json`，不进入默认生产登记入口。
 
-当前 CATLASS 公共实现的 recipe 校验位于 [catlass_prefill.py:63](../flashinfer/attention/catlass_prefill.py#L63)。若新候选支持域不同，需要将公共语义检查与各候选的能力检查分离，使某一份 backend 配方不再决定整个公共接口的支持上限。
+当前 CATLASS 公共实现的 recipe 校验位于 [catlass_prefill.py:76](../flashinfer/attention/catlass_prefill.py#L76)。若新候选支持域不同，需要将公共语义检查与各候选的能力检查分离，使某一份 backend 配方不再决定整个公共接口的支持上限。
 
 CANN `attention.single_prefill` 与 CATLASS `ascendc.single_prefill_catlass` 当前属于不同 op 和调用契约。通用 FA 接入须明确公共 op、参数规范化及既有 Attention ABI/provider 的适配方式，不能仅通过修改 op 字符串合并候选。本设计文档不变更现有冻结 ABI 或登记集合。
+
+### 9.4 CATLASS AOT 与 Triton JIT 的隔离调优
+
+`flash_attention_registry()` 复制默认 descriptor 绑定，追加 `triton/attention/dense_prefill_v1/Ascend950` 后冻结。`kernel_registry_scope()` 仅替换当前执行上下文的 registry；公共 Torch schema 回调、dispatch 与 runner 查询共享该作用域，退出时恢复。默认 81 条登记及其精确集合断言保持不变。
+
+两个候选共用现有 `ascendc.single_prefill_catlass` op 和 FP16/BF16、NHD/ND、非 causal 支持域。公共 `prefill_signature()` 同时供运行与离线采集使用，避免调优记录与实际输入键不一致；本次未扩大契约。名称中的 `dense_prefill_v1` 是算法实现版本，不是 Ascend C recipe 的 schema 版本。
+
+Triton runner 按 dtype 冻结完整指针签名、constexpr、编译选项、源码摘要和环境身份。含矩阵计算的产物显式声明混合 ABI，校验必须同时发现 `_mix_aic` 和 `_mix_aiv` 两个确定入口；原单入口 ABI 仍要求完整原名。运行时使用 Triton launcher 和当前 NPU stream，在下发前后同步，并记录 Tensor 的 stream 生命周期；不经过 ACLNN，仍为同步 eager、`NOT_CAPTURABLE`。
+
+离线工具先强制各候选执行并比对 CPU FP64 参考，再测量同一公共 out 接口。编译、加载、分配和数值校验不计入测量，计时包含 Python 下发与同步。每条记录只适用于实测的精确 dtype/shape，并绑定 descriptor、capability 和执行身份；执行身份覆盖 spec、软件栈及对应 runner/桥信息。记录未通过既有噪声和显著性门槛时 `winner=null`，继续确定性选择，不保证任意两组 shape 必然产生不同冠军。
+
+```bash
+python3 -B tools/tune_flash_attention.py --output-dir build/fa-tuning \
+  --dtype float16 bfloat16 --shape 128,128,1 --shape 512,512,8
+```
+
+```python
+import flashinfer
+from flashinfer.runtime import kernel_registry_scope
+from flashinfer.triton.attention import flash_attention_registry
+
+with kernel_registry_scope(flash_attention_registry()):
+    output = flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)
+```
+
+运行进程须配置 `FLASHINFER_NPU_TUNING_DB` 指向采集目录的 `tuning.sqlite3`，并配置匹配的 AOT 包。作用域不运行调优；无记录、记录失效或无显著差异均沿用原排序。默认 registry 中不存在新 Triton FA，故隔离记录不会使默认调用选中未登记实现。验证命令、实际结果与限制见 [隔离接入报告](reports/triton-fa-isolated-2026-10-29.md)。
+
+### 9.5 显式选择 Triton FA
+
+以下示例在包含本次隔离接入代码的源码环境中运行，需要匹配的 Torch、TorchNPU、Triton-Ascend 和已加载的本机 CANN 环境。新 Triton 路线的 wheel 装后执行尚未验证。先允许按需编译：
+
+```bash
+export FLASHINFER_NPU_JIT_DISABLE=0
+```
+
+```python
+import torch
+import torch_npu
+import flashinfer
+from flashinfer.runtime import kernel_registry_scope
+from flashinfer.triton.attention import flash_attention_registry
+
+q = torch.randn(128, 1, 128, device="npu", dtype=torch.float16)
+k = torch.randn(256, 1, 128, device="npu", dtype=torch.float16)
+v = torch.randn_like(k)
+
+registry = flash_attention_registry()
+with kernel_registry_scope(registry):
+    output = flashinfer.single_prefill_with_kv_cache_catlass(
+        q, k, v, backend="triton",
+    )
+```
+
+该例使用原 FA 公共接口，输出为 `[128, 1, 128]` 的 FP16 NPU Tensor。将输入 dtype 改为 `torch.bfloat16` 即使用同一实现对应的 BF16 编译特化。示例的 S=128、T=256、H=1、D=128 位于两条候选共同支持域内；输入支持范围仍以第 9.4 节所述契约为准。
+
+| 调用参数 | 选择规则 | 是否需要调优冠军 |
+| --- | --- | --- |
+| `backend="auto"` 或省略 | 在兼容候选中查询有效记录；无有效冠军时使用确定性排序 | 无冠军也可执行，但不能据此认定为最快实现 |
+| `backend="ascendc"` | 限定 Ascend C 来源，当前为 CATLASS AOT 优先路径 | 不需要 |
+| `backend="triton"` | 限定 Triton 来源，再在该来源内选择；当前此 op 只有一条 Triton FA | 不需要 |
+| `kernel_id="triton/attention/dense_prefill_v1/Ascend950"` | 锁定这一份具体实现，检查其支持域和目标 | 不需要 |
+
+要锁定实现，可在上述作用域内将 `backend="triton"` 替换为表中的 `kernel_id` 参数。显式选择失败会报错，不静默改走 CATLASS；实现锁定也不扩大合法 dtype/shape 或授权被禁止的冷编译。
+
+此例中 `flash_attention_registry()` 仅构造实验候选集合，`kernel_registry_scope()` 让公共 Torch 回调、dispatch 和 runner 查询使用同一集合。退出作用域后恢复默认 registry；生产登记和精确集合断言未改。首次准备 Triton 时按完整 spec 查询磁盘缓存，未命中且允许编译时构建；后续调用复用已加载模块，计算仍会重新执行。
+
+实现入口为 [隔离登记](../flashinfer/triton/attention.py#L129)、[Triton runner](../flashinfer/triton/attention.py#L86) 和 [公共 Torch 转发](../flashinfer/attention/catlass_prefill.py#L15)。公共接口进入同一 Torch schema 后选择 runner；Triton 使用自身 launcher 和当前 NPU stream，CATLASS 使用 C++ TorchNPU / ACLNN 桥。二者共用调用语义，各自保留执行协议。
+
+Ascend950 真机已验证 `backend="triton"` 与精确 `kernel_id` 两种强制调用，均实际进入 Triton runner 并成功返回。已有两条后端的真实测量，记录未通过既有显著性门槛，尚未产生可信冠军。当前计时包含下发和同步，纯设备 kernel 耗时尚未单独测量；不能据此认定 Triton 更慢。强制执行验证、自动路由机制验证和性能冠军结论分别记录，详见 [隔离验证报告](reports/triton-fa-isolated-2026-10-29.md)。
 
 ## 10. 设计约束与验证要求
 
