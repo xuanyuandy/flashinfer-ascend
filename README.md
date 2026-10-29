@@ -209,6 +209,7 @@ their results apply to their recorded baselines.
 | Build, install and call an operator | [Wheel/conda quick start](README-wheel-conda.md) |
 | Runnable CANN/Triton examples | [Ascend950 guide](docs/a5.md), [smoke script](examples/a5_smoke.py) |
 | Framework architecture and implementation boundaries | [Framework design](docs/framework_design.md) |
+| FA call chain and multi-backend integration | [Facade, dispatch, AOT/JIT and ACLNN](docs/flash-attention-call-chain.md) |
 | Operator inventory and upstream comparison | [Coverage overview](docs/operator-coverage.md), [generated op list](docs/generated/operator-coverage/local-operators.md) |
 | Add a kernel or dtype | [Operator onboarding](docs/adding-a-custom-operator.md), [source layout](csrc/kernels/README.md) |
 | TorchNPU queue and ACLNN integration | [Torch/ACLNN adapter](docs/aclnn-torch-adapter.md) |

@@ -168,6 +168,7 @@ FA 的公共函数、kernel_id、ACLNN Tensor 参数顺序和 tiling 数据布�
 
 | 文档 | 用途 |
 |---|---|
+| [FA 完整调用链与多后端接入](flash-attention-call-chain.md) | facade → 注册与分发 → AOT/JIT → ACLNN → 设备执行，以及同一实现复用两种构建时机的接法 |
 | `docs/reports/ascendc-contract-v2.md` | v1→v2 契约 diff、字段语义、通用 ABI 参数约定 |
 | `docs/reports/custom-operator-onboarding.md` | 33 项交付件对照表、FA 迁移实录、七场景实际输出 |
 | `docs/aot-runtime-discovery.md` | AOT 发现/匹配/绑定/回落机制 |

@@ -214,6 +214,8 @@ flashinfer-ori: `csrc/`、`include/flashinfer/` 也将编译输入集中在源�
 [分层对比](reports/call-stack-layering.md) 按 **wrapper → generator → JIT/AOT →
 typed export** 四层对齐职责；这是准备与执行的依赖关系，不表示每次 `run()` 都重走编译。
 
+生产 CATLASS FA 的逐层源码、两条 ACLNN 适配路径，以及同一 kernel 的 AOT/JIT 与跨后端选择的边界，见 [FA 完整调用链与多后端接入](flash-attention-call-chain.md)。
+
 | 上游 FlashInfer（CUDA 代表链） | 本仓昇腾（对应职责与边界） |
 | --- | --- |
 | wrapper：绑定 workspace，plan 保存 native 调度信息，run 复用 module | 公共 facade + Attention 资源契约，plan 保存选型与资源身份；CANN batch 仍逐请求 gather/FIA/concat，尚非同等 fused scheduler |
