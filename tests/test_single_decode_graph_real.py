@@ -5,6 +5,7 @@ skips. All cases belong to the explicitly selected real_compile acceptance set.
 """
 
 from contextlib import contextmanager
+import os
 
 import pytest
 
@@ -27,12 +28,14 @@ def npu():
         pytest.fail(f"T3 requires real Ascend950 hardware: {error}")
     assert torch.npu.is_available(), "T3 device unavailable; this is not a passing skip"
     assert torch.npu.device_count() == 8, "T3 acceptance environment requires 8 NPUs"
-    assert "950" in torch.npu.get_device_name(0), "T3 requires the validated Ascend950"
+    index = int(os.environ.get("FLASHINFER_TEST_NPU_DEVICE", "0"))
+    torch.npu.set_device(index)
+    assert "950" in torch.npu.get_device_name(index), "T3 requires the validated Ascend950"
     required = ("NPUGraph", "graph", "ExternalEvent", "graph_task_group_begin",
                 "graph_task_group_end", "graph_task_update_begin", "graph_task_update_end")
     assert all(hasattr(torch.npu, name) for name in required), "NPU graph APIs unavailable"
     assert hasattr(torch_npu._C, "_NPUTaskGroupHandle"), "NPU task-group handles unavailable"
-    return torch.device("npu:0")
+    return torch.device("npu", index)
 
 
 def inputs(npu, dtype="float16", data="ramp"):

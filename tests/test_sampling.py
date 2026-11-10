@@ -107,10 +107,10 @@ def test_invalid_controls_fail_explicitly():
 @pytest.fixture
 def npu(monkeypatch):
     pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(0):
+    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(torch.npu.current_device()):
         pytest.skip("requires verified Ascend950")
     monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "cann")
-    return torch.device("npu:0")
+    return torch.device("npu", torch.npu.current_device())
 
 
 @pytest.mark.parametrize("dtype", [torch.float32, torch.float16, torch.bfloat16])

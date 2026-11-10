@@ -21,23 +21,11 @@ from .runtime import (
     build_signature,
     current_hardware,
     dispatch,
-    get_global_registry,
 )
-from .runtime.schema import DispatchError
+from .runtime.runner import run_selected as _run_selected
 
 _OP_BMM_FP8 = "gemm.bmm_fp8"
 _OP_GEMM_FP8_NT_GROUPWISE = "gemm.gemm_fp8_nt_groupwise"
-
-
-def _run_selected(kernel_id: str, *args, **kwargs):
-    """拉起 dispatch 选中的 kernel。产物未接入时显式报错。"""
-    descriptor = get_global_registry().get(kernel_id)
-    if descriptor.runner is None:
-        raise DispatchError(
-            "kernel %s 已选中，但可执行产物尚未接入"
-            "（AOT 产物加载 / JIT 编译拉起随后续里程碑接入，§15）" % kernel_id
-        )
-    return descriptor.runner(*args, **kwargs)
 
 
 def _dtype_name(dtype) -> str:
@@ -184,6 +172,66 @@ _OP_BMM_BF16 = "gemm.bmm_bf16"
 _OP_SEGMENT_GEMM = "gemm.segment_gemm"
 
 
+def matmul(
+    a, b, out=None, *, backend: Union[str, Backend, None] = None,
+    kernel_id: Optional[str] = None,
+):
+    """Compute ``out = a @ b`` through CANN, Ascend C AOT, or Triton JIT.
+
+    All backends accept identical contiguous ND BF16 tensors on Ascend950:
+    ``a[M,K]``, ``b[K,N]``, ``out[M,N]``; M/N/K are multiples of 16 in
+    [16, 256]. Output allocation and validation precede backend execution;
+    inputs are never copied, cast or repacked. ``out`` must not overlap inputs.
+    ``backend`` is ``cann``, ``ascendc``, ``triton`` or ``auto``. Auto consumes
+    valid tuning records, then the configured deterministic ordering.
+    Ascend C requires an installed AOT package and never falls back to JIT.
+    This is synchronous eager execution, without a graph-capture promise.
+    """
+    import torch
+    from .aclnn import enable_aclnn
+
+    enable_aclnn()
+    options = dict(backend=backend.value if isinstance(backend, Backend) else backend,
+                   kernel_id=kernel_id)
+    if out is None:
+        return torch.ops.flashinfer.matmul(a, b, **options)
+    torch.ops.flashinfer.matmul_out(a, b, out, **options)
+    return out
+
+
+def _matmul_impl(a, b, out=None, *, backend=None, kernel_id=None):
+    import torch
+    from dataclasses import replace
+    from ._matmul import AOT_KERNEL_ID, OP, contract, output_metadata
+    from .ascendc import tensor_contract_specialization
+    from .jit.tensor_adapter import _reject_output_overlap
+
+    # infershape output
+    prospective = output_metadata(a, b, out)
+    signature = build_signature(
+        OP, (a, b) if out is None else (a, b, out),
+        specializations={"tensor_contract": tensor_contract_specialization(
+            AOT_KERNEL_ID, (a, b, prospective),
+        )},
+    )
+    if out is None:
+        signature = replace(
+            signature, dtypes=signature.dtypes + (str(a.dtype).removeprefix("torch."),),
+            shapes=signature.shapes + (prospective.shape,),
+            layouts=signature.layouts + ("",),
+            physical_layouts=tuple(
+                signature.physical_layouts[i] if i < len(signature.physical_layouts) else ""
+                for i in range(2)
+            ) + ("ND",),
+        )
+    decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
+    if out is None:
+        out = torch.empty(prospective.shape, dtype=a.dtype, device=a.device)
+    _reject_output_overlap(contract()[1].tensor_parameters, (a, b, out))
+    _run_selected(decision.kernel_id, a, b, out)
+    return out
+
+
 def matmul_bias_silu(
     a, b, bias, out=None, *,
     backend: Union[str, Backend, None] = "auto", kernel_id: Optional[str] = None,
@@ -254,7 +302,6 @@ def _matmul_bias_silu_impl(a, b, bias, out=None, *, backend="auto", kernel_id=No
 def _run(op, tensors, specializations, args, backend, kernel_id):
     signature = build_signature(op, tensors, specializations=specializations)
     decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
-    from .norm import _run_selected
 
     return _run_selected(decision.kernel_id, *args)
 

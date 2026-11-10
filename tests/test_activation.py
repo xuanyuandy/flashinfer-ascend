@@ -10,7 +10,7 @@ import flashinfer
 @pytest.mark.parametrize("width", [6, 128, 4096])
 def test_activation_cann_numerics_out_and_pdl(monkeypatch, name, dtype, width):
     pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(0):
+    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(torch.npu.current_device()):
         pytest.skip("requires verified Ascend950")
     monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "cann")
     torch.manual_seed(42)

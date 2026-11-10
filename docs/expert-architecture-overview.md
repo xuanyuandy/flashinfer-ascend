@@ -225,7 +225,7 @@ provenance.source      = 尚未绑定；首次成功后为 aot 或 jit
 | 4 | [catlass_prefill.py:65](../flashinfer/attention/catlass_prefill.py#L65)、[tensor_contract_specialization:107](../flashinfer/ascendc.py#L107)、[build_signature:104](../flashinfer/runtime/signature.py#L104) | 校验 recipe、选项及 out 别名；构造 Q/K/V/out 元数据签名，未提供 out 时先使用预期输出元数据 |
 | 5 | [current_hardware:101](../flashinfer/runtime/hardware.py#L101)、[get_global_registry:304](../flashinfer/runtime/registry.py#L304)、[ascendc_descriptors:88](../flashinfer/ascendc.py#L88) | 获得硬件和候选目录；首次登记全部内置元数据及 lazy runner，不编译其他算子 |
 | 6 | [dispatch:130](../flashinfer/runtime/dispatch.py#L130)，调用点在 [catlass_prefill.py:58](../flashinfer/attention/catlass_prefill.py#L58) | 过滤候选、查询 tuning、返回 kernel_id；默认生产 registry 中该 op 只有上述 Ascend C 候选；隔离 registry 可追加 Triton FA |
-| 7 | [catlass_prefill.py:59](../flashinfer/attention/catlass_prefill.py#L59) → [_run_selected:11](../flashinfer/attention/catlass_prefill.py#L11) | 成功选型后分配 out，调用该 descriptor.runner |
+| 7 | [catlass_prefill.py:59](../flashinfer/attention/catlass_prefill.py#L59) → [公共 run_selected](../flashinfer/runtime/runner.py#L7) | 成功选型后分配 out，调用该 descriptor.runner |
 | 8 | [AotKernelRunner.resolve:108](../flashinfer/jit/runtime.py#L108)、[AotPackageIndex.find:235](../flashinfer/jit/discovery.py#L235) | 匹配 spec/目标/身份；加载 AOT，或在无匹配 AOT 且策略允许时进入 JIT |
 | 9 | [package_tensor_runner:32](../flashinfer/jit/tensor_adapter.py#L32)、[TorchOpPackageRunner.__call__:60](../flashinfer/jit/tensor_adapter.py#L60) | 将已验证模块适配为 Tensor callable，再检查 dtype、shape、NPU、ND 和重叠 |
 | 10 | [_native.prepare:73](../flashinfer/aclnn/_native.py#L73)，调用内部算子在 [91](../flashinfer/aclnn/_native.py#L91) | 首次登记已验证 ACLNN API 地址并保持模块存活，后续复用绑定；Tensor 进入 C++ 内部 Torch 算子 |

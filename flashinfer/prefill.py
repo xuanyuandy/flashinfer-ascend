@@ -13,9 +13,8 @@ from .runtime import (
     build_signature,
     current_hardware,
     dispatch,
-    get_global_registry,
 )
-from .runtime.schema import DispatchError
+from .runtime.runner import run_selected as _run_selected
 
 _OP_RAGGED_PREFILL = "attention.prefill"
 
@@ -30,17 +29,6 @@ def single_prefill_with_kv_cache_with_jit_module(
     return run_single_jit(AttentionMode.SINGLE_PREFILL, jit_module, q, k, v, args,
                           kv_layout=kv_layout, mask_mode=mask_mode,
                           window_left=window_left, return_lse=return_lse)
-
-
-def _run_selected(kernel_id: str, *args, **kwargs):
-    """拉起 dispatch 选中的 kernel。产物未接入时显式报错（M0 骨架）。"""
-    descriptor = get_global_registry().get(kernel_id)
-    if descriptor.runner is None:
-        raise DispatchError(
-            "kernel %s 已选中，但可执行产物尚未接入"
-            "（AOT 产物加载 / JIT 编译拉起随 M1 起接入，§15）" % kernel_id
-        )
-    return descriptor.runner(*args, **kwargs)
 
 
 def single_prefill_with_kv_cache(

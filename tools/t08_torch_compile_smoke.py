@@ -40,6 +40,9 @@ def smoke(torch, device):
     if device == "npu":
         import torch_npu  # noqa: F401
 
+        if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+            torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
+
         if not torch.npu.is_available():
             raise RuntimeError("NPU unavailable; cannot validate NPU torch.compile")
     else:

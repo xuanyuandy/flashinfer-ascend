@@ -336,7 +336,7 @@ AOT 与 JIT 共用产物契约；流水线中的 wheel 是发布出口，运行�
    之间的接线；新增算子仍须各自登记、冻结 spec 并绑定 runner，见 §5.5、§3。
 
 8. **可选的调用方捕获入图**让固定资源与更新契约下的算子参与 capture/replay。
-   当前公共 single-decode wrapper 仅有单一配置的真实证据，覆盖 **1/81**、
+   当前公共 single-decode wrapper 仅有单一配置的真实证据，覆盖 **1/84**、
    `CAPTURE_SAFE` 为 **0**；两条生产自研与 batch 入图仍未完成，见 §6。
 
 ## 3. 自定义 kernel 接入
@@ -1012,7 +1012,7 @@ caller:  graph.replay()
 
 #### 6.7 已验证范围与未完成项
 
-当前默认登记表共 **81 条记录：1 条 `NEEDS_PARAM_UPDATE`、0 条 `CAPTURE_SAFE`**。
+当前默认登记表共 **84 条记录：1 条 `NEEDS_PARAM_UPDATE`、0 条 `CAPTURE_SAFE`**。
 唯一提升的是 `cann/attention/single_decode_fia_v1`；
 其它记录保持保守声明，不能由已有 eager、meta 或固定-buffer 测试推断入图能力。
 统计与声明证据由上述参数更新审计和 `test_graph_capability.py` 检查。
@@ -1059,7 +1059,7 @@ K/V `(1024,2,64)`、heads=8/2、head_dim=64、scale=0.125、无 mask、非 causa
 误差均为 **0**；容量超限、冻结身份变更、漏调参数更新、未 plan 直接捕获均被拒绝。
 证据见 [图模式交付](reports/graph-mode-delivery.md)、[示例](../examples/single_decode_graph.py)
 与 [真机测试](../tests/test_single_decode_graph_real.py)。报告计数是该 wrapper 交付时点的快照；
-当前覆盖仍为 **1/81**、`CAPTURE_SAFE` 为 **0**，两条生产自研算子均不可入图，
+当前覆盖仍为 **1/84**、`CAPTURE_SAFE` 为 **0**，两条生产自研算子均不可入图，
 batch 入图与下游模型接入也未因此完成。
 目标是在调用方持有图的边界内逐条扩展已验证路径；新增生产算子和 batch 路径须先
 完成各自的静态资源规划与真实重放验收，再公开对应的支持范围。
@@ -1102,6 +1102,8 @@ def single_prefill_with_kv_cache(
   关系见 §9.1）；指定的 kernel 不满足当前 capability 时直接报错。
 - `reference` 仅用于 correctness 与调试，需显式 opt-in。
 
+经典 Matmul 已提供同一 `(a, b, out)` 契约的 CANN 内置算子、native Ascend C AOT 和 Triton JIT 三条路径。公共层统一输入检查与输出分配；定制 Matmul 缺少 AOT 时明确失败，Triton 在首次执行时 JIT。共同范围、编译策略和验证入口见 [Matmul 多后端说明](matmul-backends.md)。自动选择复用已有 tuning 查询与确定性顺序，不据此声明性能优势。
+
 ### 7.3 plan / run 生命周期
 
 对齐 flashinfer 的 wrapper 语义，目标是把准备工作集中在 plan，run 仅复用资源：
@@ -1122,7 +1124,7 @@ wrapper.run(...)    # O(1)：校验 + 已缓存 kernel handle 的异步 launch
 
 ### 7.4 已支持接口面与统计口径
 
-当前以 [逐 op 清单](generated/operator-coverage/local-operators.md) 和 [上游接口对比](operator-coverage.md) 为准：**81 条 descriptor / 45 个 op**，其中 **43 个 op 至少绑定一个 NPU runner、2 个仅 reference**，分属 9 个已有 NPU 路线的能力域。一个 op 可有多个 backend descriptor；[旧接口面报告](reports/api-surface-by-category.md) 保留历史快照，不能用其混合计数代替当前登记表。REFERENCE 不计作 NPU 加速或生产自研。
+当前以 [逐 op 清单](generated/operator-coverage/local-operators.md) 和 [上游接口对比](operator-coverage.md) 为准：**84 条 descriptor / 46 个 op**，其中 **44 个 op 至少绑定一个 NPU runner、2 个仅 reference**，分属 9 个已有 NPU 路线的能力域。一个 op 可有多个 backend descriptor；[旧接口面报告](reports/api-surface-by-category.md) 保留历史快照，不能用其混合计数代替当前登记表。REFERENCE 不计作 NPU 加速或生产自研。
 已有入口也不等于该能力域已经完整对齐，下面进一步列出同域内部的具名缺口。
 
 ### 7.5 已支持能力域内的接口差异
@@ -1772,7 +1774,7 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 ## 附录 A · 实现进展
 
 本附录把目标设计与已交付范围对照，验收报告保留各自验收时点；历史计数不作为
-当前总量。当前口径采用本次已核实基线：**81 条 descriptor / 45 个 op**，其中 43 个绑定 NPU runner、2 个仅 reference，backend 为
+当前总量。当前口径采用本次已核实基线：**84 条 descriptor / 46 个 op**，其中 44 个绑定 NPU runner、2 个仅 reference，backend 为
 **ascendc 2 / CANN 40 / REFERENCE 38 / TRITON 1**；9 个能力域已有 NPU 路线，其余上游接口族的逐项范围见 [算子与接口清单](operator-coverage.md)。
 “有 op”不表示该域逐参数、逐执行模式都已验证，REFERENCE 条目也不计作生产自研。
 
@@ -1783,7 +1785,7 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 | JIT | 完整 spec 身份、真实编译/加载、per-spec flock、不可变 generation、原子发布与失败诊断已接通。两条生产算子在限定 envelope 内有 missing → 冷 JIT → 公共 API 数值执行证据，产物复用统一 store/loader。缓存淘汰与旧 generation 自动清理、统一治理仍未完成。 | [JIT 并发与发布验收](reports/T18B-report.md)、[JIT 测试](../tests/test_jit_build.py)、[生产算子接入交付](reports/custom-operator-onboarding.md)、§4 |
 | AOT | 已验证产物可导出为 op-package，运行期发现、硬件/spec 匹配、延迟 runner 绑定与公共调用已接通，两条生产登记复用该链路。corrupt、load error 与 identity 冲突拒绝且不回落，但全部 incompatible 仍可能汇总为 missing 后在 enabled 下转 JIT。CANN runtime 版本校验、多 package identity 与安装真实 wheel 后的生产矩阵仍有缺口。 | [发现说明](aot-runtime-discovery.md)、[AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md)、[生产登记](../flashinfer/ascendc.py)、§5.5 |
 | wheel 打包发布 | 普通 `setup.py` 构建默认编译全部已登记生产 AOT，也可显式选择 CONFIG/PREBUILT 或仅源码模式；按 spec 指纹放入主 wheel 的 `flashinfer/data/op_packages/`。两条 Ascend950 生产算子已有携带 AOT 的 wheel 隔离安装、禁编译数值自检与源码布局验收；这不替代完整目标矩阵。是否拆分发包仍待按矩阵决定，当前没有独立 provider / cubin 分包。 | [构建入口](../setup.py)、[导出实现](../flashinfer/aot/build.py)、[wheel 与源码布局验收](reports/kernel-layout-2026-10-27.md)、§5.6 |
-| 入图 | 固定资源、最大 workspace、plan 冻结与重放前参数更新契约已实现，公共 single-decode wrapper 在单一配置上完成调用方捕获与 8 次更新重放，输出/LSE 误差均为 0。当前仅 **1/81** descriptor 可入图，`CAPTURE_SAFE` 为 **0**。两条生产自研、batch 入图及下游完整模型接入仍未完成。 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py)、§6 |
+| 入图 | 固定资源、最大 workspace、plan 冻结与重放前参数更新契约已实现，公共 single-decode wrapper 在单一配置上完成调用方捕获与 8 次更新重放，输出/LSE 误差均为 0。当前仅 **1/84** descriptor 可入图，`CAPTURE_SAFE` 为 **0**。两条生产自研、batch 入图及下游完整模型接入仍未完成。 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py)、§6 |
 | 自定义算子接入 | 公开 recipe 统一为 v2，旧格式仅在内部兼容边界校验，变参 Tensor ABI、动态 workspace、shape 驱动 host tiling 与混合核同步契约、native/catlass 范本已有实现。两条生产 eager 路径与 33 项清单给出源码、冻结 spec、编译/导出、runner 和公共调用的有限闭环。任意 scalar/attribute ABI、数据内容驱动 tiling、异步生命周期及入图不能由此外推。 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md)、[完整档契约说明](reports/ascendc-contract-v2.md)、§3.5 |
 | Torch / ACLNN | 完整 wheel 提供 TorchNPU OpCommand host 桥；所有生产 Ascend C 调用首次准备原生绑定并复用，按框架 queue/stream 下发，保持同步 eager。生产 AOT 首次激活可信 vendor 集合以支持同进程多算子；Python 公共函数统一转发至 Torch schema。任意参数 ABI、异步返回和生产入图未验证。 | [接入说明](aclnn-torch-adapter.md)、[架构重构验收](reports/architecture-refactor-2026-10-28.md) |
 
@@ -1837,7 +1839,7 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 | 关键 workload 支持矩阵 / 中 | 逐参数语义与证据未齐 → 固定上游基线、输入 envelope、reference 与明确的维护责任 → 每个承诺入口覆盖数值/mutation/别名/异常/容量正反例，不支持项明确拒绝 → 组合膨胀，不能以接口计数冲抵 |
 | 安装后的生产 AOT/JIT / 中 | 源码树闭环不足以证明 wheel 可交付 → 两条冻结 recipe/spec、产物清单、runtime-only 与可编译环境 → 安装后公共 API 验 AOT hit、禁 JIT、真实冷 JIT、corrupt/load error；incompatible 在 enabled 下也须不回落 → 源闭包、catlass 外部依赖及单 identity 限制可能阻塞 |
 | CANN runtime 兼容门禁 / 中 | 当前不比较运行时版本 → 明确支持栈、版本/ABI 规则与诊断 → 不兼容和未知组合在加载前明确拒绝，支持组合实机通过 → 单靠版本号不足以证明 ABI 兼容 |
-| 图模式范围与资源门禁 / 中 | 当前仅 1/81，容易把固定 buffer 当入图证明 → 公共 single-decode wrapper 单配置、更新凭证、冻结身份与流所有权 → 保持一次捕获八次重放及负例，生产/batch 未验证路径继续拒绝 → executor/host tiling 生命周期不能由 eager 外推 |
+| 图模式范围与资源门禁 / 中 | 当前仅 1/84，容易把固定 buffer 当入图证明 → 公共 single-decode wrapper 单配置、更新凭证、冻结身份与流所有权 → 保持一次捕获八次重放及负例，生产/batch 未验证路径继续拒绝 → executor/host tiling 生命周期不能由 eager 外推 |
 | 最小 tuning 与性能证据 / 中 | 发布库为空、软件身份不完整、无同口径测量 → 稳定候选、软件栈指纹、统一 correctness/warmup/计时政策 → 旧 winner 在环境变化后失效，报告 AOT/JIT 来源及冷/热数据，不预设性能优势 → 噪声、路径混用导致不可比 |
 | 回归与独立复验 / 小至中 | 测试总量未映射支持矩阵 → 上述矩阵、安装产物与真机命令 → 以 1975/80 为回归基线，新增范围逐项关联证据，skip 不算通过 → 基线通过不能代替新增能力验证 |
 
@@ -1870,7 +1872,7 @@ MNNVL/NVSHMEM/CUDA IPC 有意不对标，**HCCL/collective/EP 路径尚未补齐
 | 公开 trace/autotuner / 中至大 | 内部 trace/tuning 不能替代公开协议 → 稳定 schema、软件身份、测量与失效规则 → 公共调用和记录可复验、旧 winner 不误用 → 数据治理与性能政策尚不完整 |
 | 数据内容驱动 tiling / 大 | 当前只有 shape 驱动 host tiling → 明确数据依赖、同步与缓存身份 → 数据变化时 eager/图路径各自正确或明确拒绝 → host 读取与 capture 语义冲突，不能套用当前 callback 承诺 |
 | 多 package identity / 大 | 单进程只允许一个 identity → CANN 注册/隔离机制与 loader 生命周期 → 多包同进程加载、交错执行、失败恢复 → 当前单包假设贯穿资源管理；若 P0 必需则提前处理 |
-| 全库图模式与完整模型矩阵 / 大 | 1/81、无 batch/生产图和下游证据 → 逐 kernel 资源契约、模型接线及多卡能力 → 逐路径真机 capture/replay 与完整模型验证 → 单算子证据不能推广 |
+| 全库图模式与完整模型矩阵 / 大 | 1/84、无 batch/生产图和下游证据 → 逐 kernel 资源契约、模型接线及多卡能力 → 逐路径真机 capture/replay 与完整模型验证 → 单算子证据不能推广 |
 
 有意不对标项继续保留明确拒绝或兼容说明；尚未补齐项保持账本缺口，不以平台差异
 销账。P0/P1 验收后再据实调整范围，不能把路线图中的目标写进附录 A 的已交付列。

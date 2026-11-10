@@ -18,6 +18,9 @@ def run_scenario(scenario, store_root):
     import torch
     import torch_npu  # noqa: F401
 
+    if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+        torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
+
     from flashinfer import gemm
     from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, load_contract
     from flashinfer.jit import AscendCBackend, AscendCToolchain, DiskJitBuildStore

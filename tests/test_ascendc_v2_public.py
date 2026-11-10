@@ -28,6 +28,7 @@ def test_public_manifest_set_is_exactly_v2_and_preserves_production_inventory():
     recipes = tuple(r for p in sorted((ROOT / 'csrc/recipes').glob('*.json')) for r in load_build_recipes(p))
     assert {(r.recipe_id, r.implementation, r.target_soc, r.schema_version, r.output_kind) for r in recipes} == {
         ('flash_attention', 'catlass', 'Ascend950', 2, 'op_package'),
+        ('matmul', 'native', 'Ascend950', 2, 'op_package'),
         ('matmul_bias_silu', 'native', 'Ascend950', 2, 'op_package'),
         ('matmul_probe', 'native', 'Ascend950', 2, 'op_package'),
         ('matmul_probe', 'catlass', 'Ascend950', 2, 'op_package'),
@@ -37,7 +38,7 @@ def test_public_manifest_set_is_exactly_v2_and_preserves_production_inventory():
     }
     records = json.loads((ROOT / 'flashinfer/data/kernels/registry.json').read_text())['kernels']
     assert {r['op'] for r in records if r['backend'] == 'ascendc'} == {
-        'gemm.matmul_bias_silu', 'ascendc.single_prefill_catlass'}
+        'gemm.matmul', 'gemm.matmul_bias_silu', 'ascendc.single_prefill_catlass'}
     assert inspect.signature(BuildRecipe).parameters['schema_version'].default == 2
     assert AscendCBuildConfig().output_kind == 'op_package'
 

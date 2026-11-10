@@ -397,6 +397,168 @@
         },
         "output_path": "op-package.json"
       }
+    },
+    {
+      "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
+      "recipe": {
+        "recipe_id": "matmul",
+        "version": 2,
+        "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
+        "implementation": "native",
+        "target_soc": "Ascend950",
+        "npu_arch": "dav-3510",
+        "source": {
+          "language": "ascendc",
+          "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+          "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
+          "schema_version": 1
+        },
+        "sources": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+            "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
+            "schema_version": 1
+          }
+        ],
+        "headers": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/matmul/include/flashinfer_ascend/matmul_tiling.h",
+            "digest": "f632933ff778cd51043cfb97229932f6f4f733edc3fef4e8cca86b4bb62323ae",
+            "schema_version": 1
+          }
+        ],
+        "include_dirs": [
+          "csrc/kernels/ascendc/matmul/include"
+        ],
+        "dependencies": [],
+        "definitions": [],
+        "compile_options": [
+          "-O2"
+        ],
+        "link_options": [],
+        "device_entry": "fi_matmul",
+        "host_entry": "aclnnFiMatmul",
+        "launch_abi": "aclnn.matmul.v2",
+        "tiling_mode": "host_dynamic",
+        "tiling_schema_version": 2,
+        "block_dim": 1,
+        "workspace_bytes": 0,
+        "task_type": "aic_only",
+        "sync_policy": "compiler_default",
+        "toolchain": "ascendc",
+        "output_kind": "op_package",
+        "output_adapter": "ascendc.op_package.v1",
+        "schema_version": 2,
+        "host_sources": [
+          {
+            "language": "ascendc",
+            "locator": "csrc/kernels/ascendc/matmul/op_host/matmul.cpp",
+            "digest": "1ad8da216d52e8f3220fc8f1e0d4cd6b5fa5d8e7179e2d5ed5b20969f24e6f9e",
+            "schema_version": 1
+          }
+        ],
+        "package_vendor": "flashinfer_matmul",
+        "package_op_type": "FiMatmul",
+        "tensor_parameters": [
+          {
+            "name": "a",
+            "role": "input",
+            "dtype": "bfloat16",
+            "shape": [
+              "M",
+              "K"
+            ]
+          },
+          {
+            "name": "b",
+            "role": "input",
+            "dtype": "bfloat16",
+            "shape": [
+              "K",
+              "N"
+            ]
+          },
+          {
+            "name": "out",
+            "role": "output",
+            "dtype": "bfloat16",
+            "shape": [
+              "M",
+              "N"
+            ]
+          }
+        ],
+        "shape_constraints": [
+          {
+            "name": "M",
+            "minimum": 16,
+            "maximum": 256,
+            "multiple_of": 16
+          },
+          {
+            "name": "N",
+            "minimum": 16,
+            "maximum": 256,
+            "multiple_of": 16
+          },
+          {
+            "name": "K",
+            "minimum": 16,
+            "maximum": 256,
+            "multiple_of": 16
+          }
+        ],
+        "tiling_host_entry": "FiMatmulTiling",
+        "workspace_host_entry": null,
+        "allow_jit_fallback": false
+      },
+      "spec": {
+        "schema_version": 1,
+        "name": "kernel.01626b2ce39b975929b91b25911fb1f8ed7b1246174f3e32b7fac8d0cdda0bf7",
+        "domain": "kernel",
+        "generator_id": "ascendc",
+        "generator_version": "2",
+        "target_soc": "Ascend950",
+        "environment_fingerprint": "defb5a5e7ab492612c4bb426fba3309068eecf8611c6f6402efab9dbafb76cac",
+        "specialization_fingerprint": "9a30cbd76f653aea1fde076259697aa9a76b25570ea65d31af183c6bfb83edca",
+        "input_fingerprints": [
+          [
+            "build_recipe",
+            "9a30cbd76f653aea1fde076259697aa9a76b25570ea65d31af183c6bfb83edca"
+          ],
+          [
+            "kernel",
+            "953cd7c784b69a0610231d0a0cd7c81f474389f6b0b5869a89736f3cb69f0c37"
+          ],
+          [
+            "output_adapter",
+            "1977921b4c21903c722600d0f46c06091b2dec465760fb280549553c0a64a92e"
+          ],
+          [
+            "package",
+            "2965215d4a91931ae823ca2b3a57b601be0243343aaa6f0b5a7d416801e522ad"
+          ],
+          [
+            "resolved_recipe",
+            "f293d4919b097c89aabbeb005efab995bf964dd2d4b9794c8e8a6f51ed3a77a3"
+          ]
+        ],
+        "source_artifacts": [],
+        "compile_options": [],
+        "entry_points": [
+          "aclnnFiMatmul"
+        ],
+        "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
+        "source": {
+          "language": "ascendc",
+          "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+          "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
+          "schema_version": 1
+        },
+        "output_path": "op-package.json"
+      }
     }
   ]
 }

@@ -1,7 +1,8 @@
-"""host unit 测试公共 fixture（§14.1：全程无需 NPU、无需 torch）。"""
+"""Host fixtures need no NPU/Torch by default; device setup is an explicit opt-in."""
 
 from __future__ import annotations
 
+import os
 import pytest
 
 from flashinfer.runtime.dispatch import clear_dispatch_cache
@@ -13,6 +14,19 @@ from flashinfer.runtime.schema import (
     CompileMode,
     KernelDescriptor,
 )
+
+
+def pytest_sessionstart(session):
+    """Opt in to a free test device without hiding any visible devices."""
+    value = os.environ.get("FLASHINFER_TEST_NPU_DEVICE")
+    if value is not None:
+        import torch
+        import torch_npu  # noqa: F401
+
+        index = int(value)
+        if not 0 <= index < torch.npu.device_count():
+            raise ValueError("FLASHINFER_TEST_NPU_DEVICE is outside the visible device range")
+        torch.npu.set_device(index)
 
 
 @pytest.fixture(autouse=True)

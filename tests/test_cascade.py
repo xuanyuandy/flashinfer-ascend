@@ -202,7 +202,7 @@ class TestMergeStateCannNpu:
     def test_cann_vs_fp64(self, dtype_name):
         torch = self.torch
         torch.manual_seed(0)
-        dev = "npu:0"
+        dev = torch.device("npu", torch.npu.current_device())
         dtype = getattr(torch, dtype_name)
         va = torch.randn(16, 4, 32, device=dev, dtype=dtype)
         sa = torch.randn(16, 4, device=dev)
@@ -226,7 +226,7 @@ class TestMergeStateCannNpu:
         """同一输入下 cann 与 reference 结果一致。"""
         torch = self.torch
         torch.manual_seed(1)
-        dev = "npu:0"
+        dev = torch.device("npu", torch.npu.current_device())
         va = torch.randn(8, 4, 16)
         sa = torch.randn(8, 4)
         vb = torch.randn(8, 4, 16)

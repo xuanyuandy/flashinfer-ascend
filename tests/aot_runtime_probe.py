@@ -8,6 +8,7 @@ discovery, dispatch, or the lazy runtime binder.
 from pathlib import Path
 import hashlib
 import json
+import os
 import sys
 
 from flashinfer.jit import (
@@ -64,6 +65,10 @@ def build_release(root, *, target="Ascend950"):
 def run_scenario(scenario, declaration_release, store_root, second_release=None):
     import torch
     import torch_npu  # noqa: F401
+
+    if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+        torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
+
     from flashinfer import gemm
     from flashinfer.jit.discovery import AotCorruptError, AotLoadError, AotMissingError, AotPackageIndex
     from flashinfer.jit.env import JitCompilationPolicy

@@ -302,6 +302,125 @@
         ]
       },
       "graph_capability": "not_capturable"
+    },
+    {
+      "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
+      "op": "gemm.matmul",
+      "backend": "ascendc",
+      "constraints": {
+        "supported_socs": [],
+        "dtype_signatures": [],
+        "layout_signatures": [],
+        "required_features": [],
+        "quant_storage_dtypes": [],
+        "deterministic": null
+      },
+      "workspace": {
+        "constant_bytes": 0,
+        "dynamic_coefficients": [],
+        "alignment": 32
+      },
+      "int_workspace": {
+        "constant_bytes": 0,
+        "dynamic_coefficients": [],
+        "alignment": 32
+      },
+      "artifact": null,
+      "launch_abi": {
+        "abi_name": "aclnn.matmul.v2",
+        "entry_point": "aclnnFiMatmul",
+        "argument_names": [
+          "workspace",
+          "workspace_bytes",
+          "executor",
+          "stream"
+        ],
+        "mutable_arguments": [],
+        "stream_argument": "stream",
+        "pointer_width_bits": 64,
+        "metadata_schema_version": 1,
+        "schema_version": 1
+      },
+      "binary_abi": null,
+      "priority": 0,
+      "op_schema_version": 1,
+      "tiling_schema_version": 2,
+      "capability_binding": null,
+      "source": {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+        "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
+        "schema_version": 1
+      },
+      "target_soc": "Ascend950",
+      "compile_mode": "aot",
+      "capability": {
+        "op": "gemm.matmul",
+        "dtypes": [
+          "bfloat16"
+        ],
+        "layouts": [],
+        "soc_models": [
+          "Ascend950"
+        ],
+        "min_aicore": 0,
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "shape_ranges": [
+          {
+            "name": "M",
+            "tensor_index": 0,
+            "axis": 0,
+            "minimum": 16,
+            "maximum": 256
+          },
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 256
+          },
+          {
+            "name": "K",
+            "tensor_index": 1,
+            "axis": 0,
+            "minimum": 16,
+            "maximum": 256
+          },
+          {
+            "name": "N",
+            "tensor_index": 1,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 256
+          },
+          {
+            "name": "M",
+            "tensor_index": 2,
+            "axis": 0,
+            "minimum": 16,
+            "maximum": 256
+          },
+          {
+            "name": "N",
+            "tensor_index": 2,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 256
+          }
+        ],
+        "physical_layouts": [
+          "ND"
+        ]
+      },
+      "graph_capability": "not_capturable"
     }
   ]
 }

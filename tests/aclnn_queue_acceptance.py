@@ -1,12 +1,17 @@
 """Mixed TorchNPU/ACLNN execution, two packages and immutable warm bindings."""
 
 import json
+import os
 import sys
 
 
 def run(mode, first):
     import torch
     import torch_npu
+
+    if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+        torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
+
     import flashinfer
     from flashinfer.aclnn import enable_aclnn, _native
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID, MATMUL_BIAS_SILU_KERNEL_ID

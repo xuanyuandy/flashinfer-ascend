@@ -28,7 +28,7 @@ def test_opt_in_registry_keeps_exact_default_inventory_and_existing_bindings():
     default = get_global_registry()
     original = tuple(d.kernel_id for d in default.descriptors())
     registry = flash_attention_registry(default)
-    assert len(original) == 81
+    assert len(original) == 84
     assert tuple(d.kernel_id for d in registry.descriptors()) == tuple(sorted(original + (TRITON_ID,)))
     assert registry.frozen
     assert registry.get(FLASH_ATTENTION_KERNEL_ID) is default.get(FLASH_ATTENTION_KERNEL_ID)
@@ -70,8 +70,8 @@ from flashinfer.triton.attention import flash_attention_registry
 from flashinfer.runtime import get_global_registry, kernel_registry_scope
 default = get_global_registry()
 with kernel_registry_scope(flash_attention_registry(default)):
-    assert len(get_global_registry().descriptors()) == 82
-assert len(default.descriptors()) == 81
+    assert len(get_global_registry().descriptors()) == 85
+assert len(default.descriptors()) == 84
 '''
     result = subprocess.run([sys.executable, "-B", "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr

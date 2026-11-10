@@ -17,7 +17,9 @@ python3 -m pip install --force-reinstall --no-deps \
 (cd tests && python3 matmul_bias_silu.py)
 ```
 
-普通 `bdist_wheel` 默认执行生产登记表中两条 Ascend C 算子的 AOT 编译，并把 host 库、设备二进制、manifest 和 Torch/ACLNN C++ 适配库一起打进 wheel。构建会自动查找 `3rdparty/catlass` 或相邻的 `../catlass-ref`，仍校验固定 revision 和头文件摘要。CANN 调用路径使用已安装的 CANN 运行时；Triton 路径沿用其现有编译方式。
+普通 `bdist_wheel` 默认执行生产登记表中三条 Ascend C 算子的 AOT 编译，并把 host 库、设备二进制、manifest 和 Torch/ACLNN C++ 适配库一起打进 wheel。构建会自动查找 `3rdparty/catlass` 或相邻的 `../catlass-ref`，仍校验固定 revision 和头文件摘要。CANN 调用路径使用已安装的 CANN 运行时；Triton 路径沿用其现有编译方式。
+
+新增 `flashinfer.matmul(a, b, out=out, backend=...)` 使用同一接口路由到 CANN、native Ascend C AOT 或 Triton JIT；共同输入、内存与编译策略见 [Matmul 多后端说明](docs/matmul-backends.md)。native Matmul 的 AOT 包缺失时明确失败。
 
 源码包选项为 `FLASHINFER_AOT_ALL=0`；缺少编译依赖时，默认 AOT 构建会报错。
 
@@ -82,7 +84,7 @@ test "$(git -C "$FLASHINFER_CATLASS_ROOT" rev-parse HEAD)" = \
 
 本机版本为 torch `2.10.0+cpu`、torch_npu `2.10.0.post7`，设备自检应得到 `True 8`。看不到 NPU 时先修复环境。
 
-构建会严格检查工具链身份。可提前检查当前工具链是否与两条生产 spec 一致：
+构建会严格检查工具链身份。可提前检查当前工具链是否与全部生产 spec 一致：
 
 ```bash
 "$FI_BUILD_PYTHON" -B - <<'PY'
@@ -102,7 +104,7 @@ PY
 
 ## 2. 用全新缓存重新编译并打包
 
-默认构建或显式 `FLASHINFER_AOT_ALL=1` 都会编译当前登记的两条生产 Ascend C 算子并收入同一个 wheel。下面每次创建新输出目录和新缓存，便于确认这次确实重新编译。
+默认构建或显式 `FLASHINFER_AOT_ALL=1` 都会编译当前登记的三条生产 Ascend C 算子并收入同一个 wheel。下面每次创建新输出目录和新缓存，便于确认这次确实重新编译。
 
 ```bash
 cd "$FI_REPO"
@@ -127,9 +129,9 @@ test -f "$FI_WHEEL"
 echo "wheel: $FI_WHEEL"
 ```
 
-日志中应有两个 `disk_cache_hit: false`，汇总为 `requested=2, built=2, failed=0, skipped=0`。`wheel-build.exitcode` 必须为 `0`。
+日志中应有三个 `disk_cache_hit: false`，汇总为 `requested=3, built=3, failed=0, skipped=0`。`wheel-build.exitcode` 必须为 `0`。
 
-再检查 wheel 确实包含两个 AOT 包：
+再检查 wheel 确实包含三个 AOT 包：
 
 ```bash
 "$FI_BUILD_PYTHON" -B - <<'PY'
@@ -140,7 +142,7 @@ with zipfile.ZipFile(os.environ["FI_WHEEL"]) as wheel:
     manifests = [name for name in wheel.namelist()
                  if name.startswith("flashinfer/data/op_packages/")
                  and name.endswith("/manifest.json")]
-    assert len(manifests) == 2, manifests
+    assert len(manifests) == 3, manifests
     print("AOT packages:", len(manifests))
     print(*manifests, sep="\n")
 PY
@@ -200,7 +202,7 @@ cat "$FI_RUN_DIR/selftest.log"
 test "$FI_SELFTEST_RC" -eq 0
 ```
 
-当前两条生产算子的验收输出应以 `Summary: 2 PASS, 0 FAIL, 0 SKIP (total=2)` 结束。`SKIP` 表示验收未完成，需要检查运行依赖、设备或 wheel 中的 AOT 产物。
+当前三条生产算子的验收输出应以 `Summary: 3 PASS, 0 FAIL, 0 SKIP (total=3)` 结束。`SKIP` 表示验收未完成，需要检查运行依赖、设备或 wheel 中的 AOT 产物。
 
 ## 5. 自己用 torch Tensor / torch.ops 调用并对照 CPU
 
@@ -299,7 +301,7 @@ python -B wheel_smoke.py rmsnorm
 | --- | --- |
 | `toolchain fingerprint does not match` | 确认构建解释器和 CANN、`cmake`、`c++`；按仓库规则确认后再重新冻结 spec |
 | catlass 依赖缺失 | 检查第 1 步的 `FLASHINFER_CATLASS_ROOT` 和固定 Git revision |
-| wheel 没有两个 AOT manifest | 检查是否遗留 `FLASHINFER_AOT_ALL=0` 或空值，以及安装的 wheel 是否来自本次输出目录 |
+| wheel 没有三个 AOT manifest | 检查是否遗留 `FLASHINFER_AOT_ALL=0` 或空值，以及安装的 wheel 是否来自本次输出目录 |
 | `flashinfer.__file__` 指向源码树 | 在源码目录外执行，使用新 conda 环境并 `--force-reinstall` 安装本次 wheel |
 | `GetWorkspaceSize returned 561002` | 检查 CANN 运行时变量及继承的 `ASCEND_CUSTOM_OPP_PATH`；日志中的具体原因需要进一步定位 |
 | `process-scoped` / package identity 冲突 | 同 vendor 的新 generation 或重复 op/API 不可覆盖；升级该算子后启动新进程 |

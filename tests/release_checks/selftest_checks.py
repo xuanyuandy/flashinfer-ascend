@@ -70,7 +70,7 @@ def test_new_production_op_without_numerical_case_fails():
 
 
 @pytest.mark.parametrize("statuses, exit_code", [
-    (("PASS", "PASS"), 0), (("PASS", "SKIP"), 1), (("FAIL", "PASS"), 1),
+    (("PASS", "PASS", "PASS"), 0), (("PASS", "SKIP", "PASS"), 1), (("FAIL", "PASS", "PASS"), 1),
 ])
 def test_cli_visits_registry_and_never_counts_skip_as_pass(
     monkeypatch, capsys, statuses, exit_code,

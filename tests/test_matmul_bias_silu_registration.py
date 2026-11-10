@@ -191,8 +191,9 @@ def test_list_kernels_reports_runtime_aot_without_compiler(monkeypatch, capsys):
     assert cli.main(["list-kernels"]) == 0
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID
     lines = capsys.readouterr().out.strip().splitlines()
-    assert len(lines) == 2
+    assert len(lines) == 3
     assert set(lines) == {
+        "ascendc/gemm/matmul/native/op_package/Ascend950\tgemm.matmul\tascendc\taot (runtime discovery)",
         MATMUL_BIAS_SILU_KERNEL_ID + "\tgemm.matmul_bias_silu\tascendc\taot (runtime discovery)",
         FLASH_ATTENTION_KERNEL_ID + "\tascendc.single_prefill_catlass\tascendc\taot (runtime discovery)",
     }

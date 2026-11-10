@@ -1,6 +1,7 @@
 """Real NPU checks for opt-in FA; invoked in fresh processes by pytest."""
 
 import json
+import os
 import sys
 
 
@@ -66,6 +67,10 @@ def check_automatic_routing(registry, runner):
 def run(mode, cache_only=False):
     import torch
     import torch_npu
+
+    if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+        torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
+
     import flashinfer
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID
     from flashinfer.jit import TritonBackend
@@ -131,7 +136,7 @@ def run(mode, cache_only=False):
         torch.testing.assert_close(actual, reference.double(), atol=atol, rtol=rtol)
         errors[str(i)] = float((actual - reference.double()).abs().max())
     assert get_global_registry() is default
-    assert len(default.descriptors()) == 81
+    assert len(default.descriptors()) == 84
     if mode != "cold":
         assert registry.get(FLASH_ATTENTION_KERNEL_ID).runner.provenance.source == "aot"
     print(json.dumps(dict(result="PASS", mode=mode, numerical_checks=len(observations),

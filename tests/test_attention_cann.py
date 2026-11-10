@@ -15,8 +15,8 @@ from flashinfer.runtime import SchemaError
 def npu():
     import torch_npu  # noqa: F401
     assert torch.npu.is_available(), "public operator UT requires an available NPU"
-    assert "950" in torch.npu.get_device_name(0), "requires verified Ascend950"
-    return torch.device("npu:0")
+    assert "950" in torch.npu.get_device_name(torch.npu.current_device()), "requires verified Ascend950"
+    return torch.device("npu", torch.npu.current_device())
 
 
 @pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16])

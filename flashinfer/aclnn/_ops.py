@@ -24,6 +24,30 @@ def _matmul(a, b, bias, *, backend="auto", kernel_id=None):
     return _matmul_bias_silu_impl(a, b, bias, backend=backend, kernel_id=kernel_id)
 
 
+def _plain_matmul(a, b, *, backend=None, kernel_id=None):
+    from flashinfer.gemm import _matmul_impl
+    return _matmul_impl(a, b, backend=backend, kernel_id=kernel_id)
+
+
+def _plain_matmul_out(a, b, out, *, backend=None, kernel_id=None):
+    from flashinfer.gemm import _matmul_impl
+    _matmul_impl(a, b, out, backend=backend, kernel_id=kernel_id)
+
+
+def _plain_matmul_out_meta(a, b, out, *, backend=None, kernel_id=None):
+    from flashinfer._matmul import AOT_KERNEL_ID
+    _metadata(AOT_KERNEL_ID, (a, b, out))
+
+
+def _plain_matmul_meta(a, b, *, backend=None, kernel_id=None):
+    import torch
+    from flashinfer._matmul import output_metadata
+
+    prospective = output_metadata(a, b)
+    _plain_matmul_out_meta(a, b, prospective)
+    return torch.empty(prospective.shape, dtype=a.dtype, device=a.device)
+
+
 def _matmul_out(a, b, bias, out, *, backend="auto", kernel_id=None):
     from flashinfer.gemm import _matmul_bias_silu_impl
     _matmul_bias_silu_impl(a, b, bias, out=out, backend=backend, kernel_id=kernel_id)
@@ -76,6 +100,11 @@ def _attention_meta(q, k, v, causal=False, kv_layout="NHD", custom_mask=None, *,
 def _declarations():
     from flashinfer.jit.torch_library import AscendCOp
     return (
+        AscendCOp("flashinfer::matmul", '(Tensor a, Tensor b, *, str? backend=None, str? kernel_id=None) -> Tensor',
+                  _plain_matmul, _plain_matmul_meta),
+        AscendCOp("flashinfer::matmul_out",
+                  '(Tensor a, Tensor b, Tensor(a!) out, *, str? backend=None, str? kernel_id=None) -> ()',
+                  _plain_matmul_out, _plain_matmul_out_meta, ("out",)),
         AscendCOp("flashinfer::matmul_bias_silu", '(Tensor a, Tensor b, Tensor bias, *, str? backend="auto", str? kernel_id=None) -> Tensor',
                   _matmul, _matmul_meta),
         AscendCOp("flashinfer::matmul_bias_silu_out",

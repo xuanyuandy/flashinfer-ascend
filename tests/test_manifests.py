@@ -22,10 +22,11 @@ class ManifestTests(unittest.TestCase):
         from flashinfer.runtime import Backend, CompileMode, GraphCapability
 
         descriptors = load_kernel_manifest(packaged_kernel_manifest_path())
-        self.assertEqual(len(descriptors), 2)
+        self.assertEqual(len(descriptors), 3)
         self.assertEqual(
             {item.kernel_id for item in descriptors},
-            {MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID},
+            {MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID,
+             "ascendc/gemm/matmul/native/op_package/Ascend950"},
         )
         descriptor = next(item for item in descriptors
                           if item.kernel_id == MATMUL_BIAS_SILU_KERNEL_ID)

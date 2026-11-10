@@ -127,6 +127,17 @@ def _mm_bf16_cann(a, b, bias, out, out_dtype):
     return out
 
 
+def _matmul_cann(a, b, out):
+    """Write directly into the common output through the prebuilt CANN op."""
+    import torch
+    from .._matmul import validate_tensors
+
+    validate_tensors(a, b, out)
+    with torch.npu.device(a.device):
+        torch.mm(a, b, out=out)
+        torch.npu.current_stream(a.device).synchronize()
+
+
 def _bmm_bf16_cann(A, B, out, out_dtype):
     """``(b,m,k) @ (b,k,n) -> (b,m,n)``。"""
     import torch
@@ -171,7 +182,14 @@ def _segment_gemm_cann(x, weights, seg_indptr, weight_indices, weight_column_maj
 
 def gemm_descriptors() -> Tuple[KernelDescriptor, ...]:
     """CANN gemm 注册表。"""
+    from .._matmul import CANN_KERNEL_ID, contract
+
     return (
+        KernelDescriptor(
+            kernel_id=CANN_KERNEL_ID, backend=Backend.CANN,
+            compile_mode=CompileMode.NONE, capability=contract()[0].capability,
+            runner=_matmul_cann,
+        ),
         KernelDescriptor(
             kernel_id="cann/gemm/bmm_fp8_grouped_v1",
             backend=Backend.CANN,

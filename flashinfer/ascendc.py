@@ -97,7 +97,10 @@ def ascendc_descriptors():
             runner_factory=lambda module, loaded_spec, recipe=recipe: package_tensor_runner(
                 module, recipe, spec=loaded_spec,
             ),
-            jit_backend_factory=lambda recipe=recipe, spec=spec: _jit_backend(recipe, spec),
+            jit_backend_factory=(
+                (lambda recipe=recipe, spec=spec: _jit_backend(recipe, spec))
+                if recipe.allow_jit_fallback else None
+            ),
             package_peers=peers,
         )
         for descriptor, recipe, spec in _contracts().values()

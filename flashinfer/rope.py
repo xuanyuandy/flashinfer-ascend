@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import Optional, Union
 
 from .runtime import Backend, build_signature, current_hardware, dispatch
+from .runtime.runner import run_selected as _run_selected
 
 _OP_APPLY_ROPE = "rope.apply_rope_with_cos_sin_cache_inplace"
 _OP_APPLY_ROPE_OUT = "rope.apply_rope_with_cos_sin_cache"
@@ -72,7 +73,6 @@ def apply_rope_with_cos_sin_cache_inplace(
         signature, current_hardware(), backend=backend, kernel_id=kernel_id
     )
 
-    from .norm import _run_selected
 
     _run_selected(
         decision.kernel_id,
@@ -107,7 +107,6 @@ def _pos_ids_from_indptr(indptr, offsets):
 def _dispatch_rope(op, tensors, specializations, args, backend, kernel_id):
     signature = build_signature(op, tensors, specializations=specializations)
     decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
-    from .norm import _run_selected
 
     return _run_selected(decision.kernel_id, *args)
 

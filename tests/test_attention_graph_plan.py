@@ -21,9 +21,9 @@ from flashinfer.runtime.registry import KernelRegistry
 def npu():
     torch = pytest.importorskip("torch")
     pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(0):
+    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(torch.npu.current_device()):
         pytest.skip("requires verified Ascend950")
-    return torch.device("npu:0")
+    return torch.device("npu", torch.npu.current_device())
 
 
 def index(values, device="cpu"):

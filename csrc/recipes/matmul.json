@@ -1,0 +1,116 @@
+[
+  {
+    "recipe_id": "matmul",
+    "version": 2,
+    "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
+    "implementation": "native",
+    "target_soc": "Ascend950",
+    "npu_arch": "dav-3510",
+    "source": {
+      "language": "ascendc",
+      "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+      "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
+      "schema_version": 1
+    },
+    "sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+        "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
+        "schema_version": 1
+      }
+    ],
+    "headers": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/matmul/include/flashinfer_ascend/matmul_tiling.h",
+        "digest": "f632933ff778cd51043cfb97229932f6f4f733edc3fef4e8cca86b4bb62323ae",
+        "schema_version": 1
+      }
+    ],
+    "include_dirs": [
+      "csrc/kernels/ascendc/matmul/include"
+    ],
+    "dependencies": [],
+    "definitions": [],
+    "compile_options": [
+      "-O2"
+    ],
+    "link_options": [],
+    "device_entry": "fi_matmul",
+    "host_entry": "aclnnFiMatmul",
+    "launch_abi": "aclnn.matmul.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
+    "block_dim": 1,
+    "workspace_bytes": 0,
+    "task_type": "aic_only",
+    "sync_policy": "compiler_default",
+    "toolchain": "ascendc",
+    "output_kind": "op_package",
+    "output_adapter": "ascendc.op_package.v1",
+    "schema_version": 2,
+    "package_vendor": "flashinfer_matmul",
+    "package_op_type": "FiMatmul",
+    "host_sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/matmul/op_host/matmul.cpp",
+        "digest": "1ad8da216d52e8f3220fc8f1e0d4cd6b5fa5d8e7179e2d5ed5b20969f24e6f9e",
+        "schema_version": 1
+      }
+    ],
+    "tiling_host_entry": "FiMatmulTiling",
+    "workspace_host_entry": null,
+    "tensor_parameters": [
+      {
+        "name": "a",
+        "role": "input",
+        "dtype": "bfloat16",
+        "shape": [
+          "M",
+          "K"
+        ]
+      },
+      {
+        "name": "b",
+        "role": "input",
+        "dtype": "bfloat16",
+        "shape": [
+          "K",
+          "N"
+        ]
+      },
+      {
+        "name": "out",
+        "role": "output",
+        "dtype": "bfloat16",
+        "shape": [
+          "M",
+          "N"
+        ]
+      }
+    ],
+    "shape_constraints": [
+      {
+        "name": "M",
+        "minimum": 16,
+        "maximum": 256,
+        "multiple_of": 16
+      },
+      {
+        "name": "N",
+        "minimum": 16,
+        "maximum": 256,
+        "multiple_of": 16
+      },
+      {
+        "name": "K",
+        "minimum": 16,
+        "maximum": 256,
+        "multiple_of": 16
+      }
+    ],
+    "allow_jit_fallback": false
+  }
+]

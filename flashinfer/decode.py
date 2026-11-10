@@ -18,7 +18,7 @@ from .runtime import (
     dispatch,
     get_global_registry,
 )
-from .prefill import _run_selected
+from .runtime.runner import run_selected as _run_selected
 from .attention.single_decode_graph import SingleDecodeWithKVCacheWrapper
 
 _OP_DECODE = "attention.decode"

@@ -18,7 +18,7 @@ from .decode import (
 )
 from .cascade import merge_state, merge_states
 from .page import append_paged_kv_cache
-from .gemm import SegmentGEMMWrapper, bmm_bf16, bmm_fp8, mm_bf16, gemm_fp8_nt_groupwise, matmul_bias_silu
+from .gemm import SegmentGEMMWrapper, bmm_bf16, bmm_fp8, mm_bf16, gemm_fp8_nt_groupwise, matmul, matmul_bias_silu
 from .fused_moe import (
     RoutingMethodType,
     fp8_block_scale_moe,
@@ -91,6 +91,7 @@ __all__ = [
     "SegmentGEMMWrapper",
     "bmm_bf16",
     "matmul_bias_silu",
+    "matmul",
     "bmm_fp8",
     "mm_bf16",
     "gemm_fp8_nt_groupwise",

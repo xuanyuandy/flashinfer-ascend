@@ -1,12 +1,17 @@
 """Exercise Python/Torch production interfaces through the native ACLNN bridge."""
 
 import json
+import os
 import sys
 
 
 def run(case, dtype="float16"):
     import torch
     import torch_npu  # noqa: F401
+
+    if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+        torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
+
     import flashinfer
     from flashinfer.aclnn import _native
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID, MATMUL_BIAS_SILU_KERNEL_ID

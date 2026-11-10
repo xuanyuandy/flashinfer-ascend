@@ -329,16 +329,21 @@ class KernelExecutionBodyTests(unittest.TestCase):
 
         registry = get_global_registry()
         legacy = _builtin_descriptors()
-        self.assertEqual(len(legacy), 79)
-        self.assertEqual(len(registry.descriptors()), 81)
+        self.assertEqual(len(legacy), 81)
+        self.assertEqual(len(registry.descriptors()), 84)
         self.assertEqual(
             {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy},
-            {MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID},
+            {MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID,
+             "ascendc/gemm/matmul/native/op_package/Ascend950"},
         )
         for declaration in legacy:
             existing = registry.get(declaration.kernel_id)
             with self.subTest(kernel_id=existing.kernel_id):
                 self.assertEqual(replace(existing), existing)
+                if existing.kernel_id == "triton/gemm/matmul_v1/Ascend950":
+                    self.assertEqual(existing.source.language, "triton")
+                    self.assertEqual(existing.target_soc, "Ascend950")
+                    continue
                 self.assertIsNone(existing.source)
                 self.assertIsNone(existing.target_soc)
         production = registry.get(MATMUL_BIAS_SILU_KERNEL_ID)

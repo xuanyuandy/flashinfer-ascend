@@ -60,3 +60,12 @@
 - 测试是否通过：CI 或当前测试命令的输出。
 
 设计文档解释这些事实源的含义和约束，但不手工维护它们的动态统计值。
+
+## Matmul 与路由讲解
+
+- [Matmul 接口、登记和源码调用链](matmul-backends.md)：三后端共同契约、选型、编译和执行边界。
+- [Dispatcher 数据结构参考](generated/dispatcher-data-models.md)：从源码生成的类型、字段和协作关系。
+- [四页架构讲解](presentations/dispatcher.pptx) 与 [PDF 预览](presentations/dispatcher.pdf)：仅维护当前版本。
+
+文档生成入口为 `tools/build_dispatcher_slides.py` 和 `tools/inspect_dispatch_data_model.py`。
+文字提取、路由演示与产物检查结果写入 `build/dispatcher-docs/`；历史布局、测试流水和重复预览不进入文档树。

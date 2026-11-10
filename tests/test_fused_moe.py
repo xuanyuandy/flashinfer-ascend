@@ -722,7 +722,7 @@ class TestCutlassMoeCannNpu:
     def test_cutlass_cann_vs_fp64(self):
         torch = self.torch
         torch.manual_seed(0)
-        dev = "npu:0"
+        dev = torch.device("npu", torch.npu.current_device())
         seq, hidden, inter, num_e, top_k = 16, 64, 32, 4, 2
         x = torch.randn(seq, hidden, device=dev, dtype=torch.bfloat16)
         logits = torch.randn(seq, num_e)
@@ -752,7 +752,7 @@ class TestCutlassMoeCannNpu:
         """存在零 token 专家（空组）时结果仍正确。"""
         torch = self.torch
         torch.manual_seed(1)
-        dev = "npu:0"
+        dev = torch.device("npu", torch.npu.current_device())
         seq, hidden, inter, num_e = 8, 32, 16, 4
         x = torch.randn(seq, hidden, device=dev, dtype=torch.bfloat16)
         idx = torch.zeros(seq, 1, dtype=torch.long, device=dev)  # 全部路由到专家 0
@@ -772,7 +772,7 @@ class TestCutlassMoeCannNpu:
         """同一输入下 cann 与 reference 结果一致（bf16 容差）。"""
         torch = self.torch
         torch.manual_seed(2)
-        dev = "npu:0"
+        dev = torch.device("npu", torch.npu.current_device())
         seq, hidden, inter, num_e, top_k = 8, 32, 16, 3, 2
         x = torch.randn(seq, hidden)
         logits = torch.randn(seq, num_e)

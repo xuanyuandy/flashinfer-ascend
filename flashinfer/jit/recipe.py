@@ -136,8 +136,13 @@ class _Recipe:
     tiling_host_entry: Optional[str] = None
     workspace_host_entry: Optional[str] = None
     dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
+    allow_jit_fallback: bool = True
 
     def __post_init__(self):
+        if type(self.allow_jit_fallback) is not bool:
+            raise SchemaError("allow_jit_fallback must be a boolean")
+        if not self.allow_jit_fallback and (self.schema_version != 2 or self.output_kind != "op_package"):
+            raise SchemaError("AOT-only execution requires a v2 op_package recipe")
         if (type(self.schema_version) is not int or self.schema_version not in {1, 2}
                 or type(self.version) is not int or self.version < 1):
             raise SchemaError("unsupported BuildRecipe version")
@@ -309,6 +314,8 @@ class _Recipe:
 
     def to_dict(self):
         value = asdict(self)
+        if self.allow_jit_fallback:
+            value.pop("allow_jit_fallback")
         # An absent extension preserves every existing v1/v2 serialized identity.
         if not self.dtype_signatures:
             value.pop("dtype_signatures")

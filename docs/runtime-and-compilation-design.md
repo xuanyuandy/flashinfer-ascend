@@ -19,7 +19,7 @@ FlashInfer Ascend 面向昇腾 NPU 提供推理算子接口、实现选择机制
 
 ### 1.2 实现范围
 
-多实现选择是运行时提供的接入能力。当前内置生产登记中，同一逻辑 op 尚未接入多个 NPU 实现；部分 op 另有 reference 实现，reference 默认不参与普通自动选择。当前 CATLASS FA 仅有 Ascend C 候选，未与 CANN single-prefill 或 Triton FA 建立统一候选集合。
+多实现选择是运行时提供的接入能力。当前内置生产登记中，同一逻辑 op 尚未接入多个 NPU 实现；部分 op 另有 reference 实现，reference 默认不参与普通自动选择。默认生产 registry 中 CATLASS FA 仅有 Ascend C 候选；第 9.4 节的隔离 registry 已为同一入口加入 Triton FA，CANN single-prefill 尚未接入该候选集合。
 
 生产 Ascend C FA 与 MatmulBiasSiLU 已采用 AOT 优先、缺失时按策略 JIT 的产物解析机制。两者通过统一 Torch 注册与 C++ TorchNPU/ACLNN 桥执行。CANN 内置算子和现有 Triton 算子保留各自的执行适配。
 
@@ -320,6 +320,8 @@ C++ adapter 使用当前 NPU stream 和 TorchNPU `OpCommand::RunOpApi` 提交 ca
 
 FA 与 MatmulBiasSiLU 保持同步 eager、NOT_CAPTURABLE。FakeTensor 推导和 TorchNPU 队列接入不改变其图能力声明。
 
+Triton FA 在 task queue 开启的配置下也通过 C++ `OpCommand.SetCustomHandler.Run` 进入 TorchNPU Host 队列。它不经过 ACLNN，但与 Ascend C/ACLNN 路径最终都调用 `aclrtLaunchKernelWithHostArgs → rtsLaunchKernelWithHostArgs`。两条路径的内存归属、workspace、tilingData 传输、Host/设备提交、流同步及首次/暖调用实测，见 [FlashAttention 完整执行生命周期](flash-attention-call-chain.md#8-triton-与-ascend-c-的完整执行生命周期)。其中 `stream.stream(true)` 只排空 Host 提交；设备完成须由 Runtime 的 stream synchronize 确认。
+
 ## 8. FlashAttention 调用实例
 
 ### 8.1 支持域与身份
@@ -368,7 +370,7 @@ specializations = (("tensor_contract", "supported"),)
 | 签名与硬件 | [build_signature:104](../flashinfer/runtime/signature.py#L104)、[current_hardware:101](../flashinfer/runtime/hardware.py#L101) | 生成实际负载与硬件输入 |
 | 实现登记 | [get_global_registry:304](../flashinfer/runtime/registry.py#L304)、[ascendc_descriptors:88](../flashinfer/ascendc.py#L88) | 首次初始化元数据并绑定 lazy runner，不编译其他算子 |
 | 实现选择 | [catlass_prefill.py:58](../flashinfer/attention/catlass_prefill.py#L58) → [dispatch.py:130](../flashinfer/runtime/dispatch.py#L130) | 返回选中 kernel_id 与选择依据 |
-| 输出与调用 | [catlass_prefill.py:59](../flashinfer/attention/catlass_prefill.py#L59)、[_run_selected:11](../flashinfer/attention/catlass_prefill.py#L11) | 分配或复用 out，调用 descriptor.runner |
+| 输出与调用 | [catlass_prefill.py:59](../flashinfer/attention/catlass_prefill.py#L59)、[公共 run_selected](../flashinfer/runtime/runner.py#L7) | 分配或复用 out，调用 descriptor.runner |
 | AOT/JIT 解析 | [AotKernelRunner.resolve:108](../flashinfer/jit/runtime.py#L108)、[AotPackageIndex.find:235](../flashinfer/jit/discovery.py#L235) | 发现、匹配并加载产物，必要时按策略 JIT |
 | JIT 构建分支 | [_jit_backend:66](../flashinfer/ascendc.py#L66) → [build_and_load:123](../flashinfer/jit/build.py#L123) → [compile:258](../flashinfer/jit/backends.py#L258) → [compile_recipe:102](../flashinfer/jit/ascendc.py#L102) | 验证构建环境和输入，复用缓存或调用公共 driver |
 | Tensor adapter | [package_tensor_runner:32](../flashinfer/jit/tensor_adapter.py#L32)、[TorchOpPackageRunner.__call__:60](../flashinfer/jit/tensor_adapter.py#L60) | 校验已加载模块并进行执行边界检查 |
@@ -384,7 +386,7 @@ CANN 构建生成 `aclnnFiFlashAttentionGetWorkspaceSize` 与 launch host API；
 
 完成绑定后，runner 复用已加载模块及 native API 绑定。调用仍需构造或校验输入元数据，调度决定可命中缓存；真实执行仍包括 Tensor 转换、host tiling/workspace 查询及 launch。未提供 out 时仍分配输出。
 
-此接口未缓存 ACLNN executor 或 tiling 结果，也不要求用户先执行 plan。其编译缓存与 batch wrapper 的 plan 资源分别管理。
+本仓未为此接口缓存 ACLNN executor 或 tiling 结果，也不要求用户先执行 plan。CANN 内部可以复用 tiling 结果；本次同 shape 暖调用仍发起 GetWorkspaceSize，但未再次进入 host tiling 回调。其编译缓存、CANN 内部复用和 batch wrapper 的 plan 资源分别管理。
 
 ## 9. 独立 JIT FA 的扩展设计
 

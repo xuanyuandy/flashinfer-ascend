@@ -7,6 +7,7 @@ Use TORCH_LOGS=graph_breaks to also observe the deliberate positive control.
 
 import argparse
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -173,6 +174,9 @@ def main():
     enable_torch_library(ascendc_ops=(declaration,))
     namespace_check(torch, before)
     import torch_npu  # noqa: F401
+
+    if "FLASHINFER_TEST_NPU_DEVICE" in os.environ:
+        torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
 
     if not torch.npu.is_available():
         raise RuntimeError("T14 evidence requires NPU")

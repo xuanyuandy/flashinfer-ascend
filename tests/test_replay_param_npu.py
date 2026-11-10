@@ -18,7 +18,7 @@ def npu():
     torch_npu = pytest.importorskip("torch_npu")
     if not torch.npu.is_available():
         pytest.skip("requires NPU")
-    if "950" not in torch.npu.get_device_name(0):
+    if "950" not in torch.npu.get_device_name(torch.npu.current_device()):
         pytest.skip("requires the verified Ascend950 FIA path")
     required = ("NPUGraph", "graph", "ExternalEvent", "graph_task_group_begin",
                 "graph_task_group_end", "graph_task_update_begin", "graph_task_update_end")
@@ -26,7 +26,7 @@ def npu():
         pytest.skip("requires torch_npu task-group parameter updates")
     if not hasattr(torch_npu._C, "_NPUTaskGroupHandle"):
         pytest.skip("requires NPU task-group handles")
-    return torch.device("npu:0")
+    return torch.device("npu", torch.npu.current_device())
 
 
 @pytest.mark.parametrize("dtype", ["float16", "bfloat16"])

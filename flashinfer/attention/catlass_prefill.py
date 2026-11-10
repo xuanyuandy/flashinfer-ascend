@@ -5,11 +5,8 @@ ABI. The reserved ``attention.*`` domain binds the separate Attention POD ABI;
 this standalone eager package does not claim that framework integration.
 """
 
-from ..runtime import build_signature, current_hardware, dispatch, get_global_registry
-
-
-def _run_selected(kernel_id, *tensors):
-    return get_global_registry().get(kernel_id).runner(*tensors)
+from ..runtime import build_signature, current_hardware, dispatch
+from ..runtime.runner import run_selected as _run_selected
 
 
 def single_prefill_with_kv_cache_catlass(

@@ -76,6 +76,15 @@ def _matmul_bias_silu(torch, kernel_id):
     return _compare(torch, actual, expected, atol=0.008, rtol=0.008)
 
 
+def _matmul(torch, kernel_id):
+    from .gemm import matmul
+
+    a = (torch.randn(32, 48) * 0.25).bfloat16()
+    b = (torch.randn(48, 64) * 0.25).bfloat16()
+    actual = matmul(a.npu(), b.npu(), kernel_id=kernel_id)
+    return _compare(torch, actual, a.double() @ b.double(), atol=0.008, rtol=0.008)
+
+
 def _flash_attention(torch, kernel_id):
     from .attention.catlass_prefill import single_prefill_with_kv_cache_catlass
 
@@ -100,6 +109,7 @@ def _flash_attention(torch, kernel_id):
 # This maps numerical oracles, not the operator inventory: every registry entry
 # is visited, and a newly registered op without an oracle fails explicitly.
 _NUMERICAL_CASES = {
+    "gemm.matmul": _matmul,
     "gemm.matmul_bias_silu": _matmul_bias_silu,
     "ascendc.single_prefill_catlass": _flash_attention,
 }

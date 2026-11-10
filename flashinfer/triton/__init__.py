@@ -15,5 +15,6 @@ from ..runtime.schema import KernelDescriptor
 def triton_descriptors() -> Tuple[KernelDescriptor, ...]:
     """Triton backend 的内置 kernel 注册表。"""
     from .norm import norm_descriptors
+    from .gemm import gemm_descriptors
 
-    return norm_descriptors()
+    return norm_descriptors() + gemm_descriptors()
