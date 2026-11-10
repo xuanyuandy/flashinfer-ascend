@@ -63,6 +63,7 @@
 
 ## Matmul 与路由讲解
 
+- [算子接入指南与交付清单](adding-a-custom-operator.md)：共同接入契约、三后端注册与构建交付、按阶段验收。
 - [Matmul 接口、登记和源码调用链](matmul-backends.md)：三后端共同契约、选型、编译和执行边界。
 - [Dispatcher 数据结构参考](generated/dispatcher-data-models.md)：从源码生成的类型、字段和协作关系。
 - [四页架构讲解](presentations/dispatcher.pptx) 与 [PDF 预览](presentations/dispatcher.pdf)：仅维护当前版本。

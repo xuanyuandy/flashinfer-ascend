@@ -1,13 +1,131 @@
-# 新增一个自定义算子：操作指南
+# 算子接入指南：统一接口与多后端交付
 
-> 面向要往本仓接入自研 Ascend C 算子的开发者。
-> 本文讲**怎么做**与**会踩什么坑**；完整的交付件对照表见
+> 面向接入 CANN/第三方 API、Ascend C AOT、Triton JIT 实现的开发者。
+> §0 给出共同接入流程与交付清单；§1–7 详述自研 Ascend C 的实现与构建。
+> Ascend C 历史交付件对照表见
 > `docs/reports/custom-operator-onboarding.md` §4（native v2 / catlass v2 双列，33 项），
 > 契约字段语义见 `docs/reports/ascendc-contract-v2.md`。
 >
 > 已有两个可照抄的范本：
 > - **native v2**：`matmul_bias_silu`（`silu(A@B+bias)`，BF16）
 > - **catlass v2**：`flash_attention`（迁自 catlass `49_ascend950_flash_attention_infer`）
+
+## 0. 多后端接入流程与必交件
+
+### 0.1 先确定是新增算子，还是给已有算子增加后端
+
+新增算子要交付公共接口、元数据规则、Torch schema/FakeTensor、后端实现及验收。
+给已有算子增加后端时，复用同一个公共接口、输出准备和 Tensor 调用约定；
+增加描述记录和 runner，不再复制一套 facade 或在 facade 中按 backend 写执行分支。
+模型调用方始终使用 `flashinfer.<op>(..., backend=...)`。
+
+以 Matmul 为例，公共层统一处理 `(a, b, out)` 的 shape、dtype、device、layout、
+输出分配和重叠检查。各 runner 使用原始输入及同一个输出对象，负责自己的
+host tiling、workspace、加载/编译和 kernel launch。不能为适配某个 backend
+悄悄转换输入、重新分配用户输出或复制另一份计算结果。
+
+```mermaid
+flowchart LR
+    P[实现提供方] --> K[KernelDescriptor]
+    K --> R[KernelRegistry]
+    S[InputSignature + HardwareSignature] --> D[dispatch]
+    R --> D
+    D --> I[DispatchDecision.kernel_id]
+    I --> O[公共层准备输出]
+    O --> E["run_selected: Registry.get(id).runner(...)"]
+    R --> E
+    E --> B[CANN API / AOT runner / Triton JIT runner]
+```
+
+`dispatch` 先查决策缓存；未命中时，按同一 `op` 取得候选，完成 backend、能力、
+硬件与 JIT 策略过滤，再用有效 tuning 或确定性规则选择来源栈及栈内实现。
+登记顺序不决定选型顺序，指定 backend 也不等于指定某个唯一 kernel；需要锁定实现时用
+`kernel_id`，仍须通过兼容性检查。执行入口见 `flashinfer/runtime/runner.py`。
+
+### 0.2 三类后端共同交付件
+
+| 交付件 | 必须明确或实现的内容 | Matmul 范本 / 验收位置 |
+| --- | --- | --- |
+| 数学与输入/输出契约 | 语义、参数顺序、支持的 shape/dtype/layout/SoC、输出与 alias/mutation 规则、误差容差 | `docs/matmul-backends.md`、`flashinfer/_matmul.py` |
+| 公共入口与元数据 | 公共 API、顶层导出、`InputSignature`，未提供 out 时的预期输出元数据；合法选型后统一准备输出 | `flashinfer/gemm.py`、`flashinfer/__init__.py` |
+| Torch 适配 | 新算子交付具名 schema、PrivateUse1 实现及 FakeTensor 规则；已有算子加后端复用既有适配，避免回调 facade 造成递归 | `flashinfer/aclnn/_ops.py`；其他域沿用各自已有的 Torch 接入口 |
+| 描述记录与汇总入口 | 唯一 `kernel_id`、共同 `op`、`backend`、`capability`、`compile_mode`、可调用的 `runner`；按需补 source、target、workspace、constraints 和 ABI | `flashinfer/runtime/schema.py`、`flashinfer/runtime/registry.py` |
+| 执行适配 | 与同 op 的其他实现使用相同 Tensor/输出约定；正确的 device、当前 stream、workspace 和资源生命周期；缺依赖明确失败 | 下表所列的 backend runner；不另造 Registry 或通用 loader |
+| 路由与元数据 UT | 显式/自动路由、非法输入、未选中后端不执行、不支持输入在分配/编译前拒绝、FakeTensor 不执行 kernel | `tests/test_matmul.py` |
+| 设备验收脚本与测试 | 同一输入/shape/out 逐后端调用，独立 golden、误差统计、stream/队列、编译与缓存证据；子进程退出码也必须为零 | `tests/matmul_acceptance.py`、`tests/test_matmul_real.py` |
+| 安装与使用说明 | 包内代码/产物齐全，干净安装后的调用或 selftest、支持边界与未验证项；原始测试输出放 build/ 或 CI | `flashinfer/selftest.py`、`README-wheel-conda.md` |
+
+这些是交付职责，不要求每次都新建对应文件。已有公共入口、Torch schema、执行器、
+构建/缓存/加载器和依赖解析应直接复用。仅新增源码文件或仅登记 descriptor 均未完成接入。
+
+### 0.3 每个后端分别交付什么
+
+| 内容 | CANN / 已有第三方 API 直通 | 本仓 Ascend C AOT | Triton JIT |
+| --- | --- | --- | --- |
+| 实现源码 | 薄 runner，调用已安装的 `torch`/`torch_npu` API；说明依赖与适用环境 | `csrc/kernels/ascendc/<name>/op_host/`、`op_kernel/`、`include/`；host/device 共享布局、OpDef、tiling/workspace 回调 | `flashinfer/triton/<name>.py` 的 lazy runner；独立 `@triton.jit` kernel 源码 |
+| 注册来源 | Python `KernelDescriptor`；如 `flashinfer/cann/gemm.py` | `flashinfer/data/kernels/registry.json` 中的 descriptor | Python descriptor；如 `flashinfer/triton/gemm.py` |
+| 构建与身份 | 本仓 `compile_mode=NONE`；CANN 使用厂商预编译包，第三方说明其真实构建/运行依赖 | v2 `csrc/recipes/<name>.json`、源码/依赖摘要、`ascendc_specs.json` 冻结声明；`compile_mode=AOT` | `SourceRef` 及源码摘要、目标 SoC、`JitSpec`、signature/constexpr/options、编译环境与缓存身份；`compile_mode=JIT` |
+| runner 绑定 | descriptor 直接绑定 Python callable | `ascendc_descriptors()` 调用 `bind_aot_kernel()` 绑定 `AotKernelRunner`；包加载后由 factory 创建 Tensor runner | descriptor 绑定可调用的 lazy runner，执行时通过共享 build store 编译/加载并缓存模块 |
+| 安装交付 | Python 包及明确的 CANN/TorchNPU/第三方依赖 | 随 wheel 提供经过验证的 op_package、元数据及原生 TorchNPU 桥；只有源码的 wheel 无法满足 AOT-only 运行 | 随 Python 包提供 kernel 源码，运行环境具备匹配的 Triton/CANN 工具链；JIT 缓存留在本地 |
+| backend 专项验收 | 真实 API 及数值、依赖缺失明确失败、本仓编译计数为零 | AOT 命中且编译器不可见；缺包/损坏、ABI、workspace、队列与发布包安装验证 | 真实冷编译、进程内复用、新进程校验后磁盘命中、源码/配置身份变化拒绝旧缓存或重新编译、冷缓存缺工具链明确失败 |
+
+`compile_mode=NONE` 仅表示本仓无构建步骤，不能据此推断第三方 API 内部没有 JIT。
+自研算子使用本仓 `Backend.ASCENDC` 时按上述 AOT 流程登记；名称中的“自定义”不代表
+必须使用 `Backend.CUSTOM`。后者是运行时用户扩展入口，要求 `custom/` 命名空间与
+`register_custom()`，普通 auto 路由还受 custom opt-in 策略控制。
+独立第三方仓若以 `Backend.EXTERNAL` 接入，交付其自有命名空间及 runner，使用
+`register_external()`；已冻结 Registry 不能再用普通 `register()` 追加内置项。
+
+### 0.4 Descriptor 如何进入同一个 Registry
+
+| 路线 | 作者需要接上的登记链路 |
+| --- | --- |
+| CANN | `flashinfer/cann/<domain>.py` 的 descriptors 函数 → `flashinfer/cann/__init__.py:cann_descriptors()` → `_builtin_descriptors()` |
+| Triton | `flashinfer/triton/<domain>.py` 的 descriptors 函数 → `flashinfer/triton/__init__.py:triton_descriptors()` → `_builtin_descriptors()` |
+| Ascend C AOT | `flashinfer/data/kernels/` 下的 registry/spec JSON → `flashinfer/ascendc.py:_contracts()` 按 kernel_id 关联并校验 → `ascendc_descriptors()` 绑定 runner |
+
+`get_global_registry()` 首次构造 `_builtin_descriptors() + ascendc_descriptors()`，统一登记后冻结。
+CANN 和 Triton 各有一个 `gemm_descriptors()`，它们是不同模块的函数；共同的
+`op="gemm.matmul"` 使记录参与同一次选型，唯一 `kernel_id` 区分具体实现。
+新增领域文件时要显式接入上表汇总函数，仅存在同名函数不会自动发现。
+已有领域只需向已有返回集合增加记录，通常无需改 Registry 核心代码。
+登记阶段应保持 import-safe：不导入可选设备 provider，不探测编译器或创建设备 Tensor；
+这些动作延迟到选中 runner 后按需执行。
+
+AOT 的 JSON 无法保存 Python callable，因此由绑定层补齐 `runner`；最终进入 Registry
+的仍是同一种 `KernelDescriptor`。recipe 负责**怎么构建**，registry manifest 负责
+**运行时可选择的实现与能力**，冻结 spec 负责**构建与产物身份**，三者不能互相替代。
+改源码/头文件要更新摘要，改 descriptor/recipe 也要重新冻结；命令见 §1.4。
+新增 kernel 如触及既有精确清单，先按 `AGENTS.md` 取得确认，再保持精确集合更新断言。
+
+可以先检查记录是否进入同一个 op 的目录；`callable` 仅证明已绑定，不能证明产物存在或数值正确：
+
+```python
+from flashinfer.runtime.registry import get_global_registry
+
+for descriptor in get_global_registry().descriptors(op="gemm.matmul"):
+    print(descriptor.kernel_id, descriptor.backend.value,
+          descriptor.compile_mode.value, callable(descriptor.runner))
+```
+
+### 0.5 路由、编译与执行的验收边界
+
+| 验收面 | 通过条件 |
+| --- | --- |
+| 指定 backend / kernel_id | 兼容时选择对应记录，不兼容明确报错；不会静默换 backend，runner 执行异常也不会按 fallback_chain 逐个重试 |
+| 缺省 backend | 测试要明确全局策略；`backend=None` 读取配置，显式 `auto` 使用自动选型。BF16/FP16 分流先按 capability 过滤，多个兼容候选再调优/排序 |
+| shape×dtype 级联 | 在兼容性阶段通过契约、signature 特化和 constraints 表达，在 tuning/排序之前拒绝；字段不足时先扩契约及校验，不能选中后才修输入 |
+| 公共能力域 | 公共入口、输出元数据和相应 runner 都实际支持新增输入。仅把 descriptor 改为 FP16 不构成 FP16 接入；当前 Matmul 三后端共同域仍为 BF16 |
+| AOT-only | recipe 设 `allow_jit_fallback=false`；缺包时即使全局允许 JIT 也明确失败，真实编译计数为零。允许 miss 后 JIT 的算子才验收对应回落场景 |
+| Triton 缓存 | 分别验证冷编译、进程内命中、新进程磁盘命中。禁用实际编译器证明复用缓存；`FLASHINFER_NPU_JIT_DISABLE=1` 会排除普通 `compile_mode=JIT` 选型，不能混为一种测试 |
+| Tensor 与提交 | 相同调用保留输入/输出指针，核对数值及调用方的当前 device/stream；支持 TorchNPU 队列的路径验证相应队列模式。共享 stream 不等于相同 RTS 入口或物理队列 |
+| 图与性能 | 未验证 capture/replay 的实现保持 `NOT_CAPTURABLE`；torch.compile、异步、autograd 分别提供证据。没有同口径测量时不宣称性能优势 |
+
+交付前按“契约 → 后端源码/适配 → 描述与汇总 → 构建/打包 → 路由 UT → 真机数值与缓存/错误路径
+→ 干净安装 → 回归”完成验收。支持域、源码与测试应同时审查；实际命令、退出码、JUnit、
+skip 原因和未验证项保存到 `build/` 或 CI，不再复制多份时点报告到 docs。
+可执行例子见 [Matmul 接口与构建验收](matmul-backends.md)，核心字段定义见
+[Dispatcher 数据结构参考](generated/dispatcher-data-models.md)。以下详细步骤针对 Ascend C。
 
 ## 1. 先明确接入契约与实现
 
@@ -138,6 +256,9 @@ Ascend C 生产接口统一通过 Torch 算子接入，参考 [Torch/ACLNN 接�
 
 七个场景是硬门槛，可直接照 `tests/test_flash_attention_real.py` 的结构套用：
 
+其中“产物缺失 + 允许 JIT”仅适用于 recipe 允许 JIT 回落的实现；AOT-only 实现
+必须验收“全局 JIT 允许/禁止时，缺包均失败且不编译”，参照 `tests/test_matmul_real.py`。
+
 | # | 场景 | 期望 |
 |---|---|---|
 | 1 | 数值对 golden | 多组 shape，给出误差与容差 |
@@ -148,11 +269,12 @@ Ascend C 生产接口统一通过 Torch 算子接入，参考 [Torch/ACLNN 接�
 | 6 | 超出 envelope | 在 **dispatch 阶段**拒绝，不得静默算错 |
 | 7 | 外部依赖缺失（catlass 场景） | 构建解析阶段明确报错 |
 
-另外两条全局要求：
+日常与交付回归分别使用下列入口，所有实际执行用例都须为零失败、零跳过：
 
 ```bash
-python -B -m pytest -p no:cacheprovider -q                 # 0 failed
-python -B -m pytest -p no:cacheprovider -q -m real_compile # 0 failed, 0 skipped
+python -B tools/run_regression.py --profile quick
+python -B tools/run_regression.py --profile full
+# full 已包含 real_compile；不紧接着重复相同编译矩阵。
 ```
 
 ## 5. 扩大 envelope 时
@@ -207,7 +329,7 @@ FA 的公共函数、kernel_id、ACLNN Tensor 参数顺序和 tiling 数据布�
 这些不是"你没做对"，是契约本身还没有：
 
 - **数据内容驱动的 host tiling**（依赖张量里的值，如变长 `actual_seq_lengths`）
-- **多 package identity**（单进程只能激活一个）
+- **已激活包的同名热替换或追加 vendor**（须新进程；首次激活前声明的互不冲突包可共存）
 - **CANN 运行时版本兼容校验**（只校验 target/spec，不比较当前 CANN 版本）
 - **生产算子的 aclgraph 入图**（目前仅 single-decode 一条，且口径很窄）
 
