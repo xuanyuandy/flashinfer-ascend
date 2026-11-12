@@ -8,14 +8,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
+      "locator": "csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp",
       "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp",
         "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
         "schema_version": 1
       }
@@ -23,39 +23,39 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel.h",
-        "digest": "4e729565d1035e17cc9fc118dccd86248bf83b147dff33736f27d790f899c814",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/include/CANN_LICENSE.h",
+        "digest": "06f070fb72f5fcd2e58e72813a10182edcb76e87177d6d4c7eccf2ca654deaf5",
         "schema_version": 1
       },
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel_utils.h",
-        "digest": "17a78609674d72d71c75eefaab2d8cce99ab2b398ad46e603f1999a49b10ef09",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/op_host/fai_tiling.h",
-        "digest": "c606564e57045621c7b6e28e9019d391c131a07baa8573a561307060be940175",
-        "schema_version": 1
-      },
-      {
-        "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/include/tiling_data_def.h",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/include/tiling_data_def.h",
         "digest": "dd5639fda933be255cb160df44ea3efb1c29e7be1edfe53bd16d2b559911a5ea",
         "schema_version": 1
       },
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/include/CANN_LICENSE.h",
-        "digest": "06f070fb72f5fcd2e58e72813a10182edcb76e87177d6d4c7eccf2ca654deaf5",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/op_host/fai_tiling.h",
+        "digest": "c606564e57045621c7b6e28e9019d391c131a07baa8573a561307060be940175",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/op_kernel/fai_kernel.h",
+        "digest": "4e729565d1035e17cc9fc118dccd86248bf83b147dff33736f27d790f899c814",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/op_kernel/fai_kernel_utils.h",
+        "digest": "17a78609674d72d71c75eefaab2d8cce99ab2b398ad46e603f1999a49b10ef09",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/flash_attention/op_kernel",
-      "csrc/kernels/ascendc/flash_attention/op_host",
-      "csrc/kernels/ascendc/flash_attention/include"
+      "csrc/kernels/ascendc/attention/flash_attention/op_kernel",
+      "csrc/kernels/ascendc/attention/flash_attention/op_host",
+      "csrc/kernels/ascendc/attention/flash_attention/include"
     ],
     "dependencies": [
       {
@@ -84,18 +84,16 @@
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
     "schema_version": 2,
-    "package_vendor": "flashinfer_t4_flash_attention",
-    "package_op_type": "FiFlashAttention",
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp",
         "digest": "cc4c94200179f43850c1c24b127c63c4776d90892a0274dfb82e8f88803eb45d",
         "schema_version": 1
       }
     ],
-    "tiling_host_entry": "FiFlashAttentionTiling",
-    "workspace_host_entry": "FiFlashAttentionTiling",
+    "package_vendor": "flashinfer_t4_flash_attention",
+    "package_op_type": "FiFlashAttention",
     "tensor_parameters": [
       {
         "name": "q",
@@ -164,6 +162,8 @@
         "multiple_of": 128
       }
     ],
+    "tiling_host_entry": "FiFlashAttentionTiling",
+    "workspace_host_entry": "FiFlashAttentionTiling",
     "dtype_signatures": [
       [
         "float16",
@@ -177,6 +177,44 @@
         "bfloat16",
         "bfloat16"
       ]
+    ],
+    "extra_build_files": [
+      {
+        "language": "operator",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/LICENSE",
+        "digest": "cb282ac2b66d7d6734c3fb354db792b28cf23ab29fbc16d5cfd8bd542bedeb1e",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/attention/single_prefill_catlass/__init__.py",
+        "digest": "a5d797a026a496a23430dec9f0d501781da2c78a7ef18095fcdc48232116cc4f",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/attention/single_prefill_catlass/implementation.py",
+        "digest": "48ec620d572d20e05d83733098981612abde93dc6b5bdd5fd5f75f6a25590096",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/attention/single_prefill_catlass/runner.py",
+        "digest": "407e58ef24cfbfae9b4d408e103e0c6350008ce2c381f36b603ace29be2e49c9",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/attention/single_prefill_catlass/__init__.py",
+        "digest": "e98ae6a480aa335a4074af7b561f5a9aed5636812024a5d573903994774dbab9",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/attention/single_prefill_catlass/operator.py",
+        "digest": "423918bb6206a8943dfacf55bc1e30627d400c3d1d4f82601edabff70c6bb4d8",
+        "schema_version": 1
+      }
     ]
   }
 ]

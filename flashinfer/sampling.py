@@ -174,3 +174,8 @@ def chain_speculative_sampling(
         maybe_output_emitted_draft_token_num, deterministic, generator, seed,
         offset,
     )
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='sampling')

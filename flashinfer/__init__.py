@@ -141,3 +141,7 @@ __all__ = [
     "build_cache_key",
     "toolchain_fingerprint",
 ]
+
+
+from .operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals())

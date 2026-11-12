@@ -27,3 +27,8 @@ def append_paged_kv_cache(
         append_key, append_value, batch_indices, positions, paged_kv_cache,
         kv_indices, kv_indptr, kv_last_page_len, kv_layout,
     )
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='page')

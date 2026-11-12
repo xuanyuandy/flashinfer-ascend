@@ -1,0 +1,816 @@
+{
+  "schema_version": 2,
+  "operators": [
+    {
+      "name": "gelu_and_mul",
+      "domain": "activation",
+      "op": "activation.gelu_and_mul",
+      "module": "flashinfer.operators.activation.gelu_and_mul.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/activation/gelu_and_mul/__init__.py": "fc8ef6bd020d3a0d80d1f6aba97718e170bc92339e7cf970b4366c8e6db299fd",
+        "operators/activation/gelu_and_mul/operator.py": "ac01d029c663488e9afbe7aac6f1237939a4c0aa18a00ba9dd067ca15c2a7f61"
+      }
+    },
+    {
+      "name": "gelu_tanh_and_mul",
+      "domain": "activation",
+      "op": "activation.gelu_tanh_and_mul",
+      "module": "flashinfer.operators.activation.gelu_tanh_and_mul.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/activation/gelu_tanh_and_mul/__init__.py": "1c0812b0094bbfdea92840d361d771cb4c33a38de0c55c38b4fff85c07b1867c",
+        "operators/activation/gelu_tanh_and_mul/operator.py": "8a3e0891a4956b8508f611d4d6edb9a6917f4e8f10c03bc8b9a8adca47c1c321"
+      }
+    },
+    {
+      "name": "silu_and_mul",
+      "domain": "activation",
+      "op": "activation.silu_and_mul",
+      "module": "flashinfer.operators.activation.silu_and_mul.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/activation/silu_and_mul/__init__.py": "134bd0cebbefd4f2e9bd8877d75957d0a408842d5ab86403c723adb7de11bd53",
+        "operators/activation/silu_and_mul/operator.py": "74dd91994482112d2e0238041f67994d0314f931f9c10449d71f8f04a08239af"
+      }
+    },
+    {
+      "name": "batch_decode_paged",
+      "domain": "attention",
+      "op": "attention.batch_decode_paged",
+      "module": "flashinfer.operators.attention.batch_decode_paged.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/batch_decode_paged/__init__.py": "a5ad3a2619a93ee741644555c54c55384539d81438724e7c41114ee85d9440b3",
+        "operators/attention/batch_decode_paged/operator.py": "e77e1abafc3c8d6ab1a090248af870eaccfb949350243c63f7f9395e04bb6c3d"
+      }
+    },
+    {
+      "name": "batch_prefill_paged",
+      "domain": "attention",
+      "op": "attention.batch_prefill_paged",
+      "module": "flashinfer.operators.attention.batch_prefill_paged.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/batch_prefill_paged/__init__.py": "c9aa2be65558cada776ed48df0618723d860b5169b7f72ae0ea051974750a900",
+        "operators/attention/batch_prefill_paged/operator.py": "28b3b5ea212f07fee90390a1e7c0ec56a50586588a2234d1ffedb86ce150cdf6"
+      }
+    },
+    {
+      "name": "batch_prefill_ragged",
+      "domain": "attention",
+      "op": "attention.batch_prefill_ragged",
+      "module": "flashinfer.operators.attention.batch_prefill_ragged.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/batch_prefill_ragged/__init__.py": "54e981f63ab185b18ac873219b684f4f329a92840db56415b6d87bb2738f4a43",
+        "operators/attention/batch_prefill_ragged/operator.py": "b8b3d14d5e8cefab6202105708c277414c0b72a6cd0e81fb4dca3e97d23faaa1"
+      }
+    },
+    {
+      "name": "decode",
+      "domain": "attention",
+      "op": "attention.decode",
+      "module": "flashinfer.operators.attention.decode.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/decode/__init__.py": "1062feadaf3bc6adfad6f9209181dd44fd1e4636039788e282b011e0b1483cdd",
+        "operators/attention/decode/operator.py": "a062d1ff8564ed6566b15e7f69646c351633e1b934bdd087088daf029b89250c"
+      }
+    },
+    {
+      "name": "prefill",
+      "domain": "attention",
+      "op": "attention.prefill",
+      "module": "flashinfer.operators.attention.prefill.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/prefill/__init__.py": "6f6e266d6ddd49007ff471f8d32e84af210afaf6b7ea503c79767f81476dc6d8",
+        "operators/attention/prefill/operator.py": "a4f09b15aa1d800a8c1139de8dcf7b3dd2bef56829a50296799d5b04cf29d125"
+      }
+    },
+    {
+      "name": "single_decode",
+      "domain": "attention",
+      "op": "attention.single_decode",
+      "module": "flashinfer.operators.attention.single_decode.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/single_decode/__init__.py": "577a84cb1630d1038a2d4eaae27888e7810735821f88499dcc5c8b8b61dc6d6a",
+        "operators/attention/single_decode/operator.py": "81b46f051af2d302d8e9f7531a2fe4dc432feeb6ee53fdbe6ba0d4755818ecb0"
+      }
+    },
+    {
+      "name": "single_prefill",
+      "domain": "attention",
+      "op": "attention.single_prefill",
+      "module": "flashinfer.operators.attention.single_prefill.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/single_prefill/__init__.py": "996e02b59301ca9004b911852a599700895f9c1da8041d5e3a152cb89e395f24",
+        "operators/attention/single_prefill/operator.py": "700315ba129ba24e0fbbf7bfb7248b36c21dc452eb95cd925d8bb72c0a257e00"
+      }
+    },
+    {
+      "name": "single_prefill_catlass",
+      "domain": "attention",
+      "op": "ascendc.single_prefill_catlass",
+      "module": "flashinfer.operators.attention.single_prefill_catlass.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/attention/single_prefill_catlass/__init__.py": "e98ae6a480aa335a4074af7b561f5a9aed5636812024a5d573903994774dbab9",
+        "operators/attention/single_prefill_catlass/operator.py": "423918bb6206a8943dfacf55bc1e30627d400c3d1d4f82601edabff70c6bb4d8"
+      }
+    },
+    {
+      "name": "merge_state",
+      "domain": "cascade",
+      "op": "cascade.merge_state",
+      "module": "flashinfer.operators.cascade.merge_state.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/cascade/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/cascade/merge_state/__init__.py": "e9b7ecb15ff48f620ad9461805f6591c644b3336d281d8e0aa643d8b43ccd5c5",
+        "operators/cascade/merge_state/operator.py": "24a65f01cf9af477d5c4a680cba44c86d9c5ecbb735b31847a911eeeb79211e4"
+      }
+    },
+    {
+      "name": "merge_states",
+      "domain": "cascade",
+      "op": "cascade.merge_states",
+      "module": "flashinfer.operators.cascade.merge_states.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/cascade/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/cascade/merge_states/__init__.py": "dc50ad570b7fc49c30168d98f2a3601f7421a2e5a8277211cd25eca50c11b5ef",
+        "operators/cascade/merge_states/operator.py": "bbb8e0af65cab42e9ad3e123621e095446729a75125429b8f381053be26c8e62"
+      }
+    },
+    {
+      "name": "cudnn_batch_decode_with_kv_cache",
+      "domain": "decode",
+      "op": "decode.cudnn_batch_decode_with_kv_cache",
+      "module": "flashinfer.operators.decode.cudnn_batch_decode_with_kv_cache.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/decode/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/decode/cudnn_batch_decode_with_kv_cache/__init__.py": "75c92caf08c4d8690a163e828e7d4cbb7cb175ee2275b27e86e307203b50480c",
+        "operators/decode/cudnn_batch_decode_with_kv_cache/operator.py": "9f39df92a8d2f31823ceb22813be49546b7017938f5501c7237f636e7900fce5"
+      }
+    },
+    {
+      "name": "cutlass_fused_moe",
+      "domain": "fused_moe",
+      "op": "fused_moe.cutlass_fused_moe",
+      "module": "flashinfer.operators.fused_moe.cutlass_fused_moe.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/fused_moe/cutlass_fused_moe/__init__.py": "8f754d40ac844df50ae96eccd5272874b3e9b248b1d2415380be9b8e1051f353",
+        "operators/fused_moe/cutlass_fused_moe/operator.py": "3ddb5ed80752a81f8a8ca4af84a546cb913246aeeee403ebe3ca1c1feec9a9f5"
+      }
+    },
+    {
+      "name": "trtllm_fp8_block_scale_moe",
+      "domain": "fused_moe",
+      "op": "fused_moe.trtllm_fp8_block_scale_moe",
+      "module": "flashinfer.operators.fused_moe.trtllm_fp8_block_scale_moe.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/fused_moe/trtllm_fp8_block_scale_moe/__init__.py": "c5af45037b0b0bb5ba2fb801f58700e20e9ee86c863b74a647cfc1e7240df1c4",
+        "operators/fused_moe/trtllm_fp8_block_scale_moe/operator.py": "a44f72de3666dee01401afee79d224c59d84b9c9b78ea31238229aa63c54c414"
+      }
+    },
+    {
+      "name": "trtllm_fp8_per_tensor_scale_moe",
+      "domain": "fused_moe",
+      "op": "fused_moe.trtllm_fp8_per_tensor_scale_moe",
+      "module": "flashinfer.operators.fused_moe.trtllm_fp8_per_tensor_scale_moe.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/fused_moe/trtllm_fp8_per_tensor_scale_moe/__init__.py": "74b8f5a309dcb901bdc51a80eec8bbe9e2b78e776239dc679417bb1d326e1e59",
+        "operators/fused_moe/trtllm_fp8_per_tensor_scale_moe/operator.py": "d2e38723469077234bd89a13556463599bb30c51a2abb8ee90b9517e226e418d"
+      }
+    },
+    {
+      "name": "bmm_bf16",
+      "domain": "gemm",
+      "op": "gemm.bmm_bf16",
+      "module": "flashinfer.operators.gemm.bmm_bf16.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/bmm_bf16/__init__.py": "efa0b8ffd58f5822b573c7c92729f5600455ab013064c3c296e0efc1290866a1",
+        "operators/gemm/bmm_bf16/operator.py": "95e3f0640ebaf6402b36900f04280794d54a6804a1655bee25570cd643e5d603"
+      }
+    },
+    {
+      "name": "bmm_fp8",
+      "domain": "gemm",
+      "op": "gemm.bmm_fp8",
+      "module": "flashinfer.operators.gemm.bmm_fp8.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/bmm_fp8/__init__.py": "28d7f42a97c83579da9d81c68872a9e24eb9fad096252aba67be594a90abbe95",
+        "operators/gemm/bmm_fp8/operator.py": "94557fd6e0c1b97b8c73e773f602faa01c8574f8b50574fdda0e209920c321f7"
+      }
+    },
+    {
+      "name": "gemm_fp8_nt_groupwise",
+      "domain": "gemm",
+      "op": "gemm.gemm_fp8_nt_groupwise",
+      "module": "flashinfer.operators.gemm.gemm_fp8_nt_groupwise.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/gemm_fp8_nt_groupwise/__init__.py": "9b0d15601ffc2b66c4c59646cfcb564ee4b4e780e22c633d040b622c9526a5f7",
+        "operators/gemm/gemm_fp8_nt_groupwise/operator.py": "fa4c6dae06caca86085ef6bade4bbab8ea26877dc2bc298030a4c27a73ceefb0"
+      }
+    },
+    {
+      "name": "grouped_matmul_swiglu_quant",
+      "domain": "gemm",
+      "op": "gemm.grouped_matmul_swiglu_quant",
+      "module": "flashinfer.operators.gemm.grouped_matmul_swiglu_quant.operator",
+      "export": true,
+      "cases": true,
+      "schema": "(Tensor x, Tensor weight, Tensor weight_scale, Tensor x_scale, Tensor group_list, *, Tensor? bias=None, Tensor? offset=None, float swiglu_limit=0.0) -> (Tensor, Tensor)",
+      "output_names": [
+        "output",
+        "output_scale"
+      ],
+      "description": "Grouped integer GEMM, dequantization, SwiGLU and token INT8 quantization. Returns output and output_scale.",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/grouped_matmul_swiglu_quant/__init__.py": "d431ca3b50dc99aa3d1b89410fdeaa5a0997e16bfdbef56cc60b150acdd75c6b",
+        "operators/gemm/grouped_matmul_swiglu_quant/cases.py": "fb6c453c6bc6ca657fe4d085af30c187b9271955a433b1a05d8d9e04d68313ab",
+        "operators/gemm/grouped_matmul_swiglu_quant/operator.py": "c766d2df6ae419acf1092a705456d1005568d9102155a2147615b651b6c317c8"
+      }
+    },
+    {
+      "name": "matmul",
+      "domain": "gemm",
+      "op": "gemm.matmul",
+      "module": "flashinfer.operators.gemm.matmul.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/matmul/__init__.py": "93e70abb4c5d798e48900a7b178bf4c2f64fdfd8a1f5a2634265383d121d3bb7",
+        "operators/gemm/matmul/operator.py": "500d47080d0953e728f42d892201d39a9dc5233ae4fe21860821bce65f0431a6"
+      }
+    },
+    {
+      "name": "matmul_bias_silu",
+      "domain": "gemm",
+      "op": "gemm.matmul_bias_silu",
+      "module": "flashinfer.operators.gemm.matmul_bias_silu.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/matmul_bias_silu/__init__.py": "ce2816889dcd51334605ea16904b758741fe8d7df86731adc9381d554f46e64c",
+        "operators/gemm/matmul_bias_silu/operator.py": "a6b7e6c67d2241a115def79b84b7c8f48639a851b8e0b4fe3ca128aa9664087e"
+      }
+    },
+    {
+      "name": "mm_bf16",
+      "domain": "gemm",
+      "op": "gemm.mm_bf16",
+      "module": "flashinfer.operators.gemm.mm_bf16.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/mm_bf16/__init__.py": "6ebf3e0ba0138b12f6d4f46e8b7dadd947b321c23be89f58cb376f757c7a320d",
+        "operators/gemm/mm_bf16/operator.py": "b7301e1208ceab27b4679f111527988b42ee12d39934fdf26e7f31a31a8bc71f"
+      }
+    },
+    {
+      "name": "segment_gemm",
+      "domain": "gemm",
+      "op": "gemm.segment_gemm",
+      "module": "flashinfer.operators.gemm.segment_gemm.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "operators/gemm/segment_gemm/__init__.py": "9b06a52c086e8c17bf622df98e10daa95471e04efbb4c2ae7f99daef89272f69",
+        "operators/gemm/segment_gemm/operator.py": "35056911ab7a706c60cfb502a3b38e1431ee4bca5c49292ecd0b718212a142fd"
+      }
+    },
+    {
+      "name": "fused_add_rmsnorm",
+      "domain": "norm",
+      "op": "norm.fused_add_rmsnorm",
+      "module": "flashinfer.operators.norm.fused_add_rmsnorm.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/norm/fused_add_rmsnorm/__init__.py": "b36fb2b9a51f35f4c4137bd00f6dd5cb0647236adb0a28a79678aa80e40e45d8",
+        "operators/norm/fused_add_rmsnorm/operator.py": "50902644ef84faa552cfe4fadded96bb9166ab4ec9f9495780ef9f9c612a72d3"
+      }
+    },
+    {
+      "name": "gemma_fused_add_rmsnorm",
+      "domain": "norm",
+      "op": "norm.gemma_fused_add_rmsnorm",
+      "module": "flashinfer.operators.norm.gemma_fused_add_rmsnorm.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/norm/gemma_fused_add_rmsnorm/__init__.py": "d4433b3e35b5f36a93005a29cccebf2eb99711d9b365caa6550d41f02107d5e8",
+        "operators/norm/gemma_fused_add_rmsnorm/operator.py": "783fb52247cd9609c5fd25bb6c469931aac70bae67e10b0212999edce4cb1cd8"
+      }
+    },
+    {
+      "name": "gemma_rmsnorm",
+      "domain": "norm",
+      "op": "norm.gemma_rmsnorm",
+      "module": "flashinfer.operators.norm.gemma_rmsnorm.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/norm/gemma_rmsnorm/__init__.py": "3ba48cb84bc00bb32e4577daf6d223c603b0cafd603a4495ef32ae4158b45865",
+        "operators/norm/gemma_rmsnorm/operator.py": "d640b8c08fbb11f688691e70deeed2d70500ae2e4d5b8c9c429d36db96e5110d"
+      }
+    },
+    {
+      "name": "layernorm",
+      "domain": "norm",
+      "op": "norm.layernorm",
+      "module": "flashinfer.operators.norm.layernorm.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/norm/layernorm/__init__.py": "cc15d1dbf8e38f51710bf7d6c6a7185e2c6da41abf006af369ef245681388a69",
+        "operators/norm/layernorm/operator.py": "fad4a659818acdb4653cec892ccfbfbb88976b215f266893286ddcd23b8431f9"
+      }
+    },
+    {
+      "name": "rmsnorm",
+      "domain": "norm",
+      "op": "norm.rmsnorm",
+      "module": "flashinfer.operators.norm.rmsnorm.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/norm/rmsnorm/__init__.py": "124c0281fcb95e4a0b8292a128cc51922934c61fa8bb4ae7f361f92b7fe1aac4",
+        "operators/norm/rmsnorm/operator.py": "fdd530f3ec59989d7a489da1ec0ee1606f1c480e136475c868152fca60329676"
+      }
+    },
+    {
+      "name": "append_paged_kv_cache",
+      "domain": "page",
+      "op": "page.append_paged_kv_cache",
+      "module": "flashinfer.operators.page.append_paged_kv_cache.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/page/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/page/append_paged_kv_cache/__init__.py": "c5b89bdd3c0501b1ddd5c4376a745f9c8f8fa283098a367ceda5bf0987098ee8",
+        "operators/page/append_paged_kv_cache/operator.py": "4649689981c10ea5e8a967f6af9f220fab261bc3e4bae210be5fb9a03f204d1b"
+      }
+    },
+    {
+      "name": "apply_rope",
+      "domain": "rope",
+      "op": "rope.apply_rope",
+      "module": "flashinfer.operators.rope.apply_rope.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/rope/apply_rope/__init__.py": "d3b3df44cc2d38cca2d9da89a4b538fa18faf97d60dac80268869daaad9d12dc",
+        "operators/rope/apply_rope/operator.py": "e3cd79c391c85d82cd39953752fdaf28a5a8b57eb11bd4e6f6398fe99e71557f"
+      }
+    },
+    {
+      "name": "apply_rope_inplace",
+      "domain": "rope",
+      "op": "rope.apply_rope_inplace",
+      "module": "flashinfer.operators.rope.apply_rope_inplace.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/rope/apply_rope_inplace/__init__.py": "5ca4ba40c5128b85cefb8b22bbb2eae6410784a199ee4d5bae7503194aaeb96e",
+        "operators/rope/apply_rope_inplace/operator.py": "10409fb564ffbe4ae710360deec25d32edef8d58613b8aeafae5dbc6910b5f54"
+      }
+    },
+    {
+      "name": "apply_rope_pos_ids",
+      "domain": "rope",
+      "op": "rope.apply_rope_pos_ids",
+      "module": "flashinfer.operators.rope.apply_rope_pos_ids.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/rope/apply_rope_pos_ids/__init__.py": "eeb67bbf7d105066480543102a4f15a58286700edb841d2852823b6b97c86b33",
+        "operators/rope/apply_rope_pos_ids/operator.py": "da0c3b0d3c1c9f0310e495ce15b6ef58d28898960d7e23808515bcea5335d823"
+      }
+    },
+    {
+      "name": "apply_rope_pos_ids_inplace",
+      "domain": "rope",
+      "op": "rope.apply_rope_pos_ids_inplace",
+      "module": "flashinfer.operators.rope.apply_rope_pos_ids_inplace.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/rope/apply_rope_pos_ids_inplace/__init__.py": "113a27748545a0edbff0e90524f8611778510818e69bbe7be10a83846567cf06",
+        "operators/rope/apply_rope_pos_ids_inplace/operator.py": "26ce03fb98c29d8f24eea9e94169122e0c9b3c9b815405e90d9971204ed87b8c"
+      }
+    },
+    {
+      "name": "apply_rope_with_cos_sin_cache",
+      "domain": "rope",
+      "op": "rope.apply_rope_with_cos_sin_cache",
+      "module": "flashinfer.operators.rope.apply_rope_with_cos_sin_cache.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/rope/apply_rope_with_cos_sin_cache/__init__.py": "0380467f75e31239939260d99318e992fecf8039e1c224b57c64ead7b1f31e03",
+        "operators/rope/apply_rope_with_cos_sin_cache/operator.py": "6a1d055cd5712a702e80665892b6399bdc7e8faddd050b389dcc788c998dedae"
+      }
+    },
+    {
+      "name": "apply_rope_with_cos_sin_cache_inplace",
+      "domain": "rope",
+      "op": "rope.apply_rope_with_cos_sin_cache_inplace",
+      "module": "flashinfer.operators.rope.apply_rope_with_cos_sin_cache_inplace.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/rope/apply_rope_with_cos_sin_cache_inplace/__init__.py": "fbcd9eb573d7c16b525887d8322cb2815c65af565bb8ab7f60fd73fc685af979",
+        "operators/rope/apply_rope_with_cos_sin_cache_inplace/operator.py": "c33f9f742a7aac4b7f42c6a12776d64373de75de0e7e4cc3d20beba3f1ba5307"
+      }
+    },
+    {
+      "name": "chain_speculative_sampling",
+      "domain": "sampling",
+      "op": "sampling.chain_speculative_sampling",
+      "module": "flashinfer.operators.sampling.chain_speculative_sampling.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/chain_speculative_sampling/__init__.py": "4f92f13c6e26ae4780182d58c84c8e799896bac7043078f0c63d89b2e4c5ac03",
+        "operators/sampling/chain_speculative_sampling/operator.py": "3b148c96991cd866fad4379c24e96d8f3ed9a9fc7a0e7f156f05cd52af8110ee"
+      }
+    },
+    {
+      "name": "min_p_sampling_from_probs",
+      "domain": "sampling",
+      "op": "sampling.min_p_sampling_from_probs",
+      "module": "flashinfer.operators.sampling.min_p_sampling_from_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/min_p_sampling_from_probs/__init__.py": "d17ed7b0a68798a0e38a001de026a0842bdae20d04d9f20b54493456498c8a34",
+        "operators/sampling/min_p_sampling_from_probs/operator.py": "8b213b8c60a1a598b3bbb3ce1a97b37cceb2edeb90c1d6ad6d824b8f997a5ac1"
+      }
+    },
+    {
+      "name": "sampling_from_logits",
+      "domain": "sampling",
+      "op": "sampling.sampling_from_logits",
+      "module": "flashinfer.operators.sampling.sampling_from_logits.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/sampling_from_logits/__init__.py": "c569a52a49ffa0cdf78212079a0a2db0e68cd9ebe802d7d4477c31acb964165d",
+        "operators/sampling/sampling_from_logits/operator.py": "5a2496d23334f6c685aff2469929853b13dca621255fdfa165e115aefd30f2f8"
+      }
+    },
+    {
+      "name": "sampling_from_probs",
+      "domain": "sampling",
+      "op": "sampling.sampling_from_probs",
+      "module": "flashinfer.operators.sampling.sampling_from_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/sampling_from_probs/__init__.py": "a9dc12df15e402d8e4a42bef031ed251da3bc2614c32f6aa282fbfbc809a9fbf",
+        "operators/sampling/sampling_from_probs/operator.py": "53a53ad06e5db9e3ba73ca3a4605eaa6995537fdfade5ec2233f970ddee3c0d5"
+      }
+    },
+    {
+      "name": "top_k_mask_logits",
+      "domain": "sampling",
+      "op": "sampling.top_k_mask_logits",
+      "module": "flashinfer.operators.sampling.top_k_mask_logits.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/top_k_mask_logits/__init__.py": "02d137db727b9fc3a98afa8a8f029072564de784419dd6c96204268c5fcc2dbf",
+        "operators/sampling/top_k_mask_logits/operator.py": "cb80208e609f9a44fc23d15184547030da8faa14bc8b8b2df227e25854396cd2"
+      }
+    },
+    {
+      "name": "top_k_renorm_probs",
+      "domain": "sampling",
+      "op": "sampling.top_k_renorm_probs",
+      "module": "flashinfer.operators.sampling.top_k_renorm_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/top_k_renorm_probs/__init__.py": "21121c823a89f47184a62b7c6109aabd6ce09301b2a6fa4edca48164bae0812a",
+        "operators/sampling/top_k_renorm_probs/operator.py": "457f6f5d2eec28b135003555521d57ab6049b7c5665994045ae721287231e5ed"
+      }
+    },
+    {
+      "name": "top_k_sampling_from_probs",
+      "domain": "sampling",
+      "op": "sampling.top_k_sampling_from_probs",
+      "module": "flashinfer.operators.sampling.top_k_sampling_from_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/top_k_sampling_from_probs/__init__.py": "4c9b596038eba2cfe2eb87a89b4baf474f5a031c9f35d9f23eb55666e4cbe2d9",
+        "operators/sampling/top_k_sampling_from_probs/operator.py": "972beb394e3c251a2f72bcf18731c3bf7344aedc9fe302bff2cfa0020ac9c3e6"
+      }
+    },
+    {
+      "name": "top_k_top_p_sampling_from_probs",
+      "domain": "sampling",
+      "op": "sampling.top_k_top_p_sampling_from_probs",
+      "module": "flashinfer.operators.sampling.top_k_top_p_sampling_from_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/top_k_top_p_sampling_from_probs/__init__.py": "52248070ffbc217585df74b744f61db92024ad2980070cd019d21f048884a57e",
+        "operators/sampling/top_k_top_p_sampling_from_probs/operator.py": "5e828d75e7c4cce370774a5445712b073cbdbe4cde08d27b942816cdc1f89ad5"
+      }
+    },
+    {
+      "name": "top_p_renorm_probs",
+      "domain": "sampling",
+      "op": "sampling.top_p_renorm_probs",
+      "module": "flashinfer.operators.sampling.top_p_renorm_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/top_p_renorm_probs/__init__.py": "9a60f54ad11853af5546a71c7b157ceab4b00a4cd160ebdd3489af4984a90ba8",
+        "operators/sampling/top_p_renorm_probs/operator.py": "a1f926eaa7c93d2603c8fb52a57e98d05de97881f3cca53c8d88205f6770376f"
+      }
+    },
+    {
+      "name": "top_p_sampling_from_probs",
+      "domain": "sampling",
+      "op": "sampling.top_p_sampling_from_probs",
+      "module": "flashinfer.operators.sampling.top_p_sampling_from_probs.operator",
+      "export": false,
+      "cases": false,
+      "schema": "",
+      "output_names": [],
+      "description": "",
+      "runtime_files": {
+        "operators/__init__.py": "c6a8339067e840eb7155a48c1d9be5a31e737aae5a1a1eb92f033bb59cc8e4c8",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "operators/sampling/top_p_sampling_from_probs/__init__.py": "6cd7a7067705fbba72933383c6b59782d2455fb81439c6463ce8a6427012ee1b",
+        "operators/sampling/top_p_sampling_from_probs/operator.py": "6b042f60fedc7cb6d9a3ba797c5556ff19f1f081d7c9d697f3323254fc54b8e5"
+      }
+    }
+  ]
+}

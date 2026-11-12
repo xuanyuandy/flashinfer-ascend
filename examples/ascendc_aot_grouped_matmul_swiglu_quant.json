@@ -1,0 +1,6 @@
+{
+  "implementation": "native",
+  "output_kind": "op_package",
+  "target_soc": "Ascend910B",
+  "recipe_id": "grouped_matmul_swiglu_quant"
+}

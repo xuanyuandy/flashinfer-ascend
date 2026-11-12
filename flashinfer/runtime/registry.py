@@ -282,24 +282,9 @@ class KernelRegistry:
 
 
 def _builtin_descriptors() -> Tuple[KernelDescriptor, ...]:
-    """内置 kernel 注册表：reference + CANN aclnn + Triton（M1 起）。"""
-    from ..cann import cann_descriptors
-    from ..triton import triton_descriptors
-    from . import reference_kernels
-    from .._sampling import descriptors as sampling_descriptors
-    from .._activation import descriptors as activation_descriptors
-    from .._page import descriptors as page_descriptors
-    from .._cascade import descriptors as cascade_descriptors
-
-    return (
-        reference_kernels.builtin_descriptors()
-        + cann_descriptors()
-        + triton_descriptors()
-        + sampling_descriptors(Backend.REFERENCE)
-        + activation_descriptors(Backend.REFERENCE)
-        + page_descriptors(Backend.REFERENCE)
-        + cascade_descriptors(Backend.REFERENCE)
-    )
+    """Collect every installed non-Ascend-C implementation from the shared catalog."""
+    from ..operators.implementation import implementation_descriptors
+    return tuple(d for d in implementation_descriptors() if d.backend != Backend.ASCENDC)
 
 
 def get_global_registry() -> KernelRegistry:

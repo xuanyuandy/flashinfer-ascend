@@ -38,7 +38,8 @@ def package_target(soc):
     The full requested product is still bound into the recipe/spec/release.
     """
     key = soc.lower()
-    known = {"ascend910b1": ("ascend910b", "dav-2201"),
+    known = {"ascend910b": ("ascend910b", "dav-2201"),
+             "ascend910b1": ("ascend910b", "dav-2201"),
              "ascend910_9391": ("ascend910_93", "dav-2201"),
              "ascend310p1": ("ascend310p", "dav-2002")}
     if re.fullmatch(r"ascend950[a-z0-9_]*", key):
@@ -157,15 +158,27 @@ def verify_op_package(directory, spec):
                 if packaged != declared:
                     raise SchemaError("v2 package tensor parameter order/types differ from recipe: " + role)
             signature = tuple(p.get("dtype") for key in ("inputs", "outputs") for p in support.get(key, ()))
-            if signature not in recipe.tensor_dtype_signatures:
+            if signature not in recipe.native_dtype_signatures:
                 raise SchemaError("v2 package tensor parameter order/types differ from recipe: dtype signature")
+            if recipe.extended_aclnn:
+                packaged_parameters = tuple(p for key in ("inputs", "outputs") for p in support.get(key, ()))
+                for declared, packaged in zip(recipe.tensor_parameters, packaged_parameters):
+                    layout = {"ND": "ND", "FRACTAL_NZ": "NZ"}.get(packaged.get("format"))
+                    if (layout not in declared.physical_layouts
+                            or (packaged.get("paramType") == "optional") != declared.optional):
+                        raise SchemaError("extended package Tensor format/optionality differs from recipe")
+                attributes = support.get("attrs", ())
+                expected = [(a.name, {"bool": "bool", "int64": "int", "float64": "float"}[a.dtype])
+                            for a in recipe.attributes]
+                if [(a.get("name"), a.get("dtype")) for a in attributes] != expected:
+                    raise SchemaError("extended package attribute order/types differ from recipe")
             dtype_signatures.add(signature)
             if (recipe.workspace_bytes == "dynamic"
                     and metadata.get("workspace", {}).get("size") != [-1]):
                 raise SchemaError("v2 dynamic workspace must have a host-computed metadata size")
         if metadata.get("sha256") != hashlib.sha256(binary).hexdigest():
             raise SchemaError("CANN kernel metadata digest does not match its NPU executable")
-    if recipe.schema_version == 2 and dtype_signatures != set(recipe.tensor_dtype_signatures):
+    if recipe.schema_version == 2 and dtype_signatures != set(recipe.native_dtype_signatures):
         raise SchemaError("v2 package is missing a declared dtype signature executable")
     _file(directory, data["run_file"])
     return data, recipe
@@ -201,6 +214,8 @@ class OpPackageModule:
         import ctypes as C
 
         names = self.recipe.tensor_parameter_names
+        attributes = {a.name: named_tensors.pop(a.name) for a in self.recipe.attributes if a.name in named_tensors}
+        scalar_values = self.recipe.validate_attributes(attributes)
         if named_tensors:
             if tensors or set(named_tensors) != set(names):
                 raise SchemaError("ACLNN tensor arguments must match recipe order: " + ", ".join(names))
@@ -209,8 +224,9 @@ class OpPackageModule:
             raise SchemaError("ACLNN requires %d tensor arguments (%s); got %d"
                               % (len(names), ", ".join(names), len(tensors)))
         size, executor = C.c_uint64(), C.c_void_p()
+        inputs = sum(p.role == "input" for p in self.recipe.tensor_parameters) if self.recipe.schema_version == 2 else len(names)
         status = getattr(self.api, self.recipe.host_entry + "GetWorkspaceSize")(
-            *tensors, C.byref(size), C.byref(executor))
+            *tensors[:inputs], *scalar_values, *tensors[inputs:], C.byref(size), C.byref(executor))
         if status or not executor.value:
             raise RuntimeError("%sGetWorkspaceSize returned %s; executor=%s"
                                % (self.recipe.host_entry, status, executor.value))
@@ -291,7 +307,11 @@ def load_op_packages(directories, *, target_soc):
             for name, (directory, record, data, recipe) in pending.items():
                 api = C.CDLL(str(_file(directory, data["api_library"])), mode=C.RTLD_LOCAL)
                 workspace = getattr(api, recipe.host_entry + "GetWorkspaceSize")
-                workspace.argtypes = ([C.c_void_p] * len(recipe.tensor_parameter_names)
+                inputs = sum(p.role == "input" for p in recipe.tensor_parameters) if recipe.schema_version == 2 else len(recipe.tensor_parameter_names)
+                scalar_types = [{"bool": C.c_bool, "int64": C.c_int64, "float64": C.c_double}[a.dtype]
+                                for a in recipe.attributes]
+                workspace.argtypes = ([C.c_void_p] * inputs + scalar_types
+                                      + [C.c_void_p] * (len(recipe.tensor_parameter_names) - inputs)
                                       + [C.POINTER(C.c_uint64), C.POINTER(C.c_void_p)])
                 workspace.restype = C.c_int
                 launch = getattr(api, recipe.host_entry)

@@ -220,21 +220,21 @@ provenance.source      = 尚未绑定；首次成功后为 aot 或 jit
 | 顺序 | 具体源码位置 | 作用与向下一步交付的内容 |
 | --- | --- | --- |
 | 1 | [catlass_prefill.py:15](../flashinfer/attention/catlass_prefill.py#L15)，转发在 [43](../flashinfer/attention/catlass_prefill.py#L43) | Python 薄封装自动注册，转发到 Torch functional 或 out schema；保留 backend/kernel_id |
-| 2 | [_ops.py:76](../flashinfer/aclnn/_ops.py#L76)、[enable:93](../flashinfer/aclnn/_ops.py#L93) | 注册 Torch schema/PrivateUse1/FakeTensor；不编译或加载算子包 |
-| 3 | [_attention:48](../flashinfer/aclnn/_ops.py#L48) → [_single_prefill_impl:48](../flashinfer/attention/catlass_prefill.py#L48) | Torch NPU 分发进入私有实现，不回调公共封装 |
-| 4 | [catlass_prefill.py:65](../flashinfer/attention/catlass_prefill.py#L65)、[tensor_contract_specialization:107](../flashinfer/ascendc.py#L107)、[build_signature:104](../flashinfer/runtime/signature.py#L104) | 校验 recipe、选项及 out 别名；构造 Q/K/V/out 元数据签名，未提供 out 时先使用预期输出元数据 |
-| 5 | [current_hardware:101](../flashinfer/runtime/hardware.py#L101)、[get_global_registry:304](../flashinfer/runtime/registry.py#L304)、[ascendc_descriptors:88](../flashinfer/ascendc.py#L88) | 获得硬件和候选目录；首次登记全部内置元数据及 lazy runner，不编译其他算子 |
+| 2 | [算子声明](../flashinfer/operators/attention/single_prefill_catlass/operator.py)、[enable:14](../flashinfer/aclnn/_ops.py#L14) | 注册 Torch schema/PrivateUse1/FakeTensor；不编译或加载算子包 |
+| 3 | [_attention:10](../flashinfer/operators/attention/single_prefill_catlass/operator.py#L10) → [_single_prefill_impl:48](../flashinfer/attention/catlass_prefill.py#L48) | Torch NPU 分发进入私有实现，不回调公共封装 |
+| 4 | [catlass_prefill.py:65](../flashinfer/attention/catlass_prefill.py#L65)、[native_admission:58](../flashinfer/ascendc/_runtime.py#L58)、[build_signature:104](../flashinfer/runtime/signature.py#L104) | 校验公共元数据、选项及 out 别名，构造 Q/K/V/out 签名；原生 recipe 限制在候选 admission 中检查 |
+| 5 | [current_hardware:101](../flashinfer/runtime/hardware.py#L101)、[get_global_registry:304](../flashinfer/runtime/registry.py#L304)、[ascendc_descriptors:13](../flashinfer/ascendc/__init__.py#L13) | 获得硬件和候选目录；首次登记全部内置元数据及 lazy runner，不编译其他算子 |
 | 6 | [dispatch:130](../flashinfer/runtime/dispatch.py#L130)，调用点在 [catlass_prefill.py:58](../flashinfer/attention/catlass_prefill.py#L58) | 过滤候选、查询 tuning、返回 kernel_id；默认生产 registry 中该 op 只有上述 Ascend C 候选；隔离 registry 可追加 Triton FA |
 | 7 | [catlass_prefill.py:59](../flashinfer/attention/catlass_prefill.py#L59) → [公共 run_selected](../flashinfer/runtime/runner.py#L7) | 成功选型后分配 out，调用该 descriptor.runner |
 | 8 | [AotKernelRunner.resolve:108](../flashinfer/jit/runtime.py#L108)、[AotPackageIndex.find:235](../flashinfer/jit/discovery.py#L235) | 匹配 spec/目标/身份；加载 AOT，或在无匹配 AOT 且策略允许时进入 JIT |
 | 9 | [package_tensor_runner:32](../flashinfer/jit/tensor_adapter.py#L32)、[TorchOpPackageRunner.__call__:60](../flashinfer/jit/tensor_adapter.py#L60) | 将已验证模块适配为 Tensor callable，再检查 dtype、shape、NPU、ND 和重叠 |
 | 10 | [_native.prepare:73](../flashinfer/aclnn/_native.py#L73)，调用内部算子在 [91](../flashinfer/aclnn/_native.py#L91) | 首次登记已验证 ACLNN API 地址并保持模块存活，后续复用绑定；Tensor 进入 C++ 内部 Torch 算子 |
 | 11 | [adapter.cpp execute:103](../csrc/aclnn_torch_adapter/adapter.cpp#L103)、[RunOpApi:180](../csrc/aclnn_torch_adapter/adapter.cpp#L180) | 使用 TorchNPU 当前 stream 和框架队列策略，提交 callback；当前同步 eager 返回 |
-| 12 | [adapter.cpp:163](../csrc/aclnn_torch_adapter/adapter.cpp#L163) → [FiFlashAttentionTiling:26](../csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp#L26) | 调用生成的 ACLNN GetWorkspaceSize，执行 host tiling，得到 workspace 大小和 executor |
+| 12 | [adapter.cpp:163](../csrc/aclnn_torch_adapter/adapter.cpp#L163) → [FiFlashAttentionTiling:26](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp#L26) | 调用生成的 ACLNN GetWorkspaceSize，执行 host tiling，得到 workspace 大小和 executor |
 | 13 | [adapter.cpp:169](../csrc/aclnn_torch_adapter/adapter.cpp#L169)、[launch:174](../csrc/aclnn_torch_adapter/adapter.cpp#L174) | 分配实际 workspace，调用 ACLNN launch，持有 Tensor/描述符等到同步完成 |
-| 14 | [catlass.cpp:9](../csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp#L9) → [FAInferTla:547](../csrc/kernels/ascendc/flash_attention/op_kernel/fai_kernel.h#L547) | CANN 提交 device kernel，按 DTYPE_Q 实例执行 CATLASS FA；结果写回 out |
+| 14 | [catlass.cpp:9](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp#L9) → [FAInferTla:547](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/fai_kernel.h#L547) | CANN 提交 device kernel，按 DTYPE_Q 实例执行 CATLASS FA；结果写回 out |
 
-ACLNN 的 `aclnnFiFlashAttentionGetWorkspaceSize` / launch host API 由 CANN 构建生成，不应在仓库里寻找一份同名手写实现。[op_host:94](../csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp#L94) 登记 dtype、格式、infer 与 tiling；[catlass.cpp:19](../csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp#L19) 是设备模板调用点。
+ACLNN 的 `aclnnFiFlashAttentionGetWorkspaceSize` / launch host API 由 CANN 构建生成，不应在仓库里寻找一份同名手写实现。[op_host:94](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp#L94) 登记 dtype、格式、infer 与 tiling；[catlass.cpp:19](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp#L19) 是设备模板调用点。
 
 运行中先进入 RunOpApi，callback 再执行两段式 ACLNN。上表按源码控制流说明职责，不能把 GetWorkspaceSize 画成绕开 TorchNPU 队列的独立默认执行路线。
 
@@ -272,7 +272,7 @@ flowchart TD
     LOAD --> RUN["同一个 Tensor runner → TorchNPU / ACLNN"]
 ```
 
-真实 JIT 分支为 [runtime.py:140](../flashinfer/jit/runtime.py#L140) → [_jit_backend:66](../flashinfer/ascendc.py#L66) → [build_and_load:123](../flashinfer/jit/build.py#L123) → [_build_record:75](../flashinfer/jit/build.py#L75) → [compile:258](../flashinfer/jit/backends.py#L258) → [compile_recipe:102](../flashinfer/jit/ascendc.py#L102)。
+真实 JIT 分支为 [runtime.py:140](../flashinfer/jit/runtime.py#L140) → [_jit_backend:12](../flashinfer/ascendc/_runtime.py#L12) → [build_and_load:123](../flashinfer/jit/build.py#L123) → [_build_record:75](../flashinfer/jit/build.py#L75) → [compile:258](../flashinfer/jit/backends.py#L258) → [compile_recipe:102](../flashinfer/jit/ascendc.py#L102)。
 
 磁盘命中时不再调用 compile；未命中时持锁二次检查、构建、验证并发布。JIT 默认 loader 在 [loading.py:390](../flashinfer/jit/loading.py#L390) 也加载同类 op-package，适配后与 AOT 收敛到 `package_tensor_runner`。
 
@@ -312,9 +312,9 @@ InputSignature + HardwareSignature
 
 现有 CANN `attention.single_prefill` 与 CATLASS `ascendc.single_prefill_catlass` 是不同 op，且前者属于已有 Attention 调用/ABI 契约。若要在一个通用 FA 接口中共同选择，须统一公共语义并适配各自 runner；只改 op 字符串不足以完成接入。当前 CATLASS 公共入口在既有限定契约内接入 CATLASS/Triton，不代表已覆盖通用 FA 的全部参数和布局。
 
-现有真实 JIT backend 的简单例子是 [Triton Gemma norm descriptor:29](../flashinfer/triton/norm.py#L29)：descriptor 登记 JIT，runner 在首次执行时延迟导入对应 Triton kernel。它可以说明“选型与执行适配如何拆分”，不能当作 Triton FA 已实现的证据。
+现有真实 JIT backend 的简单例子是 [Triton Gemma norm descriptor:29](../flashinfer/triton/norm/gemma_fused_add_rmsnorm/implementation.py#L7)：descriptor 登记 JIT，runner 在首次执行时延迟导入对应 Triton kernel。它可以说明“选型与执行适配如何拆分”，不能当作 Triton FA 已实现的证据。
 
-Triton FA 自身的实现与执行证据见 [FA runner](../flashinfer/triton/attention.py#L24) 和 [隔离验证报告](reports/triton-fa-isolated-2026-10-29.md)。
+Triton FA 自身的实现与执行证据见 [FA runner](../flashinfer/triton/attention/single_prefill_catlass/runner.py) 和 [隔离验证报告](reports/triton-fa-isolated-2026-10-29.md)。
 
 ### 7.3 策略细节：锁定实现不等于授权编译
 

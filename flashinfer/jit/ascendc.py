@@ -42,6 +42,30 @@ def _driver_identity():
     return _canonical_hash({p: _digest(root / p) for p in ("ascendc.py", "op_package.py")})
 
 
+def _host_standard_includes(compiler):
+    """Use the selected host compiler's standard library, never ambient CPATH.
+
+    A partially installed newer GCC can make bisheng select a header directory
+    that has no C++ headers. These compiler-owned roots are explicit toolchain
+    inputs, separate from recipe-owned sources and third-party dependencies.
+    """
+    environment = dict(os.environ)
+    for name in ("CPATH", "CPLUS_INCLUDE_PATH", "C_INCLUDE_PATH", "CXXFLAGS"):
+        environment.pop(name, None)
+    output = subprocess.check_output([str(compiler), "-E", "-x", "c++", "-v", "-"],
+        input="", text=True, stderr=subprocess.STDOUT, env=environment, timeout=30)
+    search = output.split('#include <...> search starts here:', 1)[-1].split('End of search list.', 1)[0]
+    directories = tuple(Path(line.strip()) for line in search.splitlines() if line.strip().startswith('/'))
+    standard = tuple(p for p in directories if (p / "cstdint").is_file() or (p / "bits/c++config.h").is_file())
+    return tuple(dict.fromkeys(standard + tuple(p for p in directories if p.name == "backward" and p.parent in standard)))
+
+
+def _standard_headers_identity(directories):
+    files = {p.resolve() for directory in directories for p in Path(directory).rglob('*') if p.is_file()}
+    return _canonical_hash(dict(roots=[str(p) for p in directories],
+                                files={str(p): _digest(p) for p in sorted(files)}))
+
+
 @dataclass(frozen=True)
 class AscendCToolchain:
     cann_root: Path
@@ -49,6 +73,7 @@ class AscendCToolchain:
     cmake: Path
     host_compiler: Path
     identity: tuple
+    host_standard_includes: tuple = ()
 
     @classmethod
     def discover(cls, cann_root=None):
@@ -76,7 +101,9 @@ class AscendCToolchain:
         identity["host_abi"] = _canonical_hash(dict(machine=platform.machine(),
             python_abi=sys.implementation.cache_tag, libc=platform.libc_ver()))
         identity["driver"] = _driver_identity()
-        return cls(root, compiler, Path(cmake), Path(host), tuple(sorted(identity.items())))
+        standard_includes = _host_standard_includes(host)
+        identity["host_cxx_headers"] = _standard_headers_identity(standard_includes)
+        return cls(root, compiler, Path(cmake), Path(host), tuple(sorted(identity.items())), standard_includes)
 
     @property
     def fingerprint(self):
@@ -89,6 +116,9 @@ class AscendCToolchain:
                 raise SchemaError("Ascend C toolchain changed after resolution: " + name)
         if _cann_identity(self.cann_root) != identity["cann"] or _driver_identity() != identity["driver"]:
             raise SchemaError("CANN configuration or compiler driver changed after resolution")
+        if (self.host_standard_includes and
+                _standard_headers_identity(self.host_standard_includes) != identity.get("host_cxx_headers")):
+            raise SchemaError("host C++ standard headers changed after resolution")
 
 
 def _cmake_value(value):
@@ -156,6 +186,7 @@ def compile_recipe(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolch
             "FI_DEVICE_ENTRY=" + recipe.device_entry, "FI_HOST_ENTRY=" + recipe.host_entry,
             "FI_BLOCK_DIM=" + str(recipe.block_dim)]
         options = list(recipe.compile_options) + list(spec.compile_options)
+        options.extend("-I" + str(path) for path in toolchain.host_standard_includes)
         if recipe.output_kind == "host_shared":
             options.insert(0, "--npu-arch=" + recipe.npu_arch)
         else:
@@ -169,6 +200,8 @@ def compile_recipe(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolch
             variables.update(FI_HOST_SOURCES=[inputs / s.locator for s in recipe.host_sources],
                 FI_PACKAGE_VENDOR=[recipe.package_vendor], FI_PACKAGE_OP_TYPE=[recipe.package_op_type],
                 FI_INPUT_ROOT=[inputs])
+            if recipe.cmake_entry is not None:
+                variables["FI_OPERATOR_CMAKE"] = [inputs / recipe.cmake_entry]
         request = scratch / "recipe.cmake"
         request.write_text("\n".join("set(%s %s)" % (k, " ".join(_cmake_value(v) for v in values))
                                      for k, values in variables.items()) + "\n", encoding="utf-8")
@@ -183,8 +216,9 @@ def compile_recipe(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolch
             env.pop(key, None)
         env["ASCEND_HOME_PATH"] = str(toolchain.cann_root)
         env["CMAKE_PREFIX_PATH"] = str(toolchain.cann_root / "lib64/cmake")
+        cmake_source = inputs / ("csrc/cmake/operator" if recipe.extra_build_files else "csrc")
         commands = [
-            [str(toolchain.cmake), "-S", str(inputs / "csrc"), "-B", str(scratch / "cmake"),
+            [str(toolchain.cmake), "-S", str(cmake_source), "-B", str(scratch / "cmake"),
              "-DFI_RECIPE_FILE=" + str(request), "-DCMAKE_ASC_COMPILER=" + str(toolchain.compiler),
              "-DCMAKE_CXX_COMPILER=" + str(toolchain.host_compiler), "-DCMAKE_BUILD_TYPE=Release"],
             [str(toolchain.cmake), "--build", str(scratch / "cmake"), "--verbose", "-j2"],

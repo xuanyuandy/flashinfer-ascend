@@ -303,3 +303,8 @@ def cudnn_batch_decode_with_kv_cache(
         out,
     )
     return out
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='decode')

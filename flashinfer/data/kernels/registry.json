@@ -47,7 +47,7 @@
       "capability_binding": null,
       "source": {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul_bias_silu/op_kernel/native.cpp",
+        "locator": "csrc/kernels/ascendc/gemm/matmul_bias_silu/op_kernel/native.cpp",
         "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
         "schema_version": 1
       },
@@ -125,8 +125,7 @@
         "physical_layouts": [
           "ND"
         ]
-      },
-      "graph_capability": "not_capturable"
+      }
     },
     {
       "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
@@ -186,7 +185,7 @@
       "capability_binding": null,
       "source": {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
+        "locator": "csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp",
         "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
         "schema_version": 1
       },
@@ -300,8 +299,7 @@
         "physical_layouts": [
           "ND"
         ]
-      },
-      "graph_capability": "not_capturable"
+      }
     },
     {
       "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
@@ -348,7 +346,7 @@
       "capability_binding": null,
       "source": {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+        "locator": "csrc/kernels/ascendc/gemm/matmul/op_kernel/native.cpp",
         "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
         "schema_version": 1
       },
@@ -419,8 +417,1160 @@
         "physical_layouts": [
           "ND"
         ]
+      }
+    },
+    {
+      "kernel_id": "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
+      "op": "gemm.grouped_matmul_swiglu_quant",
+      "backend": "ascendc",
+      "constraints": {
+        "supported_socs": [],
+        "dtype_signatures": [],
+        "layout_signatures": [],
+        "required_features": [],
+        "quant_storage_dtypes": [],
+        "deterministic": null
       },
-      "graph_capability": "not_capturable"
+      "workspace": {
+        "constant_bytes": 83886080,
+        "dynamic_coefficients": [],
+        "alignment": 32
+      },
+      "int_workspace": {
+        "constant_bytes": 0,
+        "dynamic_coefficients": [],
+        "alignment": 32
+      },
+      "artifact": null,
+      "launch_abi": {
+        "abi_name": "aclnn.grouped_matmul_swiglu_quant.v2",
+        "entry_point": "aclnnFiGroupedMatmulSwigluQuant",
+        "argument_names": [
+          "workspace",
+          "workspace_bytes",
+          "executor",
+          "stream"
+        ],
+        "mutable_arguments": [],
+        "stream_argument": "stream",
+        "pointer_width_bits": 64,
+        "metadata_schema_version": 1,
+        "schema_version": 1
+      },
+      "binary_abi": null,
+      "priority": 0,
+      "op_schema_version": 1,
+      "tiling_schema_version": 2,
+      "capability_binding": null,
+      "source": {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.cpp",
+        "digest": "4b966c2722a3dc925e03d9ec850daf88fa2a63fbe22a8bf06d74591fd1d18142",
+        "schema_version": 1
+      },
+      "target_soc": "Ascend910B",
+      "compile_mode": "aot",
+      "capability": {
+        "op": "gemm.grouped_matmul_swiglu_quant",
+        "dtypes": [],
+        "layouts": [],
+        "soc_models": [
+          "Ascend910B"
+        ],
+        "min_aicore": 0,
+        "specializations": [],
+        "cases": [
+          {
+            "name": "int32_int64_ND_channel",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int32",
+                "int64",
+                "float32",
+                "float32",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 19984
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                4
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int4_packed",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "uint64",
+                  "granularity": "channel",
+                  "group_size": null,
+                  "axis": [
+                    2
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": "low_nibble_first",
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "int32_int64_ND_group",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int32",
+                "int64",
+                "float32",
+                "float32",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 19984
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                4
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int4_packed",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "uint64",
+                  "granularity": "group",
+                  "group_size": [
+                    1
+                  ],
+                  "axis": [
+                    1
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": "low_nibble_first",
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ],
+            "quantization_group_size_ranges": [
+              [
+                1,
+                1,
+                19999
+              ]
+            ]
+          },
+          {
+            "name": "int32_int64_NZ_channel",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int32",
+                "int64",
+                "float32",
+                "float32",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 19984
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                8
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int4_packed",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "uint64",
+                  "granularity": "channel",
+                  "group_size": null,
+                  "axis": [
+                    2
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "NZ",
+                  "packing_order": "low_nibble_first",
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "int32_int64_NZ_group",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int32",
+                "int64",
+                "float32",
+                "float32",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 19984
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                8
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int4_packed",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "uint64",
+                  "granularity": "group",
+                  "group_size": [
+                    1
+                  ],
+                  "axis": [
+                    1
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "NZ",
+                  "packing_order": "low_nibble_first",
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ],
+            "quantization_group_size_ranges": [
+              [
+                1,
+                1,
+                19999
+              ]
+            ]
+          },
+          {
+            "name": "int8_bfloat16_NZ_channel",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int8",
+                "bfloat16",
+                "float32",
+                "none",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 65520
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                32
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "bfloat16",
+                  "granularity": "channel",
+                  "group_size": null,
+                  "axis": [
+                    2
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "NZ",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "int8_float16_NZ_channel",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int8",
+                "float16",
+                "float32",
+                "none",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 65520
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                32
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float16",
+                  "granularity": "channel",
+                  "group_size": null,
+                  "axis": [
+                    2
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "NZ",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ]
+          },
+          {
+            "name": "int8_float32_NZ_channel",
+            "dtype_signatures": [
+              [
+                "int8",
+                "int8",
+                "float32",
+                "float32",
+                "none",
+                "int64",
+                "int8",
+                "float32"
+              ]
+            ],
+            "layout_signatures": [],
+            "shape_ranges": [
+              {
+                "name": "K",
+                "tensor_index": 0,
+                "axis": 1,
+                "minimum": 16,
+                "maximum": 65520
+              }
+            ],
+            "shape_multiples": [
+              [
+                0,
+                1,
+                16
+              ],
+              [
+                1,
+                2,
+                32
+              ]
+            ],
+            "specializations": [
+              [
+                "tensor_contract",
+                [
+                  "supported"
+                ]
+              ]
+            ],
+            "compute_dtypes": [
+              "int8"
+            ],
+            "accumulator_dtypes": [
+              "int32"
+            ],
+            "quantization": [
+              [
+                0,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                1,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "int32",
+                  "scale_dtype": "float32",
+                  "granularity": "channel",
+                  "group_size": null,
+                  "axis": [
+                    2
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "NZ",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ],
+              [
+                6,
+                {
+                  "scheme": "symmetric",
+                  "storage_dtype": "int8",
+                  "compute_dtype": "float32",
+                  "accumulator_dtype": "float32",
+                  "scale_dtype": "float32",
+                  "granularity": "token",
+                  "group_size": null,
+                  "axis": [
+                    0
+                  ],
+                  "has_zero_point": false,
+                  "physical_layout": "ND",
+                  "packing_order": null,
+                  "schema_version": 1
+                }
+              ]
+            ],
+            "attention_modes": [],
+            "attention_variants": [],
+            "kv_cache_types": [],
+            "mask_types": [],
+            "pos_encodings": [],
+            "causal_values": [],
+            "sliding_window_values": [],
+            "supports_logits_soft_cap": false,
+            "fusion_ops": [
+              "grouped_matmul",
+              "dequantize",
+              "swiglu",
+              "dynamic_quantize"
+            ],
+            "auxiliary_outputs": [
+              "output_scale"
+            ],
+            "sparse_formats": [],
+            "routing_methods": [],
+            "moe_top_k_values": [],
+            "expert_parallel_sizes": [],
+            "supports_deterministic": false,
+            "features": [
+              {
+                "name": "activation.clamp",
+                "allowed_values": [
+                  false,
+                  true
+                ]
+              },
+              {
+                "name": "activation.kind",
+                "allowed_values": [
+                  "silu"
+                ]
+              },
+              {
+                "name": "gemm.mode",
+                "allowed_values": [
+                  "grouped"
+                ]
+              }
+            ]
+          }
+        ]
+      }
     }
   ]
 }

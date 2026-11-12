@@ -37,3 +37,8 @@ def gelu_and_mul(input: torch.Tensor, out: torch.Tensor = None, enable_pdl: Opti
 
 def gelu_tanh_and_mul(input: torch.Tensor, out: torch.Tensor = None, enable_pdl: Optional[bool] = None) -> torch.Tensor:
     return _run("gelu_tanh_and_mul", input, out, enable_pdl)
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='activation')

@@ -1,5 +1,7 @@
 """Isolated FA declarations and evidence validity; synthetic timings are host UT only."""
 
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT
+
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 import hashlib
@@ -28,7 +30,7 @@ def test_opt_in_registry_keeps_exact_default_inventory_and_existing_bindings():
     default = get_global_registry()
     original = tuple(d.kernel_id for d in default.descriptors())
     registry = flash_attention_registry(default)
-    assert len(original) == 84
+    assert len(original) == DEFAULT_DESCRIPTOR_COUNT
     assert tuple(d.kernel_id for d in registry.descriptors()) == tuple(sorted(original + (TRITON_ID,)))
     assert registry.frozen
     assert registry.get(FLASH_ATTENTION_KERNEL_ID) is default.get(FLASH_ATTENTION_KERNEL_ID)
@@ -68,10 +70,11 @@ class Guard(importlib.abc.MetaPathFinder):
 sys.meta_path.insert(0, Guard())
 from flashinfer.triton.attention import flash_attention_registry
 from flashinfer.runtime import get_global_registry, kernel_registry_scope
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT
 default = get_global_registry()
 with kernel_registry_scope(flash_attention_registry(default)):
-    assert len(get_global_registry().descriptors()) == 85
-assert len(default.descriptors()) == 84
+    assert len(get_global_registry().descriptors()) == DEFAULT_DESCRIPTOR_COUNT + 1
+assert len(default.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
 '''
     result = subprocess.run([sys.executable, "-B", "-c", code], capture_output=True, text=True)
     assert result.returncode == 0, result.stdout + result.stderr
@@ -94,6 +97,23 @@ def test_declaration_pins_source_and_preserves_public_contract():
         descriptor.runner.spec("float32")
 
 
+@pytest.mark.parametrize("length,reason", [(128, "requires NPU tensors"), (64, "multiples of 128")])
+def test_triton_runner_validates_without_an_ascendc_recipe(monkeypatch, length, reason):
+    import torch
+    import flashinfer.ascendc as ascendc
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("Triton runner must not read an Ascend C contract")
+
+    monkeypatch.setattr(ascendc, "load_contract", forbidden)
+    monkeypatch.setattr(ascendc, "tensor_contract_specialization", forbidden)
+    runner = attention_descriptors()[0].runner
+    monkeypatch.setattr(runner, "prepare", forbidden)
+    tensors = tuple(torch.zeros((length, 1, 128), dtype=torch.float16) for _ in range(4))
+    with pytest.raises(ValueError, match=reason):
+        runner(*tensors)
+
+
 def test_shape_bucket_is_exact_and_dtype_sensitive():
     descriptor = attention_descriptors()[0]
     signature = InputSignature(descriptor.op, dtypes=("float16",) * 4,
@@ -106,7 +126,7 @@ def test_shape_bucket_is_exact_and_dtype_sensitive():
 
 
 def test_launch_options_participate_in_execution_identity(monkeypatch):
-    import flashinfer.triton.attention as attention
+    import flashinfer.triton.attention.single_prefill_catlass.runner as attention
     descriptor = attention_descriptors()[0]
     signature = InputSignature(descriptor.op, dtypes=("float16",) * 4)
     first = TritonFlashAttentionRunner(descriptor).tuning_identity(signature, HW)

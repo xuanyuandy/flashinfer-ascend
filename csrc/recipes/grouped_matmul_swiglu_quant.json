@@ -1,0 +1,402 @@
+[
+  {
+    "recipe_id": "grouped_matmul_swiglu_quant",
+    "version": 2,
+    "kernel_id": "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
+    "implementation": "native",
+    "target_soc": "Ascend910B",
+    "npu_arch": "dav-2201",
+    "source": {
+      "language": "ascendc",
+      "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.cpp",
+      "digest": "4b966c2722a3dc925e03d9ec850daf88fa2a63fbe22a8bf06d74591fd1d18142",
+      "schema_version": 1
+    },
+    "sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.cpp",
+        "digest": "4b966c2722a3dc925e03d9ec850daf88fa2a63fbe22a8bf06d74591fd1d18142",
+        "schema_version": 1
+      }
+    ],
+    "headers": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_host/fi_host_checks.h",
+        "digest": "5ff72f8dce8f53b019c6dc3a0fb6845b76b79d7578b640fb17aa61d08bf39a2d",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_infershape.cpp",
+        "digest": "c56c2f0e4b0ac2045b921ee449816549a9790882a12ceba79eb3b6880a26b84b",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_tiling.cpp",
+        "digest": "16931ca22b055601a1c5340af931497c882c53c8f4934f350c585d5e13bd5088",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_host/grouped_matmul_swiglu_quant_tiling.h",
+        "digest": "b82ee74f572ce1897bcd24ba644b6297a554b81dbd44af97f96e4cb65362bc40",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_pipeline.h",
+        "digest": "b909baf0fd72c1dc5839fd024b81393a255d6e90f44657377f1c2f0d1e2be945",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.h",
+        "digest": "d92f1ea362dae24204cdeb787d4a5273b4f90e3d7434ca21a7729cafb7ec749e",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_a8w4_msd_mid.h",
+        "digest": "f61c1c4dc99a9b8af88921ef4fef80178cfa1ed0d7b743d36a2460c41b426794",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_a8w4_msd_post.h",
+        "digest": "c0aee068fe85ded53f4407dc37345fa0fac06f8bee57f2a669bee040b5c5bb3b",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_a8w4_msd_pre.h",
+        "digest": "b1c32bd6fc2f9fffd2f47c7d3c436a213db0b2c8247f1b0c5135fb7d2f96db42",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_split_ws.h",
+        "digest": "fab1d301a017d666da7604fad90a55bc3e7c07d565bea8b7aa7abceebaae2457",
+        "schema_version": 1
+      },
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant_utils.h",
+        "digest": "9d326f8c6b9ed7e0fca1802ecad89953a193ca3dd105a8a2fd9775467ba6b338",
+        "schema_version": 1
+      }
+    ],
+    "include_dirs": [
+      "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel",
+      "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_host"
+    ],
+    "dependencies": [],
+    "definitions": [],
+    "compile_options": [],
+    "link_options": [],
+    "device_entry": "fi_grouped_matmul_swiglu_quant",
+    "host_entry": "aclnnFiGroupedMatmulSwigluQuant",
+    "launch_abi": "aclnn.grouped_matmul_swiglu_quant.v2",
+    "tiling_mode": "host_dynamic",
+    "tiling_schema_version": 2,
+    "block_dim": 1,
+    "workspace_bytes": "dynamic",
+    "task_type": "aic_aiv",
+    "sync_policy": "cross_core_flags",
+    "toolchain": "ascendc",
+    "output_kind": "op_package",
+    "output_adapter": "ascendc.op_package.v1",
+    "schema_version": 2,
+    "host_sources": [
+      {
+        "language": "ascendc",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_host/fi_grouped_matmul_swiglu_quant.cpp",
+        "digest": "8d9c7e9255cf5dab8c6b786ae44c8578c52342f19b7473d0b45f07e6097b4509",
+        "schema_version": 1
+      }
+    ],
+    "package_vendor": "flashinfer_grouped_matmul_swiglu_quant",
+    "package_op_type": "FiGroupedMatmulSwigluQuant",
+    "tensor_parameters": [
+      {
+        "name": "x",
+        "role": "input",
+        "dtype": "int8",
+        "shape": [
+          "M",
+          "K"
+        ]
+      },
+      {
+        "name": "weight",
+        "role": "input",
+        "dtype": "int8",
+        "shape": [
+          "E",
+          "K",
+          "P"
+        ],
+        "physical_layouts": [
+          "ND",
+          "NZ"
+        ],
+        "native_conversions": [
+          {
+            "storage_dtype": "int32",
+            "native_dtype": "int4",
+            "element_multiplier": 8
+          }
+        ]
+      },
+      {
+        "name": "weight_scale",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          "E",
+          "N"
+        ],
+        "shape_alternatives": [
+          [
+            "E",
+            "G",
+            "N"
+          ]
+        ],
+        "native_conversions": [
+          {
+            "storage_dtype": "int64",
+            "native_dtype": "uint64",
+            "element_multiplier": 1
+          }
+        ]
+      },
+      {
+        "name": "x_scale",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          "M"
+        ]
+      },
+      {
+        "name": "weight_assistance_matrix",
+        "role": "input",
+        "dtype": "float32",
+        "shape": [
+          "E",
+          "N"
+        ],
+        "optional": true,
+        "optional_for_dtypes": [
+          [
+            1,
+            "int8"
+          ]
+        ]
+      },
+      {
+        "name": "group_list",
+        "role": "input",
+        "dtype": "int64",
+        "shape": [
+          "L"
+        ]
+      },
+      {
+        "name": "y",
+        "role": "output",
+        "dtype": "int8",
+        "shape": [
+          "M",
+          "D"
+        ]
+      },
+      {
+        "name": "y_scale",
+        "role": "output",
+        "dtype": "float32",
+        "shape": [
+          "M"
+        ]
+      }
+    ],
+    "shape_constraints": [
+      {
+        "name": "M",
+        "minimum": 1,
+        "maximum": 1048576,
+        "multiple_of": 1
+      },
+      {
+        "name": "K",
+        "minimum": 16,
+        "maximum": 65520,
+        "multiple_of": 16
+      },
+      {
+        "name": "E",
+        "minimum": 1,
+        "maximum": 4096,
+        "multiple_of": 1
+      },
+      {
+        "name": "P",
+        "minimum": 1,
+        "maximum": 10240,
+        "multiple_of": 1
+      },
+      {
+        "name": "N",
+        "minimum": 32,
+        "maximum": 10240,
+        "multiple_of": 32
+      },
+      {
+        "name": "D",
+        "minimum": 16,
+        "maximum": 5120,
+        "multiple_of": 16
+      },
+      {
+        "name": "G",
+        "minimum": 1,
+        "maximum": 4096,
+        "multiple_of": 1
+      },
+      {
+        "name": "L",
+        "minimum": 1,
+        "maximum": 4096,
+        "multiple_of": 1
+      }
+    ],
+    "tiling_host_entry": "TilingGMMSwigluQuant",
+    "workspace_host_entry": "TilingGMMSwigluQuant",
+    "dtype_signatures": [
+      [
+        "int8",
+        "int8",
+        "float32",
+        "float32",
+        "float32",
+        "int64",
+        "int8",
+        "float32"
+      ],
+      [
+        "int8",
+        "int8",
+        "float16",
+        "float32",
+        "float32",
+        "int64",
+        "int8",
+        "float32"
+      ],
+      [
+        "int8",
+        "int8",
+        "bfloat16",
+        "float32",
+        "float32",
+        "int64",
+        "int8",
+        "float32"
+      ],
+      [
+        "int8",
+        "int32",
+        "int64",
+        "float32",
+        "float32",
+        "int64",
+        "int8",
+        "float32"
+      ]
+    ],
+    "allow_jit_fallback": false,
+    "attributes": [
+      {
+        "name": "is_enable_weight_assistance_matrix",
+        "dtype": "bool",
+        "default": false,
+        "minimum": null,
+        "maximum": null
+      },
+      {
+        "name": "dequant_mode",
+        "dtype": "int64",
+        "default": 0,
+        "minimum": 0,
+        "maximum": 1
+      },
+      {
+        "name": "limited",
+        "dtype": "float64",
+        "default": 0.0,
+        "minimum": 0.0,
+        "maximum": 3.4028234663852886e+38
+      }
+    ],
+    "extra_build_files": [
+      {
+        "language": "operator",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/CMakeLists.txt",
+        "digest": "b9f4426a5f83ae89491ad242f926d15b0b482a031aaabc7d578e0f263405229d",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/LICENSE",
+        "digest": "cb282ac2b66d7d6734c3fb354db792b28cf23ab29fbc16d5cfd8bd542bedeb1e",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/provenance.json",
+        "digest": "faf985a5d695ce0298aacedf80fd705151717e83d46425ea7464af0e6f0612b4",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/gemm/grouped_matmul_swiglu_quant/__init__.py",
+        "digest": "76579a73edf1d128c41859a45d4257398afa248dfbce538de5d315cfd08f8ca3",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/gemm/grouped_matmul_swiglu_quant/implementation.py",
+        "digest": "96ffbde8a0f18167816ced42965d43b1c092b1f8bcb5e297c4453456c8cd27cc",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/gemm/grouped_matmul_swiglu_quant/runner.py",
+        "digest": "acba6ece7c82a8afe8df7a075e80aeb413068c81548143e73b10fdc883fcd733",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/gemm/grouped_matmul_swiglu_quant/__init__.py",
+        "digest": "d431ca3b50dc99aa3d1b89410fdeaa5a0997e16bfdbef56cc60b150acdd75c6b",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/gemm/grouped_matmul_swiglu_quant/cases.py",
+        "digest": "fb6c453c6bc6ca657fe4d085af30c187b9271955a433b1a05d8d9e04d68313ab",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/gemm/grouped_matmul_swiglu_quant/operator.py",
+        "digest": "c766d2df6ae419acf1092a705456d1005568d9102155a2147615b651b6c317c8",
+        "schema_version": 1
+      }
+    ],
+    "cmake_entry": "csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/CMakeLists.txt"
+  }
+]

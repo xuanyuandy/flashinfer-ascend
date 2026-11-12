@@ -16,6 +16,7 @@ from typing import Mapping, Optional, Tuple, Union
 from flashinfer.runtime import KernelDescriptor, SchemaError, SourceRef
 
 from .core import _canonical_hash, _sha256
+from .aclnn_contract import AttributeParameter, TensorDtypeConversion
 
 
 CATLASS_REVISION = "41bf90da655bba3c66d0acd7e00abe33960ecfd6"
@@ -66,6 +67,11 @@ class TensorParameter:
     role: str
     dtype: str
     shape: Tuple[Union[str, int], ...]
+    optional: bool = False
+    physical_layouts: Tuple[str, ...] = ("ND",)
+    shape_alternatives: Tuple[Tuple[Union[str, int], ...], ...] = ()
+    native_conversions: Tuple[TensorDtypeConversion, ...] = ()
+    optional_for_dtypes: Tuple[Tuple[int, str], ...] = ()
 
     def __post_init__(self):
         if (not isinstance(self.name, str) or not _SYMBOL.fullmatch(self.name)
@@ -80,6 +86,47 @@ class TensorParameter:
                             or (isinstance(d, str) and _SYMBOL.fullmatch(d))) for d in self.shape)):
             raise SchemaError("tensor parameter shape requires positive dimensions or declared symbols")
         object.__setattr__(self, "shape", tuple(self.shape))
+        if type(self.optional) is not bool or self.optional and self.role != "input":
+            raise SchemaError("only input Tensor parameters may be optional")
+        layouts = tuple(self.physical_layouts)
+        if not layouts or len(set(layouts)) != len(layouts) or set(layouts) - {"ND", "NZ"}:
+            raise SchemaError("Tensor physical_layouts must explicitly declare ND/NZ")
+        object.__setattr__(self, "physical_layouts", layouts)
+        alternatives = tuple(tuple(s) for s in self.shape_alternatives)
+        if len({len(s) for s in alternatives + (self.shape,)}) != len(alternatives) + 1:
+            raise SchemaError("Tensor shape alternatives must be unique")
+        for shape in alternatives:
+            if any(not (type(d) is int and d > 0 or isinstance(d, str) and _SYMBOL.fullmatch(d)) for d in shape):
+                raise SchemaError("invalid Tensor shape alternative")
+        object.__setattr__(self, "shape_alternatives", alternatives)
+        conversions = tuple(self.native_conversions)
+        if (len(conversions) > 1 or any(not isinstance(c, TensorDtypeConversion) for c in conversions)
+                or len({c.storage_dtype for c in conversions}) != len(conversions)):
+            raise SchemaError("Tensor native conversions must have unique storage dtypes")
+        object.__setattr__(self, "native_conversions", conversions)
+        conditional = tuple(tuple(v) for v in self.optional_for_dtypes)
+        if (conditional and not self.optional or any(len(v) != 2 or type(v[0]) is not int
+                or v[0] < 0 or v[1] not in _TENSOR_DTYPES for v in conditional)):
+            raise SchemaError("conditional optional Tensor requires explicit operand dtype declarations")
+        object.__setattr__(self, "optional_for_dtypes", conditional)
+
+    def native_type(self, storage_dtype):
+        return next((c.native_dtype for c in self.native_conversions if c.storage_dtype == storage_dtype), storage_dtype)
+
+    def to_dict(self):
+        value = asdict(self)
+        for name, default in (("optional", False), ("physical_layouts", ("ND",)),
+                              ("shape_alternatives", ()), ("native_conversions", ()),
+                              ("optional_for_dtypes", ())):
+            if getattr(self, name) == default:
+                value.pop(name)
+        return value
+
+    @classmethod
+    def from_dict(cls, value):
+        data = dict(value)
+        data["native_conversions"] = tuple(TensorDtypeConversion(**c) for c in data.get("native_conversions", ()))
+        return cls(**data)
 
 
 @dataclass(frozen=True)
@@ -137,8 +184,28 @@ class _Recipe:
     workspace_host_entry: Optional[str] = None
     dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
     allow_jit_fallback: bool = True
+    attributes: Tuple[AttributeParameter, ...] = ()
+    extra_build_files: Tuple[SourceRef, ...] = ()
+    cmake_entry: Optional[str] = None
 
     def __post_init__(self):
+        attributes = tuple(self.attributes)
+        if (any(not isinstance(a, AttributeParameter) for a in attributes)
+                or len({a.name for a in attributes}) != len(attributes)):
+            raise SchemaError("ACLNN attributes must be unique AttributeParameter declarations")
+        object.__setattr__(self, "attributes", attributes)
+        extra = tuple(self.extra_build_files)
+        if (any(not isinstance(r, SourceRef) for r in extra)
+                or len({r.locator for r in extra}) != len(extra)
+                or extra and (self.schema_version != 2 or self.output_kind != "op_package")):
+            raise SchemaError("extra build inputs require unique explicit v2 op-package source references")
+        for ref in extra:
+            _path(ref.locator)
+        if self.cmake_entry is not None:
+            _path(self.cmake_entry)
+            if self.cmake_entry not in {r.locator for r in extra}:
+                raise SchemaError("operator CMake entry must be a hashed extra build input")
+        object.__setattr__(self, "extra_build_files", extra)
         if type(self.allow_jit_fallback) is not bool:
             raise SchemaError("allow_jit_fallback must be a boolean")
         if not self.allow_jit_fallback and (self.schema_version != 2 or self.output_kind != "op_package"):
@@ -171,6 +238,8 @@ class _Recipe:
                 or any(not isinstance(r, SourceRef) or r.language != "ascendc" for r in refs)
                 or len({r.locator for r in refs}) != len(refs)):
             raise SchemaError("recipe requires unique Ascend C sources/headers including source")
+        if {r.locator for r in refs} & {r.locator for r in extra}:
+            raise SchemaError("extra build inputs must not duplicate native sources")
         for ref in refs:
             _path(ref.locator)
         if any(not isinstance(d, BuildDependency) for d in self.dependencies):
@@ -201,7 +270,7 @@ class _Recipe:
                     or self.sync_policy != "compiler_default"):
                 raise SchemaError("Ascend C v1 supports explicit fixed tiling, AIC-only, no workspace")
             if (self.tensor_parameters or self.shape_constraints or self.tiling_host_entry is not None
-                    or self.workspace_host_entry is not None or self.dtype_signatures):
+                    or self.workspace_host_entry is not None or self.dtype_signatures or self.attributes):
                 raise SchemaError("Ascend C v1 cannot declare v2 tensor/host contracts")
         else:
             self._validate_v2()
@@ -229,6 +298,8 @@ class _Recipe:
         if (not parameters or any(not isinstance(p, TensorParameter) for p in parameters)
                 or len({p.name for p in parameters}) != len(parameters)):
             raise SchemaError("v2 requires unique ordered tensor_parameters")
+        if any(index >= len(parameters) for p in parameters for index, _ in p.optional_for_dtypes):
+            raise SchemaError("conditional optional Tensor refers to an unknown operand")
         # CANN-generated ACLNN APIs place input tensors before output tensors.
         roles = [p.role for p in parameters]
         if roles != sorted(roles):
@@ -240,7 +311,10 @@ class _Recipe:
                 or (signatures and tuple(p.dtype for p in parameters) not in signatures)):
             raise SchemaError("dtype_signatures require unique complete supported dtype tuples including the base signature")
         constraints = self.shape_constraints
-        symbols = {d for p in parameters for d in p.shape if isinstance(d, str)}
+        symbols = {d for p in parameters for shape in (p.shape,) + p.shape_alternatives
+                   for d in shape if isinstance(d, str)}
+        if set(a.name for a in self.attributes) & set(p.name for p in parameters):
+            raise SchemaError("ACLNN attributes and Tensor parameters must have distinct names")
         if (any(not isinstance(c, ShapeConstraint) for c in constraints)
                 or len({c.name for c in constraints}) != len(constraints)
                 or {c.name for c in constraints} != symbols):
@@ -260,6 +334,22 @@ class _Recipe:
     def tensor_dtype_signatures(self):
         """Exact legal combinations in Tensor ABI order; omission preserves the fixed-type contract."""
         return self.dtype_signatures or (tuple(p.dtype for p in self.tensor_parameters),)
+
+    @property
+    def native_dtype_signatures(self):
+        return tuple(tuple(p.native_type(dtype) for p, dtype in zip(self.tensor_parameters, signature))
+                     for signature in self.tensor_dtype_signatures)
+
+    @property
+    def extended_aclnn(self):
+        return bool(self.attributes or any(p.optional or p.physical_layouts != ("ND",)
+                                         or p.native_conversions for p in self.tensor_parameters))
+
+    def validate_attributes(self, values=None):
+        values = {} if values is None else dict(values)
+        if set(values) - {a.name for a in self.attributes}:
+            raise SchemaError("undeclared ACLNN attributes")
+        return tuple(a.validate(values.get(a.name, a.default)) for a in self.attributes)
 
     def validate_tensor_dtypes(self, dtypes):
         if set(dtypes) != set(self.tensor_parameter_names):
@@ -287,14 +377,31 @@ class _Recipe:
         names = set(self.tensor_parameter_names)
         if set(shapes) != names or set(dtypes) != names:
             raise SchemaError("dispatch tensor arguments must match recipe parameters: " + ", ".join(self.tensor_parameter_names))
-        self.validate_tensor_dtypes(dtypes)
+        absent = {p.name for p in self.tensor_parameters if shapes[p.name] is None}
+        if any(not p.optional for p in self.tensor_parameters if p.name in absent):
+            raise SchemaError("required Tensor parameter is absent")
+        for p in self.tensor_parameters:
+            if (p.name in absent and p.optional_for_dtypes and not any(
+                    dtypes[self.tensor_parameters[index].name] == dtype for index, dtype in p.optional_for_dtypes)):
+                raise SchemaError("Tensor %s is required for this dtype combination" % p.name)
+        dtype_values = dict(dtypes)
+        for p in self.tensor_parameters:
+            if p.name in absent:
+                if dtypes[p.name] is not None:
+                    raise SchemaError("absent Tensor must have absent dtype metadata")
+                dtype_values[p.name] = p.dtype
+        self.validate_tensor_dtypes(dtype_values)
         dimensions = {}
         for parameter in self.tensor_parameters:
+            if parameter.name in absent:
+                continue
             shape = tuple(shapes[parameter.name])
-            if len(shape) != len(parameter.shape):
+            variants = (parameter.shape,) + parameter.shape_alternatives
+            declared_shape = next((s for s in variants if len(s) == len(shape)), None)
+            if declared_shape is None:
                 raise SchemaError("dispatch shape for %s requires rank %d; got %s"
                                   % (parameter.name, len(parameter.shape), shape))
-            for actual, declared in zip(shape, parameter.shape):
+            for actual, declared in zip(shape, declared_shape):
                 if type(actual) is not int or actual < 1:
                     raise SchemaError("dispatch shape for %s requires positive integer dimensions" % parameter.name)
                 if isinstance(declared, str):
@@ -305,6 +412,8 @@ class _Recipe:
                     raise SchemaError("dispatch shape for %s requires dimension %d; got %d"
                                       % (parameter.name, declared, actual))
         for constraint in self.shape_constraints:
+            if constraint.name not in dimensions:
+                continue
             actual = dimensions[constraint.name]
             if not constraint.minimum <= actual <= constraint.maximum or actual % constraint.multiple_of:
                 raise SchemaError("dispatch shape %s=%d is outside declared range [%d, %d], multiple_of=%d"
@@ -314,6 +423,15 @@ class _Recipe:
 
     def to_dict(self):
         value = asdict(self)
+        if not self.attributes:
+            value.pop("attributes")
+        if not self.extra_build_files:
+            value.pop("extra_build_files")
+        else:
+            value["extra_build_files"] = [r.to_dict() for r in self.extra_build_files]
+        if self.cmake_entry is None:
+            value.pop("cmake_entry")
+        value["tensor_parameters"] = [p.to_dict() for p in self.tensor_parameters]
         if self.allow_jit_fallback:
             value.pop("allow_jit_fallback")
         # An absent extension preserves every existing v1/v2 serialized identity.
@@ -343,7 +461,9 @@ class _Recipe:
                 data[name] = tuple(SourceRef.from_dict(r) for r in data[name])
             data["host_sources"] = tuple(SourceRef.from_dict(r) for r in data.get("host_sources", ()))
             data["dependencies"] = tuple(BuildDependency(**d) for d in data["dependencies"])
-            data["tensor_parameters"] = tuple(TensorParameter(**p) for p in data.get("tensor_parameters", ()))
+            data["tensor_parameters"] = tuple(TensorParameter.from_dict(p) for p in data.get("tensor_parameters", ()))
+            data["attributes"] = tuple(AttributeParameter(**a) for a in data.get("attributes", ()))
+            data["extra_build_files"] = tuple(SourceRef.from_dict(r) for r in data.get("extra_build_files", ()))
             data["shape_constraints"] = tuple(ShapeConstraint(**c) for c in data.get("shape_constraints", ()))
             return cls(**data)
         except (KeyError, TypeError, ValueError) as error:
@@ -530,6 +650,10 @@ class ResolvedBuildRecipe:
 
 
 def _build_inputs(recipe):
+    if recipe.extra_build_files:
+        return ("csrc/cmake/operator/CMakeLists.txt", "csrc/cmake/operator/OpPackage.cmake",
+                "csrc/cmake/operator/host/CMakeLists.txt", "csrc/cmake/operator/kernel/CMakeLists.txt"
+                ) + tuple(r.locator for r in recipe.extra_build_files)
     if recipe.output_kind == "host_shared":
         return ("csrc/CMakeLists.txt", "csrc/cmake/HostShared.cmake")
     if recipe.schema_version == 1:
@@ -537,7 +661,8 @@ def _build_inputs(recipe):
         return ("csrc/CMakeLists.txt", "csrc/cmake/OpPackage.cmake",
                 "csrc/op_package/host/CMakeLists.txt", "csrc/op_package/kernel/CMakeLists.txt")
     return ("csrc/CMakeLists.txt", "csrc/cmake/OpPackage.cmake",
-            "csrc/cmake/op_package/host/CMakeLists.txt", "csrc/cmake/op_package/kernel/CMakeLists.txt")
+            "csrc/cmake/op_package/host/CMakeLists.txt", "csrc/cmake/op_package/kernel/CMakeLists.txt"
+            ) + tuple(r.locator for r in recipe.extra_build_files)
 
 
 def _resolve_build_recipe(recipe: _Recipe, *, source_root: Path,
@@ -551,6 +676,8 @@ def _resolve_build_recipe(recipe: _Recipe, *, source_root: Path,
 
     root = Path(source_root).resolve(strict=True)
     for ref in recipe.sources + recipe.headers + recipe.host_sources:
+        _source_bytes(root, ref)
+    for ref in recipe.extra_build_files:
         _source_bytes(root, ref)
     dependencies = []
     for declaration in recipe.dependencies:

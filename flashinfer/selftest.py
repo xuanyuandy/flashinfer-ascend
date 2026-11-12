@@ -120,6 +120,12 @@ def _check_kernel(descriptor) -> SelftestResult:
     try:
         case = _NUMERICAL_CASES.get(descriptor.op)
         if case is None:
+            from .operators.catalog import for_kernel
+            from .operators.testing import selftest_case
+            operator = for_kernel(kernel_id)
+            if operator is not None:
+                case = lambda torch, selected: selftest_case(torch, operator.name)
+        if case is None:
             raise ValueError("no numerical selftest registered for op=%s" % descriptor.op)
         torch = _load_dependencies()
         from .ascendc import load_contract
@@ -188,10 +194,16 @@ def _run_kernel_process(kernel_id) -> SelftestResult:
         )
 
 
-def run_selftest() -> int:
+def run_selftest(*, kernel_ids=()) -> int:
     """Report every packaged production entry; skips are incomplete validation."""
     try:
         descriptors = _production_descriptors()
+        if kernel_ids:
+            requested = tuple(kernel_ids)
+            known = {d.kernel_id for d in descriptors}
+            if len(requested) != len(set(requested)) or set(requested) - known:
+                raise ValueError("selftest requires unique registered kernel IDs")
+            descriptors = tuple(d for d in descriptors if d.kernel_id in requested)
         if not descriptors:
             raise ValueError("production registry is empty")
     except Exception as error:

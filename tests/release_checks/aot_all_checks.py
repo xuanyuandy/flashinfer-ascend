@@ -1,5 +1,7 @@
 """Production inventory selection and frozen AOT identities without a compiler."""
 
+from tests.production_inventory import PRODUCTION
+
 from dataclasses import replace
 import json
 from pathlib import Path
@@ -52,6 +54,10 @@ def test_all_inventory_automatically_includes_new_registered_contract(monkeypatc
 
     contracts = dict(_contracts())
     descriptor, recipe, spec = contracts[MATMUL_BIAS_SILU_KERNEL_ID]
+    # This planning-only test models one release toolchain. The real catalog
+    # may retain independently frozen releases from different build machines.
+    contracts = {key: (d, r, replace(s, environment_fingerprint=spec.environment_fingerprint))
+                 for key, (d, r, s) in contracts.items()}
     new_id = recipe.kernel_id.replace("matmul_bias_silu", "future_op")
     future = (replace(descriptor, kernel_id=new_id),
               replace(recipe, kernel_id=new_id, recipe_id="future_op"),
@@ -77,8 +83,8 @@ def test_all_inventory_automatically_includes_new_registered_contract(monkeypatc
     outputs = build.build_production_packages(output_dir=tmp_path / "release")
     assert [recipe.kernel_id for recipe, _ in published] == list(contracts)
     assert all(spec is contracts[recipe.kernel_id][2] for recipe, spec in published)
-    assert len(outputs) == len(backends) == 4
-    assert json.loads(capsys.readouterr().out)["summary"] == dict(requested=4, built=4, failed=0, skipped=0)
+    assert len(outputs) == len(backends) == len(PRODUCTION) + 1
+    assert json.loads(capsys.readouterr().out)["summary"] == dict(requested=len(PRODUCTION) + 1, built=len(PRODUCTION) + 1, failed=0, skipped=0)
 
 
 def test_all_missing_dependency_reports_unbuilt_kernel_before_compilation(monkeypatch, tmp_path):

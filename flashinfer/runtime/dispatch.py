@@ -211,6 +211,7 @@ def _dispatch_uncached(
         reasons = (
             descriptor.capability.unsupported_reasons(signature, hardware)
             + descriptor.unsupported_target_reasons(hardware.soc_model)
+            + descriptor.admission_reasons(signature)
         )
         reports = (
             CandidateReport(kernel_id, descriptor.backend, not reasons, reasons),
@@ -280,6 +281,7 @@ def _dispatch_uncached(
             descriptor.capability.unsupported_reasons(signature, hardware)
         )
         reasons.extend(descriptor.unsupported_target_reasons(hardware.soc_model))
+        reasons.extend(descriptor.admission_reasons(signature))
         # JIT 全局禁用（§13）：仅 AOT / CANN 可用
         if (
             descriptor.compile_mode == CompileMode.JIT

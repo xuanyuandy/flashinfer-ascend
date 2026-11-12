@@ -84,3 +84,8 @@ def merge_state(
         signature, current_hardware(), backend=backend, kernel_id=kernel_id
     )
     return _run_selected(decision.kernel_id, v_a, s_a, v_b, s_b)
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='cascade')

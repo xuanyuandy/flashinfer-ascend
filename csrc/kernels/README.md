@@ -5,12 +5,13 @@ The packaged registry is `flashinfer/data/kernels/registry.json` and is
 populated by the production Ascend C declarations. A kernel must not be
 registered before its artifact and capability constraints are real and tested.
 
-All Ascend C operator sources live under `csrc/kernels/ascendc/`, grouped by operator:
+All Ascend C operator sources live under `csrc/kernels/ascendc/<domain>/<op>/`:
 
-- `matmul_probe/`: bounded v2 native and CATLASS ACLNN probes. Frozen v1/raw
+- `gemm/matmul_probe/`: bounded v2 native and CATLASS ACLNN probes. Frozen v1/raw
   launch fixtures live in `tests/fixtures/legacy_ascendc/`, outside build inputs.
-- `matmul_bias_silu/`: production native implementation.
-- `flash_attention/`: production CATLASS implementation.
+- `gemm/matmul/` and `gemm/matmul_bias_silu/`: production native implementations.
+- `gemm/grouped_matmul_swiglu_quant/`: grouped integer GEMM, SwiGLU and quantization.
+- `attention/flash_attention/`: production CATLASS implementation.
 
 Each operator owns `op_host/` (OpDef, inference and tiling), `op_kernel/`
 (device code) and `include/` (shared tiling layouts). Build recipes remain in
@@ -20,3 +21,7 @@ binaries and metadata), produced by both AOT and JIT. Wheel build inputs
 retain this layout under `flashinfer/data/build/csrc/`; sdist retains the
 repository's `csrc/` tree.
 Triton Python implementations live in `flashinfer/triton/`.
+
+Logical definitions and backend descriptor/runner declarations follow
+[the operator layout](../../docs/operator-layout.md); generated recipes and
+packaged indexes are derived from those declarations.

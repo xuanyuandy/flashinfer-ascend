@@ -69,49 +69,22 @@ def _register_ascendc_ops(declarations):
         _ascendc_ops[declaration.name] = declaration, op
 
 
-def _rmsnorm_meta(out, input, weight, eps, backend, kernel_id) -> None:
-    """Only out is written; its shape/dtype/strides/device are already known."""
-    return None
+from .operators.norm.rmsnorm.operator import _rmsnorm_meta
 
 
-def _fused_add_rmsnorm_meta(input, residual, weight, eps, backend, kernel_id) -> None:
-    """input and residual keep their metadata; this op has no return tensors."""
-    return None
+from .operators.norm.fused_add_rmsnorm.operator import _fused_add_rmsnorm_meta
 
 
 @lru_cache(maxsize=1)
 def _register_norm_ops():
-    # Keep even a direct import of this module free of optional dependencies.
-    import torch
-
-    from . import norm
-    from .utils import register_custom_op, register_fake_op
-
-    @register_custom_op("flashinfer::rmsnorm", mutates_args=("out",))
-    def rmsnorm(
-        out: torch.Tensor,
-        input: torch.Tensor,
-        weight: torch.Tensor,
-        eps: float,
-        backend: Optional[str],
-        kernel_id: Optional[str],
-    ) -> None:
-        norm._rmsnorm_impl(out, input, weight, eps, backend, kernel_id)
-
-    register_fake_op("flashinfer::rmsnorm", _rmsnorm_meta)
-
-    @register_custom_op(
-        "flashinfer::fused_add_rmsnorm", mutates_args=("input", "residual"),
-    )
-    def fused_add_rmsnorm(
-        input: torch.Tensor,
-        residual: torch.Tensor,
-        weight: torch.Tensor,
-        eps: float,
-        backend: Optional[str],
-        kernel_id: Optional[str],
-    ) -> None:
-        norm._fused_add_rmsnorm_impl(input, residual, weight, eps, backend, kernel_id)
-
-    register_fake_op("flashinfer::fused_add_rmsnorm", _fused_add_rmsnorm_meta)
-    return SimpleNamespace(rmsnorm=rmsnorm, fused_add_rmsnorm=fused_add_rmsnorm)
+    import importlib
+    from .operators.catalog import definition, entries
+    operators = {}
+    for record in entries():
+        if record["domain"] != "norm":
+            continue
+        definition(record["op"])
+        provider = getattr(importlib.import_module(record["module"]), "register_torch_op", None)
+        if provider is not None:
+            operators[record["name"]] = provider()
+    return SimpleNamespace(**operators)

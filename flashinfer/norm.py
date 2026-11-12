@@ -243,3 +243,8 @@ def layernorm(
     )
     _run_selected(decision.kernel_id, out, input, gemma, beta, float(eps))
     return out
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='norm')

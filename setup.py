@@ -64,14 +64,43 @@ class AOTWheel(bdist_wheel):
 
 def build_inputs():
     for path in sorted(Path("csrc").rglob("*")):
-        if path.is_file() and (path.suffix in {".cpp", ".h", ".inc", ".cmake", ".json"}
-                               or path.name == "CMakeLists.txt"):
+        if (any(part in {"__pycache__", ".pytest_cache", ".git"} for part in path.parts)
+                or path.suffix in {".pyc", ".pyo"}):
+            continue
+        if path.is_file() and (path.suffix in {".cpp", ".h", ".inc", ".cmake", ".json", ".py"}
+                or path.name in {"CMakeLists.txt", "LICENSE"}
+                or path.is_relative_to(Path("csrc/kernels/ascendc"))):
             yield path
+
+
+    import json
+    seen = set()
+    for recipe_file in sorted(Path("csrc/recipes").glob("*.json")):
+        for recipe in json.loads(recipe_file.read_text()):
+            for reference in recipe.get("extra_build_files", ()):
+                path = Path(reference["locator"])
+                if path.parts[0] == "flashinfer" and path not in seen:
+                    if path.is_symlink() or not path.resolve().is_relative_to(Path.cwd().resolve()):
+                        raise ValueError("build hook must remain inside the source checkout")
+                    seen.add(path)
+                    yield path
 
 
 class BuildPy(build_py):
     def run(self):
         mode = aot_mode()
+        from flashinfer.operators.authoring import generate
+        # Publishing never silently packages stale author declarations.
+        generate(source_root=Path.cwd(), check=True)
+        package_output = Path(self.build_lib) / "flashinfer"
+        package_source = Path(__file__).resolve().parent / "flashinfer"
+        if package_output.exists():
+            output = package_output.resolve()
+            if output.is_relative_to(package_source) or package_source.is_relative_to(output):
+                raise ValueError("build output must not overlap the package source directory")
+            # build_py only overwrites existing modules; removed modules would
+            # otherwise leak from an earlier build into a new wheel.
+            shutil.rmtree(package_output)
         super().run()
         root = Path(self.build_lib) / "flashinfer/data/build"
         if root.exists():

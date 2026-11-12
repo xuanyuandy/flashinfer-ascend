@@ -198,3 +198,8 @@ def apply_rope_with_cos_sin_cache(
         (positions, query, key, int(head_size), cos_sin_cache, bool(is_neox)),
         backend, kernel_id,
     )
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='rope')

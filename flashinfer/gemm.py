@@ -202,17 +202,15 @@ def matmul(
 def _matmul_impl(a, b, out=None, *, backend=None, kernel_id=None):
     import torch
     from dataclasses import replace
-    from ._matmul import AOT_KERNEL_ID, OP, contract, output_metadata
-    from .ascendc import tensor_contract_specialization
+    from ._matmul import OP, metadata_reason, output_metadata, overlap_parameters
     from .jit.tensor_adapter import _reject_output_overlap
 
     # infershape output
     prospective = output_metadata(a, b, out)
     signature = build_signature(
         OP, (a, b) if out is None else (a, b, out),
-        specializations={"tensor_contract": tensor_contract_specialization(
-            AOT_KERNEL_ID, (a, b, prospective),
-        )},
+        specializations={"tensor_contract": metadata_reason(a, b, prospective),
+                         **({"tensor_contiguity": "0"} if any(not t.is_contiguous() for t in (a, b, prospective)) else {})},
     )
     if out is None:
         signature = replace(
@@ -227,7 +225,7 @@ def _matmul_impl(a, b, out=None, *, backend=None, kernel_id=None):
     decision = dispatch(signature, current_hardware(), backend=backend, kernel_id=kernel_id)
     if out is None:
         out = torch.empty(prospective.shape, dtype=a.dtype, device=a.device)
-    _reject_output_overlap(contract()[1].tensor_parameters, (a, b, out))
+    _reject_output_overlap(overlap_parameters(), (a, b, out))
     _run_selected(decision.kernel_id, a, b, out)
     return out
 
@@ -261,7 +259,7 @@ def _matmul_bias_silu_impl(a, b, bias, out=None, *, backend="auto", kernel_id=No
     import torch
     from dataclasses import replace
     from types import SimpleNamespace
-    from .ascendc import MATMUL_BIAS_SILU_KERNEL_ID, tensor_contract_specialization
+    from ._matmul import metadata_reason
 
     if out is None:
         # Validate the prospective output from metadata before allocating it;
@@ -277,9 +275,8 @@ def _matmul_bias_silu_impl(a, b, bias, out=None, *, backend="auto", kernel_id=No
     tensors = (a, b, bias, output_metadata)
     signature = build_signature(
         "gemm.matmul_bias_silu", tensors if out is not None else tensors[:3],
-        specializations={"tensor_contract": tensor_contract_specialization(
-            MATMUL_BIAS_SILU_KERNEL_ID, tensors,
-        )},
+        specializations={"tensor_contract": metadata_reason(a, b, output_metadata) if tuple(bias.shape) == (b.shape[1],)
+                             else "bias must have shape [N]"},
     )
     if out is None:
         signature = replace(
@@ -396,3 +393,8 @@ class SegmentGEMMWrapper:
             (x, weights, seg_indptr, weight_indices, bool(weight_column_major), out),
             backend if backend is not None else self._backend, kernel_id,
         )
+
+
+# Declarative author operators share this domain without per-operator edits.
+from .operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain="gemm")

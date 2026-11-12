@@ -8,14 +8,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+      "locator": "csrc/kernels/ascendc/gemm/matmul/op_kernel/native.cpp",
       "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul/op_kernel/native.cpp",
+        "locator": "csrc/kernels/ascendc/gemm/matmul/op_kernel/native.cpp",
         "digest": "cc4ce389ad4061283a8928bf6182853d10a8309596aee8271f36e31a8e683175",
         "schema_version": 1
       }
@@ -23,13 +23,13 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul/include/flashinfer_ascend/matmul_tiling.h",
+        "locator": "csrc/kernels/ascendc/gemm/matmul/include/flashinfer_ascend/matmul_tiling.h",
         "digest": "f632933ff778cd51043cfb97229932f6f4f733edc3fef4e8cca86b4bb62323ae",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/matmul/include"
+      "csrc/kernels/ascendc/gemm/matmul/include"
     ],
     "dependencies": [],
     "definitions": [],
@@ -50,18 +50,16 @@
     "output_kind": "op_package",
     "output_adapter": "ascendc.op_package.v1",
     "schema_version": 2,
-    "package_vendor": "flashinfer_matmul",
-    "package_op_type": "FiMatmul",
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/matmul/op_host/matmul.cpp",
+        "locator": "csrc/kernels/ascendc/gemm/matmul/op_host/matmul.cpp",
         "digest": "1ad8da216d52e8f3220fc8f1e0d4cd6b5fa5d8e7179e2d5ed5b20969f24e6f9e",
         "schema_version": 1
       }
     ],
-    "tiling_host_entry": "FiMatmulTiling",
-    "workspace_host_entry": null,
+    "package_vendor": "flashinfer_matmul",
+    "package_op_type": "FiMatmul",
     "tensor_parameters": [
       {
         "name": "a",
@@ -111,6 +109,40 @@
         "multiple_of": 16
       }
     ],
-    "allow_jit_fallback": false
+    "tiling_host_entry": "FiMatmulTiling",
+    "workspace_host_entry": null,
+    "allow_jit_fallback": false,
+    "extra_build_files": [
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/gemm/matmul/__init__.py",
+        "digest": "161d04d2358ea96d563b248e458087c9be2b79963f7ad770dda25050fc136ced",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/gemm/matmul/implementation.py",
+        "digest": "8a545968e7bb2a3b49710cab624a682a2b61b9f9f9cca75b79bbcf1ae84e4690",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/ascendc/gemm/matmul/runner.py",
+        "digest": "407e58ef24cfbfae9b4d408e103e0c6350008ce2c381f36b603ace29be2e49c9",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/gemm/matmul/__init__.py",
+        "digest": "93e70abb4c5d798e48900a7b178bf4c2f64fdfd8a1f5a2634265383d121d3bb7",
+        "schema_version": 1
+      },
+      {
+        "language": "operator",
+        "locator": "flashinfer/operators/gemm/matmul/operator.py",
+        "digest": "500d47080d0953e728f42d892201d39a9dc5233ae4fe21860821bce65f0431a6",
+        "schema_version": 1
+      }
+    ]
   }
 ]

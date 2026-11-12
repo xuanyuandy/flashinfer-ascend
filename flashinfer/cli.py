@@ -43,7 +43,7 @@ def _show_config(_args: argparse.Namespace) -> int:
 def _selftest(_args: argparse.Namespace) -> int:
     from .selftest import run_selftest
 
-    return run_selftest()
+    return run_selftest(kernel_ids=tuple(_args.kernel_id)) if _args.kernel_id else run_selftest()
 
 
 def _parity_report(args: argparse.Namespace) -> int:
@@ -271,6 +271,8 @@ def build_parser() -> argparse.ArgumentParser:
         "selftest", help="verify installed production AOT kernels on a real NPU"
     )
     selftest.set_defaults(handler=_selftest)
+    selftest.add_argument("--kernel-id", action="append", default=[],
+                          help="validate an explicit registered AOT kernel; repeat to select several")
 
     parity = subparsers.add_parser(
         "parity-report", help="summarize FlashInfer API parity"

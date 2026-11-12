@@ -68,6 +68,7 @@ _DEFINITIONS = (
     FeatureDefinition("normalization.affine", "计算模式", "bool", "是否要求仿射变换"),
     FeatureDefinition("activation.kind", "计算模式", "string", "激活函数语义",
                       ("silu", "gelu", "gelu_tanh", "relu", "sigmoid")),
+    FeatureDefinition("activation.clamp", "计算模式", "bool", "是否启用激活输入裁剪"),
     FeatureDefinition("reduction.kind", "计算模式", "string", "归约的数学语义",
                       ("sum", "max", "min", "mean", "logsumexp")),
     FeatureDefinition("reduction.keepdim", "计算模式", "bool", "归约是否保留维度"),

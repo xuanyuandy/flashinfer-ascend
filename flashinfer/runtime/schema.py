@@ -10,7 +10,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass, replace
 from enum import Enum
 import hashlib
 import json
@@ -932,6 +932,7 @@ class CapabilityCase(_Record):
     expert_parallel_sizes: Tuple[int, ...] = ()
     supports_deterministic: bool = False
     features: Tuple[FeatureConstraint, ...] = ()
+    quantization_group_size_ranges: Tuple[Tuple[int, int, int], ...] = ()
 
     def __post_init__(self):
         if not isinstance(self.name, str) or not self.name.strip():
@@ -975,6 +976,15 @@ class CapabilityCase(_Record):
             raise SchemaError("shape_multiples require unique (tensor_index, axis, positive multiple)")
         object.__setattr__(self, "shape_multiples", tuple(sorted(multiples)))
         object.__setattr__(self, "quantization", _quantization_bindings(self.quantization))
+        ranges = tuple(tuple(v) for v in self.quantization_group_size_ranges)
+        quantization = dict(self.quantization)
+        if (any(len(v) != 3 or any(type(n) is not int for n in v)
+                or v[0] < 0 or v[1] < 1 or v[2] < v[1]
+                or v[0] not in quantization or quantization[v[0]].granularity != "group"
+                or quantization[v[0]].group_size != (v[1],) for v in ranges)
+                or len({v[0] for v in ranges}) != len(ranges)):
+            raise SchemaError("quantization group ranges require unique operand, positive bounds and matching group lower bound")
+        object.__setattr__(self, "quantization_group_size_ranges", tuple(sorted(ranges)))
         try:
             specializations = tuple((k, tuple(sorted(set(_feature_strings("allowed values", v)))))
                                     for k, v in self.specializations)
@@ -1010,6 +1020,8 @@ class CapabilityCase(_Record):
         value = super().to_dict()
         if not self.features:
             value.pop("features")
+        if not self.quantization_group_size_ranges:
+            value.pop("quantization_group_size_ranges")
         return value
 
     @classmethod
@@ -1045,7 +1057,18 @@ class CapabilityCase(_Record):
             if name not in facts or value not in allowed:
                 label = f"{name} ({aliases[name]})" if name in aliases else name
                 reasons.append(f"{label}={value!r} unsupported or missing; allowed={allowed!r}")
-        for name in ("quantization", "fusion_ops", "auxiliary_outputs"):
+        expected_quantization = dict(self.quantization)
+        actual_quantization = dict(actual.quantization)
+        for index, minimum, maximum in self.quantization_group_size_ranges:
+            spec = actual_quantization.get(index)
+            size = None if spec is None else spec.group_size
+            if size is None or len(size) != 1 or not minimum <= size[0] <= maximum:
+                reasons.append(f"quantization operand {index} group_size outside [{minimum}, {maximum}]")
+            else:
+                expected_quantization[index] = replace(expected_quantization[index], group_size=size)
+        if actual.quantization != tuple(sorted(expected_quantization.items())):
+            reasons.append("unsupported exact quantization")
+        for name in ("fusion_ops", "auxiliary_outputs"):
             if getattr(actual, name) != getattr(self, name):
                 reasons.append(f"unsupported exact {name}")
         if any(index >= len(signature.dtypes) for index, _ in actual.quantization):
@@ -1339,9 +1362,12 @@ class KernelDescriptor:
     graph_capability: GraphCapability = GraphCapability.NOT_CAPTURABLE
     graph_param_updates: Tuple[str, ...] = ()
     graph_replay: Optional[GraphReplaySpec] = None
+    admission: Optional[Callable] = field(default=None, compare=False, repr=False)
 
     def __post_init__(self):
         object.__setattr__(self, "backend", Backend(self.backend))
+        if self.admission is not None and not callable(self.admission):
+            raise SchemaError("kernel admission must be callable")
         try:
             object.__setattr__(self, "compile_mode", CompileMode(self.compile_mode))
         except (TypeError, ValueError) as exc:
@@ -1433,6 +1459,17 @@ class KernelDescriptor:
             if (self.artifact.entry_point is not None and self.launch_abi is not None
                     and self.artifact.entry_point != self.launch_abi.entry_point):
                 raise SchemaError("artifact entry_point does not match launch ABI")
+
+    def admission_reasons(self, signature) -> Tuple[str, ...]:
+        """Apply the bound implementation's metadata contract before ranking.
+
+        Like runner, this installed Python binding is excluded from serialized
+        ABI fields. Its native recipe remains bound by the frozen build spec.
+        """
+        reasons = () if self.admission is None else tuple(self.admission(signature))
+        if any(not isinstance(reason, str) or not reason for reason in reasons):
+            raise SchemaError("kernel admission must return nonempty reason strings")
+        return reasons
 
     def unsupported_target_reasons(self, soc_model: str) -> Tuple[str, ...]:
         """编译目标必须匹配设备；capability 的宽支持集不能放宽产物目标。"""

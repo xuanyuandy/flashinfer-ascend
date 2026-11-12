@@ -1,5 +1,7 @@
 """Installed selftest must fail closed without sources, devices, or artifacts."""
 
+from tests.production_inventory import PRODUCTION
+
 from dataclasses import asdict
 import json
 import subprocess
@@ -70,7 +72,9 @@ def test_new_production_op_without_numerical_case_fails():
 
 
 @pytest.mark.parametrize("statuses, exit_code", [
-    (("PASS", "PASS", "PASS"), 0), (("PASS", "SKIP", "PASS"), 1), (("FAIL", "PASS", "PASS"), 1),
+    (("PASS",) * len(PRODUCTION), 0),
+    (("PASS", "SKIP") + ("PASS",) * (len(PRODUCTION) - 2), 1),
+    (("FAIL",) + ("PASS",) * (len(PRODUCTION) - 1), 1),
 ])
 def test_cli_visits_registry_and_never_counts_skip_as_pass(
     monkeypatch, capsys, statuses, exit_code,
@@ -110,6 +114,24 @@ def test_worker_uses_current_interpreter_and_disables_external_roots(monkeypatch
 
     monkeypatch.setattr(subprocess, "run", run)
     assert selftest._run_kernel_process(expected.kernel_id) == expected
+
+
+def test_explicit_kernel_selection_checks_only_requested_registered_entry(monkeypatch, capsys):
+    KERNEL_ID = "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B"
+    seen = []
+    def run(kernel_id):
+        seen.append(kernel_id)
+        return selftest.SelftestResult(kernel_id, "PASS", "numerical match")
+    monkeypatch.setattr(selftest, "_run_kernel_process", run)
+    assert main(["selftest", "--kernel-id", KERNEL_ID]) == 0
+    assert seen == [KERNEL_ID]
+    assert "Summary: 1 PASS, 0 FAIL, 0 SKIP (total=1)" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("selection", [("missing/kernel",), ("same", "same")])
+def test_explicit_kernel_selection_rejects_unknown_or_duplicate_ids(selection, capsys):
+    assert selftest.run_selftest(kernel_ids=selection) == 1
+    assert "FAIL registry" in capsys.readouterr().out
 
 
 def test_worker_crash_cannot_report_pass(monkeypatch):

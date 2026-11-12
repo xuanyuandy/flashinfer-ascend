@@ -63,20 +63,20 @@ def prefill_signature(q, k, v, *, causal=False, kv_layout="NHD", custom_mask=Non
     """Build the identical validated workload for dispatch and offline tuning."""
     from dataclasses import replace
     from types import SimpleNamespace
-    from ..ascendc import FLASH_ATTENTION_KERNEL_ID, load_contract, tensor_contract_specialization
+    from ..operators.attention.single_prefill_catlass.operator import metadata_reason
 
     output_metadata = out if out is not None else SimpleNamespace(
         shape=tuple(q.shape), dtype=q.dtype, device=q.device,
         is_contiguous=lambda: True,
     )
     tensors = (q, k, v, output_metadata)
-    contract = tensor_contract_specialization(FLASH_ATTENTION_KERNEL_ID, tensors)
+    contract = metadata_reason(q, k, v, output_metadata)
     if out is not None and contract == "supported":
         from ..jit.tensor_adapter import _reject_output_overlap
 
-        _, recipe, _ = load_contract(FLASH_ATTENTION_KERNEL_ID)
+        from .._matmul import overlap_parameters
         try:
-            _reject_output_overlap(recipe.tensor_parameters, tensors)
+            _reject_output_overlap(overlap_parameters(4), tensors)
         except ValueError as error:
             contract = str(error)
     if causal is not False:
@@ -87,7 +87,8 @@ def prefill_signature(q, k, v, *, causal=False, kv_layout="NHD", custom_mask=Non
         contract = "catlass prefill does not support custom_mask"
     signature = build_signature(
         "ascendc.single_prefill_catlass", tensors if out is not None else tensors[:3],
-        specializations={"tensor_contract": contract},
+        specializations={"tensor_contract": contract,
+                         **({"tensor_contiguity": "0"} if any(not t.is_contiguous() for t in tensors) else {})},
     )
     if out is None:
         signature = replace(

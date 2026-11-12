@@ -83,15 +83,36 @@ def prepare(module, recipe):
             api = load_adapter()
             workspace = C.cast(getattr(module.api, recipe.host_entry + "GetWorkspaceSize"), C.c_void_p)
             launch = C.cast(getattr(module.api, recipe.host_entry), C.c_void_p)
-            status = api.fi_aclnn_register(token.encode(), recipe.host_entry.encode(),
-                                           workspace, launch, inputs, outputs)
+            if recipe.extended_aclnn:
+                if not hasattr(api, "fi_aclnn_register_extended"):
+                    raise RuntimeError("ACLNN Torch adapter lacks the declared extended ABI; rebuild the adapter")
+                integer_pointer = C.POINTER(C.c_int64)
+                api.fi_aclnn_register_extended.argtypes = [C.c_char_p, C.c_char_p, C.c_void_p, C.c_void_p,
+                    C.c_uint64, C.c_uint64, integer_pointer, integer_pointer, integer_pointer,
+                    integer_pointer, C.c_uint64]
+                api.fi_aclnn_register_extended.restype = C.c_int
+                array = lambda values: (C.c_int64 * len(values))(*values)
+                formats = array([sum({"ND": 1, "NZ": 2}[f] for f in p.physical_layouts)
+                                 for p in recipe.tensor_parameters])
+                conversions = array([next(({"int4": 1, "uint64": 2}[c.native_dtype]
+                                            for c in p.native_conversions), 0)
+                                     for p in recipe.tensor_parameters])
+                optional = array([p.optional for p in recipe.tensor_parameters])
+                attribute_types = array([{"bool": 0, "int64": 1, "float64": 2}[p.dtype] for p in recipe.attributes])
+                status = api.fi_aclnn_register_extended(token.encode(), recipe.host_entry.encode(),
+                    workspace, launch, inputs, outputs, formats, conversions, optional,
+                    attribute_types, len(recipe.attributes))
+                operation = torch.ops.flashinfer_aclnn._execute_extended
+            else:
+                status = api.fi_aclnn_register(token.encode(), recipe.host_entry.encode(),
+                                               workspace, launch, inputs, outputs)
+                operation = torch.ops.flashinfer_aclnn._execute
             if status:
                 raise RuntimeError(api.fi_aclnn_last_error().decode())
             _owners[token] = module
-            operation = torch.ops.flashinfer_aclnn._execute
-
-            def run(tensors):
-                return operation(token, list(tensors[:inputs]), list(tensors[inputs:]))
+            def run(tensors, attributes=()):
+                args = (token, list(tensors[:inputs]), list(tensors[inputs:]))
+                return operation(*args, list(attributes)) if recipe.extended_aclnn else operation(*args)
 
             _runners[token] = run
         return _runners[token]

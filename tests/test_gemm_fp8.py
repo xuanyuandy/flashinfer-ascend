@@ -263,9 +263,7 @@ class TestGemmFp8CannCascade:
     def test_bmm_fp8_matches_reference(self, monkeypatch):
         torch = self.torch
         torch.manual_seed(0)
-        monkeypatch.setattr(
-            self.cann_gemm, "_fp8_grouped_gemm", self._naive_grouped_gemm
-        )
+        monkeypatch.setitem(self.cann_gemm._bmm_fp8_cann.__globals__, '_fp8_grouped_gemm', self._naive_grouped_gemm)
         A = (torch.randn(4, 16, 32) * 0.2).to(torch.float8_e4m3fn)
         B = (torch.randn(4, 32, 24) * 0.2).to(torch.float8_e4m3fn)
         sa = torch.rand(1) * 0.02 + 0.01
@@ -280,9 +278,7 @@ class TestGemmFp8CannCascade:
     def test_groupwise_matches_reference(self, monkeypatch, mode):
         torch = self.torch
         torch.manual_seed(0)
-        monkeypatch.setattr(
-            self.cann_gemm, "_fp8_grouped_gemm", self._naive_grouped_gemm
-        )
+        monkeypatch.setitem(self.cann_gemm._gemm_fp8_nt_groupwise_cann.__globals__, '_fp8_grouped_gemm', self._naive_grouped_gemm)
         m, n, k = 32, 128, 256
         gm, gn, gk = 1, 128, 128
         a = (torch.randn(m, k) * 0.2).to(torch.float8_e4m3fn)

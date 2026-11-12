@@ -59,7 +59,10 @@ SOURCE_PATHS = (
     "flashinfer/runtime/signature.py", "flashinfer/runtime/hardware.py",
     "flashinfer/runtime/schema.py", "flashinfer/runtime/registry.py",
     "flashinfer/runtime/dispatch.py", "flashinfer/runtime/runner.py",
-    "flashinfer/cann/gemm.py", "flashinfer/ascendc.py", "flashinfer/triton/gemm.py",
+    "flashinfer/cann/gemm/matmul/implementation.py", "flashinfer/cann/gemm/matmul/runner.py",
+    "flashinfer/ascendc/__init__.py", "flashinfer/ascendc/gemm/matmul/implementation.py",
+    "flashinfer/ascendc/gemm/matmul/runner.py", "flashinfer/triton/gemm/matmul/implementation.py",
+    "flashinfer/triton/gemm/matmul/runner.py",
     "flashinfer/data/kernels/registry.json", "flashinfer/data/kernels/ascendc_specs.json",
     "csrc/recipes/matmul.json",
     "flashinfer/jit/runtime.py", "tools/routing_capability_demo.py",
@@ -300,7 +303,7 @@ CANN runner 进入厂商预编译调用；AOT runner 加载 op_package；Triton 
 本例不自动遍历 fallback_chain 重试其他 runner。生产实现、精度证据与队列边界沿用后续页面。
 
 源码依据：flashinfer/runtime/{schema,signature,hardware,registry,dispatch,runner}.py；
-flashinfer/{gemm,ascendc}.py；flashinfer/cann/gemm.py；flashinfer/triton/gemm.py；
+flashinfer/{gemm,ascendc}.py；flashinfer/cann/gemm/；flashinfer/triton/gemm/；
 flashinfer/jit/runtime.py；flashinfer/data/kernels/{registry,ascendc_specs}.json。
 """)
 
@@ -404,8 +407,8 @@ TritonMatmulRunner.__call__→prepare→进程模块或经验证的磁盘缓存�
 没有现场性能竞赛、性能最优或 graph-capture 保证；队列分层和版本边界在后续 Launch 页说明。
 
 源码依据：flashinfer/gemm.py；flashinfer/aclnn/_ops.py；flashinfer/runtime/{registry,dispatch,runner}.py；
-flashinfer/_matmul.py；flashinfer/cann/gemm.py；flashinfer/triton/gemm.py；
-flashinfer/jit/{runtime,tensor_adapter}.py；flashinfer/aclnn/_native.py；flashinfer/ascendc.py。
+flashinfer/_matmul.py；flashinfer/cann/gemm/；flashinfer/triton/gemm/；
+flashinfer/jit/{runtime,tensor_adapter}.py；flashinfer/aclnn/_native.py；flashinfer/ascendc/__init__.py。
 """)
 
 
@@ -562,7 +565,7 @@ CANN 由 torch.mm 委托 TorchNPU/CANN，本材料未追踪其准确 task 类型
 上述 queue 解释限定本机 TorchNPU 2.10.0.post7 与 Triton 3.6.0；未采集逐 task profiler trace。
 
 源码与证据：flashinfer/runtime/registry.py；
-flashinfer/cann/gemm.py；flashinfer/ascendc.py；flashinfer/triton/gemm.py；
+flashinfer/cann/gemm/；flashinfer/ascendc/__init__.py；flashinfer/triton/gemm/；
 flashinfer/data/kernels/{registry,ascendc_specs}.json；csrc/recipes/matmul.json；
 docs/matmul-backends.md；docs/aclnn-torch-adapter.md；
 docs/flash-attention-call-chain.md。

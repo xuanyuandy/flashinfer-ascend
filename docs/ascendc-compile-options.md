@@ -32,7 +32,7 @@
 | 目标 / recipe 架构 | `Ascend950` / `dav-3510` | `Ascend950` / `dav-3510` |
 | 算子编译选项 | `-O2` | `-O2` |
 | 算子宏 | 无额外宏 | `CATLASS_ARCH=3510` |
-| 算子 include | `csrc/include` | `csrc/kernels/ascendc/flash_attention` |
+| 算子 include | `csrc/include` | `csrc/kernels/ascendc/attention/flash_attention` |
 | 外部依赖 | 无 | CATLASS `41bf90da655bba3c66d0acd7e00abe33960ecfd6` 的 include 树 |
 | spec 额外编译选项 / recipe 链接选项 | 均为空 | 均为空 |
 | 产物与契约 | `op_package`、recipe v2、tiling schema 2 | 同左 |

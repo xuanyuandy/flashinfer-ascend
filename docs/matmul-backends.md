@@ -95,10 +95,10 @@ python -B tools/run_regression.py --profile full
 | 公共接口与统一输出准备 | `flashinfer/gemm.py`、`flashinfer/_matmul.py` |
 | 按选中 ID 查找并调用 runner | `flashinfer/runtime/runner.py` |
 | Torch functional / out / FakeTensor | `flashinfer/aclnn/_ops.py` |
-| CANN runner | `flashinfer/cann/gemm.py` |
-| native host/device 与 recipe | `csrc/kernels/ascendc/matmul/`、`csrc/recipes/matmul.json` |
+| CANN runner | `flashinfer/cann/gemm/` |
+| native host/device 与 recipe | `csrc/kernels/ascendc/gemm/matmul/`、`csrc/recipes/matmul.json` |
 | native descriptor / 冻结 spec | `flashinfer/data/kernels/registry.json`、`flashinfer/data/kernels/ascendc_specs.json` |
-| Triton runner 与 kernel | `flashinfer/triton/gemm.py`、`flashinfer/triton/_matmul_kernels.py` |
+| Triton runner 与 kernel | `flashinfer/triton/gemm/`、`flashinfer/triton/_matmul_kernels.py` |
 | 元数据、分配、路由、FakeTensor 与合成调优 UT | `tests/test_matmul.py` |
 | 真机矩阵、AOT 错误、JIT 冷/热缓存与队列验证 | `tests/test_matmul_real.py`、`tests/matmul_acceptance.py` |
 
@@ -119,8 +119,8 @@ Registry 按 ID 保存记录，按 op 派生候选和来源栈视图；登记顺
 
 | 实现 | 描述记录来源 | `runner` |
 | --- | --- | --- |
-| CANN | `flashinfer/cann/gemm.py` 中的 Python 声明 | `_matmul_cann` 函数 |
-| Triton | `flashinfer/triton/gemm.py` 中的 Python 声明 | `TritonMatmulRunner` 可调用对象 |
+| CANN | `flashinfer/cann/gemm/` 中的 Python 声明 | `_matmul_cann` 函数 |
+| Triton | `flashinfer/triton/gemm/` 中的 Python 声明 | `TritonMatmulRunner` 可调用对象 |
 | Ascend C AOT | `registry.json` 读取为 Descriptor，关联冻结 spec，再由 Python 绑定入口 | `AotKernelRunner` 可调用对象 |
 
 manifest 是本仓 AOT 描述的当前来源。AOT 最终仍作为普通 `KernelDescriptor` 参与同一选择流程；

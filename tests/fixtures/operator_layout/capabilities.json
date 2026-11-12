@@ -1,0 +1,2574 @@
+{
+  "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B": {
+    "op": "gemm.grouped_matmul_swiglu_quant",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B"
+    ],
+    "min_aicore": 0,
+    "specializations": [],
+    "cases": [
+      {
+        "name": "int32_int64_ND_channel",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int32",
+            "int64",
+            "float32",
+            "float32",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 19984
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            4
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int4_packed",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "uint64",
+              "granularity": "channel",
+              "group_size": null,
+              "axis": [
+                2
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": "low_nibble_first",
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "int32_int64_ND_group",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int32",
+            "int64",
+            "float32",
+            "float32",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 19984
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            4
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int4_packed",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "uint64",
+              "granularity": "group",
+              "group_size": [
+                1
+              ],
+              "axis": [
+                1
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": "low_nibble_first",
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ],
+        "quantization_group_size_ranges": [
+          [
+            1,
+            1,
+            19999
+          ]
+        ]
+      },
+      {
+        "name": "int32_int64_NZ_channel",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int32",
+            "int64",
+            "float32",
+            "float32",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 19984
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            8
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int4_packed",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "uint64",
+              "granularity": "channel",
+              "group_size": null,
+              "axis": [
+                2
+              ],
+              "has_zero_point": false,
+              "physical_layout": "NZ",
+              "packing_order": "low_nibble_first",
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "int32_int64_NZ_group",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int32",
+            "int64",
+            "float32",
+            "float32",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 19984
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            8
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int4_packed",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "uint64",
+              "granularity": "group",
+              "group_size": [
+                1
+              ],
+              "axis": [
+                1
+              ],
+              "has_zero_point": false,
+              "physical_layout": "NZ",
+              "packing_order": "low_nibble_first",
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ],
+        "quantization_group_size_ranges": [
+          [
+            1,
+            1,
+            19999
+          ]
+        ]
+      },
+      {
+        "name": "int8_bfloat16_NZ_channel",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int8",
+            "bfloat16",
+            "float32",
+            "none",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 65520
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            32
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "bfloat16",
+              "granularity": "channel",
+              "group_size": null,
+              "axis": [
+                2
+              ],
+              "has_zero_point": false,
+              "physical_layout": "NZ",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "int8_float16_NZ_channel",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int8",
+            "float16",
+            "float32",
+            "none",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 65520
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            32
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float16",
+              "granularity": "channel",
+              "group_size": null,
+              "axis": [
+                2
+              ],
+              "has_zero_point": false,
+              "physical_layout": "NZ",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ]
+      },
+      {
+        "name": "int8_float32_NZ_channel",
+        "dtype_signatures": [
+          [
+            "int8",
+            "int8",
+            "float32",
+            "float32",
+            "none",
+            "int64",
+            "int8",
+            "float32"
+          ]
+        ],
+        "layout_signatures": [],
+        "shape_ranges": [
+          {
+            "name": "K",
+            "tensor_index": 0,
+            "axis": 1,
+            "minimum": 16,
+            "maximum": 65520
+          }
+        ],
+        "shape_multiples": [
+          [
+            0,
+            1,
+            16
+          ],
+          [
+            1,
+            2,
+            32
+          ]
+        ],
+        "specializations": [
+          [
+            "tensor_contract",
+            [
+              "supported"
+            ]
+          ]
+        ],
+        "compute_dtypes": [
+          "int8"
+        ],
+        "accumulator_dtypes": [
+          "int32"
+        ],
+        "quantization": [
+          [
+            0,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            1,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "int32",
+              "scale_dtype": "float32",
+              "granularity": "channel",
+              "group_size": null,
+              "axis": [
+                2
+              ],
+              "has_zero_point": false,
+              "physical_layout": "NZ",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ],
+          [
+            6,
+            {
+              "scheme": "symmetric",
+              "storage_dtype": "int8",
+              "compute_dtype": "float32",
+              "accumulator_dtype": "float32",
+              "scale_dtype": "float32",
+              "granularity": "token",
+              "group_size": null,
+              "axis": [
+                0
+              ],
+              "has_zero_point": false,
+              "physical_layout": "ND",
+              "packing_order": null,
+              "schema_version": 1
+            }
+          ]
+        ],
+        "attention_modes": [],
+        "attention_variants": [],
+        "kv_cache_types": [],
+        "mask_types": [],
+        "pos_encodings": [],
+        "causal_values": [],
+        "sliding_window_values": [],
+        "supports_logits_soft_cap": false,
+        "fusion_ops": [
+          "grouped_matmul",
+          "dequantize",
+          "swiglu",
+          "dynamic_quantize"
+        ],
+        "auxiliary_outputs": [
+          "output_scale"
+        ],
+        "sparse_formats": [],
+        "routing_methods": [],
+        "moe_top_k_values": [],
+        "expert_parallel_sizes": [],
+        "supports_deterministic": false,
+        "features": [
+          {
+            "name": "activation.clamp",
+            "allowed_values": [
+              false,
+              true
+            ]
+          },
+          {
+            "name": "activation.kind",
+            "allowed_values": [
+              "silu"
+            ]
+          },
+          {
+            "name": "gemm.mode",
+            "allowed_values": [
+              "grouped"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "ascendc/gemm/matmul/native/op_package/Ascend950": {
+    "op": "gemm.matmul",
+    "dtypes": [
+      "bfloat16"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "tensor_contract",
+        [
+          "supported"
+        ]
+      ]
+    ],
+    "shape_ranges": [
+      {
+        "name": "M",
+        "tensor_index": 0,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 0,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 1,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 1,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "M",
+        "tensor_index": 2,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 2,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      }
+    ],
+    "physical_layouts": [
+      "ND"
+    ]
+  },
+  "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950": {
+    "op": "gemm.matmul_bias_silu",
+    "dtypes": [
+      "bfloat16"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "tensor_contract",
+        [
+          "supported"
+        ]
+      ]
+    ],
+    "shape_ranges": [
+      {
+        "name": "M",
+        "tensor_index": 0,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 0,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 1,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 1,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 2,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "M",
+        "tensor_index": 3,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 3,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      }
+    ],
+    "physical_layouts": [
+      "ND"
+    ]
+  },
+  "ascendc/t4/flash_attention/catlass/op_package/Ascend950": {
+    "op": "ascendc.single_prefill_catlass",
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "tensor_contract",
+        [
+          "supported"
+        ]
+      ]
+    ],
+    "shape_ranges": [
+      {
+        "name": "S",
+        "tensor_index": 0,
+        "axis": 0,
+        "minimum": 128,
+        "maximum": 512
+      },
+      {
+        "name": "H",
+        "tensor_index": 0,
+        "axis": 1,
+        "minimum": 1,
+        "maximum": 8
+      },
+      {
+        "name": "D",
+        "tensor_index": 0,
+        "axis": 2,
+        "minimum": 128,
+        "maximum": 128
+      },
+      {
+        "name": "T",
+        "tensor_index": 1,
+        "axis": 0,
+        "minimum": 128,
+        "maximum": 512
+      },
+      {
+        "name": "H",
+        "tensor_index": 1,
+        "axis": 1,
+        "minimum": 1,
+        "maximum": 8
+      },
+      {
+        "name": "D",
+        "tensor_index": 1,
+        "axis": 2,
+        "minimum": 128,
+        "maximum": 128
+      },
+      {
+        "name": "T",
+        "tensor_index": 2,
+        "axis": 0,
+        "minimum": 128,
+        "maximum": 512
+      },
+      {
+        "name": "H",
+        "tensor_index": 2,
+        "axis": 1,
+        "minimum": 1,
+        "maximum": 8
+      },
+      {
+        "name": "D",
+        "tensor_index": 2,
+        "axis": 2,
+        "minimum": 128,
+        "maximum": 128
+      },
+      {
+        "name": "S",
+        "tensor_index": 3,
+        "axis": 0,
+        "minimum": 128,
+        "maximum": 512
+      },
+      {
+        "name": "H",
+        "tensor_index": 3,
+        "axis": 1,
+        "minimum": 1,
+        "maximum": 8
+      },
+      {
+        "name": "D",
+        "tensor_index": 3,
+        "axis": 2,
+        "minimum": 128,
+        "maximum": 128
+      }
+    ],
+    "physical_layouts": [
+      "ND"
+    ]
+  },
+  "cann/activation/gelu_and_mul_v1": {
+    "op": "activation.gelu_and_mul",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/activation/gelu_tanh_and_mul_v1": {
+    "op": "activation.gelu_tanh_and_mul",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/activation/silu_and_mul_v1": {
+    "op": "activation.silu_and_mul",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/attention/batch_decode_paged_fia_v1": {
+    "op": "attention.batch_decode_paged",
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "head_dim",
+        [
+          "64",
+          "128"
+        ]
+      ]
+    ]
+  },
+  "cann/attention/batch_prefill_paged_fia_v1": {
+    "op": "attention.batch_prefill_paged",
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "head_dim",
+        [
+          "64",
+          "128"
+        ]
+      ]
+    ]
+  },
+  "cann/attention/batch_prefill_ragged_fia_v1": {
+    "op": "attention.batch_prefill_ragged",
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "head_dim",
+        [
+          "64",
+          "128"
+        ]
+      ]
+    ]
+  },
+  "cann/attention/single_decode_fia_v1": {
+    "op": "attention.single_decode",
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "head_dim",
+        [
+          "64",
+          "128"
+        ]
+      ]
+    ]
+  },
+  "cann/attention/single_prefill_fia_v1": {
+    "op": "attention.single_prefill",
+    "dtypes": [
+      "float16",
+      "bfloat16"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "head_dim",
+        [
+          "64",
+          "128"
+        ]
+      ]
+    ]
+  },
+  "cann/cascade/merge_state_attention_update_v1": {
+    "op": "cascade.merge_state",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/cascade/merge_states_v1": {
+    "op": "cascade.merge_states",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/decode/cudnn_batch_decode_fia_v1": {
+    "op": "decode.cudnn_batch_decode_with_kv_cache",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/fused_moe/cutlass_fused_moe_gmm_v1": {
+    "op": "fused_moe.cutlass_fused_moe",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "int32",
+      "int64",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend910_93",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/fused_moe/fp8_block_scale_moe_cascade_v1": {
+    "op": "fused_moe.trtllm_fp8_block_scale_moe",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "int32",
+      "int64",
+      "float32",
+      "float8_e4m3fn"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/fused_moe/fp8_per_tensor_scale_moe_cascade_v1": {
+    "op": "fused_moe.trtllm_fp8_per_tensor_scale_moe",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "int32",
+      "int64",
+      "float32",
+      "float8_e4m3fn"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/gemm/bmm_bf16_v1": {
+    "op": "gemm.bmm_bf16",
+    "dtypes": [
+      "bfloat16",
+      "float16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/gemm/bmm_fp8_grouped_v1": {
+    "op": "gemm.bmm_fp8",
+    "dtypes": [
+      "float8_e4m3fn",
+      "float8_e5m2",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/gemm/gemm_fp8_nt_groupwise_block_v1": {
+    "op": "gemm.gemm_fp8_nt_groupwise",
+    "dtypes": [
+      "float8_e4m3fn",
+      "float8_e5m2",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/gemm/matmul_v1": {
+    "op": "gemm.matmul",
+    "dtypes": [
+      "bfloat16"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "tensor_contract",
+        [
+          "supported"
+        ]
+      ]
+    ],
+    "shape_ranges": [
+      {
+        "name": "M",
+        "tensor_index": 0,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 0,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 1,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 1,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "M",
+        "tensor_index": 2,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 2,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      }
+    ],
+    "physical_layouts": [
+      "ND"
+    ]
+  },
+  "cann/gemm/mm_bf16_v1": {
+    "op": "gemm.mm_bf16",
+    "dtypes": [
+      "bfloat16",
+      "float16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/gemm/segment_gemm_v1": {
+    "op": "gemm.segment_gemm",
+    "dtypes": [
+      "bfloat16",
+      "float16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/norm/fused_add_rmsnorm_aclnn_v1": {
+    "op": "norm.fused_add_rmsnorm",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/norm/gemma_rmsnorm_aclnn_v1": {
+    "op": "norm.gemma_rmsnorm",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/norm/layernorm_aclnn_v1": {
+    "op": "norm.layernorm",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/norm/rmsnorm_aclnn_v1": {
+    "op": "norm.rmsnorm",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/page/append_paged_kv_cache_v1": {
+    "op": "page.append_paged_kv_cache",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/rope/apply_rope_cos_sin_cache_aclnn_v1": {
+    "op": "rope.apply_rope_with_cos_sin_cache_inplace",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/rope/apply_rope_cos_sin_cache_out_v1": {
+    "op": "rope.apply_rope_with_cos_sin_cache",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/rope/apply_rope_inplace_v1": {
+    "op": "rope.apply_rope_inplace",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/rope/apply_rope_pos_ids_inplace_v1": {
+    "op": "rope.apply_rope_pos_ids_inplace",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/rope/apply_rope_pos_ids_v1": {
+    "op": "rope.apply_rope_pos_ids",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/rope/apply_rope_v1": {
+    "op": "rope.apply_rope",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/chain_speculative_sampling_v1": {
+    "op": "sampling.chain_speculative_sampling",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/min_p_sampling_from_probs_v1": {
+    "op": "sampling.min_p_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/sampling_from_logits_v1": {
+    "op": "sampling.sampling_from_logits",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/sampling_from_probs_v1": {
+    "op": "sampling.sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/top_k_mask_logits_v1": {
+    "op": "sampling.top_k_mask_logits",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/top_k_renorm_probs_v1": {
+    "op": "sampling.top_k_renorm_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/top_k_sampling_from_probs_v1": {
+    "op": "sampling.top_k_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/top_k_top_p_sampling_from_probs_v1": {
+    "op": "sampling.top_k_top_p_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/top_p_renorm_probs_v1": {
+    "op": "sampling.top_p_renorm_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "cann/sampling/top_p_sampling_from_probs_v1": {
+    "op": "sampling.top_p_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/activation/gelu_and_mul_v1": {
+    "op": "activation.gelu_and_mul",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/activation/gelu_tanh_and_mul_v1": {
+    "op": "activation.gelu_tanh_and_mul",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/activation/silu_and_mul_v1": {
+    "op": "activation.silu_and_mul",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/attention/decode_v1": {
+    "op": "attention.decode",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/attention/prefill_ragged_v1": {
+    "op": "attention.prefill",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/cascade/merge_state_v1": {
+    "op": "cascade.merge_state",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/cascade/merge_states_v1": {
+    "op": "cascade.merge_states",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/decode/cudnn_batch_decode_v1": {
+    "op": "decode.cudnn_batch_decode_with_kv_cache",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/fused_moe/cutlass_fused_moe_v1": {
+    "op": "fused_moe.cutlass_fused_moe",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/fused_moe/trtllm_fp8_block_scale_moe_v1": {
+    "op": "fused_moe.trtllm_fp8_block_scale_moe",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/fused_moe/trtllm_fp8_per_tensor_scale_moe_v1": {
+    "op": "fused_moe.trtllm_fp8_per_tensor_scale_moe",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/gemm/bmm_bf16_v1": {
+    "op": "gemm.bmm_bf16",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/gemm/bmm_fp8_v1": {
+    "op": "gemm.bmm_fp8",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/gemm/gemm_fp8_nt_groupwise_v1": {
+    "op": "gemm.gemm_fp8_nt_groupwise",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/gemm/mm_bf16_v1": {
+    "op": "gemm.mm_bf16",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/gemm/segment_gemm_v1": {
+    "op": "gemm.segment_gemm",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/norm/fused_add_rmsnorm_v1": {
+    "op": "norm.fused_add_rmsnorm",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/norm/gemma_fused_add_rmsnorm_v1": {
+    "op": "norm.gemma_fused_add_rmsnorm",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/norm/gemma_rmsnorm_v1": {
+    "op": "norm.gemma_rmsnorm",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/norm/layernorm_v1": {
+    "op": "norm.layernorm",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/norm/rmsnorm_v1": {
+    "op": "norm.rmsnorm",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/page/append_paged_kv_cache_v1": {
+    "op": "page.append_paged_kv_cache",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32",
+      "int32",
+      "int64"
+    ],
+    "layouts": [
+      "NHD",
+      "HND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/rope/apply_rope_inplace_v1": {
+    "op": "rope.apply_rope_inplace",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/rope/apply_rope_pos_ids_inplace_v1": {
+    "op": "rope.apply_rope_pos_ids_inplace",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/rope/apply_rope_pos_ids_v1": {
+    "op": "rope.apply_rope_pos_ids",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/rope/apply_rope_v1": {
+    "op": "rope.apply_rope",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/rope/apply_rope_with_cos_sin_cache_out_v1": {
+    "op": "rope.apply_rope_with_cos_sin_cache",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/rope/apply_rope_with_cos_sin_cache_v1": {
+    "op": "rope.apply_rope_with_cos_sin_cache_inplace",
+    "dtypes": [],
+    "layouts": [],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/chain_speculative_sampling_v1": {
+    "op": "sampling.chain_speculative_sampling",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/min_p_sampling_from_probs_v1": {
+    "op": "sampling.min_p_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/sampling_from_logits_v1": {
+    "op": "sampling.sampling_from_logits",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/sampling_from_probs_v1": {
+    "op": "sampling.sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/top_k_mask_logits_v1": {
+    "op": "sampling.top_k_mask_logits",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/top_k_renorm_probs_v1": {
+    "op": "sampling.top_k_renorm_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/top_k_sampling_from_probs_v1": {
+    "op": "sampling.top_k_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/top_k_top_p_sampling_from_probs_v1": {
+    "op": "sampling.top_k_top_p_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/top_p_renorm_probs_v1": {
+    "op": "sampling.top_p_renorm_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "reference/sampling/top_p_sampling_from_probs_v1": {
+    "op": "sampling.top_p_sampling_from_probs",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [
+      "ND"
+    ],
+    "soc_models": [],
+    "min_aicore": 0,
+    "specializations": []
+  },
+  "triton/gemm/matmul_v1/Ascend950": {
+    "op": "gemm.matmul",
+    "dtypes": [
+      "bfloat16"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": [
+      [
+        "tensor_contract",
+        [
+          "supported"
+        ]
+      ]
+    ],
+    "shape_ranges": [
+      {
+        "name": "M",
+        "tensor_index": 0,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 0,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "K",
+        "tensor_index": 1,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 1,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "M",
+        "tensor_index": 2,
+        "axis": 0,
+        "minimum": 16,
+        "maximum": 256
+      },
+      {
+        "name": "N",
+        "tensor_index": 2,
+        "axis": 1,
+        "minimum": 16,
+        "maximum": 256
+      }
+    ],
+    "physical_layouts": [
+      "ND"
+    ]
+  },
+  "triton/norm/gemma_fused_add_rmsnorm_v1": {
+    "op": "norm.gemma_fused_add_rmsnorm",
+    "dtypes": [
+      "float16",
+      "bfloat16",
+      "float32"
+    ],
+    "layouts": [],
+    "soc_models": [
+      "Ascend910B",
+      "Ascend950"
+    ],
+    "min_aicore": 0,
+    "specializations": []
+  }
+}

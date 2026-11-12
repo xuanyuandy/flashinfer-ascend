@@ -873,3 +873,8 @@ __all__ = [
     "EMPTY_QUANT_PHYSICAL_LAYOUT_CATALOG",
     "EMPTY_ATTENTION_OPERATOR_RUNTIME_RESOLVERS",
 ]
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='attention')

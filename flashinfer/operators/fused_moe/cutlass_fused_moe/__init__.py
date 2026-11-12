@@ -1,0 +1,1 @@
+"""Logical contract for fused_moe.cutlass_fused_moe."""

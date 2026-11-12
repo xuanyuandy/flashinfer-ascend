@@ -59,7 +59,7 @@ graph_replay = GraphReplaySpec(
     validated_kernel_id="cann/attention/single_decode_fia_v1",
     strategy="host_kwargs",
     parameter_sources=(("actual_seq_lengths_kv", "kv_seq_lengths"),),
-    # 其余字段见 flashinfer/cann/attention.py：
+    # 其余字段见 flashinfer/cann/attention/_shared.py：
     # required_arguments、fixed_arguments、tensor_metadata、parameter_ranges，
     # 以及 validation_tests 和 validated_environment。
 )

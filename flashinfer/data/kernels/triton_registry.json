@@ -66,7 +66,7 @@
       "capability_binding": null,
       "source": {
         "language": "triton",
-        "locator": "triton/_attention_kernels.py",
+        "locator": "triton/attention/single_prefill_catlass/kernels.py",
         "digest": "66bfda1ca48ed1e49d0fb5ff4b5dc3956a8a59171a0bf8894d65635e3ca436e2",
         "schema_version": 1
       },

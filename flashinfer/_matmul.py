@@ -25,19 +25,33 @@ def output_metadata(a, b, out=None):
     )
 
 
+def metadata_reason(a, b, out):
+    if len(a.shape) != 2 or len(b.shape) != 2 or len(out.shape) != 2:
+        return "Matmul requires rank-2 tensors"
+    if a.shape[1] != b.shape[0] or tuple(out.shape) != (a.shape[0], b.shape[1]):
+        return "Matmul input/output dimensions are inconsistent"
+    if any(int(v) <= 0 for t in (a, b, out) for v in t.shape):
+        return "Matmul dimensions must be positive"
+    if any(t.dtype != a.dtype or t.device != a.device for t in (b, out)):
+        return "Matmul tensors must share dtype and device"
+    return "supported"
+
+
+def overlap_parameters(count=3):
+    return tuple(SimpleNamespace(role="output" if i == count - 1 else "input") for i in range(count))
+
+
 def validate_tensors(a, b, out):
-    """Recheck at the execution boundary without casting or copying inputs."""
+    """Shared execution semantics, independent of any frozen AOT recipe."""
     import torch
     import torch_npu
-    from .ascendc import tensor_contract_specialization
     from .jit.tensor_adapter import _reject_output_overlap
 
-    tensors = (a, b, out)
-    diagnostic = tensor_contract_specialization(AOT_KERNEL_ID, tensors)
-    if diagnostic != "supported":
-        raise ValueError(diagnostic)
+    reason = metadata_reason(a, b, out)
+    if reason != "supported":
+        raise ValueError(reason)
     if a.device.type != torch._C._get_privateuse1_backend_name():
         raise ValueError("Matmul requires NPU tensors")
-    if any(torch_npu.get_npu_format(t) != 2 for t in tensors):
+    if any(not t.is_contiguous() or torch_npu.get_npu_format(t) != 2 for t in (a, b, out)):
         raise ValueError("Matmul requires contiguous ND tensors")
-    _reject_output_overlap(contract()[1].tensor_parameters, tensors)
+    _reject_output_overlap(overlap_parameters(), (a, b, out))

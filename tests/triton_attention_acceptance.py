@@ -136,7 +136,8 @@ def run(mode, cache_only=False):
         torch.testing.assert_close(actual, reference.double(), atol=atol, rtol=rtol)
         errors[str(i)] = float((actual - reference.double()).abs().max())
     assert get_global_registry() is default
-    assert len(default.descriptors()) == 84
+    from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT
+    assert len(default.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
     if mode != "cold":
         assert registry.get(FLASH_ATTENTION_KERNEL_ID).runner.provenance.source == "aot"
     print(json.dumps(dict(result="PASS", mode=mode, numerical_checks=len(observations),

@@ -32,6 +32,10 @@ def authoring(tmp_path, monkeypatch):
     root = tmp_path / "project"
     shutil.copytree(ROOT / "csrc", root / "csrc")
     descriptor, recipe, spec = load_contract(MATMUL_BIAS_SILU_KERNEL_ID)
+    for reference in recipe.extra_build_files:
+        target = root / reference.locator
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / reference.locator, target)
     data = root / "flashinfer/data/kernels"
     registry = data / "registry.json"
     frozen = data / "ascendc_specs.json"
@@ -87,7 +91,8 @@ def test_new_operator_needs_only_recipe_and_central_descriptor(authoring, monkey
     prepared = declarations.freeze_production_kernels(source_root=authoring.root)
     assert [d.kernel_id for d, _, _ in prepared] == [authoring.recipe.kernel_id, recipe.kernel_id]
     with monkeypatch.context() as scoped:
-        scoped.setattr(ascendc, "_DATA", authoring.data)
+        from flashinfer.ascendc import _catalog
+        scoped.setattr(_catalog, "_DATA", authoring.data)
         scoped.setattr(build, "_source_root", lambda: authoring.root)
         ascendc._contracts.cache_clear()
         try:

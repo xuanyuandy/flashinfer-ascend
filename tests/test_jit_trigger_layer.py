@@ -1,5 +1,7 @@
 """T18A: declarations and observations, without a compiler or loader."""
 
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS
+
 import hashlib
 import json
 import os
@@ -278,11 +280,8 @@ def test_all_builtin_records_are_queryable_without_inventing_metadata():
 
     descriptors = tuple(registry.get(d.kernel_id) for d in _builtin_descriptors())
     assert len(descriptors) == 81
-    assert len(registry.descriptors()) == 84
-    assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in descriptors} == {
-        MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID,
-        "ascendc/gemm/matmul/native/op_package/Ascend950",
-    }
+    assert len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
+    assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in descriptors} == PRODUCTION_KERNEL_IDS
     before = [(d.to_dict(), d.fingerprint) for d in registry.descriptors()]
     revision = registry.revision
     for d in descriptors:
@@ -499,13 +498,11 @@ from flashinfer.runtime import (Backend, HardwareSignature, InputSignature,
                                KernelDescriptor, KernelRegistry, SourceRef)
 from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID
 from flashinfer.runtime.registry import _builtin_descriptors
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS
 registry = flashinfer.get_global_registry()
 legacy = _builtin_descriptors()
-assert len(legacy) == 81 and len(registry.descriptors()) == 84
-assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy} == {
-    MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID,
-    "ascendc/gemm/matmul/native/op_package/Ascend950",
-}
+assert len(legacy) == 81 and len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
+assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy} == PRODUCTION_KERNEL_IDS
 selected = []
 for d in legacy:
     cap = d.capability

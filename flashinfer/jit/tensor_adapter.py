@@ -22,11 +22,11 @@ def _reject_output_overlap(parameters, tensors):
             continue
         out_lo, out_hi = output.data_ptr(), output.data_ptr() + output.numel() * output.element_size()
         for tensor_index, tensor in enumerate(tensors):
-            if tensor_index == output_index:
+            if tensor_index == output_index or tensor is None:
                 continue
             lo, hi = tensor.data_ptr(), tensor.data_ptr() + tensor.numel() * tensor.element_size()
             if max(lo, out_lo) < min(hi, out_hi):
-                raise ValueError("Ascend C output tensors must not overlap other arguments")
+                raise ValueError("output tensors must not overlap other arguments")
 
 
 def package_tensor_runner(module, recipe, *, spec):
@@ -57,7 +57,7 @@ class TorchOpPackageRunner:
     _native_runner: object = field(default=None, init=False, repr=False, compare=False)
     _native_lock: object = field(default_factory=RLock, init=False, repr=False, compare=False)
 
-    def __call__(self, *tensors):
+    def __call__(self, *tensors, **attributes):
         import torch
         import torch_npu
 
@@ -66,16 +66,23 @@ class TorchOpPackageRunner:
             raise SchemaError("tensor adapter expected parameters %s" % (names,))
         by_name = dict(zip(names, tensors))
         self.recipe.validate_tensor_metadata(
-            shapes={name: tuple(t.shape) for name, t in by_name.items()},
-            dtypes={name: _dtype_name(t) for name, t in by_name.items()},
+            shapes={name: None if t is None else tuple(t.shape) for name, t in by_name.items()},
+            dtypes={name: None if t is None else _dtype_name(t) for name, t in by_name.items()},
         )
-        device = tensors[0].device
+        scalar_values = self.recipe.validate_attributes(attributes)
+        present = tuple(t for t in tensors if t is not None)
+        device = present[0].device
         if device.type != torch._C._get_privateuse1_backend_name():
             raise ValueError("Ascend C tensor adapter requires NPU tensors")
-        if any(t.device != device for t in tensors):
+        if any(t.device != device for t in present):
             raise ValueError("Ascend C tensors must share one device")
-        if any(not t.is_contiguous() or torch_npu.get_npu_format(t) != 2 for t in tensors):
-            raise ValueError("Ascend C tensor adapter requires contiguous ND tensors")
+        for parameter, tensor in zip(self.recipe.tensor_parameters, tensors):
+            if tensor is None:
+                continue
+            layout = {2: "ND", 29: "NZ"}.get(torch_npu.get_npu_format(tensor))
+            if not tensor.is_contiguous() or layout not in parameter.physical_layouts:
+                raise ValueError("Ascend C tensor adapter requires contiguous %s tensors for %s"
+                                 % ("/".join(parameter.physical_layouts), parameter.name))
         _reject_output_overlap(self.recipe.tensor_parameters, tensors)
 
         from flashinfer.aclnn import _native
@@ -84,7 +91,8 @@ class TorchOpPackageRunner:
             with self._native_lock:
                 if self._native_runner is None:
                     object.__setattr__(self, "_native_runner", _native.prepare(self.module, self.recipe))
-        return self._native_runner(tensors)
+        return (self._native_runner(tensors, scalar_values) if self.recipe.extended_aclnn
+                else self._native_runner(tensors))
 
 
 __all__ = ["TorchOpPackageRunner", "package_tensor_runner"]

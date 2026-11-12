@@ -360,3 +360,8 @@ def fp8_block_scale_moe(
         int(routing_method_type),
     )
     return None
+
+
+# Definitions and implementation choices are collected by the framework.
+from flashinfer.operators.catalog import install_exports as _install_operator_exports
+_install_operator_exports(globals(), domain='fused_moe')

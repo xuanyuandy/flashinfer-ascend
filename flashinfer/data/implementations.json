@@ -1,0 +1,1513 @@
+{
+  "schema_version": 1,
+  "implementations": [
+    {
+      "kernel_id": "cann/activation/gelu_and_mul_v1",
+      "op": "activation.gelu_and_mul",
+      "backend": "cann",
+      "module": "flashinfer.cann.activation.gelu_and_mul.implementation",
+      "scope": "global",
+      "origin": "flashinfer._activation",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/activation/__init__.py": "8940b1067ee83eb265a5d4eaea78bd3e06794520a2e2f0a2be7cc799da3173c5",
+        "cann/activation/_family.py": "60b1c4e62ac216a1428fd319ae4fe44dd0ccc33d79079545c1934866f5a153ad",
+        "cann/activation/gelu_and_mul/__init__.py": "80bccd93b8f111ee6df4fc7f0b456583906be4067adb49da7f63f782549424ba",
+        "cann/activation/gelu_and_mul/implementation.py": "2878c8f679106f31a0f0a7afc1b77099294ab15eef8047014e33bd9c4cd53dc1",
+        "cann/activation/gelu_and_mul/runner.py": "db9ee716eef5f0beb4a3416053280d529b47051284d9062a31e2dbce768b7b0d",
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/activation/gelu_tanh_and_mul_v1",
+      "op": "activation.gelu_tanh_and_mul",
+      "backend": "cann",
+      "module": "flashinfer.cann.activation.gelu_tanh_and_mul.implementation",
+      "scope": "global",
+      "origin": "flashinfer._activation",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/activation/__init__.py": "8940b1067ee83eb265a5d4eaea78bd3e06794520a2e2f0a2be7cc799da3173c5",
+        "cann/activation/_family.py": "60b1c4e62ac216a1428fd319ae4fe44dd0ccc33d79079545c1934866f5a153ad",
+        "cann/activation/gelu_tanh_and_mul/__init__.py": "30935d4d969adeb2b9939b2ad8a00ba43e1438142452194f2ac4db737a9c511b",
+        "cann/activation/gelu_tanh_and_mul/implementation.py": "87b94f5ae293df0f3e901ae3961a904bb394d8211240d6a825dc772bc20dc3e5",
+        "cann/activation/gelu_tanh_and_mul/runner.py": "be8998eec2d2bd623458c48af3802494017f83842f5cde585a9ed7e2e283ee88",
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/activation/silu_and_mul_v1",
+      "op": "activation.silu_and_mul",
+      "backend": "cann",
+      "module": "flashinfer.cann.activation.silu_and_mul.implementation",
+      "scope": "global",
+      "origin": "flashinfer._activation",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/activation/__init__.py": "8940b1067ee83eb265a5d4eaea78bd3e06794520a2e2f0a2be7cc799da3173c5",
+        "cann/activation/_family.py": "60b1c4e62ac216a1428fd319ae4fe44dd0ccc33d79079545c1934866f5a153ad",
+        "cann/activation/silu_and_mul/__init__.py": "6b51c209925b9f59b115ceb1f4dbf1898bab18982796dc825cdc1c24f4985905",
+        "cann/activation/silu_and_mul/implementation.py": "2169bc5c394895b6248ade262cd5cb045cf92870e30bcc3d89aa3704127f9d66",
+        "cann/activation/silu_and_mul/runner.py": "1470e3fa65fd6af38e60efc0dbbadd84eeb481ce8decd6cf7d2a7d47ea295b9d",
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/attention/batch_decode_paged_fia_v1",
+      "op": "attention.batch_decode_paged",
+      "backend": "cann",
+      "module": "flashinfer.cann.attention.batch_decode_paged.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.attention",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/attention/__init__.py": "373371403e3e10ed0c00998d222dc70c996819b8d9116dec521a40a087736ad2",
+        "cann/attention/_shared.py": "48270b0aaa6f49d2b193b444f57d47567d900d97b7fa0ed082f7c1c0bb598b23",
+        "cann/attention/batch_decode_paged/__init__.py": "ae80e30b8ea3bcd045245443d35ce0962b210e97a3c8550c9bee0fe8b83efab6",
+        "cann/attention/batch_decode_paged/implementation.py": "53d9afba41a5cd297f3700b17607fcf73cfbd6e2348be712f18f9f5562af77a8",
+        "cann/attention/batch_decode_paged/runner.py": "a717cb9819f77f3bd2161698436ebb2bff8ae01a4fb1d251cebe44167baf4621",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/attention/batch_prefill_paged_fia_v1",
+      "op": "attention.batch_prefill_paged",
+      "backend": "cann",
+      "module": "flashinfer.cann.attention.batch_prefill_paged.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.attention",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/attention/__init__.py": "373371403e3e10ed0c00998d222dc70c996819b8d9116dec521a40a087736ad2",
+        "cann/attention/_shared.py": "48270b0aaa6f49d2b193b444f57d47567d900d97b7fa0ed082f7c1c0bb598b23",
+        "cann/attention/batch_prefill_paged/__init__.py": "d20f75c270c25a87bf22c5e86f25c2221d660da2dc96a11c404c1c5a1ca1ab2f",
+        "cann/attention/batch_prefill_paged/implementation.py": "ee16838bb3fae4e6a75ae268183b472f56e6d165f99289e82b05b8712a6da748",
+        "cann/attention/batch_prefill_paged/runner.py": "ec47fb391e9cf0d1aea31ff1c2438505231aa7dcf026d362083e1aa838a94107",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/attention/batch_prefill_ragged_fia_v1",
+      "op": "attention.batch_prefill_ragged",
+      "backend": "cann",
+      "module": "flashinfer.cann.attention.batch_prefill_ragged.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.attention",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/attention/__init__.py": "373371403e3e10ed0c00998d222dc70c996819b8d9116dec521a40a087736ad2",
+        "cann/attention/_shared.py": "48270b0aaa6f49d2b193b444f57d47567d900d97b7fa0ed082f7c1c0bb598b23",
+        "cann/attention/batch_prefill_ragged/__init__.py": "7476a0e89ad509c3efdf3b87143409af945d3e75a5158b38b47957bd9dd8ce07",
+        "cann/attention/batch_prefill_ragged/implementation.py": "b91e9b4498847cd07c36a4fdea51851e8b72779d8de63f717481d844781f68fd",
+        "cann/attention/batch_prefill_ragged/runner.py": "5be4bc6e88500f1966897d3acde9d46720f6ebec79d75f17f1b49b52a97a3453",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/attention/single_decode_fia_v1",
+      "op": "attention.single_decode",
+      "backend": "cann",
+      "module": "flashinfer.cann.attention.single_decode.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.attention",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/attention/__init__.py": "373371403e3e10ed0c00998d222dc70c996819b8d9116dec521a40a087736ad2",
+        "cann/attention/_shared.py": "48270b0aaa6f49d2b193b444f57d47567d900d97b7fa0ed082f7c1c0bb598b23",
+        "cann/attention/single_decode/__init__.py": "bc90db866683a67df433562cf5f00f685b9c00dfedbf92656c1f9665d6aeb71a",
+        "cann/attention/single_decode/implementation.py": "73e68f70c2bc3ab90b1c1f59189b74620ce78012fddd0a8c0a3f2cee670f7a4a",
+        "cann/attention/single_decode/runner.py": "f58f2651ae653f3fab0f70f92aae620d818caab901c996aafd328e493db846f5",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/attention/single_prefill_fia_v1",
+      "op": "attention.single_prefill",
+      "backend": "cann",
+      "module": "flashinfer.cann.attention.single_prefill.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.attention",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/attention/__init__.py": "373371403e3e10ed0c00998d222dc70c996819b8d9116dec521a40a087736ad2",
+        "cann/attention/_shared.py": "48270b0aaa6f49d2b193b444f57d47567d900d97b7fa0ed082f7c1c0bb598b23",
+        "cann/attention/single_prefill/__init__.py": "ac56f14ed0bbd1db6d2582ac68d840a99bbaa7def1ccc84d1c3eb03449e221f5",
+        "cann/attention/single_prefill/implementation.py": "e00c5f1ac5b5f2cb5e78327e2b7495e588ef07bb85ae78706a101f19864ea6dc",
+        "cann/attention/single_prefill/runner.py": "ed0b71c1465b6fd0692154dc9666cfe6bbe80226ac2067063e3797ed1a43678a",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/cascade/merge_state_attention_update_v1",
+      "op": "cascade.merge_state",
+      "backend": "cann",
+      "module": "flashinfer.cann.cascade.merge_state.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.cascade",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/cascade/__init__.py": "d397ea37e561ab7c9bef90566e7008406fd1dd69f68e3ff4a0d7b46b115c90ee",
+        "cann/cascade/_family.py": "b7eb25fd80fae2b194d81a77d5b4f55071f404f60141710a1b722006e6d9b82a",
+        "cann/cascade/_shared.py": "72951cb4d2a042348e62ba948819dc90534a05e3353b01aa6859d4efa39de9af",
+        "cann/cascade/merge_state/__init__.py": "58ec09e406255b76550b61dfe66fdfd5fa6f26783f7d02eebf923615a373553d",
+        "cann/cascade/merge_state/implementation.py": "c7a3960a1635d8adbc04b32aba4fcf9d06bd91850d1c21d53a4246df8a5d9055",
+        "cann/cascade/merge_state/runner.py": "a808fb96ba8e6cc5e505f84610d40ad0558bb95dbf5bbd8f2122598bb6eb0911",
+        "operators/cascade/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/cascade/merge_states_v1",
+      "op": "cascade.merge_states",
+      "backend": "cann",
+      "module": "flashinfer.cann.cascade.merge_states.implementation",
+      "scope": "global",
+      "origin": "flashinfer._cascade",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/cascade/__init__.py": "d397ea37e561ab7c9bef90566e7008406fd1dd69f68e3ff4a0d7b46b115c90ee",
+        "cann/cascade/_family.py": "b7eb25fd80fae2b194d81a77d5b4f55071f404f60141710a1b722006e6d9b82a",
+        "cann/cascade/_shared.py": "72951cb4d2a042348e62ba948819dc90534a05e3353b01aa6859d4efa39de9af",
+        "cann/cascade/merge_states/__init__.py": "7968865686b262f626d8e725b237ae633618f005e0aee01c68e160ff36d126a2",
+        "cann/cascade/merge_states/implementation.py": "0bfce760412fdfcc05f4b1cba8e3a25be78e649c0e2237e967900c96639e83ca",
+        "cann/cascade/merge_states/runner.py": "013c9999b8bee0c9e261c367deb0f1001b224aca9f1a28c4a9240fa7bfcbb1f4",
+        "operators/cascade/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/decode/cudnn_batch_decode_fia_v1",
+      "op": "decode.cudnn_batch_decode_with_kv_cache",
+      "backend": "cann",
+      "module": "flashinfer.cann.decode.cudnn_batch_decode_with_kv_cache.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.decode",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/decode/__init__.py": "7a395a6d7280d7527f2af4458a41289d67e2d5eaf2981dc0f547e9e36fff02f1",
+        "cann/decode/_shared.py": "c0a8368e747fe2a0bd182f6c8920fe86247fd982804943136655bb5dc0c16cf8",
+        "cann/decode/cudnn_batch_decode_with_kv_cache/__init__.py": "944aea28e681545a976ce4b4cb3e88fdae9e2f05d130b8b31b19940e924776a4",
+        "cann/decode/cudnn_batch_decode_with_kv_cache/implementation.py": "e3d552c7e3182993d53d09e840bef948e14a3adf2f73992ce3ee3416cf7b18e5",
+        "cann/decode/cudnn_batch_decode_with_kv_cache/runner.py": "7dbca4eeaf8f9d7ff69b54765eb18b0e0ceca79e612493e4a143b42bd254a889",
+        "operators/decode/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/fused_moe/cutlass_fused_moe_gmm_v1",
+      "op": "fused_moe.cutlass_fused_moe",
+      "backend": "cann",
+      "module": "flashinfer.cann.fused_moe.cutlass_fused_moe.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.moe",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/fused_moe/__init__.py": "e251a3e853cadf42daf616d6a273a332e3c24ce81d592cef3f94ce1e8e6f2584",
+        "cann/fused_moe/_shared.py": "61d1900e79d4342efd84b2243e8f1466f3661524aec802e364bced513ace802c",
+        "cann/fused_moe/cutlass_fused_moe/__init__.py": "861aab759476a6c20b3ed89b11838812752860b08c09ac1768e67a2720d113b1",
+        "cann/fused_moe/cutlass_fused_moe/implementation.py": "f5c65c1b35e4d2f9beb71ec9442a2240d7ebceb20fe09c4ebc6f474caf7c8365",
+        "cann/fused_moe/cutlass_fused_moe/runner.py": "4ee2934b655595fd040c71bd8ede07eecb4d0b723c712889552c08dcf2d7e4bb",
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/fused_moe/fp8_block_scale_moe_cascade_v1",
+      "op": "fused_moe.trtllm_fp8_block_scale_moe",
+      "backend": "cann",
+      "module": "flashinfer.cann.fused_moe.trtllm_fp8_block_scale_moe.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.moe",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/fused_moe/__init__.py": "e251a3e853cadf42daf616d6a273a332e3c24ce81d592cef3f94ce1e8e6f2584",
+        "cann/fused_moe/_shared.py": "61d1900e79d4342efd84b2243e8f1466f3661524aec802e364bced513ace802c",
+        "cann/fused_moe/trtllm_fp8_block_scale_moe/__init__.py": "54a58c72574def5b08cd4cb71ecd63d7302ad7070bd4a991085b1653fd946993",
+        "cann/fused_moe/trtllm_fp8_block_scale_moe/implementation.py": "caa48441fc428622833c718b2b7ac5b061470d7b73c4ff5d1297b85de1b4266c",
+        "cann/fused_moe/trtllm_fp8_block_scale_moe/runner.py": "329e0d0c4eb40ec83ba858791644d0cf44fbad059df6e5701f504cdf15370920",
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/fused_moe/fp8_per_tensor_scale_moe_cascade_v1",
+      "op": "fused_moe.trtllm_fp8_per_tensor_scale_moe",
+      "backend": "cann",
+      "module": "flashinfer.cann.fused_moe.trtllm_fp8_per_tensor_scale_moe.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.moe",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/fused_moe/__init__.py": "e251a3e853cadf42daf616d6a273a332e3c24ce81d592cef3f94ce1e8e6f2584",
+        "cann/fused_moe/_shared.py": "61d1900e79d4342efd84b2243e8f1466f3661524aec802e364bced513ace802c",
+        "cann/fused_moe/trtllm_fp8_per_tensor_scale_moe/__init__.py": "8a762c14c827e964eb842251cec6ee6fbc2ce441cf585fea902a2e7c302d79a5",
+        "cann/fused_moe/trtllm_fp8_per_tensor_scale_moe/implementation.py": "f7e9b243909b38e7d000b25607c4fe78bcf935f5a8f9d0f64c02bcf065fd7384",
+        "cann/fused_moe/trtllm_fp8_per_tensor_scale_moe/runner.py": "f0599be9b2189371774d976d088e14bac380e0a6f98a8b84c24e79592324d064",
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/gemm/bmm_bf16_v1",
+      "op": "gemm.bmm_bf16",
+      "backend": "cann",
+      "module": "flashinfer.cann.gemm.bmm_bf16.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.gemm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/gemm/__init__.py": "e5bdc2fc96989afe81ee391e230c593bb7f805792879e37e9293ba47fd1ec7ce",
+        "cann/gemm/_shared.py": "593332fb697816f54a42d6466af2a2601a458e33eee02a806c044925d1f567e2",
+        "cann/gemm/bmm_bf16/__init__.py": "0c5e3d4688c019d713a970d8dec57677deef8bf824cb211ae365428ecf30bf9c",
+        "cann/gemm/bmm_bf16/implementation.py": "84c0cf91c046553b7cbf13670d065fd7321fd87e2447fbe9585776540eb8d542",
+        "cann/gemm/bmm_bf16/runner.py": "baace7385be8299d8aac1152b7aca95f4f4567052f4a3f8aa89251b428eab1f6",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "cann/gemm/bmm_fp8_grouped_v1",
+      "op": "gemm.bmm_fp8",
+      "backend": "cann",
+      "module": "flashinfer.cann.gemm.bmm_fp8.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.gemm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/gemm/__init__.py": "e5bdc2fc96989afe81ee391e230c593bb7f805792879e37e9293ba47fd1ec7ce",
+        "cann/gemm/_shared.py": "593332fb697816f54a42d6466af2a2601a458e33eee02a806c044925d1f567e2",
+        "cann/gemm/bmm_fp8/__init__.py": "93a7e363b05af1c46d0e6f856e18d5836fc079f98c8b121339c5a99c1521db1a",
+        "cann/gemm/bmm_fp8/implementation.py": "bca23f745ae5167e545b76632ac4b23a0d20a7d4abe277c51315eee46a5ac92a",
+        "cann/gemm/bmm_fp8/runner.py": "9e11aaaf76fc855f75cf61a19211a08362ad426eebf511308e90cd2c4f83d1e0",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "cann/gemm/gemm_fp8_nt_groupwise_block_v1",
+      "op": "gemm.gemm_fp8_nt_groupwise",
+      "backend": "cann",
+      "module": "flashinfer.cann.gemm.gemm_fp8_nt_groupwise.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.gemm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/gemm/__init__.py": "e5bdc2fc96989afe81ee391e230c593bb7f805792879e37e9293ba47fd1ec7ce",
+        "cann/gemm/_shared.py": "593332fb697816f54a42d6466af2a2601a458e33eee02a806c044925d1f567e2",
+        "cann/gemm/gemm_fp8_nt_groupwise/__init__.py": "208523489858d21700658ce965ec4823c9df46cf6f6c7a688c2c5cfddc5b78df",
+        "cann/gemm/gemm_fp8_nt_groupwise/implementation.py": "84a957fb1ba3e26f0664b186dde1a5320232e78b36a1d823c56c8e625e02e2a5",
+        "cann/gemm/gemm_fp8_nt_groupwise/runner.py": "b7b19deafcaeee42970cf0ebd8daec08dd65d34aa988e66080436fecb5e85a88",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "cann/gemm/matmul_v1",
+      "op": "gemm.matmul",
+      "backend": "cann",
+      "module": "flashinfer.cann.gemm.matmul.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.gemm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/gemm/__init__.py": "e5bdc2fc96989afe81ee391e230c593bb7f805792879e37e9293ba47fd1ec7ce",
+        "cann/gemm/_shared.py": "593332fb697816f54a42d6466af2a2601a458e33eee02a806c044925d1f567e2",
+        "cann/gemm/matmul/__init__.py": "d8d61026c4d4ecd9323c557d8f3c9cea62c23f10ed838f31c6cd84d5043469c4",
+        "cann/gemm/matmul/implementation.py": "5575f796ede903fee4967be4a74658bf6f2d24d2c59ac47daf2342e32e2477fb",
+        "cann/gemm/matmul/runner.py": "4dc1fbbf1b4fc7a280bc7e6507a956397290ac9fe10164769f269030236c2392",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "cann/gemm/mm_bf16_v1",
+      "op": "gemm.mm_bf16",
+      "backend": "cann",
+      "module": "flashinfer.cann.gemm.mm_bf16.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.gemm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/gemm/__init__.py": "e5bdc2fc96989afe81ee391e230c593bb7f805792879e37e9293ba47fd1ec7ce",
+        "cann/gemm/_shared.py": "593332fb697816f54a42d6466af2a2601a458e33eee02a806c044925d1f567e2",
+        "cann/gemm/mm_bf16/__init__.py": "0f28b4b60359643d7e71fcd962e6ef4bf86538173138a1f7ac6e6d58488f215a",
+        "cann/gemm/mm_bf16/implementation.py": "c99bcbb3c387e7b7bc3d23fa889fe04e9f98ece7b45927dc4d7e974807998733",
+        "cann/gemm/mm_bf16/runner.py": "287d4a60265e3f4cc894b34a67e36c45ac6f8efb37d01e8ca9f690e99efaa1ca",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "cann/gemm/segment_gemm_v1",
+      "op": "gemm.segment_gemm",
+      "backend": "cann",
+      "module": "flashinfer.cann.gemm.segment_gemm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.gemm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/gemm/__init__.py": "e5bdc2fc96989afe81ee391e230c593bb7f805792879e37e9293ba47fd1ec7ce",
+        "cann/gemm/_shared.py": "593332fb697816f54a42d6466af2a2601a458e33eee02a806c044925d1f567e2",
+        "cann/gemm/segment_gemm/__init__.py": "ffd197b301c57c221a9d60675db2dccf9ba788be4a14c222a5c915989658bc04",
+        "cann/gemm/segment_gemm/implementation.py": "64c2988a7a0c3d6c0eb40e8704d4fda48f9d86aaed2064ee79a8386c9d8384a1",
+        "cann/gemm/segment_gemm/runner.py": "e0891baeecb4ae35db8cd25593e6706ce62681d6cddacb433d8b6a93f59a496f",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "cann/norm/fused_add_rmsnorm_aclnn_v1",
+      "op": "norm.fused_add_rmsnorm",
+      "backend": "cann",
+      "module": "flashinfer.cann.norm.fused_add_rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.norm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/norm/__init__.py": "d21349be4317c5798093f99c35bcde5f8e5f634baa03e7bf834bb4e2bf4c493e",
+        "cann/norm/_shared.py": "9e30463f25ae1afe42fc836dd962748b4485add7486599792061dc88d6fc13d9",
+        "cann/norm/fused_add_rmsnorm/__init__.py": "f45c0ddd3626a03fd865d1decc2508b0fab04a394df423f4023d2a8144806c63",
+        "cann/norm/fused_add_rmsnorm/implementation.py": "899302fd3bd84c9aa59891cd9c4e75e7e2ecc1168af44b0d0422f03bc4bba578",
+        "cann/norm/fused_add_rmsnorm/runner.py": "0381d7cef511897a6a37c624c40fefdeda589bfa98b455755d80407847fa7aaf",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/norm/gemma_rmsnorm_aclnn_v1",
+      "op": "norm.gemma_rmsnorm",
+      "backend": "cann",
+      "module": "flashinfer.cann.norm.gemma_rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.norm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/norm/__init__.py": "d21349be4317c5798093f99c35bcde5f8e5f634baa03e7bf834bb4e2bf4c493e",
+        "cann/norm/_shared.py": "9e30463f25ae1afe42fc836dd962748b4485add7486599792061dc88d6fc13d9",
+        "cann/norm/gemma_rmsnorm/__init__.py": "bcad51d925bac7f96e02ca5ff6611390880f8c50f0f7caeacd8b797f3c9ac24e",
+        "cann/norm/gemma_rmsnorm/implementation.py": "d38683058eceb0db4aa3c5ea4e83b900174b29cdcdeb9ecd1ac140b37f1484d1",
+        "cann/norm/gemma_rmsnorm/runner.py": "310336f028f6966ad56abb5d351d64942c98a4db4afda3d2faafbc7bd351237b",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/norm/layernorm_aclnn_v1",
+      "op": "norm.layernorm",
+      "backend": "cann",
+      "module": "flashinfer.cann.norm.layernorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.norm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/norm/__init__.py": "d21349be4317c5798093f99c35bcde5f8e5f634baa03e7bf834bb4e2bf4c493e",
+        "cann/norm/_shared.py": "9e30463f25ae1afe42fc836dd962748b4485add7486599792061dc88d6fc13d9",
+        "cann/norm/layernorm/__init__.py": "e0ee87bcc65aeec397cc5a5667b22c473cd787c2a334eb193998504a892c8fe0",
+        "cann/norm/layernorm/implementation.py": "f4bb7c8c6c64d13ed81949abe9b0246724cfec1fae37121ba677c4c95374c30e",
+        "cann/norm/layernorm/runner.py": "e308e245aafd6e01ea038e69e7279006d1f3a6244ec56d5ffe321be56dd9e498",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/norm/rmsnorm_aclnn_v1",
+      "op": "norm.rmsnorm",
+      "backend": "cann",
+      "module": "flashinfer.cann.norm.rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.norm",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/norm/__init__.py": "d21349be4317c5798093f99c35bcde5f8e5f634baa03e7bf834bb4e2bf4c493e",
+        "cann/norm/_shared.py": "9e30463f25ae1afe42fc836dd962748b4485add7486599792061dc88d6fc13d9",
+        "cann/norm/rmsnorm/__init__.py": "bc6b0f3b7d442cb5e980d58f79dd898afcd05982b69132dd56cf3165d851c20b",
+        "cann/norm/rmsnorm/implementation.py": "7ec0e18ea09bdeb50ca022e7b25deba667e009770a4cdecd9db79f3113d32fde",
+        "cann/norm/rmsnorm/runner.py": "87a4905abd4febb0bd593df68cd43b17131a00e89d01a885fc2b97547794f932",
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/page/append_paged_kv_cache_v1",
+      "op": "page.append_paged_kv_cache",
+      "backend": "cann",
+      "module": "flashinfer.cann.page.append_paged_kv_cache.implementation",
+      "scope": "global",
+      "origin": "flashinfer._page",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/page/__init__.py": "f2629b4d15331b06d43b077cefb42f1931e924e8d06f50e94b33af8ccc42b43a",
+        "cann/page/_family.py": "8d4890664b8308e50315b3dce60f681481958012e1cea0dc8c57e843a842908a",
+        "cann/page/append_paged_kv_cache/__init__.py": "b28eb6f14fe75dfaf218cbd4838f8903442139615c3aa038cca5e78d44f90379",
+        "cann/page/append_paged_kv_cache/implementation.py": "3395bc9f1ab352487e7bac44ae164d8469679c187d6c64ab2b590cc840ce8909",
+        "cann/page/append_paged_kv_cache/runner.py": "502ad6719f0f228b4c5df07e110ea1c725c480e40fbfef7f106e24ad06cea33a",
+        "operators/page/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/rope/apply_rope_v1",
+      "op": "rope.apply_rope",
+      "backend": "cann",
+      "module": "flashinfer.cann.rope.apply_rope.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.rope",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/rope/__init__.py": "6a32cc7f379945cc59cb9957b7aa9cb209e452cb11cfee720e455c1fdf117787",
+        "cann/rope/_shared.py": "c2ed7b89ed9336bb41609bfc87100b40939f795ba5834adfebd8f812bbeec6a3",
+        "cann/rope/apply_rope/__init__.py": "f49d02bae838c5cda62dffec6f3b5a6d70e6c0e914a10457de588c62a56fa874",
+        "cann/rope/apply_rope/implementation.py": "851177529f2bc75abe44657f0d281e8179a66da7a94abcbaee131ba70348b50b",
+        "cann/rope/apply_rope/runner.py": "a38fc20e0702920a9ae63fc441a915111113821b0f2255d556b513a3db27a67f",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/rope/apply_rope_inplace_v1",
+      "op": "rope.apply_rope_inplace",
+      "backend": "cann",
+      "module": "flashinfer.cann.rope.apply_rope_inplace.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.rope",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/rope/__init__.py": "6a32cc7f379945cc59cb9957b7aa9cb209e452cb11cfee720e455c1fdf117787",
+        "cann/rope/_shared.py": "c2ed7b89ed9336bb41609bfc87100b40939f795ba5834adfebd8f812bbeec6a3",
+        "cann/rope/apply_rope_inplace/__init__.py": "a39fd6bbb51b402877db8cc72d28d92c4d8a6d7caa243da904e44776f4a1dcc5",
+        "cann/rope/apply_rope_inplace/implementation.py": "2d9cb9db4ebef7e490211809da7e3d54f137f13937b13120d36646cf607bf358",
+        "cann/rope/apply_rope_inplace/runner.py": "c9ebb8800669dcc009861d23276a5a075cf003fb84e45949bfc829ee4414d132",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/rope/apply_rope_pos_ids_v1",
+      "op": "rope.apply_rope_pos_ids",
+      "backend": "cann",
+      "module": "flashinfer.cann.rope.apply_rope_pos_ids.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.rope",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/rope/__init__.py": "6a32cc7f379945cc59cb9957b7aa9cb209e452cb11cfee720e455c1fdf117787",
+        "cann/rope/_shared.py": "c2ed7b89ed9336bb41609bfc87100b40939f795ba5834adfebd8f812bbeec6a3",
+        "cann/rope/apply_rope_pos_ids/__init__.py": "7cb46568166e088fdc3db929a93a2cf10b1281be4ab147d50e23441c565b70e4",
+        "cann/rope/apply_rope_pos_ids/implementation.py": "ebf04246cecdb7ec9fd5df38937d31032769cdfd0b96f1799d6ac520b6a93cf4",
+        "cann/rope/apply_rope_pos_ids/runner.py": "cd19dacb5880ddb6eb9491ff67d8b215cd7b9b9eb9e997bcf6afe317773e9f3c",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/rope/apply_rope_pos_ids_inplace_v1",
+      "op": "rope.apply_rope_pos_ids_inplace",
+      "backend": "cann",
+      "module": "flashinfer.cann.rope.apply_rope_pos_ids_inplace.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.rope",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/rope/__init__.py": "6a32cc7f379945cc59cb9957b7aa9cb209e452cb11cfee720e455c1fdf117787",
+        "cann/rope/_shared.py": "c2ed7b89ed9336bb41609bfc87100b40939f795ba5834adfebd8f812bbeec6a3",
+        "cann/rope/apply_rope_pos_ids_inplace/__init__.py": "d2d1671b12042dbacad7dedf436bf3e9eab9f4f90e8b2241d0871b8db91461d6",
+        "cann/rope/apply_rope_pos_ids_inplace/implementation.py": "89bc52e7647ed8e89e67828942049e52fffb3c1cb595059de0c3fd5baef1d73c",
+        "cann/rope/apply_rope_pos_ids_inplace/runner.py": "29414dacc2c58ae13579126a45de951162009f12d2e02eb6640d859764b73cba",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/rope/apply_rope_cos_sin_cache_out_v1",
+      "op": "rope.apply_rope_with_cos_sin_cache",
+      "backend": "cann",
+      "module": "flashinfer.cann.rope.apply_rope_with_cos_sin_cache.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.rope",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/rope/__init__.py": "6a32cc7f379945cc59cb9957b7aa9cb209e452cb11cfee720e455c1fdf117787",
+        "cann/rope/_shared.py": "c2ed7b89ed9336bb41609bfc87100b40939f795ba5834adfebd8f812bbeec6a3",
+        "cann/rope/apply_rope_with_cos_sin_cache/__init__.py": "9fb040708f2c102196a92f81edb8864d69fe127a4a7aeb1f0b9e2df863eab75b",
+        "cann/rope/apply_rope_with_cos_sin_cache/implementation.py": "eaf62b27591a25e6f441d5052dd4623de8c72acabb9e34dfce9647cab7a70cd8",
+        "cann/rope/apply_rope_with_cos_sin_cache/runner.py": "d538c07752912a8e9897dfc17201f148137d20d7d49ad4fee1adea84696dfab3",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/rope/apply_rope_cos_sin_cache_aclnn_v1",
+      "op": "rope.apply_rope_with_cos_sin_cache_inplace",
+      "backend": "cann",
+      "module": "flashinfer.cann.rope.apply_rope_with_cos_sin_cache_inplace.implementation",
+      "scope": "global",
+      "origin": "flashinfer.cann.rope",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/rope/__init__.py": "6a32cc7f379945cc59cb9957b7aa9cb209e452cb11cfee720e455c1fdf117787",
+        "cann/rope/_shared.py": "c2ed7b89ed9336bb41609bfc87100b40939f795ba5834adfebd8f812bbeec6a3",
+        "cann/rope/apply_rope_with_cos_sin_cache_inplace/__init__.py": "92d5f224b076d6766c5d916c4bc36cb0bdcde20787a42a52a72a6ddeab746acc",
+        "cann/rope/apply_rope_with_cos_sin_cache_inplace/implementation.py": "00c8015aac9ca0dedb759d11a4f20eb88fa6794a64bf086cfacda5779551cfa2",
+        "cann/rope/apply_rope_with_cos_sin_cache_inplace/runner.py": "83d8a5d2f205bd4d1c1119492d1bb5fb7dd4ddf6b7d3773d8ab995c228f1e6cd",
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/chain_speculative_sampling_v1",
+      "op": "sampling.chain_speculative_sampling",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.chain_speculative_sampling.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/chain_speculative_sampling/__init__.py": "fd324587fc00290761ae9e6600a12a2f60052ef0a2d5389ba01a8b56b76c9952",
+        "cann/sampling/chain_speculative_sampling/implementation.py": "b67278d3ac6f02c0d46a2970e8919817700d31bcbbf9e50f5f324cc5af228450",
+        "cann/sampling/chain_speculative_sampling/runner.py": "fd84ca3c29cb1709e9500c82be24670440a8ba9db0303a4ebe529d83108ab179",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/min_p_sampling_from_probs_v1",
+      "op": "sampling.min_p_sampling_from_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.min_p_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/min_p_sampling_from_probs/__init__.py": "5ee561203607ace7630c3bd011bfb20c32227703d3e71fb4ad1c42342b3a270b",
+        "cann/sampling/min_p_sampling_from_probs/implementation.py": "c518e93b47973455cfec4a55d98aefc6a13a8ef94bacbf85faa8a057f2cfc1dc",
+        "cann/sampling/min_p_sampling_from_probs/runner.py": "9eb56d1fbb1c7d8bdb0faa53fede5f43a347ab819d1c4871eade3a1333e84024",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/sampling_from_logits_v1",
+      "op": "sampling.sampling_from_logits",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.sampling_from_logits.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/sampling_from_logits/__init__.py": "ab2ecdaa05a741c890ce6c01de8bc8842ca06ca76b6c6288f0fe8cc2f709e788",
+        "cann/sampling/sampling_from_logits/implementation.py": "6ca70e8d967802f6ea84e3205a1033b2effafd501941486a9f84c85a8db46c3a",
+        "cann/sampling/sampling_from_logits/runner.py": "42cfeacf3ce411e2f9fedb60e33071f38e3d5a2911bf2e5737644c6a4ff67a19",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/sampling_from_probs_v1",
+      "op": "sampling.sampling_from_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/sampling_from_probs/__init__.py": "e8287ba324ff14c304061e81fc0a583c8fc43c8e248091e2d70a3214cfd0a970",
+        "cann/sampling/sampling_from_probs/implementation.py": "3f86337ea1396536dada592ad190242b4df8d0ff68913b1a34d5df00e83ed293",
+        "cann/sampling/sampling_from_probs/runner.py": "58516bf99edf99d6bd98301c3a6d7d44e029be7cfda129e0e139e3217c626be7",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/top_k_mask_logits_v1",
+      "op": "sampling.top_k_mask_logits",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.top_k_mask_logits.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/top_k_mask_logits/__init__.py": "583d8308abf33ea25a017959aa9f2b3edd9e206da6365b980ab14575b7616d3f",
+        "cann/sampling/top_k_mask_logits/implementation.py": "f561f3465b2fa585cfb3dc87caf413886c29cfd6408d365da4c863c1ef6b081b",
+        "cann/sampling/top_k_mask_logits/runner.py": "bfaabc26d8050a7eb7f3ba54c23e21ab96af9c44d5a75b59fd6a6bcfd8b219e5",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/top_k_renorm_probs_v1",
+      "op": "sampling.top_k_renorm_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.top_k_renorm_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/top_k_renorm_probs/__init__.py": "b64e16d6b1da18aac1d41b2be9f073d26319c8d6ca4e0ec692438b166cf36c4f",
+        "cann/sampling/top_k_renorm_probs/implementation.py": "97af36e2d57b4da69569986da3fd7d6c3c80f90a8182c391f7da7268dd40f8d2",
+        "cann/sampling/top_k_renorm_probs/runner.py": "596acff0cbb2db68f0d493171bf199eb83595f394ead0567deb9d29ca56d1c84",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/top_k_sampling_from_probs_v1",
+      "op": "sampling.top_k_sampling_from_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.top_k_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/top_k_sampling_from_probs/__init__.py": "0dd774b68f0d649b29fc0b55a2f20a6346b99ab72b87ba663d56ebfb353783be",
+        "cann/sampling/top_k_sampling_from_probs/implementation.py": "da3bad4da60552bf36ba8c435a51f5cb626d2cf95a346aead1dd7becbec648cf",
+        "cann/sampling/top_k_sampling_from_probs/runner.py": "c29ce7ce1be9264fdb32e4512bad494316f073237a68f631b2689fe11880f5a5",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/top_k_top_p_sampling_from_probs_v1",
+      "op": "sampling.top_k_top_p_sampling_from_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.top_k_top_p_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/top_k_top_p_sampling_from_probs/__init__.py": "ba64daa5f651654cbde2c81666ce532f7a086763993b9e79386fdd209fa2315f",
+        "cann/sampling/top_k_top_p_sampling_from_probs/implementation.py": "fb50bb27fabdcafe9ac2a0c8d8da10c61ed6e4b05833344002e80150fac80403",
+        "cann/sampling/top_k_top_p_sampling_from_probs/runner.py": "2c0e6f28f261b6de501339681895b211d8ab222b99329c5dbef3005d7ea0edd0",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/top_p_renorm_probs_v1",
+      "op": "sampling.top_p_renorm_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.top_p_renorm_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/top_p_renorm_probs/__init__.py": "09a1a2110ac9d1da3327da92666f309a5de96704eae00a2945321200fb848bab",
+        "cann/sampling/top_p_renorm_probs/implementation.py": "37345d297912c8ccad75e5e3082a9b93ebf55b96bb68153aaac90c264c50f7db",
+        "cann/sampling/top_p_renorm_probs/runner.py": "29fbe75ee4c6f2dc88480a042b1f096fbbf25d7f1f3ca34a1413b0881211365c",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "cann/sampling/top_p_sampling_from_probs_v1",
+      "op": "sampling.top_p_sampling_from_probs",
+      "backend": "cann",
+      "module": "flashinfer.cann.sampling.top_p_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "cann/__init__.py": "df8f776e718fd071e7db658752f1102ab3a0ac5d290786b7c37e62cf2c70f53a",
+        "cann/sampling/__init__.py": "71acec5585b7105180373aa7e34a34d1bb3e9c100d58f74dc7ac0f578461f102",
+        "cann/sampling/_family.py": "b6b677263abb83bd30870654833172a654523f4b195472be2f56b4e32381c81c",
+        "cann/sampling/top_p_sampling_from_probs/__init__.py": "ad88aa05cc55be276447d625a83a1424583d5d1678b0889ab0bc14bd837601c6",
+        "cann/sampling/top_p_sampling_from_probs/implementation.py": "25be709ef29b4d0d8fec45198485080bcc234ab50d80b381005d0d8e731e178f",
+        "cann/sampling/top_p_sampling_from_probs/runner.py": "df78657e4765b235c379e8f8dbce17dc61df8606ef66e3fcbcaadac5d6a2ebdd",
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "kernel_id": "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+      "op": "ascendc.single_prefill_catlass",
+      "backend": "ascendc",
+      "module": "flashinfer.ascendc.attention.single_prefill_catlass.implementation",
+      "scope": "global",
+      "origin": "flashinfer.ascendc",
+      "files": {
+        "ascendc/__init__.py": "fcdc214a34e4d6ec23a115b316b072e7123ce8d913c12649e454c25b68e52dd6",
+        "ascendc/_catalog.py": "15badc0e89df10f8016c9757dc0c3e2444f6244185a9e248961ae0e06dfc7ba5",
+        "ascendc/_runtime.py": "bc216fdba9faf6d7eedf534f5fd0f313c1c50c72b61f0dd26107aec40dcd2d74",
+        "ascendc/attention/__init__.py": "89b0bd325256974a89cb4c44e69c64e7d75cd16df0c85d90100b02b615fdd249",
+        "ascendc/attention/single_prefill_catlass/__init__.py": "a5d797a026a496a23430dec9f0d501781da2c78a7ef18095fcdc48232116cc4f",
+        "ascendc/attention/single_prefill_catlass/implementation.py": "48ec620d572d20e05d83733098981612abde93dc6b5bdd5fd5f75f6a25590096",
+        "ascendc/attention/single_prefill_catlass/runner.py": "407e58ef24cfbfae9b4d408e103e0c6350008ce2c381f36b603ace29be2e49c9",
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e"
+      }
+    },
+    {
+      "kernel_id": "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
+      "op": "gemm.grouped_matmul_swiglu_quant",
+      "backend": "ascendc",
+      "module": "flashinfer.ascendc.gemm.grouped_matmul_swiglu_quant.implementation",
+      "scope": "global",
+      "origin": "flashinfer.ascendc",
+      "files": {
+        "ascendc/__init__.py": "fcdc214a34e4d6ec23a115b316b072e7123ce8d913c12649e454c25b68e52dd6",
+        "ascendc/_catalog.py": "15badc0e89df10f8016c9757dc0c3e2444f6244185a9e248961ae0e06dfc7ba5",
+        "ascendc/_runtime.py": "bc216fdba9faf6d7eedf534f5fd0f313c1c50c72b61f0dd26107aec40dcd2d74",
+        "ascendc/gemm/__init__.py": "ee503fdc1620312c4687d9875583f8786cec4fc674048bfea4859cc03e416a83",
+        "ascendc/gemm/grouped_matmul_swiglu_quant/__init__.py": "76579a73edf1d128c41859a45d4257398afa248dfbce538de5d315cfd08f8ca3",
+        "ascendc/gemm/grouped_matmul_swiglu_quant/implementation.py": "96ffbde8a0f18167816ced42965d43b1c092b1f8bcb5e297c4453456c8cd27cc",
+        "ascendc/gemm/grouped_matmul_swiglu_quant/runner.py": "acba6ece7c82a8afe8df7a075e80aeb413068c81548143e73b10fdc883fcd733",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "ascendc/gemm/matmul/native/op_package/Ascend950",
+      "op": "gemm.matmul",
+      "backend": "ascendc",
+      "module": "flashinfer.ascendc.gemm.matmul.implementation",
+      "scope": "global",
+      "origin": "flashinfer.ascendc",
+      "files": {
+        "ascendc/__init__.py": "fcdc214a34e4d6ec23a115b316b072e7123ce8d913c12649e454c25b68e52dd6",
+        "ascendc/_catalog.py": "15badc0e89df10f8016c9757dc0c3e2444f6244185a9e248961ae0e06dfc7ba5",
+        "ascendc/_runtime.py": "bc216fdba9faf6d7eedf534f5fd0f313c1c50c72b61f0dd26107aec40dcd2d74",
+        "ascendc/gemm/__init__.py": "ee503fdc1620312c4687d9875583f8786cec4fc674048bfea4859cc03e416a83",
+        "ascendc/gemm/matmul/__init__.py": "161d04d2358ea96d563b248e458087c9be2b79963f7ad770dda25050fc136ced",
+        "ascendc/gemm/matmul/implementation.py": "8a545968e7bb2a3b49710cab624a682a2b61b9f9f9cca75b79bbcf1ae84e4690",
+        "ascendc/gemm/matmul/runner.py": "407e58ef24cfbfae9b4d408e103e0c6350008ce2c381f36b603ace29be2e49c9",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
+      "op": "gemm.matmul_bias_silu",
+      "backend": "ascendc",
+      "module": "flashinfer.ascendc.gemm.matmul_bias_silu.implementation",
+      "scope": "global",
+      "origin": "flashinfer.ascendc",
+      "files": {
+        "ascendc/__init__.py": "fcdc214a34e4d6ec23a115b316b072e7123ce8d913c12649e454c25b68e52dd6",
+        "ascendc/_catalog.py": "15badc0e89df10f8016c9757dc0c3e2444f6244185a9e248961ae0e06dfc7ba5",
+        "ascendc/_runtime.py": "bc216fdba9faf6d7eedf534f5fd0f313c1c50c72b61f0dd26107aec40dcd2d74",
+        "ascendc/gemm/__init__.py": "ee503fdc1620312c4687d9875583f8786cec4fc674048bfea4859cc03e416a83",
+        "ascendc/gemm/matmul_bias_silu/__init__.py": "4b93ca3d89b41c7664d42338168715b9ad3a308401d0d5914697f5b2be6514c6",
+        "ascendc/gemm/matmul_bias_silu/implementation.py": "56d8dff760b9387b4b0a24df0239c41944bba074fbd4bfc0c52ccadfbac2c96d",
+        "ascendc/gemm/matmul_bias_silu/runner.py": "407e58ef24cfbfae9b4d408e103e0c6350008ce2c381f36b603ace29be2e49c9",
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561"
+      }
+    },
+    {
+      "kernel_id": "triton/attention/dense_prefill_v1/Ascend950",
+      "op": "ascendc.single_prefill_catlass",
+      "backend": "triton",
+      "module": "flashinfer.triton.attention.single_prefill_catlass.implementation",
+      "scope": "experimental",
+      "origin": "flashinfer.triton.attention",
+      "files": {
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "triton/__init__.py": "ac5be56c0097de524137d71f5ab64e8ebe2c47e35b502631da52adad32e2ba37",
+        "triton/_attention_kernels.py": "61a624f2a30c38ea0b92a829f2dc06e1c615a14ce3bdbd21303f66e52a393412",
+        "triton/_matmul_kernels.py": "7bd45895a728f497b337483f68603852f578eb7dba70d17091bc3cf04e8a20ae",
+        "triton/_norm_kernels.py": "f8f57a7bf20cd4f3699ed83bbf44e62d408c0955b87d2cbfc7b90ec5ab519645",
+        "triton/attention/__init__.py": "60e67a40203f12ee9b4dcaa22d3dc16d1b33cc4a9888909b448c64e2f188be9e",
+        "triton/attention/single_prefill_catlass/__init__.py": "5124608e184c2a3f695a51b1d33c5bca85acd84c3638325916470e320fa24685",
+        "triton/attention/single_prefill_catlass/implementation.py": "697d35dc294d731d55fab8d43af2d984027219590212641231de7920fff0dd22",
+        "triton/attention/single_prefill_catlass/kernels.py": "66bfda1ca48ed1e49d0fb5ff4b5dc3956a8a59171a0bf8894d65635e3ca436e2",
+        "triton/attention/single_prefill_catlass/runner.py": "3bb29f4484e3d80b31ba91fbda8acabc08f8b9f81851c5bc19e08a83b5323fc4"
+      }
+    },
+    {
+      "kernel_id": "triton/gemm/matmul_v1/Ascend950",
+      "op": "gemm.matmul",
+      "backend": "triton",
+      "module": "flashinfer.triton.gemm.matmul.implementation",
+      "scope": "global",
+      "origin": "flashinfer.triton.gemm",
+      "files": {
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "triton/__init__.py": "ac5be56c0097de524137d71f5ab64e8ebe2c47e35b502631da52adad32e2ba37",
+        "triton/_attention_kernels.py": "61a624f2a30c38ea0b92a829f2dc06e1c615a14ce3bdbd21303f66e52a393412",
+        "triton/_matmul_kernels.py": "7bd45895a728f497b337483f68603852f578eb7dba70d17091bc3cf04e8a20ae",
+        "triton/_norm_kernels.py": "f8f57a7bf20cd4f3699ed83bbf44e62d408c0955b87d2cbfc7b90ec5ab519645",
+        "triton/gemm/__init__.py": "a6689c290a40403467f52724792b3645d4b246e28f8a6be8c0f9a5767b917dd3",
+        "triton/gemm/matmul/__init__.py": "f6f1065a1784624623c633225ff5297de15da6aa010a9fc6593c085f7ffd525e",
+        "triton/gemm/matmul/implementation.py": "ad700bd6613052a5fedfd841e295df848b69598ced25a671cef05e00358cc6f5",
+        "triton/gemm/matmul/kernels.py": "61c4dc81d3e6737d972c17852b4f96d84cee1160d1ea8a7c4507f2ad70df37db",
+        "triton/gemm/matmul/runner.py": "57d5af04336d587fa6006ca590e9a5a819fafc7677ce20b2c10430188a8affe2"
+      }
+    },
+    {
+      "kernel_id": "triton/norm/gemma_fused_add_rmsnorm_v1",
+      "op": "norm.gemma_fused_add_rmsnorm",
+      "backend": "triton",
+      "module": "flashinfer.triton.norm.gemma_fused_add_rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.triton.norm",
+      "files": {
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "triton/__init__.py": "ac5be56c0097de524137d71f5ab64e8ebe2c47e35b502631da52adad32e2ba37",
+        "triton/_attention_kernels.py": "61a624f2a30c38ea0b92a829f2dc06e1c615a14ce3bdbd21303f66e52a393412",
+        "triton/_matmul_kernels.py": "7bd45895a728f497b337483f68603852f578eb7dba70d17091bc3cf04e8a20ae",
+        "triton/_norm_kernels.py": "f8f57a7bf20cd4f3699ed83bbf44e62d408c0955b87d2cbfc7b90ec5ab519645",
+        "triton/norm/__init__.py": "0a27b6341bee61ff08e0dc302f8ce20158e5b4304766faa02c9fe8f8638bd9a4",
+        "triton/norm/gemma_fused_add_rmsnorm/__init__.py": "bf78ef80152f01d8ebec28aed994899551110eb5aac863bc7f0b7e25efe5fdc3",
+        "triton/norm/gemma_fused_add_rmsnorm/implementation.py": "fcc5a0df49ef987bac6d0aa382fe7135428bd6d42d6c653075308af6c9dd2104",
+        "triton/norm/gemma_fused_add_rmsnorm/kernels.py": "c1e7a2f5841d4fa86b90a5e5dc04e071a0e17076c1361ce4f962c1ab0a68ec1a",
+        "triton/norm/gemma_fused_add_rmsnorm/runner.py": "f4e4eb913d958182517628c4b9e26b7fc53e77a7f5e5b64fa329575101dbf8fa"
+      }
+    },
+    {
+      "kernel_id": "reference/activation/gelu_and_mul_v1",
+      "op": "activation.gelu_and_mul",
+      "backend": "reference",
+      "module": "flashinfer.reference.activation.gelu_and_mul.implementation",
+      "scope": "global",
+      "origin": "flashinfer._activation",
+      "files": {
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/activation/__init__.py": "6af2e6049b7f553ca37519ce188689f29bbd11246e87bd9cbd07a920e542ff0c",
+        "reference/activation/_family.py": "a2329b9bda9923939381bec59900f67fff9b5ef75e9a089a2bb1ed001489107e",
+        "reference/activation/gelu_and_mul/__init__.py": "9056842aefff8e475172fd4248850935dcfa4c3cdabacc5e93792bf5e96cf98a",
+        "reference/activation/gelu_and_mul/implementation.py": "c62d2401439c3fc9764a54c788c3235c6f056763109bfde3f4f53a048966cf74",
+        "reference/activation/gelu_and_mul/runner.py": "d9aa63aba78a18459bb0d9ea905dc566e602ddcadf6995f022507feab891a7d9"
+      }
+    },
+    {
+      "kernel_id": "reference/activation/gelu_tanh_and_mul_v1",
+      "op": "activation.gelu_tanh_and_mul",
+      "backend": "reference",
+      "module": "flashinfer.reference.activation.gelu_tanh_and_mul.implementation",
+      "scope": "global",
+      "origin": "flashinfer._activation",
+      "files": {
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/activation/__init__.py": "6af2e6049b7f553ca37519ce188689f29bbd11246e87bd9cbd07a920e542ff0c",
+        "reference/activation/_family.py": "a2329b9bda9923939381bec59900f67fff9b5ef75e9a089a2bb1ed001489107e",
+        "reference/activation/gelu_tanh_and_mul/__init__.py": "b652899e12669d096b809890f789b4485d5f18ba6812606bebedd8cfe480fc6c",
+        "reference/activation/gelu_tanh_and_mul/implementation.py": "669d801ca017b89c2596343daef9424de282a49127aa79df406d0c031d9dcf71",
+        "reference/activation/gelu_tanh_and_mul/runner.py": "61730fcaf94014f9d2829a7530a9fbaa2faf4d29eaf90638d3ead50cb7420258"
+      }
+    },
+    {
+      "kernel_id": "reference/activation/silu_and_mul_v1",
+      "op": "activation.silu_and_mul",
+      "backend": "reference",
+      "module": "flashinfer.reference.activation.silu_and_mul.implementation",
+      "scope": "global",
+      "origin": "flashinfer._activation",
+      "files": {
+        "operators/activation/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/activation/__init__.py": "6af2e6049b7f553ca37519ce188689f29bbd11246e87bd9cbd07a920e542ff0c",
+        "reference/activation/_family.py": "a2329b9bda9923939381bec59900f67fff9b5ef75e9a089a2bb1ed001489107e",
+        "reference/activation/silu_and_mul/__init__.py": "ced3c2f8702b53b8a0c73dee9cea934779bdf98eb6261472b54f0d21823f7a4a",
+        "reference/activation/silu_and_mul/implementation.py": "558c49f00686a29a2b4d3bfd1953f5d00a573ba9fa27e82ef2d32d179359e767",
+        "reference/activation/silu_and_mul/runner.py": "b0e053be04b98df4800b482dca464bd486422d0f9b5a66df6f56de67f538aebc"
+      }
+    },
+    {
+      "kernel_id": "reference/attention/decode_v1",
+      "op": "attention.decode",
+      "backend": "reference",
+      "module": "flashinfer.reference.attention.decode.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/attention/__init__.py": "724c7c3b6ca15b7e2493f5411a2b3dc0c2192bf4d56569759efa21cce63f204c",
+        "reference/attention/decode/__init__.py": "893e6780220d6d28a162ecb65abc96f2a918a31e0234093d72e3f73f8b0d8ef5",
+        "reference/attention/decode/implementation.py": "98f0a4a7d82212869fc9e5f9d20650c2e9fdb97dcf14b552f55c7663601d89c2",
+        "reference/attention/decode/runner.py": "5959d87316ac971ad82f24dfaaf6f180fd1bc1c02b65cb631a0ead9de94797ad"
+      }
+    },
+    {
+      "kernel_id": "reference/attention/prefill_ragged_v1",
+      "op": "attention.prefill",
+      "backend": "reference",
+      "module": "flashinfer.reference.attention.prefill.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/attention/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/attention/__init__.py": "724c7c3b6ca15b7e2493f5411a2b3dc0c2192bf4d56569759efa21cce63f204c",
+        "reference/attention/prefill/__init__.py": "f17d1c2119b3eb30b878a168e852975ad4fb0b2cb1a5beddf3c00b254e2237c5",
+        "reference/attention/prefill/implementation.py": "ad68a71fc545aedd2dff4b5509c450d144e5f345153185702118e93c2ab83f21",
+        "reference/attention/prefill/runner.py": "c19fe202f67a35281cb0357d4211ec3b4db4e7052bd29735ca8ded99161ed853"
+      }
+    },
+    {
+      "kernel_id": "reference/cascade/merge_state_v1",
+      "op": "cascade.merge_state",
+      "backend": "reference",
+      "module": "flashinfer.reference.cascade.merge_state.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/cascade/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/cascade/__init__.py": "2c214b5d1119e93034d0c56a3531f1646e2a360b608599f664a8fc85ebcff8a2",
+        "reference/cascade/_family.py": "4d303e52b695f21527b236a5815cdc4bc1e454d553a42e366191f695d29458d3",
+        "reference/cascade/merge_state/__init__.py": "d4d48a94fa7ead6f0608e853f1277f9b8b16d090a5efbda3e274c80bb0434592",
+        "reference/cascade/merge_state/implementation.py": "4f5eeb10e46bb4730f6c9f46f8ea798b86ae571cde286ec14ff9474b3a2c2950",
+        "reference/cascade/merge_state/runner.py": "48935d0c2f21cd694ed35df4dca75f99c436f9d12cdaf3814e93c2ba9e5ed195"
+      }
+    },
+    {
+      "kernel_id": "reference/cascade/merge_states_v1",
+      "op": "cascade.merge_states",
+      "backend": "reference",
+      "module": "flashinfer.reference.cascade.merge_states.implementation",
+      "scope": "global",
+      "origin": "flashinfer._cascade",
+      "files": {
+        "operators/cascade/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/cascade/__init__.py": "2c214b5d1119e93034d0c56a3531f1646e2a360b608599f664a8fc85ebcff8a2",
+        "reference/cascade/_family.py": "4d303e52b695f21527b236a5815cdc4bc1e454d553a42e366191f695d29458d3",
+        "reference/cascade/merge_states/__init__.py": "d46a6ff8800ec99b622ed8965c9eb2e39ddfcb67aef38a168fe704154da8aa36",
+        "reference/cascade/merge_states/implementation.py": "b18ef0e92341cedc331478ab0be7a2df66d22ff8ddf81d13a89b93b00d63355b",
+        "reference/cascade/merge_states/runner.py": "42602c1a0fae590618f67e57fafd6864134fb5ef366c1ebfdde7bcd558651334"
+      }
+    },
+    {
+      "kernel_id": "reference/decode/cudnn_batch_decode_v1",
+      "op": "decode.cudnn_batch_decode_with_kv_cache",
+      "backend": "reference",
+      "module": "flashinfer.reference.decode.cudnn_batch_decode_with_kv_cache.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/decode/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/decode/__init__.py": "eec22972ddae867e2741cf63cdd99e884fb24a0daecaa08fb0cb71fc2065f402",
+        "reference/decode/cudnn_batch_decode_with_kv_cache/__init__.py": "8bff0ba5a7ac9842214c3d274c18a70b0a15683c887d8ad22a7f2ce6363728c7",
+        "reference/decode/cudnn_batch_decode_with_kv_cache/implementation.py": "ee815dbf148fe89a2a82391d7b48c8c62d2ff1bc70357a71912de2013574a7c3",
+        "reference/decode/cudnn_batch_decode_with_kv_cache/runner.py": "101c9e248aae033b4599da6f23dbf544896fc193f0d7d987490812aa59a15255"
+      }
+    },
+    {
+      "kernel_id": "reference/fused_moe/cutlass_fused_moe_v1",
+      "op": "fused_moe.cutlass_fused_moe",
+      "backend": "reference",
+      "module": "flashinfer.reference.fused_moe.cutlass_fused_moe.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/fused_moe/__init__.py": "2aa6fb7aec692525c91f7725c045a7a4415e1b89be60ebed58d083c7cc568f88",
+        "reference/fused_moe/cutlass_fused_moe/__init__.py": "0ffd7333360f37849ba4e8759b7b1f45f2b566fb2da95a945c1d0677b2be15cc",
+        "reference/fused_moe/cutlass_fused_moe/implementation.py": "8df433f0f8d5d668f773e7f4f69efc34aa1948b5f5b1477d4904e6c0d5ef35bd",
+        "reference/fused_moe/cutlass_fused_moe/runner.py": "f044c7c10728556f2320d8aca2d43002882c551da6af7f432238a84fa8796a6d"
+      }
+    },
+    {
+      "kernel_id": "reference/fused_moe/trtllm_fp8_block_scale_moe_v1",
+      "op": "fused_moe.trtllm_fp8_block_scale_moe",
+      "backend": "reference",
+      "module": "flashinfer.reference.fused_moe.trtllm_fp8_block_scale_moe.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/fused_moe/__init__.py": "2aa6fb7aec692525c91f7725c045a7a4415e1b89be60ebed58d083c7cc568f88",
+        "reference/fused_moe/trtllm_fp8_block_scale_moe/__init__.py": "7ec77668c20ecccf7e5e37af96aa13753a96bf90e40d8101814518656f29a35d",
+        "reference/fused_moe/trtllm_fp8_block_scale_moe/implementation.py": "1ba86cbfe6b8f347970c58d17b506aa7af00a3245e58f65fb1b55e332fb7141f",
+        "reference/fused_moe/trtllm_fp8_block_scale_moe/runner.py": "236ccffd34161a9a0a78c4959834c2513ce045f8d9bf5573f45ebe508044a1d7"
+      }
+    },
+    {
+      "kernel_id": "reference/fused_moe/trtllm_fp8_per_tensor_scale_moe_v1",
+      "op": "fused_moe.trtllm_fp8_per_tensor_scale_moe",
+      "backend": "reference",
+      "module": "flashinfer.reference.fused_moe.trtllm_fp8_per_tensor_scale_moe.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/fused_moe/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/fused_moe/__init__.py": "2aa6fb7aec692525c91f7725c045a7a4415e1b89be60ebed58d083c7cc568f88",
+        "reference/fused_moe/trtllm_fp8_per_tensor_scale_moe/__init__.py": "4e033bff708bcaffa268fc9d51cc8bf20c7d740a53af3175cdf06ec935784643",
+        "reference/fused_moe/trtllm_fp8_per_tensor_scale_moe/implementation.py": "3334e6bb8eda057881621e2b841ecffb5ce29f1e010adb8f3555c4cdda82c24e",
+        "reference/fused_moe/trtllm_fp8_per_tensor_scale_moe/runner.py": "7acbada67e0d86b1f1fb977c8bf2333f6f7fb5345db9627fdaae5b58f39672ee"
+      }
+    },
+    {
+      "kernel_id": "reference/gemm/bmm_bf16_v1",
+      "op": "gemm.bmm_bf16",
+      "backend": "reference",
+      "module": "flashinfer.reference.gemm.bmm_bf16.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/gemm/__init__.py": "8df83df137c7b922ece6b1d7007daa7bea6e54089bdae8d84f620ba028ee54aa",
+        "reference/gemm/bmm_bf16/__init__.py": "06a57b4cb473da5037e297fd66fdbb6e5f0c47d6462db8ad4175fbe1bee0d4a4",
+        "reference/gemm/bmm_bf16/implementation.py": "d853ef6f93e76096a6522b6d5ffcb505c34fd0b95d258b8e357183ec484138dd",
+        "reference/gemm/bmm_bf16/runner.py": "64ad386af5037f9bbae410c788f5dcf5b366a8978445707525ec255e6384d779"
+      }
+    },
+    {
+      "kernel_id": "reference/gemm/bmm_fp8_v1",
+      "op": "gemm.bmm_fp8",
+      "backend": "reference",
+      "module": "flashinfer.reference.gemm.bmm_fp8.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/gemm/__init__.py": "8df83df137c7b922ece6b1d7007daa7bea6e54089bdae8d84f620ba028ee54aa",
+        "reference/gemm/bmm_fp8/__init__.py": "e2d71e51924efb0486b2229fe486a00941d4fc7639e19b80fb33a83f668b9d0d",
+        "reference/gemm/bmm_fp8/implementation.py": "36211b5ca2858876e9dd946e55dff0f524c52ca8aebb97cde356d2ca0c3af9bc",
+        "reference/gemm/bmm_fp8/runner.py": "25c59dfede90e9f114c68d48277ad7ab709fa770cd208b82caa7a45dd67724ae"
+      }
+    },
+    {
+      "kernel_id": "reference/gemm/gemm_fp8_nt_groupwise_v1",
+      "op": "gemm.gemm_fp8_nt_groupwise",
+      "backend": "reference",
+      "module": "flashinfer.reference.gemm.gemm_fp8_nt_groupwise.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/gemm/__init__.py": "8df83df137c7b922ece6b1d7007daa7bea6e54089bdae8d84f620ba028ee54aa",
+        "reference/gemm/gemm_fp8_nt_groupwise/__init__.py": "a570a30126b60fcd03608dc144a8e908428b966312ced00385a56756bb0f2c84",
+        "reference/gemm/gemm_fp8_nt_groupwise/implementation.py": "d023248e07c4b4666917696c5b4b0a257c8aad7947f57b7ef0a60f5ab7852b75",
+        "reference/gemm/gemm_fp8_nt_groupwise/runner.py": "4f32d66354c8f3e0d9eca737c3fa01286af42ee1aa5d558352d78a88713712e4"
+      }
+    },
+    {
+      "kernel_id": "reference/gemm/mm_bf16_v1",
+      "op": "gemm.mm_bf16",
+      "backend": "reference",
+      "module": "flashinfer.reference.gemm.mm_bf16.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/gemm/__init__.py": "8df83df137c7b922ece6b1d7007daa7bea6e54089bdae8d84f620ba028ee54aa",
+        "reference/gemm/mm_bf16/__init__.py": "0d6ea102c9babf541c30a806bf49bcf6be2bedc272293511cf0330ac9a9cebc4",
+        "reference/gemm/mm_bf16/implementation.py": "ddc226fc780a6fbe8376c10f03168271d8193757e2963e89e70eba29d541152b",
+        "reference/gemm/mm_bf16/runner.py": "c16b5555f13f9e23713442514a0fcb927ebfef59f77e403ce2a669bcfe2fcedc"
+      }
+    },
+    {
+      "kernel_id": "reference/gemm/segment_gemm_v1",
+      "op": "gemm.segment_gemm",
+      "backend": "reference",
+      "module": "flashinfer.reference.gemm.segment_gemm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/gemm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "operators/gemm/_shared.py": "7855eef90fa729a4e6a20312c5f6ab495d831b95720a3d38fee761a03cac0561",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/gemm/__init__.py": "8df83df137c7b922ece6b1d7007daa7bea6e54089bdae8d84f620ba028ee54aa",
+        "reference/gemm/segment_gemm/__init__.py": "e68cec777578b60cb9d4840cf524e6e583da13a800869095c7388feed4a70e2c",
+        "reference/gemm/segment_gemm/implementation.py": "f3b725f05296eb1542f0e17c97969cef8f7744fe497ee00d35635c288540c58d",
+        "reference/gemm/segment_gemm/runner.py": "72ce033de8ef42fb81783cf31cd5d3b73ef5d5ee2d0354a4ed62433a7edec34c"
+      }
+    },
+    {
+      "kernel_id": "reference/norm/fused_add_rmsnorm_v1",
+      "op": "norm.fused_add_rmsnorm",
+      "backend": "reference",
+      "module": "flashinfer.reference.norm.fused_add_rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/norm/__init__.py": "8effcacf0419e6b640b0f63cfb038222434fff4b7533ed954f91a7d4480a6aff",
+        "reference/norm/fused_add_rmsnorm/__init__.py": "ed2f529654e5078a974dabe503db4ad1dbe90fabba663aa3e36fc7d1f60dc48b",
+        "reference/norm/fused_add_rmsnorm/implementation.py": "f6cffe0f45020c0d0101ce4fbea21772cdef47e3a998f5debe1aba27fcd831aa",
+        "reference/norm/fused_add_rmsnorm/runner.py": "91e84f17ae24b8ec08a49490b1bfc46e2e106aa0831140324a761f4a242dca89"
+      }
+    },
+    {
+      "kernel_id": "reference/norm/gemma_fused_add_rmsnorm_v1",
+      "op": "norm.gemma_fused_add_rmsnorm",
+      "backend": "reference",
+      "module": "flashinfer.reference.norm.gemma_fused_add_rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/norm/__init__.py": "8effcacf0419e6b640b0f63cfb038222434fff4b7533ed954f91a7d4480a6aff",
+        "reference/norm/gemma_fused_add_rmsnorm/__init__.py": "8fb4f83f9844210790f740554f2c30063b3ddcfd75b815e9d9a06ae4e1a09911",
+        "reference/norm/gemma_fused_add_rmsnorm/implementation.py": "1b3becd26d3e7ec115970ab91497c47c3060e110913e59b1a297bdb975dc9703",
+        "reference/norm/gemma_fused_add_rmsnorm/runner.py": "41f101774193b4204ebb2e3cb82de6a87ad719f517e4ff3d19ff7a74025e0068"
+      }
+    },
+    {
+      "kernel_id": "reference/norm/gemma_rmsnorm_v1",
+      "op": "norm.gemma_rmsnorm",
+      "backend": "reference",
+      "module": "flashinfer.reference.norm.gemma_rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/norm/__init__.py": "8effcacf0419e6b640b0f63cfb038222434fff4b7533ed954f91a7d4480a6aff",
+        "reference/norm/gemma_rmsnorm/__init__.py": "1f96bf39d6ce72c943522f76329872115f7ba5f9d449f2b7c9cab97cbe6aa78e",
+        "reference/norm/gemma_rmsnorm/implementation.py": "7a37b14890f354aed41cadd8607e59c5c8a7ba948ca3c41648e17d2bb5ba55a8",
+        "reference/norm/gemma_rmsnorm/runner.py": "a1eac55330d5c08f237b0291b21feb258e8d33d60be0bfe910f9a8d1420ec85b"
+      }
+    },
+    {
+      "kernel_id": "reference/norm/layernorm_v1",
+      "op": "norm.layernorm",
+      "backend": "reference",
+      "module": "flashinfer.reference.norm.layernorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/norm/__init__.py": "8effcacf0419e6b640b0f63cfb038222434fff4b7533ed954f91a7d4480a6aff",
+        "reference/norm/layernorm/__init__.py": "2a4a5a3bc9890da457ae92d645aac4540b26d45a03f688301add0f733e4e8476",
+        "reference/norm/layernorm/implementation.py": "1264cfd5f9769dc6dd00b1ac0875c048b205a91b150164e40b302028820c0cec",
+        "reference/norm/layernorm/runner.py": "230f270705e433e316dccbd8b1c1bcbf90a2e0226e4ec87296360f7b6c69ea45"
+      }
+    },
+    {
+      "kernel_id": "reference/norm/rmsnorm_v1",
+      "op": "norm.rmsnorm",
+      "backend": "reference",
+      "module": "flashinfer.reference.norm.rmsnorm.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/norm/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/norm/__init__.py": "8effcacf0419e6b640b0f63cfb038222434fff4b7533ed954f91a7d4480a6aff",
+        "reference/norm/rmsnorm/__init__.py": "3531f7254e908673c9e92a56f55e4a6c8da80d67abfccab8622746a10fdd0b57",
+        "reference/norm/rmsnorm/implementation.py": "0838d3f14d458ebfedea89d94e8529c2deeece798c300a9f9497c4b627df7f4f",
+        "reference/norm/rmsnorm/runner.py": "a7ae19fbc3507f7f282309033135286645f7558cb0f587d6dd27874374519d5f"
+      }
+    },
+    {
+      "kernel_id": "reference/page/append_paged_kv_cache_v1",
+      "op": "page.append_paged_kv_cache",
+      "backend": "reference",
+      "module": "flashinfer.reference.page.append_paged_kv_cache.implementation",
+      "scope": "global",
+      "origin": "flashinfer._page",
+      "files": {
+        "operators/page/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/page/__init__.py": "3ab7342c9e401c1ecbda4e1c53d31944123a4326433e62e6f8b019b1237921d9",
+        "reference/page/_family.py": "b9a2ca506380397f4ba72fbdfc76b3c0630d1515e04d542a685160b8484f5fdd",
+        "reference/page/append_paged_kv_cache/__init__.py": "03c3a435f53e684793fd5e347b3ded447cf4f8aa0a35021012e15881c4758904",
+        "reference/page/append_paged_kv_cache/implementation.py": "16ca69c9fb0677c32cdb1a1799a948b5df39da2514cc5901778f003240cb021d",
+        "reference/page/append_paged_kv_cache/runner.py": "ab50ce2c3b29c5b90778b07b171572dde19fa3b927296ae01d385cad9efdf539"
+      }
+    },
+    {
+      "kernel_id": "reference/rope/apply_rope_v1",
+      "op": "rope.apply_rope",
+      "backend": "reference",
+      "module": "flashinfer.reference.rope.apply_rope.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/rope/__init__.py": "e7443380ff5d097489a380dc4cd963fa95c07997ca327970f5b4d14eda01b504",
+        "reference/rope/apply_rope/__init__.py": "33d76449175f86ae1d53a07808655828ddd558d1dccd864157b2ef436e88c34f",
+        "reference/rope/apply_rope/implementation.py": "41c4d3d2bb34702054372324095d94bd1ab73b5389fc53174e3e9d6c764554b6",
+        "reference/rope/apply_rope/runner.py": "3d432ce876fcb000b09b7c7317af78af8866aa9f4a0eed97540ecf1748294668"
+      }
+    },
+    {
+      "kernel_id": "reference/rope/apply_rope_inplace_v1",
+      "op": "rope.apply_rope_inplace",
+      "backend": "reference",
+      "module": "flashinfer.reference.rope.apply_rope_inplace.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/rope/__init__.py": "e7443380ff5d097489a380dc4cd963fa95c07997ca327970f5b4d14eda01b504",
+        "reference/rope/apply_rope_inplace/__init__.py": "9c84895b27ac694e90254613d4e350c9a245dcf243aec041078e6e67663174f0",
+        "reference/rope/apply_rope_inplace/implementation.py": "a2456b23849f8ab234c2c5e036b6cf8360a1338e71863cec7f26473d259d4692",
+        "reference/rope/apply_rope_inplace/runner.py": "3462bbb4b12639c2e1f4a604bd33398c654eb9917bfd39058197e36c7eb749a0"
+      }
+    },
+    {
+      "kernel_id": "reference/rope/apply_rope_pos_ids_v1",
+      "op": "rope.apply_rope_pos_ids",
+      "backend": "reference",
+      "module": "flashinfer.reference.rope.apply_rope_pos_ids.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/rope/__init__.py": "e7443380ff5d097489a380dc4cd963fa95c07997ca327970f5b4d14eda01b504",
+        "reference/rope/apply_rope_pos_ids/__init__.py": "6dc022e6f009320a66396f421bc5e04553b82de168fda493ddb0ac898ce78dd5",
+        "reference/rope/apply_rope_pos_ids/implementation.py": "c37d4ce02dfecd14211bed4bc12c60f9c196821f72c6889b6d3f502f6d8bfb41",
+        "reference/rope/apply_rope_pos_ids/runner.py": "1b5214db01dfdcd32d5a3e015482828873c96ef8287fba3f3505c25b11412cf0"
+      }
+    },
+    {
+      "kernel_id": "reference/rope/apply_rope_pos_ids_inplace_v1",
+      "op": "rope.apply_rope_pos_ids_inplace",
+      "backend": "reference",
+      "module": "flashinfer.reference.rope.apply_rope_pos_ids_inplace.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/rope/__init__.py": "e7443380ff5d097489a380dc4cd963fa95c07997ca327970f5b4d14eda01b504",
+        "reference/rope/apply_rope_pos_ids_inplace/__init__.py": "93699aa190eec49bed9cd258553ca410ccb81bdb4f63168dc7935737b847a98f",
+        "reference/rope/apply_rope_pos_ids_inplace/implementation.py": "a825ab91176ff64cc9e3066d48207199aad346627044d1f42d469609f04f0eb0",
+        "reference/rope/apply_rope_pos_ids_inplace/runner.py": "dd9eb9888d49fbade712f20b6027b6b07b3e09f9b58c4194f7f16d71615febd2"
+      }
+    },
+    {
+      "kernel_id": "reference/rope/apply_rope_with_cos_sin_cache_out_v1",
+      "op": "rope.apply_rope_with_cos_sin_cache",
+      "backend": "reference",
+      "module": "flashinfer.reference.rope.apply_rope_with_cos_sin_cache.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/rope/__init__.py": "e7443380ff5d097489a380dc4cd963fa95c07997ca327970f5b4d14eda01b504",
+        "reference/rope/apply_rope_with_cos_sin_cache/__init__.py": "1a7ea4fbba07741cf33eedabdc38ea67d461984c440ae34a2b76c9030700a8e7",
+        "reference/rope/apply_rope_with_cos_sin_cache/implementation.py": "783a6a71e4b1ec88e220bba14791ee00682ba2ba585bed7cdb017acc0d1a42c0",
+        "reference/rope/apply_rope_with_cos_sin_cache/runner.py": "a0d8504562893a41dc5c2c66c11f6814871f8f05c08f57b64ec2bf39c52ab04a"
+      }
+    },
+    {
+      "kernel_id": "reference/rope/apply_rope_with_cos_sin_cache_v1",
+      "op": "rope.apply_rope_with_cos_sin_cache_inplace",
+      "backend": "reference",
+      "module": "flashinfer.reference.rope.apply_rope_with_cos_sin_cache_inplace.implementation",
+      "scope": "global",
+      "origin": "flashinfer.runtime.reference_kernels",
+      "files": {
+        "operators/rope/__init__.py": "e246f148939e57b66659f26c0a615f90731b18a5278dc61c51f1aacc5754149e",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/rope/__init__.py": "e7443380ff5d097489a380dc4cd963fa95c07997ca327970f5b4d14eda01b504",
+        "reference/rope/apply_rope_with_cos_sin_cache_inplace/__init__.py": "16675fda96b425ce24f99dba04867149866271af7d36d8e082799ef2621c8ef6",
+        "reference/rope/apply_rope_with_cos_sin_cache_inplace/implementation.py": "a99f55ca4053a0c5e40303489b9654a5008ee26afa7be418dfe7d32561c98590",
+        "reference/rope/apply_rope_with_cos_sin_cache_inplace/runner.py": "7f4563fa05a37c98336622d81d4ce9887265e2a4f80a4c7a51ec3d2e3b997c37"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/chain_speculative_sampling_v1",
+      "op": "sampling.chain_speculative_sampling",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.chain_speculative_sampling.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/chain_speculative_sampling/__init__.py": "026ac248702105dc470452596f2b9dab36d84a81d988a6424fe934c74dcec2fd",
+        "reference/sampling/chain_speculative_sampling/implementation.py": "d8e7ebfca8c6c8ad8fd86aa7188d0520f28dd08802db932c56eb0e2f7f488f23",
+        "reference/sampling/chain_speculative_sampling/runner.py": "8f7f0bdc5657005d9c10e04be105905729c4afc85d573a03138dd231bb078d81"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/min_p_sampling_from_probs_v1",
+      "op": "sampling.min_p_sampling_from_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.min_p_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/min_p_sampling_from_probs/__init__.py": "8e79883cb90105ae0fec5590e39112daf9206c0634459a2162645886508b51e1",
+        "reference/sampling/min_p_sampling_from_probs/implementation.py": "bac41e6f904184b62eac5162e61e203cb3f73cb0c9d485869d9e9c999a3eb38e",
+        "reference/sampling/min_p_sampling_from_probs/runner.py": "098d6ad50ebef9cbd8d921205c05133e4a7861b971889446ed67877f1b53ca03"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/sampling_from_logits_v1",
+      "op": "sampling.sampling_from_logits",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.sampling_from_logits.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/sampling_from_logits/__init__.py": "dbbbeef3de8981af1d9bd903ec7cf4344aa3ea05dcbf2b78317e21e7ee13cca8",
+        "reference/sampling/sampling_from_logits/implementation.py": "8a4368d333254b423c47472b200e4d416ea3bc878bfd5e77e26e4f76f887fc8a",
+        "reference/sampling/sampling_from_logits/runner.py": "d087395e3d94487eacb595c4dfcb3dbc276c2bfe87d2118cb00dcac38d9a9c6f"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/sampling_from_probs_v1",
+      "op": "sampling.sampling_from_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/sampling_from_probs/__init__.py": "587b90e3263a1b23b3f23893649fbbbdeda092d922d490391abb533a8b54e214",
+        "reference/sampling/sampling_from_probs/implementation.py": "bb4dee506dec60fc3aa688ead3afb74778d35a06b66397878c6098cd0a4caf53",
+        "reference/sampling/sampling_from_probs/runner.py": "98f0f15a564946b01259e4c860a8c0c7ac3444ada383f8110ebe8a84ca41808c"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/top_k_mask_logits_v1",
+      "op": "sampling.top_k_mask_logits",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.top_k_mask_logits.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/top_k_mask_logits/__init__.py": "59451a3476ba6d0d63f976cd9dc08f1341c3be352c3e2faea404870d3258dd6f",
+        "reference/sampling/top_k_mask_logits/implementation.py": "3edf274d0caf3f536b429b49f0d21c3bc275b16e5886853ebaf12b06d39469b3",
+        "reference/sampling/top_k_mask_logits/runner.py": "d8cae26c6252174befeef6cdd805434e2c0b616778cab553d385a5d22f27bb12"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/top_k_renorm_probs_v1",
+      "op": "sampling.top_k_renorm_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.top_k_renorm_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/top_k_renorm_probs/__init__.py": "af8f67911afd933890feffdc30d1b994eb25aa15a58ef689d2cca8d0ba71a88a",
+        "reference/sampling/top_k_renorm_probs/implementation.py": "1321d4d775bf4958179ad1c8aa48d4a38a022b6a00763636ea3a6155c9341402",
+        "reference/sampling/top_k_renorm_probs/runner.py": "ade0d39b0d02a6ffc32819cdec199b60fdae2523ed885dfa565ff19aa73ad6c0"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/top_k_sampling_from_probs_v1",
+      "op": "sampling.top_k_sampling_from_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.top_k_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/top_k_sampling_from_probs/__init__.py": "4eeb541d0ff696831f94d3d4e459192850f12797d4f936db6dcf85f400a8b840",
+        "reference/sampling/top_k_sampling_from_probs/implementation.py": "07f5c187b9d408b4d19dd31101b99a6b608a429d0b18977524e2074ddcfd5f02",
+        "reference/sampling/top_k_sampling_from_probs/runner.py": "5c69539ce32097e568689a0bd6f52590709b3e19c6e1270a99422edab76275e4"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/top_k_top_p_sampling_from_probs_v1",
+      "op": "sampling.top_k_top_p_sampling_from_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.top_k_top_p_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/top_k_top_p_sampling_from_probs/__init__.py": "3ffe41755f019b01aa3e541352c540025a517a6bbc52f1d8b44158d745e745b6",
+        "reference/sampling/top_k_top_p_sampling_from_probs/implementation.py": "602bf2925c685c8758a06abbc9bff4b851e639b39561512922d2ebf7c669a73d",
+        "reference/sampling/top_k_top_p_sampling_from_probs/runner.py": "7cf7df1b32ca2c4cc1a24085ddd0e5332a56ce4a526d4ad799b863523c8dd67f"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/top_p_renorm_probs_v1",
+      "op": "sampling.top_p_renorm_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.top_p_renorm_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/top_p_renorm_probs/__init__.py": "b5f7e82bbc62552346a61923c9c4436658f2bf233d98049d7f9049d3d394f97e",
+        "reference/sampling/top_p_renorm_probs/implementation.py": "8ef085b9460101e1b1ce0a792f58f6fb7aae888c9bca2302f3e3a5f23bc31364",
+        "reference/sampling/top_p_renorm_probs/runner.py": "6bfe894184107387b26d9a4a9e0a707a4f0fc6a28eafa572116ae3c942702cfc"
+      }
+    },
+    {
+      "kernel_id": "reference/sampling/top_p_sampling_from_probs_v1",
+      "op": "sampling.top_p_sampling_from_probs",
+      "backend": "reference",
+      "module": "flashinfer.reference.sampling.top_p_sampling_from_probs.implementation",
+      "scope": "global",
+      "origin": "flashinfer._sampling",
+      "files": {
+        "operators/sampling/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "reference/__init__.py": "3670b2ac1362e81cd8a1cc04057d6dd70e1d174d89c4bd49b88c637b8b578de2",
+        "reference/_shared.py": "abf28c43e49f72a867e5efbbe5394b68a3ae860d0bf76949fb73e600ab14cce0",
+        "reference/sampling/__init__.py": "62694687b8dd8523c465ccf51767afb2272b6291799db9fff4ebbeec13d2b546",
+        "reference/sampling/_family.py": "118a69eda159c262499eb7a88db3f5147f2165964482da10c93ad12058eb0670",
+        "reference/sampling/top_p_sampling_from_probs/__init__.py": "6fbdd0b91122f1451560560cb627f35c8c64a49bd7e6a13b1b8053cb16a50143",
+        "reference/sampling/top_p_sampling_from_probs/implementation.py": "64c17d5dfc5217382578bd984f4d3bd6b5fdfdbc2ec2ec4bb21fd49dfecdeb04",
+        "reference/sampling/top_p_sampling_from_probs/runner.py": "57db001332ddc626e1b153a639c5ce6472227d3e9e5ae47882162c4fd4f8d69d"
+      }
+    }
+  ]
+}
