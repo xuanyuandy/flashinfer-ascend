@@ -12,10 +12,15 @@ from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from flashinfer.runtime import (
-    Backend, CapabilitySpec, CompileMode, DispatchError, HardwareSignature,
-    InputSignature, KernelDescriptor, KernelRegistry, ShapeRange, dispatch,
+    Backend, CapabilityCase, CapabilitySpec, CompileMode, DispatchError, FeatureConstraint,
+    HardwareSignature, InferenceSpec, InputSignature, KernelDescriptor, KernelRegistry,
+    QuantSpec, ShapeRange, dispatch, functional_feature_catalog, get_global_registry,
 )
 
 
@@ -109,11 +114,119 @@ def run():
             "cases_passed": len(evidence), "global_registry_modified": False, "cases": evidence}
 
 
+def functional_scenarios():
+    """Concrete call facts and support cases, deliberately without shape limits.
+
+    The example ops describe hypothetical frontends accepting these contracts,
+    not additions to flashinfer.matmul or the production Attention registry.
+    Tensor roles: GEMM=(A, B, out), Attention=(Q, K, V, out).
+    """
+    scenarios = []
+
+    def add(name, domain, backend, dtypes, features, *, quantization=(), fusion_ops=(),
+            auxiliary_outputs=(), logits_soft_cap=None, deterministic=False):
+        op = "example.functional." + domain
+        inference = InferenceSpec(features=features, quantization=quantization,
+                                  fusion_ops=fusion_ops, auxiliary_outputs=auxiliary_outputs,
+                                  logits_soft_cap=logits_soft_cap, deterministic=deterministic)
+        case = CapabilityCase(name, dtype_signatures=(dtypes,),
+                              features=tuple(FeatureConstraint(key, (value,)) for key, value in features),
+                              quantization=quantization, fusion_ops=fusion_ops,
+                              auxiliary_outputs=auxiliary_outputs,
+                              supports_logits_soft_cap=bool(logits_soft_cap),
+                              supports_deterministic=deterministic)
+        mode = {Backend.CANN: CompileMode.NONE, Backend.ASCENDC: CompileMode.AOT,
+                Backend.TRITON: CompileMode.JIT}[backend]
+        descriptor = KernelDescriptor(f"{backend.value}/example/{name}", backend=backend,
+                                      capability=CapabilitySpec(op, cases=(case,)), compile_mode=mode)
+        scenarios.append((name, InputSignature(op, dtypes=dtypes, inference=inference), descriptor))
+
+    def gemm_features(compute="float16", accumulator="float32", mode="dense"):
+        return (("gemm.mode", mode), ("gemm.transpose_a", False), ("gemm.transpose_b", False),
+                ("compute.dtype", compute), ("accumulator.dtype", accumulator))
+
+    add("gemm_bf16", "gemm", Backend.CANN, ("bfloat16",) * 3, gemm_features("bfloat16"))
+    add("gemm_fp16", "gemm", Backend.TRITON, ("float16",) * 3, gemm_features())
+    w8 = QuantSpec("symmetric", "int8", "float16", "float32", granularity="channel", axis=(1,))
+    add("gemm_w8a16", "gemm", Backend.ASCENDC, ("float16", "int8", "float16"),
+        gemm_features(), quantization=((1, w8),))
+    w4 = QuantSpec("symmetric", "int4_packed", "float16", "float32", granularity="group",
+                   group_size=(128,), axis=(0,), packing_order="low_nibble_first")
+    add("gemm_w4a16", "gemm", Backend.TRITON, ("float16", "uint8", "float16"),
+        gemm_features(), quantization=((1, w4),))
+    a8 = QuantSpec("symmetric", "int8", "int8", "int32", granularity="token", axis=(0,))
+    b8 = QuantSpec("symmetric", "int8", "int8", "int32", granularity="channel", axis=(1,))
+    add("gemm_a8w8", "gemm", Backend.CANN, ("int8", "int8", "bfloat16"),
+        gemm_features("int8", "int32"), quantization=((0, a8), (1, b8)))
+    fp8 = QuantSpec("symmetric", "float8_e4m3fn", "float8_e4m3fn", "float32",
+                   granularity="block", group_size=(128, 128), axis=(0, 1))
+    add("gemm_fp8_block", "gemm", Backend.CANN, ("float8_e4m3fn", "float8_e4m3fn", "bfloat16"),
+        gemm_features("float8_e4m3fn"), quantization=((0, fp8), (1, fp8)))
+    add("gemm_grouped_bias_silu", "gemm", Backend.TRITON, ("bfloat16",) * 3,
+        gemm_features("bfloat16", mode="grouped"), fusion_ops=("bias", "silu"))
+
+    def attention_features(mode, variant, cache, *, dtype="bfloat16", layout="NHD", mask="causal",
+                           position="NONE", causal=True, window=False, fp16_reduction=False):
+        return (("attention.mode", mode), ("attention.variant", variant), ("kv_cache.kind", cache),
+                ("kv_cache.layout", layout), ("mask.kind", mask), ("position.encoding", position),
+                ("attention.causal", causal), ("attention.sliding_window", window),
+                ("attention.fp16_qk_reduction", fp16_reduction),
+                ("compute.dtype", dtype), ("accumulator.dtype", "float32"))
+
+    add("attention_prefill_mha", "attention", Backend.CANN, ("bfloat16",) * 4,
+        attention_features("prefill", "mha", "dense"))
+    add("attention_ragged_gqa_lse", "attention", Backend.TRITON, ("float16",) * 4,
+        attention_features("prefill", "gqa", "ragged", dtype="float16", mask="packed_custom",
+                           position="ALIBI", causal=False, fp16_reduction=True), auxiliary_outputs=("lse",))
+    kv8 = QuantSpec("symmetric", "int8", "bfloat16", "float32", granularity="token", axis=(0,))
+    add("attention_decode_mqa_kv8", "attention", Backend.ASCENDC,
+        ("bfloat16", "int8", "int8", "bfloat16"),
+        attention_features("decode", "mqa", "paged", layout="HND", mask="none", causal=False),
+        quantization=((1, kv8), (2, kv8)))
+    add("attention_decode_gqa_kv4", "attention", Backend.TRITON,
+        ("float16", "uint8", "uint8", "float16"),
+        attention_features("decode", "gqa", "paged", dtype="float16", mask="none", causal=False),
+        quantization=((1, w4), (2, w4)))
+    add("attention_chunked_window_rope", "attention", Backend.CANN, ("bfloat16",) * 4,
+        attention_features("chunked_prefill", "gqa", "paged", position="ROPE_LLAMA", window=True),
+        logits_soft_cap=50.0, auxiliary_outputs=("lse",))
+    add("attention_multi_token_decode", "attention", Backend.TRITON, ("bfloat16",) * 4,
+        attention_features("multi_token_decode", "gqa", "paged"), deterministic=True)
+    add("attention_block_sparse", "attention", Backend.ASCENDC, ("bfloat16",) * 4,
+        attention_features("prefill", "gqa", "dense", mask="custom", causal=False)
+        + (("sparse.format", "block_sparse"),))
+    return tuple(scenarios)
+
+
+def run_functional():
+    before = tuple((d.kernel_id, d.fingerprint) for d in get_global_registry().descriptors())
+    scenarios = functional_scenarios()
+    registry = KernelRegistry(descriptor for _, _, descriptor in scenarios)
+    registry.freeze()
+    evidence = []
+    with policies():
+        for name, signature, expected in scenarios:
+            assert not signature.shapes and not expected.capability.shape_ranges
+            for selector in ({"backend": "auto"}, {"backend": expected.backend},
+                             {"kernel_id": expected.kernel_id}):
+                decision = dispatch(signature, HARDWARE, registry=registry, **selector)
+                assert decision.kernel_id == expected.kernel_id, (name, selector, decision)
+            evidence.append({"scenario": name, "request": signature.to_dict(),
+                             "selected": expected.kernel_id, "backend": expected.backend.value,
+                             "case": expected.capability.cases[0].to_dict(), "selection_checks": 3})
+    assert tuple((d.kernel_id, d.fingerprint) for d in get_global_registry().descriptors()) == before
+    return {"kind": "HOST_FUNCTIONAL_ROUTING_ONLY_NO_KERNEL_EXECUTION", "status": "PASS",
+            "scenario_count": len(scenarios), "cases_passed": len(scenarios) * 3,
+            "global_registry_modified": False, "kernel_launches": 0,
+            "functional_dimensions": len(functional_feature_catalog()), "cases": evidence}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, default=Path("build/dispatcher-docs/capability-demo.json"))
+    parser.add_argument("--functional", action="store_true", help="Exercise GEMM/Attention functional combinations")
     args = parser.parse_args()
-    evidence = run()
+    evidence = run_functional() if args.functional else run()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(evidence, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"PASS: {evidence['cases_passed']} isolated routing checks; no kernel execution; no global registry changes.")

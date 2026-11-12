@@ -110,6 +110,19 @@ for descriptor in get_global_registry().descriptors(op="gemm.matmul"):
 
 ### 0.5 路由、编译与执行的验收边界
 
+复杂功能不再只写为 dtype/shape 标签。先按
+[推理场景与能力组合](runtime-and-compilation-design.md#推理场景与选择维度) 梳理精度、
+逐 Tensor 量化、Attention/KV/mask、融合/输出、MoE 等调用事实；公共入口提供
+`InferenceSpec`，descriptor 用 `CapabilitySpec.dtype_signatures/cases` 声明连贯支持域。
+case 内 AND、case 间 OR，未声明的新语义拒绝。需要交付这些声明、真实参数到特征的映射、
+各 case 的通过/拒绝用例和实际设备数值；本机制不自动扩大现有 kernel 的能力。
+
+常用功能按 [通用功能分类全表](runtime-and-compilation-design.md#通用功能特性全量分类) 选择，
+新增标量功能采用 `InferenceSpec.features` / `FeatureConstraint`，不要继续给公共 schema 添加算子专用字段。
+量化、融合顺序及辅助输出仍分别交付完整 `QuantSpec`、`fusion_ops`、`auxiliary_outputs`；
+shape/stride 等约束保留在 Tensor/recipe 契约及既有护栏中。接入前可运行
+`tools/routing_capability_demo.py --functional` 核对 Attention/GEMM 的功能组合选型边界。
+
 | 验收面 | 通过条件 |
 | --- | --- |
 | 指定 backend / kernel_id | 兼容时选择对应记录，不兼容明确报错；不会静默换 backend，runner 执行异常也不会按 fallback_chain 逐个重试 |

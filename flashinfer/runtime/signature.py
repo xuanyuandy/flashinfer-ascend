@@ -9,6 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, Iterable, Optional, Tuple
 
+from .schema import InferenceSpec
+
 
 @dataclass(frozen=True)
 class InputSignature:
@@ -22,6 +24,7 @@ class InputSignature:
     - ``specializations`` 非张量特化参数（causal、量化格式等），排序后的键值对
     - ``physical_layouts`` 各输入的 NPU 物理排布 ND / NZ；空串表示未知，
       空元组表示全部未知。其他 CANN 格式保持未知，不猜作 ND 或 NZ
+    - ``inference``       结构化精度/量化/Attention/融合等调用事实，缺省不改变旧身份
     """
 
     op: str
@@ -30,8 +33,16 @@ class InputSignature:
     layouts: Tuple[str, ...] = ()
     specializations: Tuple[Tuple[str, str], ...] = ()
     physical_layouts: Tuple[str, ...] = ()
+    inference: Optional[InferenceSpec] = None
 
     def __post_init__(self) -> None:
+        if self.inference is not None:
+            value = self.inference
+            if isinstance(value, dict):
+                value = InferenceSpec.from_dict(value)
+            if not isinstance(value, InferenceSpec):
+                raise ValueError("inference must be InferenceSpec or None")
+            object.__setattr__(self, "inference", value if value.to_dict() else None)
         try:
             physical_layouts = tuple(self.physical_layouts)
         except TypeError as exc:
@@ -54,6 +65,19 @@ class InputSignature:
             "specializations",
             tuple(sorted((str(k), str(v)) for k, v in self.specializations)),
         )
+        if self.inference is not None:
+            functional = dict(self.inference.feature_values())
+            for name, key in (("compute_dtype", "compute.dtype"), ("accumulator_dtype", "accumulator.dtype"),
+                              ("causal", "attention.causal"), ("pos_encoding", "position.encoding")):
+                actual = functional.get(key)
+                if actual not in (None, "") and any(
+                    k == name and v != str(actual) for k, v in self.specializations
+                ):
+                    raise ValueError(f"inference {name} contradicts specializations")
+            if self.inference.deterministic and any(
+                k == "deterministic" and v != "True" for k, v in self.specializations
+            ):
+                raise ValueError("inference deterministic contradicts specializations")
 
     def to_dict(self) -> Dict[str, Any]:
         """稳定序列化形式（cache key 的 JSON payload 来源）。"""
@@ -67,6 +91,8 @@ class InputSignature:
         # 未知排布是默认值，不改变历史签名的序列化形式。
         if self.physical_layouts:
             value["physical_layouts"] = list(self.physical_layouts)
+        if self.inference is not None:
+            value["inference"] = self.inference.to_dict()
         return value
 
 
@@ -106,11 +132,13 @@ def build_signature(
     tensors: Iterable[Any],
     layouts: Optional[Iterable[str]] = None,
     specializations: Optional[Dict[str, Any]] = None,
+    inference: Optional[InferenceSpec] = None,
 ) -> InputSignature:
     """从调用实参构建签名。``layouts`` 与张量一一对应，缺省为空串。
 
     物理排布从 NPU 张量查询，查询失败时未知；不从逻辑 layout / stride 推测，
     不执行格式转换。手工构造 InputSignature 的调用方需自行提供物理排布。
+    inference 由公共语义入口显式构造，不能仅根据 Tensor dtype 推测量化方式。
     """
     tensors = tuple(tensors)
     specs = [tensor_spec(t) for t in tensors]
@@ -126,4 +154,5 @@ def build_signature(
         specializations=tuple(
             sorted((str(k), str(v)) for k, v in (specializations or {}).items())
         ),
+        inference=inference,
     )

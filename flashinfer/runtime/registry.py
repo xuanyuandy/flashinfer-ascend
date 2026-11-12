@@ -204,6 +204,7 @@ class KernelRegistry:
         signature = InputSignature(
             workload.op, dtypes=workload.dtypes, layouts=workload.layouts,
             specializations=specializations,
+            inference=workload.inference,
         )
         hardware = HardwareSignature(
             soc_model=capability.soc_version, aicore_count=capability.ai_core_count,

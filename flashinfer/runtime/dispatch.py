@@ -271,7 +271,7 @@ def _dispatch_uncached(
             reasons.append(
                 "reference 需显式 opt-in（backend='reference' 或 allow_reference=True）"
             )
-        # 2/3. capability 过滤：语义（dtype/layout/特化参数/张量规模区间）
+        # 2/3. capability 过滤：完整 dtype、语义能力组合、layout/特化/规模
         #      + 二进制（SoC/AI Core 数），M0 统一由 CapabilitySpec 承担
         # manifest select() 另保留 KernelConstraints：整组 dtype/layout、
         # 设备 features/supported_dtypes、QuantSpec 与确定性要求。这里的

@@ -6,7 +6,7 @@
 
 [Matmul 接口与调用链](../matmul-backends.md) · [架构讲解 PDF](../presentations/dispatcher.pdf)
 
-实际校验：35 个 dataclass、254 个字段、8 个枚举；5 次真实 dispatch，包含决策缓存命中。样例未申请 Tensor、未执行 kernel，生产 registry 保持不变。
+实际校验：39 个 dataclass、309 个字段、8 个枚举；5 次真实 dispatch，包含决策缓存命中。样例未申请 Tensor、未执行 kernel，生产 registry 保持不变。
 
 ## 容器与控制值
 
@@ -102,7 +102,7 @@ cache_key = (
 
 facade 创建本次调用的元数据快照；能力过滤、调优查询和决策缓存消费它。不是 Tensor 或产物。
 
-源码：[flashinfer/runtime/signature.py:14](../../flashinfer/runtime/signature.py)。
+源码：[flashinfer/runtime/signature.py:16](../../flashinfer/runtime/signature.py)。
 
 被引用位置：`Plan.signature`
 
@@ -115,6 +115,7 @@ class InputSignature:
     layouts: Tuple[str, ...] = ()
     specializations: Tuple[Tuple[str, str], ...] = ()
     physical_layouts: Tuple[str, ...] = ()
+    inference: Optional[InferenceSpec] = None
 ```
 
 ### HardwareSignature
@@ -137,7 +138,7 @@ class HardwareSignature:
 
 算子作者声明一个实现的支持域；unsupported_reasons(signature, hardware) 对照实际请求。
 
-源码：[flashinfer/runtime/schema.py:689](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:1065](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.capability`
 
@@ -152,15 +153,35 @@ class CapabilitySpec:
     specializations: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
     shape_ranges: Tuple[ShapeRange, ...] = ()
     physical_layouts: Tuple[str, ...] = ()
+    dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
+    cases: Tuple[CapabilityCase, ...] = ()
+```
+
+### FeatureDefinition
+
+功能目录定义分类、键、类型和允许取值；用于校验，不表示任何 kernel 已支持目录中的功能。
+
+源码：[flashinfer/runtime/features.py:17](../../flashinfer/runtime/features.py)。
+
+被引用位置：作为函数输入/输出或容器成员使用，见上方用途与源码。
+
+```python
+@dataclass(frozen=True)
+class FeatureDefinition:
+    name: str
+    category: str
+    value_type: str
+    description: str
+    choices: Tuple[Union[str, bool, int], ...] = ()
 ```
 
 ### ShapeRange
 
 CapabilitySpec 的一个 Tensor 轴闭区间；tensor_index/axis 负责轴映射，name 只用于诊断。
 
-源码：[flashinfer/runtime/schema.py:661](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:843](../../flashinfer/runtime/schema.py)。
 
-被引用位置：`CapabilitySpec.shape_ranges`
+被引用位置：`CapabilitySpec.shape_ranges`、`CapabilityCase.shape_ranges`
 
 ```python
 @dataclass(frozen=True)
@@ -176,7 +197,7 @@ class ShapeRange:
 
 provider/manifest 创建一条实现记录；registry 保存它，dispatcher 选择它的身份，执行层调用其 runner。
 
-源码：[flashinfer/runtime/schema.py:914](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:1303](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`ImplementationStack.descriptors`
 
@@ -298,7 +319,7 @@ class _TuningResolution:
 
 源码的语言、包内路径和 SHA256 引用；构造记录本身不读源码或编译。
 
-源码：[flashinfer/runtime/schema.py:378](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:560](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.source`、`JitSpec.source`、`BuildRecipe.source`、`BuildRecipe.sources`、`BuildRecipe.headers`、`BuildRecipe.host_sources`
 
@@ -315,7 +336,7 @@ class SourceRef:
 
 已交付产物的路径、摘要、格式、SoC 与构建身份；加载器校验实际字节与声明一致。
 
-源码：[flashinfer/runtime/schema.py:297](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:479](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.artifact`、`JitSpec.source_artifacts`
 
@@ -337,7 +358,7 @@ class ArtifactRef:
 
 规划接口用工作负载求 workspace 上界的公式；当前 Matmul 实际 workspace=0 由 host tiling 给出。
 
-源码：[flashinfer/runtime/schema.py:203](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:385](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.workspace`、`KernelDescriptor.int_workspace`
 
@@ -353,7 +374,7 @@ class WorkspaceFormula:
 
 声明 host 入口、参数次序、可变参数和 stream 参数位置；连接 descriptor 与构建/加载契约。
 
-源码：[flashinfer/runtime/schema.py:407](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:589](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.launch_abi`
 
@@ -374,7 +395,7 @@ class KernelLaunchABI:
 
 描述二进制参数、tiling 与错误协议；属于交付/校验元数据，不是每次选择时重新运行的 kernel。
 
-源码：[flashinfer/runtime/schema.py:621](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:803](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.binary_abi`
 
@@ -394,7 +415,7 @@ class KernelBinaryABI:
 
 WorkloadSpec/DeviceCapability 规划选择路径的额外约束；与 Tensor dispatcher 的 CapabilitySpec 路径区分。
 
-源码：[flashinfer/runtime/schema.py:225](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:407](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.constraints`
 
@@ -413,7 +434,7 @@ class KernelConstraints:
 
 声明能力目录的 domain/profile/rule 与指纹身份；属于 descriptor 元数据和校验关系。
 
-源码：[flashinfer/runtime/schema.py:266](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:448](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.capability_binding`
 
@@ -431,7 +452,7 @@ class KernelCapabilityBinding:
 
 图执行声明与验证边界；当前 Matmul 保持 NOT_CAPTURABLE，不能从存在该类型推断可入图。
 
-源码：[flashinfer/runtime/schema.py:851](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:1240](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.graph_replay`
 
@@ -562,7 +583,7 @@ class JitLoadedModule:
 
 显式 manifest/规划接口的工作负载模型；build_plan/registry.select 使用，不替代本例 Tensor signature。
 
-源码：[flashinfer/runtime/schema.py:155](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:307](../../flashinfer/runtime/schema.py)。
 
 被引用位置：作为函数输入/输出或容器成员使用，见上方用途与源码。
 
@@ -580,13 +601,14 @@ class WorkloadSpec:
     pos_encoding: str = 'NONE'
     deterministic: bool = False
     schema_version: int = 1
+    inference: Optional[InferenceSpec] = None
 ```
 
 ### DeviceCapability
 
 显式规划接口的设备能力模型；支持版本、features 等，不等于 HardwareSignature 的三个字段。
 
-源码：[flashinfer/runtime/schema.py:187](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:369](../../flashinfer/runtime/schema.py)。
 
 被引用位置：作为函数输入/输出或容器成员使用，见上方用途与源码。
 
@@ -638,11 +660,81 @@ class _WorkloadPlan:
     int_workspace_bytes: int
 ```
 
+### InferenceSpec
+
+公共入口声明本次调用的精度、逐 Tensor 量化、Attention/KV、融合、MoE 等语义；参与能力过滤和缓存身份，不代表 kernel 已实现这些能力。
+
+源码：[flashinfer/runtime/schema.py:226](../../flashinfer/runtime/schema.py)。
+
+被引用位置：`InputSignature.inference`、`WorkloadSpec.inference`
+
+```python
+@dataclass(frozen=True)
+class InferenceSpec:
+    compute_dtype: str = ''
+    accumulator_dtype: str = ''
+    quantization: Tuple[Tuple[int, QuantSpec], ...] = ()
+    attention_mode: str = ''
+    attention_variant: str = ''
+    kv_cache_type: str = ''
+    mask_type: str = ''
+    pos_encoding: str = ''
+    causal: Optional[bool] = None
+    sliding_window: Optional[bool] = None
+    logits_soft_cap: Optional[float] = None
+    fusion_ops: Tuple[str, ...] = ()
+    auxiliary_outputs: Tuple[str, ...] = ()
+    sparse_format: str = ''
+    routing_method: str = ''
+    moe_top_k: Optional[int] = None
+    expert_parallel_size: Optional[int] = None
+    deterministic: bool = False
+    features: Tuple[Tuple[str, Union[str, bool, int]], ...] = ()
+```
+
+### CapabilityCase
+
+一个连贯的能力组合，内部条件 AND；CapabilitySpec.cases 之间 OR，再与外层条件 AND。不把 dtype、量化和 shape 组合展开为任意笛卡尔积。
+
+源码：[flashinfer/runtime/schema.py:901](../../flashinfer/runtime/schema.py)。
+
+被引用位置：`CapabilitySpec.cases`
+
+```python
+@dataclass(frozen=True)
+class CapabilityCase:
+    name: str
+    dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
+    layout_signatures: Tuple[Tuple[str, ...], ...] = ()
+    shape_ranges: Tuple[ShapeRange, ...] = ()
+    shape_multiples: Tuple[Tuple[int, int, int], ...] = ()
+    specializations: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
+    compute_dtypes: Tuple[str, ...] = ()
+    accumulator_dtypes: Tuple[str, ...] = ()
+    quantization: Tuple[Tuple[int, QuantSpec], ...] = ()
+    attention_modes: Tuple[str, ...] = ()
+    attention_variants: Tuple[str, ...] = ()
+    kv_cache_types: Tuple[str, ...] = ()
+    mask_types: Tuple[str, ...] = ()
+    pos_encodings: Tuple[str, ...] = ()
+    causal_values: Tuple[bool, ...] = ()
+    sliding_window_values: Tuple[bool, ...] = ()
+    supports_logits_soft_cap: bool = False
+    fusion_ops: Tuple[str, ...] = ()
+    auxiliary_outputs: Tuple[str, ...] = ()
+    sparse_formats: Tuple[str, ...] = ()
+    routing_methods: Tuple[str, ...] = ()
+    moe_top_k_values: Tuple[int, ...] = ()
+    expert_parallel_sizes: Tuple[int, ...] = ()
+    supports_deterministic: bool = False
+    features: Tuple[FeatureConstraint, ...] = ()
+```
+
 ### KernelArgumentABI
 
 该记录作为其他结构的字段使用，关联位置如下；具体校验与行为见源码。
 
-源码：[flashinfer/runtime/schema.py:566](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:748](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelBinaryABI.arguments`
 
@@ -663,7 +755,7 @@ class KernelArgumentABI:
 
 该记录作为其他结构的字段使用，关联位置如下；具体校验与行为见源码。
 
-源码：[flashinfer/runtime/schema.py:601](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:783](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelBinaryABI.error_abi`
 
@@ -753,9 +845,9 @@ class JitModuleLoadReceipt:
 
 该记录作为其他结构的字段使用，关联位置如下；具体校验与行为见源码。
 
-源码：[flashinfer/runtime/schema.py:117](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:120](../../flashinfer/runtime/schema.py)。
 
-被引用位置：`WorkloadSpec.quant_specs`
+被引用位置：`WorkloadSpec.quant_specs`、`InferenceSpec.quantization`、`CapabilityCase.quantization`
 
 ```python
 @dataclass(frozen=True)
@@ -774,11 +866,26 @@ class QuantSpec:
     schema_version: int = 1
 ```
 
+### FeatureConstraint
+
+一个有类型的功能键及允许值；真实调用必须显式提供该特性。统一匹配器消费，不按 Attention/GEMM 编写 dispatcher 分支。
+
+源码：[flashinfer/runtime/schema.py:205](../../flashinfer/runtime/schema.py)。
+
+被引用位置：`CapabilityCase.features`
+
+```python
+@dataclass(frozen=True)
+class FeatureConstraint:
+    name: str
+    allowed_values: Tuple[Union[str, bool, int], ...]
+```
+
 ### KernelErrorCodeABI
 
 该记录作为其他结构的字段使用，关联位置如下；具体校验与行为见源码。
 
-源码：[flashinfer/runtime/schema.py:593](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:775](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelErrorABI.codes`
 
@@ -811,7 +918,7 @@ class JitResolvedSymbol:
 
 ### Backend
 
-源码：[flashinfer/runtime/schema.py:26](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:29](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.backend`、`CandidateReport.backend`、`DispatchDecision.backend`
 
@@ -830,7 +937,7 @@ class Backend(str, Enum):
 
 ### CompileMode
 
-源码：[flashinfer/runtime/schema.py:46](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:49](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.compile_mode`
 
@@ -843,7 +950,7 @@ class CompileMode(str, Enum):
 
 ### GraphCapability
 
-源码：[flashinfer/runtime/schema.py:54](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:57](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelDescriptor.graph_capability`
 
@@ -856,7 +963,7 @@ class GraphCapability(str, Enum):
 
 ### ArtifactKind
 
-源码：[flashinfer/runtime/schema.py:281](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:463](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`ArtifactRef.kind`
 
@@ -869,7 +976,7 @@ class ArtifactKind(str, Enum):
 
 ### ArtifactFormat
 
-源码：[flashinfer/runtime/schema.py:287](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:469](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`ArtifactRef.format`
 
@@ -885,7 +992,7 @@ class ArtifactFormat(str, Enum):
 
 ### CPrimitive
 
-源码：[flashinfer/runtime/schema.py:432](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:614](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelBinaryABI.return_primitive`、`KernelArgumentABI.primitive`
 
@@ -905,7 +1012,7 @@ class CPrimitive(str, Enum):
 
 ### KernelArgumentPassing
 
-源码：[flashinfer/runtime/schema.py:553](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:735](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelArgumentABI.passing`
 
@@ -918,7 +1025,7 @@ class KernelArgumentPassing(str, Enum):
 
 ### KernelArgumentDirection
 
-源码：[flashinfer/runtime/schema.py:559](../../flashinfer/runtime/schema.py)。
+源码：[flashinfer/runtime/schema.py:741](../../flashinfer/runtime/schema.py)。
 
 被引用位置：`KernelArgumentABI.direction`
 

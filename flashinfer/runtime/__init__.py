@@ -5,6 +5,9 @@ from .hardware import HardwareSignature, current_hardware
 from .schema import (
     Backend,
     CapabilitySpec,
+    CapabilityCase,
+    FeatureConstraint,
+    InferenceSpec,
     CompileMode,
     DispatchError,
     GraphCapability,
@@ -29,6 +32,7 @@ from .dispatch import (
     explain_dispatch,
 )
 from .plan import Plan
+from .features import FeatureDefinition, functional_feature_catalog
 from .schema import (
     ArtifactFormat, ArtifactKind, ArtifactRef, ArtifactVerificationError,
     CFieldABI, CPrimitive, CStructABI, DeviceCapability, KernelArgumentABI,
@@ -44,6 +48,11 @@ __all__ = [
     "CUSTOM_KERNEL_PREFIX",
     "CandidateReport",
     "CapabilitySpec",
+    "CapabilityCase",
+    "FeatureConstraint",
+    "FeatureDefinition",
+    "functional_feature_catalog",
+    "InferenceSpec",
     "CompileMode",
     "DispatchDecision",
     "DispatchError",

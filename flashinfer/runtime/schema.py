@@ -14,13 +14,16 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import Enum
 import hashlib
 import json
+import math
 from pathlib import Path, PurePosixPath
 import re
 import struct
-from typing import Any, Callable, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, Union
 
+from .features import INFERENCE_FEATURE_ALIASES, validate_feature
 from .hardware import HardwareSignature
-from .signature import InputSignature
+if TYPE_CHECKING:
+    from .signature import InputSignature
 
 
 class Backend(str, Enum):
@@ -151,6 +154,155 @@ class QuantSpec(_Record):
             raise SchemaError("group_size must be positive")
 
 
+def _feature_strings(name, values):
+    if isinstance(values, (str, bytes, Mapping)):
+        raise SchemaError(f"{name} must be a sequence of non-empty strings")
+    try:
+        values = tuple(values)
+    except TypeError as exc:
+        raise SchemaError(f"{name} must be a sequence") from exc
+    if any(not isinstance(v, str) or not v.strip() for v in values):
+        raise SchemaError(f"{name} must contain non-empty strings")
+    return values
+
+
+def _quantization_bindings(values):
+    try:
+        pairs = tuple(tuple(v) for v in values)
+    except TypeError as exc:
+        raise SchemaError("quantization must contain (tensor_index, QuantSpec) pairs") from exc
+    if any(len(v) != 2 or type(v[0]) is not int or v[0] < 0
+           or not isinstance(v[1], QuantSpec) for v in pairs):
+        raise SchemaError("quantization must contain non-negative tensor_index / QuantSpec pairs")
+    if len({v[0] for v in pairs}) != len(pairs):
+        raise SchemaError("quantization must not repeat tensor_index")
+    return tuple(sorted(pairs, key=lambda v: v[0]))
+
+
+def _decode_quantization(values):
+    try:
+        return tuple((index, QuantSpec.from_dict(spec)) for index, spec in values)
+    except (TypeError, ValueError, AttributeError) as exc:
+        raise SchemaError("invalid quantization bindings") from exc
+
+
+def _functional_values(values):
+    """Canonicalize explicit scalar facts without guessing missing features."""
+    try:
+        pairs = tuple(tuple(v) for v in (values.items() if isinstance(values, Mapping) else values))
+        if any(len(v) != 2 for v in pairs):
+            raise ValueError("features require (name, value) pairs")
+        for name, value in pairs:
+            validate_feature(name, value)
+        if len({name for name, _ in pairs}) != len(pairs):
+            raise ValueError("features must not repeat a name")
+        return tuple(sorted(pairs))
+    except (TypeError, ValueError) as error:
+        raise SchemaError(str(error)) from error
+
+
+@dataclass(frozen=True)
+class FeatureConstraint(_Record):
+    """An explicit, typed functional choice; missing call metadata rejects."""
+
+    name: str
+    allowed_values: Tuple[Union[str, bool, int], ...]
+
+    def __post_init__(self):
+        try:
+            if isinstance(self.allowed_values, (str, bytes, Mapping)):
+                raise ValueError("allowed_values must be a non-empty sequence")
+            values = tuple(self.allowed_values)
+            if not values:
+                raise ValueError("allowed_values must be a non-empty sequence")
+            for value in values:
+                validate_feature(self.name, value)
+            object.__setattr__(self, "allowed_values", tuple(sorted(set(values))))
+        except (TypeError, ValueError) as error:
+            raise SchemaError(str(error)) from error
+
+
+@dataclass(frozen=True)
+class InferenceSpec(_Record):
+    """Explicit call semantics; never infer quantization or features from dtype.
+
+    Tensor indices follow InputSignature, including prospective outputs.
+    QuantSpec retains scales, grouping, zero-point and packing per operand.
+    Empty strings / None mean unavailable metadata, not a supported feature.
+    New scalar functions use ``features`` and the typed feature catalogue;
+    flat scalar fields remain compatibility aliases for the same matcher.
+    """
+
+    compute_dtype: str = ""
+    accumulator_dtype: str = ""
+    quantization: Tuple[Tuple[int, QuantSpec], ...] = ()
+    attention_mode: str = ""
+    attention_variant: str = ""
+    kv_cache_type: str = ""
+    mask_type: str = ""
+    pos_encoding: str = ""
+    causal: Optional[bool] = None
+    sliding_window: Optional[bool] = None
+    logits_soft_cap: Optional[float] = None
+    fusion_ops: Tuple[str, ...] = ()
+    auxiliary_outputs: Tuple[str, ...] = ()
+    sparse_format: str = ""
+    routing_method: str = ""
+    moe_top_k: Optional[int] = None
+    expert_parallel_size: Optional[int] = None
+    deterministic: bool = False
+    features: Tuple[Tuple[str, Union[str, bool, int]], ...] = ()
+
+    def __post_init__(self):
+        for name in ("compute_dtype", "accumulator_dtype", "attention_mode", "attention_variant",
+                     "kv_cache_type", "mask_type", "pos_encoding", "sparse_format", "routing_method"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or (value and not value.strip()):
+                raise SchemaError(f"{name} must be a string; empty means unknown")
+        for name in ("causal", "sliding_window"):
+            if getattr(self, name) is not None and type(getattr(self, name)) is not bool:
+                raise SchemaError(f"{name} must be bool or None")
+        if type(self.deterministic) is not bool:
+            raise SchemaError("deterministic must be bool")
+        for name in ("moe_top_k", "expert_parallel_size"):
+            value = getattr(self, name)
+            if value is not None and (type(value) is not int or value <= 0):
+                raise SchemaError(f"{name} must be a positive integer or None")
+        if self.logits_soft_cap is not None:
+            if (type(self.logits_soft_cap) not in (int, float)
+                    or not math.isfinite(self.logits_soft_cap) or self.logits_soft_cap < 0):
+                raise SchemaError("logits_soft_cap must be finite and non-negative or None")
+            object.__setattr__(self, "logits_soft_cap", float(self.logits_soft_cap))
+        object.__setattr__(self, "quantization", _quantization_bindings(self.quantization))
+        for name in ("fusion_ops", "auxiliary_outputs"):
+            object.__setattr__(self, name, _feature_strings(name, getattr(self, name)))
+        object.__setattr__(self, "features", _functional_values(self.features))
+        self.feature_values()  # Reject contradictory flat/structured declarations.
+
+    def feature_values(self):
+        """One view of functional facts, including the flat compatibility fields."""
+        values = dict(self.features)
+        for field, key, _ in INFERENCE_FEATURE_ALIASES:
+            value = getattr(self, field)
+            if value is not None and value != "":
+                if key in values and values[key] != value:
+                    raise SchemaError(f"feature {key} contradicts {field}")
+                values[key] = value
+        return tuple(sorted(values.items()))
+
+    def to_dict(self):
+        return {f.name: _json_value(getattr(self, f.name)) for f in fields(self)
+                if getattr(self, f.name) != f.default}
+
+    @classmethod
+    def from_dict(cls, value):
+        if not isinstance(value, Mapping) or not set(value) <= {f.name for f in fields(cls)}:
+            raise SchemaError("InferenceSpec fields do not match schema")
+        values = dict(value)
+        values["quantization"] = _decode_quantization(values.get("quantization", ()))
+        return cls(**values)
+
+
 @dataclass(frozen=True)
 class WorkloadSpec(_Record):
     op: str
@@ -164,6 +316,7 @@ class WorkloadSpec(_Record):
     pos_encoding: str = "NONE"
     deterministic: bool = False
     schema_version: int = 1
+    inference: Optional[InferenceSpec] = None
 
     def __post_init__(self):
         if self.schema_version != 1:
@@ -175,11 +328,40 @@ class WorkloadSpec(_Record):
         object.__setattr__(self, "attributes", tuple(sorted(
             (str(k), str(v)) for k, v in self.attributes
         )))
+        if self.inference is not None:
+            value = self.inference
+            if isinstance(value, Mapping):
+                value = InferenceSpec.from_dict(value)
+            if not isinstance(value, InferenceSpec):
+                raise SchemaError("inference must be InferenceSpec or None")
+            functional = dict(value.feature_values())
+            for name, key in (("causal", "attention.causal"), ("pos_encoding", "position.encoding")):
+                actual = functional.get(key)
+                if actual not in (None, "") and actual != getattr(self, name):
+                    raise SchemaError(f"inference {name} contradicts WorkloadSpec.{name}")
+            if value.deterministic and not self.deterministic:
+                raise SchemaError("inference deterministic requires WorkloadSpec.deterministic")
+            if value.to_dict():
+                bindings = tuple(dict.fromkeys(spec for _, spec in value.quantization))
+                if self.quant_specs and set(self.quant_specs) != set(bindings):
+                    raise SchemaError("inference quantization contradicts WorkloadSpec.quant_specs")
+                if not self.quant_specs and bindings:
+                    object.__setattr__(self, "quant_specs", bindings)
+            object.__setattr__(self, "inference", value if value.to_dict() else None)
+
+    def to_dict(self):
+        value = super().to_dict()
+        if self.inference is None:
+            value.pop("inference")
+        else:
+            value["inference"] = self.inference.to_dict()
+        return value
 
     @classmethod
     def from_dict(cls, value):
         values = dict(value)
         values["quant_specs"] = tuple(QuantSpec.from_dict(v) for v in values["quant_specs"])
+        values.setdefault("inference", None)
         return super().from_dict(values)
 
 
@@ -685,6 +867,200 @@ class ShapeRange(_Record):
             raise SchemaError("shape range requires 0 <= minimum <= maximum")
 
 
+def _dtype_signatures(values, name="dtype_signatures"):
+    if isinstance(values, (str, bytes, Mapping)):
+        raise SchemaError(f"{name} must contain complete signatures")
+    try:
+        result = tuple(_feature_strings(name, v) for v in values)
+    except TypeError as exc:
+        raise SchemaError(f"{name} must contain complete signatures") from exc
+    if any(not v for v in result) or len(set(result)) != len(result):
+        raise SchemaError(f"{name} must contain unique non-empty signatures")
+    return tuple(sorted(result))
+
+
+def _shape_range_reasons(ranges, shapes):
+    reasons = []
+    for bound in ranges:
+        interval = "[%d, %d]" % (bound.minimum, bound.maximum)
+        if bound.tensor_index >= len(shapes):
+            reasons.append("%s 缺少输入张量 %d 的 shape，无法检查支持区间 %s"
+                           % (bound.name, bound.tensor_index, interval))
+            continue
+        shape = shapes[bound.tensor_index]
+        if not -len(shape) <= bound.axis < len(shape):
+            reasons.append("%s 的输入张量 %d 无轴 %d（shape=%s），无法检查支持区间 %s"
+                           % (bound.name, bound.tensor_index, bound.axis, shape, interval))
+            continue
+        if not bound.minimum <= shape[bound.axis] <= bound.maximum:
+            reasons.append("%s %d 不在支持区间 %s" % (bound.name, shape[bound.axis], interval))
+    return tuple(reasons)
+
+
+@dataclass(frozen=True)
+class CapabilityCase(_Record):
+    """One coherent AND clause. CapabilitySpec.cases is their OR.
+
+    Requested semantic features require explicit declarations. Quantization,
+    fusion and auxiliary outputs match exactly; they are not Cartesian sets.
+    ``features`` compares catalogued functional choices without operator-specific
+    dispatcher branches. Existing shape checks retain their contract role.
+    """
+
+    name: str
+    dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
+    layout_signatures: Tuple[Tuple[str, ...], ...] = ()
+    shape_ranges: Tuple[ShapeRange, ...] = ()
+    shape_multiples: Tuple[Tuple[int, int, int], ...] = ()
+    specializations: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
+    compute_dtypes: Tuple[str, ...] = ()
+    accumulator_dtypes: Tuple[str, ...] = ()
+    quantization: Tuple[Tuple[int, QuantSpec], ...] = ()
+    attention_modes: Tuple[str, ...] = ()
+    attention_variants: Tuple[str, ...] = ()
+    kv_cache_types: Tuple[str, ...] = ()
+    mask_types: Tuple[str, ...] = ()
+    pos_encodings: Tuple[str, ...] = ()
+    causal_values: Tuple[bool, ...] = ()
+    sliding_window_values: Tuple[bool, ...] = ()
+    supports_logits_soft_cap: bool = False
+    fusion_ops: Tuple[str, ...] = ()
+    auxiliary_outputs: Tuple[str, ...] = ()
+    sparse_formats: Tuple[str, ...] = ()
+    routing_methods: Tuple[str, ...] = ()
+    moe_top_k_values: Tuple[int, ...] = ()
+    expert_parallel_sizes: Tuple[int, ...] = ()
+    supports_deterministic: bool = False
+    features: Tuple[FeatureConstraint, ...] = ()
+
+    def __post_init__(self):
+        if not isinstance(self.name, str) or not self.name.strip():
+            raise SchemaError("capability case name must be non-empty")
+        for name in ("dtype_signatures", "layout_signatures"):
+            object.__setattr__(self, name, _dtype_signatures(getattr(self, name), name))
+        for name in ("compute_dtypes", "accumulator_dtypes", "attention_modes", "attention_variants",
+                     "kv_cache_types", "mask_types", "pos_encodings", "sparse_formats", "routing_methods"):
+            object.__setattr__(self, name, tuple(sorted(set(_feature_strings(name, getattr(self, name))))))
+        for name in ("fusion_ops", "auxiliary_outputs"):
+            object.__setattr__(self, name, _feature_strings(name, getattr(self, name)))
+        for name in ("causal_values", "sliding_window_values", "moe_top_k_values", "expert_parallel_sizes"):
+            try:
+                values = tuple(getattr(self, name))
+            except TypeError as exc:
+                raise SchemaError(f"invalid {name}") from exc
+            boolean = name in ("causal_values", "sliding_window_values")
+            if any(type(v) is not (bool if boolean else int) or (not boolean and v <= 0) for v in values):
+                raise SchemaError(f"invalid {name}")
+            object.__setattr__(self, name, tuple(sorted(set(values))))
+        for name in ("supports_logits_soft_cap", "supports_deterministic"):
+            if type(getattr(self, name)) is not bool:
+                raise SchemaError(f"{name} must be bool")
+        # Reuse the existing axis validation and canonical ordering.
+        try:
+            ranges = tuple(self.shape_ranges)
+        except TypeError as exc:
+            raise SchemaError("case shape_ranges must contain ShapeRange values") from exc
+        if any(not isinstance(r, ShapeRange) for r in ranges):
+            raise SchemaError("case shape_ranges must contain ShapeRange values")
+        if len({(r.tensor_index, r.axis) for r in ranges}) != len(ranges):
+            raise SchemaError("case shape_ranges must not repeat a tensor axis")
+        object.__setattr__(self, "shape_ranges", tuple(sorted(ranges, key=lambda r: (r.tensor_index, r.axis))))
+        try:
+            multiples = tuple(tuple(v) for v in self.shape_multiples)
+            valid = all(len(v) == 3 and all(type(n) is int for n in v)
+                        and v[0] >= 0 and v[2] > 0 for v in multiples)
+        except TypeError as exc:
+            raise SchemaError("invalid shape_multiples") from exc
+        if not valid or len({v[:2] for v in multiples}) != len(multiples):
+            raise SchemaError("shape_multiples require unique (tensor_index, axis, positive multiple)")
+        object.__setattr__(self, "shape_multiples", tuple(sorted(multiples)))
+        object.__setattr__(self, "quantization", _quantization_bindings(self.quantization))
+        try:
+            specializations = tuple((k, tuple(sorted(set(_feature_strings("allowed values", v)))))
+                                    for k, v in self.specializations)
+        except (TypeError, ValueError) as exc:
+            raise SchemaError("invalid case specializations") from exc
+        if (any(not isinstance(k, str) or not k.strip() or not v for k, v in specializations)
+                or len({k for k, _ in specializations}) != len(specializations)):
+            raise SchemaError("case specializations require unique names and allowed values")
+        object.__setattr__(self, "specializations", tuple(sorted(specializations)))
+        try:
+            features = tuple(self.features)
+        except TypeError as error:
+            raise SchemaError("features must contain FeatureConstraint values") from error
+        if any(not isinstance(feature, FeatureConstraint) for feature in features):
+            raise SchemaError("features must contain FeatureConstraint values")
+        if len({feature.name for feature in features}) != len(features):
+            raise SchemaError("features must not repeat a name")
+        object.__setattr__(self, "features", tuple(sorted(features, key=lambda item: item.name)))
+        self.feature_constraints()
+
+    def feature_constraints(self):
+        """Merge legacy aliases without expanding the generic matching algorithm."""
+        allowed = {feature.name: feature.allowed_values for feature in self.features}
+        for _, key, field in INFERENCE_FEATURE_ALIASES:
+            values = getattr(self, field)
+            if values:
+                if key in allowed and set(allowed[key]) != set(values):
+                    raise SchemaError(f"feature {key} contradicts {field}")
+                allowed[key] = values
+        return allowed
+
+    def to_dict(self):
+        value = super().to_dict()
+        if not self.features:
+            value.pop("features")
+        return value
+
+    @classmethod
+    def from_dict(cls, value):
+        if (not isinstance(value, Mapping) or "name" not in value
+                or not set(value) <= {f.name for f in fields(cls)}):
+            raise SchemaError("CapabilityCase fields do not match schema")
+        try:
+            values = dict(value)
+            values["quantization"] = _decode_quantization(values.get("quantization", ()))
+            values["shape_ranges"] = tuple(ShapeRange.from_dict(v) for v in values.get("shape_ranges", ()))
+            values["features"] = tuple(FeatureConstraint.from_dict(v) for v in values.get("features", ()))
+            return cls(**values)
+        except (TypeError, ValueError) as exc:
+            raise SchemaError(str(exc)) from exc
+
+    def unsupported_reasons(self, signature):
+        actual = signature.inference or InferenceSpec()
+        reasons = list(_shape_range_reasons(self.shape_ranges, signature.shapes))
+        for name in ("dtype", "layout"):
+            allowed = getattr(self, name + "_signatures")
+            if allowed and getattr(signature, name + "s") not in allowed:
+                reasons.append(f"unsupported {name}_signature {getattr(signature, name + 's')!r}")
+        for index, axis, multiple in self.shape_multiples:
+            if index >= len(signature.shapes) or not -len(signature.shapes[index]) <= axis < len(signature.shapes[index]):
+                reasons.append(f"shape_multiples missing tensor {index} axis {axis}")
+            elif signature.shapes[index][axis] % multiple:
+                reasons.append(f"shape tensor {index} axis {axis} must be a multiple of {multiple}")
+        facts, constraints = dict(actual.feature_values()), self.feature_constraints()
+        aliases = {key: field for field, key, _ in INFERENCE_FEATURE_ALIASES}
+        for name in sorted(facts.keys() | constraints.keys()):
+            value, allowed = facts.get(name), constraints.get(name, ())
+            if name not in facts or value not in allowed:
+                label = f"{name} ({aliases[name]})" if name in aliases else name
+                reasons.append(f"{label}={value!r} unsupported or missing; allowed={allowed!r}")
+        for name in ("quantization", "fusion_ops", "auxiliary_outputs"):
+            if getattr(actual, name) != getattr(self, name):
+                reasons.append(f"unsupported exact {name}")
+        if any(index >= len(signature.dtypes) for index, _ in actual.quantization):
+            reasons.append("quantization tensor_index has no dtype metadata")
+        if actual.logits_soft_cap and not self.supports_logits_soft_cap:
+            reasons.append("logits_soft_cap is unsupported")
+        if (actual.deterministic or ("deterministic", "True") in signature.specializations) and not self.supports_deterministic:
+            reasons.append("deterministic execution is unsupported")
+        for key, allowed in self.specializations:
+            values = tuple(v for k, v in signature.specializations if k == key)
+            if not values or any(v not in allowed for v in values):
+                reasons.append(f"specialization {key} missing or unsupported; allowed={allowed!r}")
+        return tuple(reasons)
+
+
 @dataclass(frozen=True)
 class CapabilitySpec(_Record):
     """kernel 的能力声明：能对哪些 (输入签名 × 硬件签名) 执行。
@@ -696,6 +1072,10 @@ class CapabilitySpec(_Record):
     ``physical_layouts`` 是所有张量输入允许的物理排布集合，仅支持 ND / NZ
     （NZ 精确对应 FRACTAL_NZ，不合并其他分形格式）；非空时未知排布也淘汰。
     它与 NHD / HND 等逻辑 ``layouts`` 独立，不执行排布转换。
+    ``dtype_signatures`` 匹配按参数顺序排列的完整 dtype 组合。
+    ``cases`` 表达多个连贯的能力组合：同一 case 内 AND，case 之间 OR，
+    并与外层限制 AND。显式 InferenceSpec 必须有 case 声明才可通过；
+    不为历史 descriptor 猜测量化、融合、Attention 等语义能力。
     """
 
     op: str
@@ -706,8 +1086,20 @@ class CapabilitySpec(_Record):
     specializations: Tuple[Tuple[str, Tuple[str, ...]], ...] = ()
     shape_ranges: Tuple[ShapeRange, ...] = ()
     physical_layouts: Tuple[str, ...] = ()
+    dtype_signatures: Tuple[Tuple[str, ...], ...] = ()
+    cases: Tuple[CapabilityCase, ...] = ()
 
     def __post_init__(self):
+        object.__setattr__(self, "dtype_signatures", _dtype_signatures(self.dtype_signatures))
+        try:
+            cases = tuple(self.cases)
+        except TypeError as exc:
+            raise SchemaError("cases must contain CapabilityCase values") from exc
+        if any(not isinstance(case, CapabilityCase) for case in cases):
+            raise SchemaError("cases must contain CapabilityCase values")
+        if len({case.name for case in cases}) != len(cases):
+            raise SchemaError("capability case names must be unique")
+        object.__setattr__(self, "cases", tuple(sorted(cases, key=lambda case: case.name)))
         try:
             layouts = tuple(self.physical_layouts)
         except TypeError as exc:
@@ -738,6 +1130,12 @@ class CapabilitySpec(_Record):
             value.pop("shape_ranges")
         if not self.physical_layouts:
             value.pop("physical_layouts")
+        if not self.dtype_signatures:
+            value.pop("dtype_signatures")
+        if not self.cases:
+            value.pop("cases")
+        else:
+            value["cases"] = [case.to_dict() for case in self.cases]
         return value
 
     @classmethod
@@ -756,6 +1154,7 @@ class CapabilitySpec(_Record):
             values["shape_ranges"] = tuple(
                 ShapeRange.from_dict(r) for r in values.get("shape_ranges", ())
             )
+            values["cases"] = tuple(CapabilityCase.from_dict(case) for case in values.get("cases", ()))
             return cls(**values)
         except (TypeError, ValueError) as exc:
             raise SchemaError(str(exc)) from exc
@@ -775,6 +1174,15 @@ class CapabilitySpec(_Record):
                     reasons.append(
                         "dtype %s 不在支持集 %s" % (dtype, sorted(self.dtypes))
                     )
+        if self.dtype_signatures and signature.dtypes not in self.dtype_signatures:
+            reasons.append("unsupported dtype_signature %r" % (signature.dtypes,))
+        if self.cases:
+            reports = [(case.name, case.unsupported_reasons(signature)) for case in self.cases]
+            if all(failures for _, failures in reports):
+                reasons.extend("capability case %s: %s" % (name, "; ".join(failures))
+                               for name, failures in reports)
+        elif signature.inference is not None:
+            reasons.append("inference features require explicitly declared capability cases")
         if self.layouts:
             for layout in signature.layouts:
                 if layout and layout not in self.layouts:
@@ -819,26 +1227,7 @@ class CapabilitySpec(_Record):
                 reasons.append(
                     "特化参数 %s=%s 不在允许集 %s" % (key, value, sorted(allowed))
                 )
-        for bound in self.shape_ranges:
-            interval = "[%d, %d]" % (bound.minimum, bound.maximum)
-            if bound.tensor_index >= len(signature.shapes):
-                reasons.append(
-                    "%s 缺少输入张量 %d 的 shape，无法检查支持区间 %s"
-                    % (bound.name, bound.tensor_index, interval)
-                )
-                continue
-            shape = signature.shapes[bound.tensor_index]
-            if not -len(shape) <= bound.axis < len(shape):
-                reasons.append(
-                    "%s 的输入张量 %d 无轴 %d（shape=%s），无法检查支持区间 %s"
-                    % (bound.name, bound.tensor_index, bound.axis, shape, interval)
-                )
-                continue
-            size = shape[bound.axis]
-            if not bound.minimum <= size <= bound.maximum:
-                reasons.append(
-                    "%s %d 不在支持区间 %s" % (bound.name, size, interval)
-                )
+        reasons.extend(_shape_range_reasons(self.shape_ranges, signature.shapes))
         return tuple(reasons)
 
 
@@ -1077,7 +1466,8 @@ class KernelDescriptor:
             value["graph_replay"] = self.graph_replay.to_dict()
         # 历史记录未序列化 capability；规模或物理排布受限的新记录携带它，
         # 保证限制进入静态身份且可往返，同时不迁移旧记录的指纹。
-        if self.capability.shape_ranges or self.capability.physical_layouts:
+        if (self.capability.shape_ranges or self.capability.physical_layouts
+                or self.capability.dtype_signatures or self.capability.cases):
             value["capability"] = self.capability.to_dict()
         return value
 

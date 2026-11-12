@@ -143,7 +143,9 @@ def _machine_delta(before, after):
 
 
 def _bucket(signature, descriptors, *, exact=False):
-    if exact:
+    # Conditional cases are not a rectangular shape envelope. Keep their
+    # evidence exact until a case-aware bucket contract is provided.
+    if exact or any(d.capability.cases for d in descriptors):
         semantics = signature.to_dict()
         semantics.pop("op")
         return dict(signature=semantics, shape_ranges=[])

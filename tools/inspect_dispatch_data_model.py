@@ -17,14 +17,17 @@ import importlib
 import json
 import os
 from pathlib import Path
+import sys
 from typing import get_type_hints
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 MODEL_SPECS = {
     "InputSignature": ("flashinfer/runtime/signature.py", "InputSignature"),
     "HardwareSignature": ("flashinfer/runtime/hardware.py", "HardwareSignature"),
     "CapabilitySpec": ("flashinfer/runtime/schema.py", "CapabilitySpec"),
+    "FeatureDefinition": ("flashinfer/runtime/features.py", "FeatureDefinition"),
     "ShapeRange": ("flashinfer/runtime/schema.py", "ShapeRange"),
     "KernelDescriptor": ("flashinfer/runtime/schema.py", "KernelDescriptor"),
     "ImplementationStack": ("flashinfer/runtime/registry.py", "ImplementationStack"),
@@ -54,6 +57,10 @@ ROLES = {
     "InputSignature": "facade 创建本次调用的元数据快照；能力过滤、调优查询和决策缓存消费它。不是 Tensor 或产物。",
     "HardwareSignature": "hardware probe 创建 SoC / AI Core / UB 快照；过滤和调优匹配消费它，不包含 Tensor 地址。",
     "CapabilitySpec": "算子作者声明一个实现的支持域；unsupported_reasons(signature, hardware) 对照实际请求。",
+    "InferenceSpec": "公共入口声明本次调用的精度、逐 Tensor 量化、Attention/KV、融合、MoE 等语义；参与能力过滤和缓存身份，不代表 kernel 已实现这些能力。",
+    "CapabilityCase": "一个连贯的能力组合，内部条件 AND；CapabilitySpec.cases 之间 OR，再与外层条件 AND。不把 dtype、量化和 shape 组合展开为任意笛卡尔积。",
+    "FeatureConstraint": "一个有类型的功能键及允许值；真实调用必须显式提供该特性。统一匹配器消费，不按 Attention/GEMM 编写 dispatcher 分支。",
+    "FeatureDefinition": "功能目录定义分类、键、类型和允许取值；用于校验，不表示任何 kernel 已支持目录中的功能。",
     "ShapeRange": "CapabilitySpec 的一个 Tensor 轴闭区间；tensor_index/axis 负责轴映射，name 只用于诊断。",
     "KernelDescriptor": "provider/manifest 创建一条实现记录；registry 保存它，dispatcher 选择它的身份，执行层调用其 runner。",
     "ImplementationStack": "registry.stacks 从 descriptor 派生的来源视图；两级选型和解释使用它，不另设栈能力或优先级。",
