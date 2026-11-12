@@ -205,6 +205,6 @@ def test_list_kernels_keeps_reference_location(monkeypatch, capsys):
     from flashinfer.runtime import KernelDescriptor
 
     descriptor = KernelDescriptor("reference/example", "example", Backend.REFERENCE)
-    monkeypatch.setattr(cli, "load_kernel_manifest", lambda _: (descriptor,))
+    monkeypatch.setattr("flashinfer.ascendc.ascendc_descriptors", lambda: (descriptor,))
     assert cli.main(["list-kernels"]) == 0
     assert capsys.readouterr().out.strip() == "reference/example\texample\treference\treference"

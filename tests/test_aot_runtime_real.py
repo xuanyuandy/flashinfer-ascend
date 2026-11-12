@@ -7,6 +7,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from flashinfer._resources import data_root
 
 import pytest
 
@@ -28,7 +29,7 @@ def real_release(tmp_path_factory):
 @contextmanager
 def installed_release(release):
     """Install only this fixture in the real default wheel discovery layout."""
-    root = ROOT / "flashinfer/data/op_packages"
+    root = data_root(ROOT) / "op_packages"
     created_root = not root.exists()
     root.mkdir(parents=True, exist_ok=True)
     destination = root / release.name

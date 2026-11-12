@@ -1,21 +1,19 @@
-"""Descriptor and runner binding for gemm.segment_gemm."""
+"""reference implementation of gemm.segment_gemm."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    ReferenceImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.gemm.segment_gemm.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = ReferenceImplementation(
+    operator=OPERATOR,
+    kernel_id="reference/gemm/segment_gemm_v1",
+    support=Support(),
+    runner=run,
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'reference/gemm/segment_gemm_v1',
-     'op': 'gemm.segment_gemm',
-     'backend': 'reference',
-     'capability': {'op': 'gemm.segment_gemm',
-                    'dtypes': [],
-                    'layouts': [],
-                    'soc_models': [],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('reference/gemm/segment_gemm_v1', 'gemm.segment_gemm', 'reference', descriptor, origin='flashinfer.runtime.reference_kernels')
+descriptor = IMPLEMENTATION.bind

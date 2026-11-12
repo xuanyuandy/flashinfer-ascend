@@ -4,6 +4,7 @@ from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
+from flashinfer._resources import data_root
 import shutil
 import subprocess
 
@@ -36,7 +37,7 @@ def flash_attention_release(tmp_path_factory):
 
 @contextmanager
 def installed_release(release):
-    destination_root = ROOT / "flashinfer/data/op_packages"
+    destination_root = data_root(ROOT) / "op_packages"
     created = not destination_root.exists()
     destination_root.mkdir(parents=True, exist_ok=True)
     destination = destination_root / release.name

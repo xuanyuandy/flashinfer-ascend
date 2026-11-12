@@ -185,9 +185,9 @@ aclnnFiFlashAttention(workspace, workspace_bytes, executor, stream)
     → CANN 提交设备计算
 ```
 
-[FiFlashAttentionTiling](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp) 从实际 shape 读取 S/T/H，设置 batch、heads、scale，计算 tiling、blockDim 和 CANN 系统 workspace。它不读取运行期长度 Tensor 的内容。实际 workspace 大小取 ACLNN 返回值，调用方不直接使用 descriptor 的静态 workspace 声明替代它。
+[FiFlashAttentionTiling](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp) 从实际 shape 读取 S/T/H，设置 batch、heads、scale，计算 tiling、blockDim 和 CANN 系统 workspace。它不读取运行期长度 Tensor 的内容。实际 workspace 大小取 ACLNN 返回值，调用方不直接使用 descriptor 的静态 workspace 声明替代它。
 
-tiling 数据由 CANN executor 传递为设备 kernel 的隐式末尾 GM 参数，不是额外的公共 Tensor。设备入口接收 `q, k, v, out, workspace, tiling`，进入 [FAInferTla 模板](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp)。一个 op_package 携带 FP16、BF16 两种设备特化，由 CANN 根据实参匹配。
+tiling 数据由 CANN executor 传递为设备 kernel 的隐式末尾 GM 参数，不是额外的公共 Tensor。设备入口接收 `q, k, v, out, workspace, tiling`，进入 [FAInferTla 模板](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp)。一个 op_package 携带 FP16、BF16 两种设备特化，由 CANN 根据实参匹配。
 
 当前 adapter 每次发起 ACLNN 两段式调用，没有公共可复用的 plan/executor 缓存；该 FA 的图能力保持 `NOT_CAPTURABLE`。
 
@@ -252,7 +252,7 @@ CANN 当前运行时版本与构建版本的兼容比较尚未接通。以上候
 | 接入内容 | 参考位置 |
 | --- | --- |
 | 数学语义、公共参数、signature、输出组织 | [CATLASS facade](../flashinfer/attention/catlass_prefill.py) |
-| host OpDef、infer、tiling 与设备实现 | [FA 算子目录](../csrc/kernels/ascendc/attention/flash_attention/) |
+| host OpDef、infer、tiling 与设备实现 | [FA 算子目录](../csrc/kernels/attention/flash_attention/) |
 | Tensor 顺序、dtype 组合、shape、源码摘要、编译配置 | [FA recipe](../csrc/recipes/flash_attention.json) |
 | descriptor、冻结 spec 和 lazy runner | [集中声明与冻结](../flashinfer/aot/declarations.py)、[生产声明与绑定](../flashinfer/ascendc/__init__.py) |
 | AOT/JIT 构建、导出与校验 | [共享构建](../flashinfer/jit/build.py)、[AOT 发布](../flashinfer/aot/build.py) |
@@ -363,10 +363,10 @@ sequenceDiagram
 1. [adapter.cpp:117](../csrc/aclnn_torch_adapter/adapter.cpp#L117) 取得当前 stream，`stream.stream(true)` 先排空此前 Host 提交；[129](../csrc/aclnn_torch_adapter/adapter.cpp#L129) 记录 Tensor 使用的 stream。这里没有提前等待前一个设备 kernel 完成。
 2. [adapter.cpp:180](../csrc/aclnn_torch_adapter/adapter.cpp#L180) 入队 callback。**创建描述符、查询 tiling/workspace、分配 workspace 都发生在 callback 内**，而非公共 Python 入口先做完再入队。
 3. [adapter.cpp:144](../csrc/aclnn_torch_adapter/adapter.cpp#L144) 创建描述符，[163](../csrc/aclnn_torch_adapter/adapter.cpp#L163) 调用 ACLNN 第一段。首次查询实测进入 `NnopbaseExecutorRunForWorkspace → NnopbaseExecutorTilingAndUpdateBinInfo → FiFlashAttentionTiling`。相同 shape 第二次查询未再次进入该 tiling 回调；这是本次观测到的 CANN 内部复用，不是本仓提供的 plan 缓存契约。
-4. [host tiling:26](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp#L26) 从 shape 读取 S/T/H，生成 batch、heads、scale、分核范围和 blockDim；[67](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp#L67) 声明 CANN 系统 workspace。本实现不读取运行期长度 Tensor，也不请求额外的算法 GM scratch。
+4. [host tiling:26](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L26) 从 shape 读取 S/T/H，生成 batch、heads、scale、分核范围和 blockDim；[67](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L67) 声明 CANN 系统 workspace。本实现不读取运行期长度 Tensor，也不请求额外的算法 GM scratch。
 5. [adapter.cpp:170](../csrc/aclnn_torch_adapter/adapter.cpp#L170) 按 ACLNN 返回值实际申请 workspace，[174](../csrc/aclnn_torch_adapter/adapter.cpp#L174) 调用第二段。`executor` 描述这次执行，workspace 则是独立的设备存储；二者不能等同。
 6. CANN 的实际 launch 栈为 `aclnnFiFlashAttention → NnopbaseRunWithWorkspace → NnopbaseExecutorRunWithWorkspace → NnopbaseExecutorKernelLaunch → aclrtLaunchKernelWithHostArgs → aclrtLaunchKernelWithHostArgsImpl → rtsLaunchKernelWithHostArgs`。
-7. [设备入口:9](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp#L9) 接收 `q,k,v,out,workspace,tiling`；`SetSysWorkspace` 设置系统 workspace，随后进入 CATLASS。设备代码从 GM 中读取 `FATilingData`，分配各核工作并完成计算。
+7. [设备入口:9](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L9) 接收 `q,k,v,out,workspace,tiling`；`SetSysWorkspace` 设置系统 workspace，随后进入 CATLASS。设备代码从 GM 中读取 `FATilingData`，分配各核工作并完成计算。
 8. `RunOpApi(..., true)` 在调用线程等待 Host 提交和当前 stream 完成。[adapter.cpp:181](../csrc/aclnn_torch_adapter/adapter.cpp#L181) 随后显式销毁描述符，Tensor/workspace 的保留引用按其持有者生命周期释放。callback 内不调用 stream synchronize，避免等待自己所在的 Host 队列。
 
 本例的 tiling 传输已追踪至 launch 参数：`argsSize=1000`，一项 placeholder 为 `addrOffset=40, dataOffset=64`。offset 40 是第六个设备参数 `tiling` 的地址槽，offset 64 起的内容按 `FATilingData` 解码为 S=128、T=256、H=1、D=128、coreNum=1，结构大小 904 字节。Runtime 按 placeholder 处理设备侧数据并更新地址；这与 [CANN HostArgs 接口定义](https://www.hiascend.com/doc_center/source/zh/CANNCommunityEdition/910/API/runtimeapi/aclcppdevg_03_1961.html) 一致。这里不能补画一条“adapter 手动 malloc tiling + memcpy”的调用。

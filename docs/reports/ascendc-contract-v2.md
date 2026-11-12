@@ -107,7 +107,7 @@ M/N/K 各为 16 的倍数且位于闭区间 `[16,256]`；仅支持 bias[N] 沿 M
 
 | 交付文件 | 职责 |
 |---|---|
-| `csrc/kernels/ascendc/matmul_bias_silu/native.cpp` | 原生 BF16 MMAD cube、FP32 scratch、vector bias-add/SiLU、BF16 输出 |
+| `csrc/kernels/matmul_bias_silu/native.cpp` | 原生 BF16 MMAD cube、FP32 scratch、vector bias-add/SiLU、BF16 输出 |
 | `csrc/op_package/matmul_bias_silu.cpp` | OpDef、shape/type inference、host tiling、动态 workspace 大小 |
 | `csrc/include/flashinfer_ascend/matmul_bias_silu_tiling.h` | host/device 共用 POD tiling 数据 |
 | `csrc/recipes/matmul_bias_silu.json` | v2 完整源闭包、参数、shape 范围、同步和入口声明 |

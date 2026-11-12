@@ -17,7 +17,7 @@ from flashinfer.jit import (
     JitCompilationPolicy,
     verify_jit_cache_record_payload,
 )
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     ConfiguredAttentionJitArtifactResolver,
     resolve_attention_jit_plan,
 )
@@ -66,9 +66,7 @@ def direct_artifact_case():
         JitCompilationPolicy.CACHE_ONLY,
     )
     payload = cache_payload(binding.module_spec.jit_spec)
-    reader = SyntheticArtifactReader(
-        {record.artifact.fingerprint: payload}
-    )
+    reader = SyntheticArtifactReader({record.artifact.fingerprint: payload})
     resolver = ConfiguredAttentionJitArtifactResolver(
         cache,
         ConfiguredJitArtifactVerifier("checkpoint032.synthetic", reader),
@@ -131,9 +129,7 @@ class AttentionJitArtifactVerificationCheckpointTests(unittest.TestCase):
         _, binding, _, cache, _, _, _ = direct_artifact_case()
         resolver = ConfiguredAttentionJitArtifactResolver(
             cache,
-            ConfiguredJitArtifactVerifier(
-                "checkpoint032.nonbytes", NonBytesReader()
-            ),
+            ConfiguredJitArtifactVerifier("checkpoint032.nonbytes", NonBytesReader()),
         )
         with self.assertRaisesRegex(TypeError, "must return bytes"):
             resolver.resolve(binding)
@@ -153,9 +149,7 @@ class AttentionJitArtifactVerificationCheckpointTests(unittest.TestCase):
         components = build_components()
         environment = runtime_environment()
         base = components["implementation"]
-        jit_resolver = RecordingJitPlanResolver(
-            components["events"], environment
-        )
+        jit_resolver = RecordingJitPlanResolver(components["events"], environment)
         implementation = AttentionOperatorPackageRuntimeImplementation(
             priority=base.priority,
             package_resolver=base._package_resolver,

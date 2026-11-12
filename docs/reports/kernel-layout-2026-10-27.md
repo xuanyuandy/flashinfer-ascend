@@ -11,14 +11,14 @@
 | vLLM-Ascend | `96a69d793457917d5d8fdb6b3b4e18f6f372297f` | `../vllm-ascend/CMakeLists.txt:54` 从 `csrc/kernels/*.cpp` 收集直接设备内核，另有按算子组织的 `csrc/**/op_kernel/` |
 | flashinfer-ori | `62b5ae4e52e14d841e1b0455dc3cfa7053181741` | flashinfer-ori: `csrc/`、`include/flashinfer/`；`flashinfer/jit/env.py:399`、`:400` 定义包内 `data/include`、`data/csrc` |
 
-因此采用 `csrc/kernels/ascendc/` 作为本仓唯一 Ascend C 设备源码根，沿用已有生产算子的位置，按算子分目录。没有复制竞品的递归扫描或后端实现。
+因此采用 `csrc/kernels/` 作为本仓唯一 Ascend C 设备源码根，沿用已有生产算子的位置，按算子分目录。没有复制竞品的递归扫描或后端实现。
 
 ## 实际迁移与身份边界
 
 | 原位置 | 现位置 |
 | --- | --- |
-| `kernels/ascendc/matmul_probe/native.cpp` | `csrc/kernels/ascendc/matmul_probe/native.cpp` |
-| `kernels/ascendc/matmul_probe/catlass.cpp` | `csrc/kernels/ascendc/matmul_probe/catlass.cpp` |
+| `kernels/ascendc/matmul_probe/native.cpp` | `csrc/kernels/matmul_probe/native.cpp` |
+| `kernels/ascendc/matmul_probe/catlass.cpp` | `csrc/kernels/matmul_probe/catlass.cpp` |
 | `kernels/manifest.schema.json` | `flashinfer/data/kernels/manifest.schema.json` |
 | `kernels/README.md` | `csrc/kernels/README.md`，更新目录职责及过时的空登记表说明 |
 | `kernels/ascendc/.gitkeep`、`kernels/triton/.gitkeep` | 删除占位文件，移除顶层 `kernels/` 空目录 |
@@ -39,7 +39,7 @@
 - `MANIFEST.in:1`：sdist 由 `csrc/` 规则收集 host/device/CMake/recipe，不再单列顶层 kernel 树。
 - `tests/release_checks/wheel_checks.py:56`：在原默认/显式 AOT 打包测试中预置旧路径残留，要求构建后旧树消失、新路径两份源码字节正确；原有 14 条 assert 保留，增加 2 条 assert 表达式。
 
-`flashinfer/data/kernels/` 存放运行时声明与 schema，`csrc/op_package/kernel/` 存放 CANN 构建模板；设备实现均在 `csrc/kernels/ascendc/`。Triton Python 实现继续位于 `flashinfer/triton/`。
+`flashinfer/data/kernels/` 存放运行时声明与 schema，`csrc/op_package/kernel/` 存放 CANN 构建模板；设备实现均在 `csrc/kernels/`。Triton Python 实现继续位于 `flashinfer/triton/`。
 
 设计文档及构建指南做增量路径更新，历史报告和任务记录未改写。`docs/framework_design.md` 保持 CRLF，代码块围栏数量仍为 60；其余修改的既有指南代码块数量也保持不变。空白检查使用 `git -c core.whitespace=cr-at-eol diff --check`，识别该文件原有换行格式。
 
@@ -126,7 +126,7 @@ FLASHINFER_NPU_JIT_DISABLE=1 "$FI_LAYOUT_DIR/venv/bin/python" -B -m flashinfer s
 实际结果：
 
 - selftest 为 `2 PASS, 0 FAIL, 0 SKIP`，退出码 0；两条均命中随包 AOT，并通过 CPU 数值对照。
-- 包内 native 探针从全新缓存编译，`disk_cache_hit=false`，退出码 0；使用 `csrc/kernels/ascendc/matmul_probe/native.cpp`，在 NPU 上执行并对照 CPU，`max_abs=0.0`、`result=PASS`。未引用仓库源码目录作为构建根。
+- 包内 native 探针从全新缓存编译，`disk_cache_hit=false`，退出码 0；使用 `csrc/kernels/matmul_probe/native.cpp`，在 NPU 上执行并对照 CPU，`max_abs=0.0`、`result=PASS`。未引用仓库源码目录作为构建根。
 
 完整输出分别为 `package-build.log`、`package-inspection.log`、`wheel-install.log`、`wheel-identity.log`、`selftest.log`、`installed-probe.log`，每条真实退出码均保存在同名 `.exitcode` 文件。编译器原始日志保留在本轮构建缓存中。
 

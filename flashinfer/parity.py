@@ -414,7 +414,8 @@ def packaged_manifest_path(scope: str = "all") -> Path:
     }.get(scope)
     if filename is None:
         raise ValueError("unknown parity scope: %s" % scope)
-    return Path(__file__).resolve().parent / "data" / filename
+    from ._resources import resource_path
+    return resource_path(filename)
 
 
 def load_packaged_manifest(scope: str = "all") -> ParityManifest:

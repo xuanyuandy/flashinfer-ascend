@@ -35,7 +35,7 @@ from flashinfer.jit import (
     JitSpecRegistry,
     MissingJITCacheError,
 )
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     AttentionJitExecutorBinding,
     AttentionJitPlannerBinding,
     ConfiguredAttentionJitArtifactResolver,
@@ -167,9 +167,7 @@ class SyntheticModuleLoader:
             names = names[:-1]
         elif self.symbol_mode == "extra":
             names = names + ("unexpected",)
-        symbols = tuple(
-            JitResolvedSymbol(name, "symbol:%s" % name) for name in names
-        )
+        symbols = tuple(JitResolvedSymbol(name, "symbol:%s" % name) for name in names)
         receipt = JitModuleLoadReceipt(
             spec_name=record.spec_name,
             spec_fingerprint=record.spec_fingerprint,
@@ -556,7 +554,7 @@ class AttentionJitActivePlanCheckpointTests(unittest.TestCase):
     """Checkpoint 031: wrapper owns and revalidates exact JIT readiness."""
 
     def wrapper(self, resolver):
-        registry = AttentionOperatorRuntimeResolverRegistry((('npu', resolver),))
+        registry = AttentionOperatorRuntimeResolverRegistry((("npu", resolver),))
         with patch(
             "flashinfer.attention.holistic._operator_runtime_resolvers",
             registry,
@@ -760,7 +758,9 @@ class AttentionJitActivePlanCheckpointTests(unittest.TestCase):
         self.assertTrue(resolved.jit_plan_binding.ready)
         self.assertLess(events.index("authorize"), events.index("jit_resolve"))
         self.assertLess(events.index("jit_resolve"), events.index("artifact_verify"))
-        self.assertLess(events.index("artifact_verify"), events.index("resolve_callable"))
+        self.assertLess(
+            events.index("artifact_verify"), events.index("resolve_callable")
+        )
         self.assertLess(events.index("artifact_verify"), events.index("module_load"))
         self.assertLess(events.index("module_load"), events.index("resolve_callable"))
         self.assertEqual(jit_resolver.calls, 1)

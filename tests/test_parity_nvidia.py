@@ -8,7 +8,7 @@ from flashinfer.runtime import SchemaError
 
 
 def test_nvidia_inventory_has_reasons_and_pinned_declarations():
-    root = Path(__file__).parents[1] / "flashinfer/data"
+    root = Path(__file__).parents[1] / "tools/metadata"
     total = 0
     for name in ("api_parity.json", "attention_api_parity.json"):
         entries = json.loads((root / name).read_text())["entries"]
@@ -29,8 +29,13 @@ def test_nvidia_inventory_has_reasons_and_pinned_declarations():
 
 def test_intentional_difference_cannot_lose_its_reason():
     with pytest.raises(SchemaError, match="requires reason"):
-        ParityEntry.from_dict(dict(
-            upstream="flashinfer.comm.example", local="flashinfer.comm.example",
-            upstream_kind="stable", semantic_status="intentionally_different",
-            implementation_status="missing", priority="P3",
-        ))
+        ParityEntry.from_dict(
+            dict(
+                upstream="flashinfer.comm.example",
+                local="flashinfer.comm.example",
+                upstream_kind="stable",
+                semantic_status="intentionally_different",
+                implementation_status="missing",
+                priority="P3",
+            )
+        )

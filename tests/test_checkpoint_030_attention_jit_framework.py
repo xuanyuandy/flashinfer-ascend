@@ -25,7 +25,7 @@ from flashinfer.jit import (
     require_jit_cache_hit,
     resolve_jit_spec,
 )
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     AttentionJitVariant,
     gen_attention_jit_module_spec,
     jit_environment_from_attention,
@@ -148,7 +148,7 @@ class AttentionJitFrameworkCheckpointTests(unittest.TestCase):
         self.assertIs(flashinfer.jit.JitSpec, JitSpec)
         self.assertTrue(hasattr(flashinfer.jit, "attention"))
         self.assertTrue(
-            hasattr(flashinfer.jit.attention, "gen_attention_jit_module_spec")
+            hasattr(flashinfer.attention.jit, "gen_attention_jit_module_spec")
         )
 
     def test_environment_is_canonical_and_version_sensitive(self):
@@ -238,9 +238,7 @@ class AttentionJitFrameworkCheckpointTests(unittest.TestCase):
         self.assertFalse(status.source_materialized)
         with self.assertRaisesRegex(SchemaError, "conflicting JIT spec"):
             registry.register(
-                JitSpec.from_dict(
-                    dict(spec.to_dict(), target_soc="Ascend310P")
-                )
+                JitSpec.from_dict(dict(spec.to_dict(), target_soc="Ascend310P"))
             )
 
     def test_registry_snapshots_do_not_expose_mutable_state(self):
@@ -282,9 +280,7 @@ class AttentionJitFrameworkCheckpointTests(unittest.TestCase):
         cache = JitCacheIndex((cache_record(spec),))
         with self.assertRaisesRegex(SchemaError, "conflicting JIT cache"):
             cache.publish(
-                cache_record(
-                    spec, build_metadata_fingerprint=digest("other")
-                )
+                cache_record(spec, build_metadata_fingerprint=digest("other"))
             )
 
     def test_resolution_is_pure_policy_decision(self):
@@ -294,9 +290,7 @@ class AttentionJitFrameworkCheckpointTests(unittest.TestCase):
             JitCacheIndex((cache_record(spec),)),
             JitCompilationPolicy.DISABLED,
         )
-        build = resolve_jit_spec(
-            spec, JitCacheIndex(), JitCompilationPolicy.ENABLED
-        )
+        build = resolve_jit_spec(spec, JitCacheIndex(), JitCompilationPolicy.ENABLED)
         unavailable = resolve_jit_spec(
             spec, JitCacheIndex(), JitCompilationPolicy.CACHE_ONLY
         )
@@ -342,13 +336,9 @@ class AttentionJitFrameworkCheckpointTests(unittest.TestCase):
         plan = framework_plan(16)
         receipt = dispatch_receipt(plan, environment)
         with self.assertRaisesRegex(SchemaError, "does not bind the plan"):
-            gen_attention_jit_module_spec(
-                framework_plan(32), receipt, environment
-            )
+            gen_attention_jit_module_spec(framework_plan(32), receipt, environment)
         with self.assertRaisesRegex(SchemaError, "environment"):
-            gen_attention_jit_module_spec(
-                plan, receipt, runtime_environment("8.0.1")
-            )
+            gen_attention_jit_module_spec(plan, receipt, runtime_environment("8.0.1"))
 
     def test_static_variant_reuses_recipe_across_dynamic_lengths(self):
         environment = runtime_environment()

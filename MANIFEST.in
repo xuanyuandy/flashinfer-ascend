@@ -1,11 +1,12 @@
 recursive-include csrc CMakeLists.txt *.cmake *.json *.h *.inc *.cpp *.py
 recursive-include csrc LICENSE
-recursive-include csrc/kernels/ascendc *
+recursive-include tools/metadata *.json
+recursive-include csrc/kernels *
 recursive-include examples ascendc*.py ascendc*.json
 include docs/ascendc_aot.md
 global-exclude *.o *.so *.so.* *.a *.run *.log *.pyc *.pyo
-prune csrc/kernels/ascendc/*/__pycache__
-prune csrc/kernels/ascendc/*/.pytest_cache
+prune csrc/kernels/*/__pycache__
+prune csrc/kernels/*/.pytest_cache
 prune 3rdparty
 prune packages
 prune flashinfer/data/op_packages

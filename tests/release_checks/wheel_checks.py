@@ -20,28 +20,45 @@ def wheel_setup(monkeypatch):
     return runpy.run_path(str(ROOT / "setup.py"))
 
 
-def test_author_directory_build_inputs_include_auxiliary_headers_and_local_cmake_data(wheel_setup, tmp_path, monkeypatch):
-    folder = tmp_path / "csrc/kernels/ascendc/example"
+def test_author_directory_build_inputs_include_auxiliary_headers_and_local_cmake_data(
+    wheel_setup, tmp_path, monkeypatch
+):
+    folder = tmp_path / "csrc/kernels/example"
     folder.mkdir(parents=True)
-    for name in ("operator.py", "cases.py", "config.txt", "template.hpp", "CMakeLists.txt"):
+    for name in (
+        "operator.py",
+        "cases.py",
+        "config.txt",
+        "template.hpp",
+        "CMakeLists.txt",
+    ):
         (folder / name).write_text("fixture input\n")
     cache = folder / "__pycache__"
     cache.mkdir()
     (cache / "operator.pyc").write_bytes(b"cache")
     monkeypatch.chdir(tmp_path)
     assert {p.name for p in wheel_setup["build_inputs"]()} == {
-        "operator.py", "cases.py", "config.txt", "template.hpp", "CMakeLists.txt"}
+        "operator.py",
+        "cases.py",
+        "config.txt",
+        "template.hpp",
+        "CMakeLists.txt",
+    }
 
 
-def test_wheel_rebuild_removes_obsolete_python_modules(wheel_setup, tmp_path, monkeypatch):
+def test_wheel_rebuild_removes_obsolete_python_modules(
+    wheel_setup, tmp_path, monkeypatch
+):
     monkeypatch.chdir(ROOT)
     monkeypatch.setenv("FLASHINFER_AOT_ALL", "0")
     package = tmp_path / "build/flashinfer"
     package.mkdir(parents=True)
     (package / "removed_operator.py").write_text("stale module\n")
+
     def copy_current(command):
         package.mkdir(parents=True)
         (package / "current.py").write_text("current module\n")
+
     monkeypatch.setattr(build_py, "run", copy_current)
     command = wheel_setup["BuildPy"](wheel_setup["AOTDistribution"]())
     command.build_lib = str(tmp_path / "build")
@@ -53,17 +70,26 @@ def test_wheel_rebuild_removes_obsolete_python_modules(wheel_setup, tmp_path, mo
 def test_wheel_cleanup_cannot_remove_the_source_tree(wheel_setup, monkeypatch):
     monkeypatch.chdir(ROOT)
     monkeypatch.setenv("FLASHINFER_AOT_ALL", "0")
-    monkeypatch.setattr(build_py, "run", lambda _: pytest.fail("must reject before copying"))
+    monkeypatch.setattr(
+        build_py, "run", lambda _: pytest.fail("must reject before copying")
+    )
     command = wheel_setup["BuildPy"](wheel_setup["AOTDistribution"]())
     command.build_lib = str(ROOT)
     with pytest.raises(ValueError, match="overlap the package source"):
         command.run()
 
 
-@pytest.mark.parametrize("first,second", [
-    (MODES[0], MODES[1]), (MODES[0], MODES[2]), (MODES[1], MODES[2]),
-])
-def test_aot_wheel_modes_are_mutually_exclusive(wheel_setup, monkeypatch, first, second):
+@pytest.mark.parametrize(
+    "first,second",
+    [
+        (MODES[0], MODES[1]),
+        (MODES[0], MODES[2]),
+        (MODES[1], MODES[2]),
+    ],
+)
+def test_aot_wheel_modes_are_mutually_exclusive(
+    wheel_setup, monkeypatch, first, second
+):
     monkeypatch.setenv(first, "1" if first == MODES[0] else "/release-input")
     monkeypatch.setenv(second, "/release-input")
     with pytest.raises(ValueError, match="mutually exclusive"):
@@ -71,11 +97,15 @@ def test_aot_wheel_modes_are_mutually_exclusive(wheel_setup, monkeypatch, first,
 
 
 @pytest.mark.parametrize("all_value", [None, "1"])
-def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, tmp_path, all_value):
+def test_all_wheel_build_exports_every_builder_output(
+    wheel_setup, monkeypatch, tmp_path, all_value
+):
     from flashinfer.aot import build
+    from flashinfer.aot import declarations
     from flashinfer.aclnn import build as aclnn_build
 
     monkeypatch.chdir(ROOT)
+
     def native_build(output_dir):
         output_dir.mkdir(parents=True)
         for name in ("libflashinfer_aclnn.so", "manifest.json", "build.log"):
@@ -88,6 +118,12 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     monkeypatch.setenv("FLASHINFER_AOT_CACHE_DIR", str(tmp_path / "cache"))
     monkeypatch.setattr(build_py, "run", lambda self: None)
     calls = []
+    freeze_calls = []
+    monkeypatch.setattr(
+        declarations,
+        "freeze_production_kernels",
+        lambda **options: freeze_calls.append(options),
+    )
 
     def build_all(**options):
         calls.append(options)
@@ -104,7 +140,7 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     stale_source = build_inputs / "kernels/ascendc/matmul_probe/native.cpp"
     stale_source.parent.mkdir(parents=True)
     stale_source.write_text("stale source from the previous layout")
-    stale_operator = build_inputs / "csrc/kernels/ascendc/gemm/matmul_probe/native.cpp"
+    stale_operator = build_inputs / "csrc/kernels/gemm/matmul_probe/native.cpp"
     stale_operator.parent.mkdir(parents=True)
     stale_operator.write_text("stale source before per-operator host/kernel grouping")
     command.run()
@@ -112,18 +148,25 @@ def test_all_wheel_build_exports_every_builder_output(wheel_setup, monkeypatch, 
     assert {path.name for path in destination.iterdir()} == {"a" * 64, "b" * 64}
     assert len(command._aot_outputs) == 2
     native = tmp_path / "build/flashinfer/data/aclnn"
-    assert {path.name for path in native.iterdir()} == {"libflashinfer_aclnn.so", "manifest.json"}
-    assert set(command._native_outputs) == {str(native / name) for name in
-                                           ("libflashinfer_aclnn.so", "manifest.json")}
+    assert {path.name for path in native.iterdir()} == {
+        "libflashinfer_aclnn.so",
+        "manifest.json",
+    }
+    assert set(command._native_outputs) == {
+        str(native / name) for name in ("libflashinfer_aclnn.so", "manifest.json")
+    }
     assert (tmp_path / "aclnn-native-build.log").is_file()
     assert calls[0]["catlass_root"] == "/explicit-catlass"
+    assert freeze_calls == [{"dependency_roots": {"catlass": "/explicit-catlass"}}]
     assert calls[0]["cache_dir"] == str(tmp_path / "cache")
     assert distribution.has_ext_modules()
-    assert (tmp_path / "build/flashinfer/data/build/csrc/recipes/flash_attention.json").is_file()
+    assert (
+        tmp_path / "build/flashinfer/data/build/csrc/recipes/flash_attention.json"
+    ).is_file()
     assert not (build_inputs / "kernels").exists()
     assert not stale_operator.exists()
     for name in ("native.cpp", "catlass.cpp"):
-        relative = Path("csrc/kernels/ascendc/gemm/matmul_probe/op_kernel") / name
+        relative = Path("csrc/kernels/gemm/matmul_probe/op_kernel") / name
         assert (build_inputs / relative).read_bytes() == (ROOT / relative).read_bytes()
 
     # A later source-only build in the same directory must not retain AOT bytes.
@@ -151,7 +194,9 @@ def test_source_only_wheel_is_explicit(wheel_setup, monkeypatch, value):
 def test_default_catlass_checkout_is_a_build_input(wheel_setup, monkeypatch, tmp_path):
     monkeypatch.delenv("FLASHINFER_CATLASS_ROOT", raising=False)
     function = wheel_setup["build_catlass_root"]
-    monkeypatch.setitem(function.__globals__, "__file__", str(tmp_path / "project/setup.py"))
+    monkeypatch.setitem(
+        function.__globals__, "__file__", str(tmp_path / "project/setup.py")
+    )
     catlass = tmp_path / "catlass-ref"
     (catlass / "include").mkdir(parents=True)
     assert function() == str(catlass)

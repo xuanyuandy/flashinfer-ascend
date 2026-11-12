@@ -400,8 +400,10 @@ def test_wheel_and_sdist_include_only_release_data_and_installed_lookup_works(lo
     source, artifacts, installed = (tmp_path / p for p in ("source", "artifacts", "installed"))
     shutil.copytree(repository / "flashinfer", source / "flashinfer",
                     ignore=shutil.ignore_patterns("__pycache__", "*.sqlite3"))
-    for name in ("pyproject.toml", "README.md", "LICENSE"):
+    for name in ("pyproject.toml", "README.md", "LICENSE", "setup.py", "MANIFEST.in"):
         shutil.copy2(repository / name, source / name)
+    shutil.copytree(repository / "csrc", source / "csrc")
+    shutil.copytree(repository / "tools/metadata", source / "tools/metadata")
     data = source / "flashinfer/tuning/data"
     shutil.rmtree(data)
     export_release_data([record], data, registry_factory=configuration_registry)
@@ -409,6 +411,9 @@ def test_wheel_and_sdist_include_only_release_data_and_installed_lookup_works(lo
     # distribution. Only the explicit SoC release pattern is package data.
     (source / "flashinfer/tuning/local.sqlite3").write_bytes(b"must not ship")
     artifacts.mkdir()
+    monkeypatch.setenv("FLASHINFER_AOT_ALL", "0")
+    monkeypatch.delenv("FLASHINFER_AOT_PREBUILT", raising=False)
+    monkeypatch.delenv("FLASHINFER_AOT_CONFIG", raising=False)
     built = subprocess.run([sys.executable, "-c",
                             "from setuptools.build_meta import build_sdist, build_wheel; "
                             "build_sdist(%r); build_wheel(%r)" % (str(artifacts), str(artifacts))],

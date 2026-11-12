@@ -44,7 +44,7 @@
     "capability_binding": null,
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/matmul_bias_silu/op_kernel/native.cpp",
+      "locator": "csrc/kernels/matmul_bias_silu/op_kernel/native.cpp",
       "digest": "5e849f7fc72ddf5e10f769720d35da09c715cc786764696d830ed16576231299",
       "schema_version": 1
     },
@@ -188,7 +188,7 @@
     "capability_binding": null,
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp",
+      "locator": "csrc/kernels/flash_attention/op_kernel/catlass.cpp",
       "digest": "3e252fa4a490b4467b6dd4826621ebc40002382b5d8e1dce3a6e0dab55c4fa78",
       "schema_version": 1
     },

@@ -530,13 +530,13 @@ compiler adapter 可以从**显式传入的冻结 recipe 集合**按 spec 中的
 
 ## 6. 本仓目录与命名建议
 
-`docs/framework_design.md` §2.3 的设备源码目录现已统一为 `csrc/kernels/ascendc/`，探针与生产算子按算子分目录；构建工程、launcher 与可选 op-package host 层同属 `csrc/`。位置参考 vLLM-Ascend 的 `csrc/kernels/`，源码选择仍由显式 recipe 决定。[L7]
+`docs/framework_design.md` §2.3 的设备源码目录现已统一为 `csrc/kernels/`，探针与生产算子按算子分目录；构建工程、launcher 与可选 op-package host 层同属 `csrc/`。位置参考 vLLM-Ascend 的 `csrc/kernels/`，源码选择仍由显式 recipe 决定。[L7]
 
 设备源码位置已按下列目录收敛；其余编译工程细分仍为本分析的建议：
 
 ```text
 3rdparty/catlass/                     # 可选、固定版本的 submodule
-csrc/kernels/ascendc/<op>/
+csrc/kernels/<op>/
   native.cpp                         # 原生实现；只声明实际存在的变体
   catlass.cpp                        # 可选 CATLASS 实现
   tiling.h                           # op 私有 host/device 契约

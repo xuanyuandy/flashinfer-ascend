@@ -17,7 +17,7 @@ from typing import (
     runtime_checkable,
 )
 
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     AttentionJitArtifactBinding,
     AttentionJitExecutorBinding,
     AttentionJitLoadedModuleBinding,
@@ -126,18 +126,12 @@ class AttentionResolvedOperatorRuntime:
                 self.receipt,
             )
             self.jit_plan_binding.require_ready()
-            if not isinstance(
-                self.jit_artifact_binding, AttentionJitArtifactBinding
-            ):
+            if not isinstance(self.jit_artifact_binding, AttentionJitArtifactBinding):
                 raise SchemaError(
                     "ascendc_jit runtime requires an Attention JIT artifact binding"
                 )
-            self.jit_artifact_binding.validate_plan_binding(
-                self.jit_plan_binding
-            )
-            if not isinstance(
-                self.jit_module_binding, AttentionJitLoadedModuleBinding
-            ):
+            self.jit_artifact_binding.validate_plan_binding(self.jit_plan_binding)
+            if not isinstance(self.jit_module_binding, AttentionJitLoadedModuleBinding):
                 raise SchemaError(
                     "ascendc_jit runtime requires an Attention JIT module binding"
                 )
@@ -145,9 +139,7 @@ class AttentionResolvedOperatorRuntime:
                 self.jit_plan_binding,
                 self.jit_artifact_binding,
             )
-            if not isinstance(
-                self.jit_planner_binding, AttentionJitPlannerBinding
-            ):
+            if not isinstance(self.jit_planner_binding, AttentionJitPlannerBinding):
                 raise SchemaError(
                     "ascendc_jit runtime requires an Attention JIT planner binding"
                 )
@@ -156,9 +148,7 @@ class AttentionResolvedOperatorRuntime:
                 raise SchemaError(
                     "ascendc_jit runtime factory differs from its JIT planner binding"
                 )
-            if not isinstance(
-                self.jit_executor_binding, AttentionJitExecutorBinding
-            ):
+            if not isinstance(self.jit_executor_binding, AttentionJitExecutorBinding):
                 raise SchemaError(
                     "ascendc_jit runtime requires an Attention JIT executor binding"
                 )
@@ -177,9 +167,7 @@ class AttentionResolvedOperatorRuntime:
             or self.jit_planner_binding is not None
             or self.jit_executor_binding is not None
         ):
-            raise SchemaError(
-                "non-JIT Attention runtime cannot publish JIT bindings"
-            )
+            raise SchemaError("non-JIT Attention runtime cannot publish JIT bindings")
         provider_id = self.selection.provider_id
         operation_id = self.factory.operation_id
         if (
@@ -279,16 +267,13 @@ class AttentionOperatorRuntimeResolutionReport:
         if self.schema_version != ATTENTION_OPERATOR_RESOLVER_VERSION:
             raise SchemaError("unsupported Attention runtime resolution report version")
         if len(self.framework_plan_fingerprint) != 64 or any(
-            item not in "0123456789abcdef"
-            for item in self.framework_plan_fingerprint
+            item not in "0123456789abcdef" for item in self.framework_plan_fingerprint
         ):
             raise SchemaError("runtime resolution plan fingerprint must be SHA-256")
         if not str(self.device):
             raise SchemaError("runtime resolution device must be non-empty")
         candidates = tuple(self.candidates)
-        identities = tuple(
-            (item.provider_id, item.operation_id) for item in candidates
-        )
+        identities = tuple((item.provider_id, item.operation_id) for item in candidates)
         if len(set(identities)) != len(identities):
             raise SchemaError("runtime resolution candidates contain duplicates")
         object.__setattr__(self, "device", str(self.device))
@@ -490,9 +475,7 @@ class AttentionOperatorRuntimeResolverRegistry:
         )
 
 
-EMPTY_ATTENTION_OPERATOR_RUNTIME_RESOLVERS = (
-    AttentionOperatorRuntimeResolverRegistry()
-)
+EMPTY_ATTENTION_OPERATOR_RUNTIME_RESOLVERS = AttentionOperatorRuntimeResolverRegistry()
 
 
 class AttentionOperatorRuntime:
@@ -508,9 +491,7 @@ class AttentionOperatorRuntime:
     ) -> None:
         if not str(device):
             raise SchemaError("Attention operator device must be non-empty")
-        if not isinstance(
-            resolver_registry, AttentionOperatorRuntimeResolverRegistry
-        ):
+        if not isinstance(resolver_registry, AttentionOperatorRuntimeResolverRegistry):
             raise TypeError(
                 "resolver_registry must be AttentionOperatorRuntimeResolverRegistry"
             )
@@ -697,9 +678,7 @@ class AttentionOperatorRuntime:
             candidate_operator_session.active_plan.jit_artifact_binding_fingerprint
             != candidate_jit_artifact_binding.fingerprint
         ):
-            raise SchemaError(
-                "active plan did not freeze the JIT artifact identity"
-            )
+            raise SchemaError("active plan did not freeze the JIT artifact identity")
         if candidate_jit_module_binding is not None and (
             candidate_operator_session.active_plan.jit_module_binding_fingerprint
             != candidate_jit_module_binding.fingerprint
@@ -804,9 +783,7 @@ class AttentionOperatorRuntime:
                 raise AttentionStateError(
                     "Attention JIT artifact active-plan identity is stale"
                 )
-            self._jit_artifact_binding.validate_plan_binding(
-                self._jit_plan_binding
-            )
+            self._jit_artifact_binding.validate_plan_binding(self._jit_plan_binding)
             if self._jit_module_binding is None:
                 raise AttentionStateError(
                     "Attention JIT module binding is not initialized"

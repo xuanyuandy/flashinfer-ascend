@@ -1,21 +1,19 @@
-"""Descriptor and runner binding for gemm.gemm_fp8_nt_groupwise."""
+"""reference implementation of gemm.gemm_fp8_nt_groupwise."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    ReferenceImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.gemm.gemm_fp8_nt_groupwise.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = ReferenceImplementation(
+    operator=OPERATOR,
+    kernel_id="reference/gemm/gemm_fp8_nt_groupwise_v1",
+    support=Support(),
+    runner=run,
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'reference/gemm/gemm_fp8_nt_groupwise_v1',
-     'op': 'gemm.gemm_fp8_nt_groupwise',
-     'backend': 'reference',
-     'capability': {'op': 'gemm.gemm_fp8_nt_groupwise',
-                    'dtypes': [],
-                    'layouts': [],
-                    'soc_models': [],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('reference/gemm/gemm_fp8_nt_groupwise_v1', 'gemm.gemm_fp8_nt_groupwise', 'reference', descriptor, origin='flashinfer.runtime.reference_kernels')
+descriptor = IMPLEMENTATION.bind

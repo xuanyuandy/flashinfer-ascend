@@ -1,21 +1,19 @@
-"""Descriptor and runner binding for norm.rmsnorm."""
+"""reference implementation of norm.rmsnorm."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    ReferenceImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.norm.rmsnorm.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = ReferenceImplementation(
+    operator=OPERATOR,
+    kernel_id="reference/norm/rmsnorm_v1",
+    support=Support(),
+    runner=run,
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'reference/norm/rmsnorm_v1',
-     'op': 'norm.rmsnorm',
-     'backend': 'reference',
-     'capability': {'op': 'norm.rmsnorm',
-                    'dtypes': [],
-                    'layouts': [],
-                    'soc_models': [],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('reference/norm/rmsnorm_v1', 'norm.rmsnorm', 'reference', descriptor, origin='flashinfer.runtime.reference_kernels')
+descriptor = IMPLEMENTATION.bind

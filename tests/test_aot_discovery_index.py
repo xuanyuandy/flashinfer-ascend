@@ -45,7 +45,7 @@ def test_default_wheel_path_and_environment_indexes(monkeypatch, tmp_path):
     monkeypatch.delenv("FLASHINFER_AOT_PATHS", raising=False)
     invalidate_op_package_index()
     first = get_op_package_index()
-    assert first.roots == (Path(discovery.__file__).resolve().parents[1] / "data/op_packages",)
+    assert first.roots == (Path(discovery.__file__).resolve().parents[2] / "build/generated/flashinfer/data/op_packages",)
     assert get_op_package_index() is first
     monkeypatch.setenv("FLASHINFER_AOT_PATHS", str(tmp_path))
     second = get_op_package_index()

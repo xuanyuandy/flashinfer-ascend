@@ -22,7 +22,8 @@ result = flashinfer.matmul(a, b, backend="auto")
 
 当前共同范围为 Ascend950，二维 BF16，物理 ND，连续行主序：
 `a[M,K]`、`b[K,N]`、`out[M,N]`，M/N/K 均为 16–256 的 16 倍数。
-三条 descriptor 复用同一 capability，公共元数据检查使用同一 v2 recipe。
+三条 descriptor 当前声明相同的 capability；公共元数据检查不读取 Ascend C recipe。
+各候选分别通过自己的 admission 检查实现限制，Ascend C 候选绑定其冻结的 v2 recipe。
 跨 Tensor 的收缩维、dtype、设备、输出形状和连续性也会检查。
 
 未传 `out` 时，公共层在 dispatch 成功后分配一次输出；传入时直接使用原对象。
@@ -54,6 +55,75 @@ UT 使用明确标记的合成时钟验证 tuning 记录能够改变路由；合
 该可选字段的默认值为 true，默认值不写入序列化；原有 recipe/spec 身份保留。
 其他已有 Ascend C 算子的缺包回落策略不由 Matmul 修改。
 
+## 公共定义、三种实现与登记
+
+三个后端采用同一层次，公共定义只有一份：
+
+```text
+flashinfer/
+├── gemm.py                                  # matmul 公共 Python 接口
+├── operators/gemm/matmul/operator.py         # 逻辑 op、公共 Torch schema/回调
+├── ascendc/gemm/matmul/
+│   ├── implementation.py                    # 实现声明、NATIVE 构建/ABI、绑定工厂
+│   └── runner.py                            # 原生包 Tensor runner 工厂
+├── cann/gemm/matmul/
+│   ├── implementation.py                    # 实现声明、Capability、runner 绑定
+│   └── runner.py                            # 已安装 TorchNPU torch.mm 调用
+└── triton/gemm/matmul/
+    ├── implementation.py                    # 实现声明、Capability、runner 绑定
+    ├── runner.py                            # JIT spec、缓存和启动
+    └── kernels.py                           # Triton 设备实现
+csrc/kernels/gemm/matmul/              # Ascend C host/device 实现
+```
+
+`operators/gemm/matmul/operator.py` 属于所有实现共享的公共层，不是某个后端。
+其 `OPERATOR.op="gemm.matmul"`；三个 `IMPLEMENTATION.op` 也都是 `gemm.matmul`。
+三条 kernel_id 分别是 `cann/gemm/matmul_v1`、
+`ascendc/gemm/matmul/native/op_package/Ascend950`、`triton/gemm/matmul_v1/Ascend950`。
+不同实现通过共同的逻辑 op 关联，kernel_id 区分具体执行实现。
+
+生成器将这些后端声明写入 `data/implementations.json`。运行时首次建立全局 Registry，
+框架读取实现索引，校验声明并调用绑定工厂；Ascend C 再关联 `data/kernels/` 中的冻结元数据。
+登记结果是三个带有 runner 的 Descriptor。登记不会执行 kernel 或触发编译。
+
+| 项目 | Ascend C implementation | Triton implementation |
+| --- | --- | --- |
+| 共同身份 | `op=gemm.matmul`，`ImplementationDefinition` | 相同逻辑 op 和声明协议 |
+| 具体身份 | `backend=ascendc`，独立 kernel_id | `backend=triton`，独立 kernel_id |
+| Descriptor 来源 | 从 `NATIVE` 派生并冻结，运行时通过 `bind_kernel` 读取与绑定 | `descriptor()` 构造 Python 声明并绑定 runner |
+| 实现限制 | Capability 加冻结 recipe 的 Tensor/shape ABI 检查 | Capability 加自身的对齐、连续性 admission |
+| 编译和交付 | `NATIVE/BuildConfig` 描述 host/device、ABI、选项，构建 AOT op-package | runner 的 `spec()`、`_CONSTANTS`、`_OPTIONS` 描述 Triton JIT 输入 |
+| 执行入口 | `AotKernelRunner` 延迟加载，调用 `runner.py:make_runner` 创建通用 Tensor 适配器 | `TritonMatmulRunner` 准备模块后按 grid 启动 kernel |
+| 公共 runner 参数 | `(a, b, out)` | `(a, b, out)` |
+
+## 一次调用如何选择实现
+
+当前 Matmul 的 Python 门面是 `gemm.py` 中显式定义的函数，顶层 `__init__.py` 转导出；
+它通过逻辑 `operator.py:torch_declarations()` 提供的 functional/out schema 进入同一回调：
+
+```text
+flashinfer.matmul / flashinfer.gemm.matmul
+  → enable_aclnn 收集公共 Torch 声明（首次调用时注册）
+  → torch.ops.flashinfer.matmul 或 matmul_out
+  → operators/gemm/matmul/operator.py 的公共回调
+  → gemm._matmul_impl：公共校验、输出元数据、InputSignature(op=gemm.matmul)
+  → dispatch：过滤三个 Descriptor，返回选中的 kernel_id
+  → 分配或复用 out，检查别名
+  → run_selected(kernel_id, a, b, out)
+  → 选中 Descriptor 的 runner
+```
+
+这里没有分别暴露三份公共 Matmul，也不会按导入哪个 implementation 文件来选型。
+`kernel_id` 显式锁定的优先级高于有效的 `backend` 参数，仍检查能力、目标和 admission；
+`backend` 只限制候选后端。`auto` 在过滤后优先使用有效 tuning 记录，否则采用配置顺序，
+本例缺省为 CANN → Ascend C AOT → Triton JIT；这不是性能测量结果。
+`DispatchDecision.fallback_chain` 是候选顺序信息，`run_selected` 只调用已选 runner 一次，
+执行失败不会沿该列表自动切换。AOT 缺失与 Triton 编译错误也不会把当前调用改送其他后端。
+
+逻辑定义中仍使用 `public_entry` 引用旧门面，公共检查位于 `_matmul.py`，
+尚未改为 GMM 那种完整的 `schema/infer` 通用执行入口。
+`AscendCOp` 是当前 Torch schema/回调声明对象的历史命名，并不把这个公共接口锁定到 Ascend C。
+
 ## 构建与安装
 
 在已配置 CANN、TorchNPU、Triton 和 catlass 的构建环境中执行：
@@ -64,11 +134,11 @@ python -B -m flashinfer.aot \
   --kernel-id ascendc/gemm/matmul/native/op_package/Ascend950 \
   --cache-dir build/matmul/aot-cache --output-dir build/matmul/release
 
-# 默认 wheel 自动包含三条生产 Ascend C 声明及公共 Torch/ACLNN 桥。
+# 默认 wheel 自动包含四条生产 Ascend C 声明及公共 Torch/ACLNN 桥。
 python -B setup.py bdist_wheel
 ```
 
-完整 wheel 需要预编译 Matmul、MatmulBiasSiLU 和 FlashAttention 三个 Ascend C 包。
+完整 wheel 需要预编译 Matmul、MatmulBiasSiLU、FlashAttention 和 GroupedMatmulSwigluQuant 四个 Ascend C 包。
 Triton Matmul 源码随 Python 包交付，运行期 JIT 产物留在本地缓存。
 仅源码 wheel 不提供 native Matmul 的运行产物；选择 `ascendc` 时会明确报缺包。
 隔离安装、检查 `flashinfer.__file__`、避免 editable 安装干扰的步骤见
@@ -94,15 +164,16 @@ python -B tools/run_regression.py --profile full
 | --- | --- |
 | 公共接口与统一输出准备 | `flashinfer/gemm.py`、`flashinfer/_matmul.py` |
 | 按选中 ID 查找并调用 runner | `flashinfer/runtime/runner.py` |
-| Torch functional / out / FakeTensor | `flashinfer/aclnn/_ops.py` |
-| CANN runner | `flashinfer/cann/gemm/` |
-| native host/device 与 recipe | `csrc/kernels/ascendc/gemm/matmul/`、`csrc/recipes/matmul.json` |
-| native descriptor / 冻结 spec | `flashinfer/data/kernels/registry.json`、`flashinfer/data/kernels/ascendc_specs.json` |
-| Triton runner 与 kernel | `flashinfer/triton/gemm/`、`flashinfer/triton/_matmul_kernels.py` |
+| 公共定义与 Torch functional / out / FakeTensor | `flashinfer/operators/gemm/matmul/operator.py`；`flashinfer/aclnn/_ops.py` 负责收集注册 |
+| CANN 声明与 runner | `flashinfer/cann/gemm/matmul/` |
+| native host/device 与 recipe | `csrc/kernels/gemm/matmul/`、`csrc/recipes/matmul.json` |
+| native 声明与 runner / 冻结交付元数据 | `flashinfer/ascendc/gemm/matmul/`；`flashinfer/data/kernels/registry.json`、`flashinfer/data/kernels/ascendc_specs.json` |
+| Triton 声明、runner 与 kernel | `flashinfer/triton/gemm/matmul/` |
 | 元数据、分配、路由、FakeTensor 与合成调优 UT | `tests/test_matmul.py` |
 | 真机矩阵、AOT 错误、JIT 冷/热缓存与队列验证 | `tests/test_matmul_real.py`、`tests/matmul_acceptance.py` |
 
-真机矩阵覆盖 7 组 shape、三后端、functional/out 两种形式，使用 BF16 量化输入的 CPU FP64 golden，容差 `atol=0.008, rtol=0.008`。
+真机测试矩阵定义覆盖 7 组 shape、三后端、functional/out 两种形式，使用 BF16 量化输入的 CPU FP64 golden，容差 `atol=0.008, rtol=0.008`。
+测试定义不代表当前环境已经通过执行验收；最近一次跨层迁移的实际结果与环境限制见 [迁移验收记录](reports/operator-layout-migration.md)。
 另检查非默认 stream、TorchNPU 队列 0/1/2、正 storage offset、原始输入与输出指针、AOT 禁编译、缺包与损坏拒绝，以及 Triton 首次 JIT 和新进程磁盘命中。
 这组样本不代表完整 shape 笛卡尔积已验证。
 

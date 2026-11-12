@@ -89,7 +89,7 @@ L4  对外 API      flashinfer/decode.py、prefill.py、norm.py ...
 L3  调度          flashinfer/runtime（dispatcher · registry · capability）
 L3' 编译          flashinfer/jit（代码生成 · 编译流水 · 缓存）
 L2  Backend       CANN（aclnn）· AOT 加载器 · JIT 加载器
-L1  算子          csrc/kernels/ascendc · flashinfer/triton（设备实现）
+L1  算子          csrc/kernels · flashinfer/triton（设备实现）
 L0  硬件          硬件探测（SoC 型号 + AI Core 数）
 ────────────────────────────────────────────────────────────
 底座              ACL Runtime / aclrtStream · Ascend AI Core
@@ -146,8 +146,8 @@ ACL Runtime 提交 → AI Core 执行**。"L2 负责 kernel 拉起"指编排归 
 | L4 对外 API | `flashinfer/*.py` | 对标 flashinfer 的函数与 wrapper，签名构建，plan/run 生命周期 | 不直接拼接底层算子，不绕过 dispatcher |
 | L3 调度层 | `flashinfer/runtime`、`tuning` | dispatcher、registry、capability、负载签名与跨实现调优记录查询 | 不做数据相关 D2H 读取，不在 dispatch 中测量 |
 | L3' 编译层 | `flashinfer/jit` | 代码生成、编译流水、缓存管理 | 不在持有 stream 时编译 |
-| L2 Backend 层 | `flashinfer/cann`、AOT/JIT 加载器、Torch/ACLNN 桥 | 参数校验、handle 绑定与后端下发；生产 Ascend C 当前为同步 eager | 除明确的同步 eager 契约外不隐式同步，不隐式 `.contiguous()` |
-| L1 算子层 | `csrc/kernels/ascendc/<op>/op_kernel`、`flashinfer/triton` | 算子模板源码与特化配置；相邻 `op_host` 提供 CANN 推形/tiling | 设备源码不依赖 Torch 类型 |
+| L2 Backend 层 | `flashinfer/ascendc`、`cann`、`triton` 的实现声明与 runner，共有 AOT/JIT 加载器和 Torch/ACLNN 桥 | 参数校验、handle 绑定与后端下发；生产 Ascend C 当前为同步 eager | 除明确的同步 eager 契约外不隐式同步，不隐式 `.contiguous()` |
+| L1 算子层 | `csrc/kernels/<domain>/<op>/op_kernel`、`flashinfer/triton/<domain>/<op>/kernels.py` | 算子模板源码与特化配置；相邻 `op_host` 提供 CANN 推形/tiling | 设备源码不依赖 Torch 类型 |
 | L0 硬件层 | capability 探测 | SoC / CANN / 可见设备探测与缓存 | 不散落 `if soc == ...` 判断 |
 
 ### 2.3 仓库目录结构
@@ -159,27 +159,29 @@ flashinfer/
 │   ├── __init__.py / __main__.py / cli.py / config.py / version.py
 │   ├── activation.py / cascade.py / decode.py / fused_moe.py / gemm.py
 │   ├── norm.py / npu.py / page.py / parity.py / prefill.py / rope.py / sampling.py
-│   ├── ascendc/                # 按域组织实现；共有冻结清单与 runner 绑定
-│   ├── attention/ / quantization/ / triton/
-│   ├── cann/                   # CANN aclnn backend 适配
+│   ├── operators/              # 公共算子定义、实现声明协议及目录发现
+│   ├── ascendc/                # Ascend C 实现声明与 runner；关联 csrc 原生源码
+│   ├── attention/              # Attention 公共领域契约与编排
+│   ├── triton/                 # Triton 实现声明、runner 与 Python kernel
+│   ├── cann/                   # 已安装 Torch/TorchNPU/CANN 算子适配
+│   ├── reference/              # 参考实现声明与 runner
 │   ├── aclnn/                  # 统一 Torch schema、原生适配库构建与延迟加载
 │   ├── runtime/                # dispatcher / registry / capability / signature
 │   ├── jit/
 │   │   ├── artifacts.py / ascendc.py / backends.py / build.py / cache.py / cache_key.py
 │   │   ├── core.py / discovery.py / env.py / errors.py / loading.py / op_package.py
 │   │   ├── recipe.py / runtime.py / status.py / tensor_adapter.py / torch_library.py
-│   │   └── attention/          # Attention 特化身份与 generator 契约
-│   ├── aot/ / data/             # 构建导出；登记表、冻结 spec、随包产物布局
+│   │   └── attention.py       # 历史导入兼容；领域协议在 attention/jit/
+│   ├── aot/                    # 通用构建与导出；data/ 仅在构建输出及安装包存在
 │   └── tuning/ / utils/
 ├── csrc/
 │   ├── cmake/                  # 共享 CANN 构建适配，含 op_package/host、kernel
 │   ├── aclnn_torch_adapter/     # Torch C++ / OpCommand → ACLNN host 桥
 │   ├── kernels/README.md        # 设备源码与配方位置说明
-│   ├── kernels/ascendc/         # 每个算子聚合 host、device 与共享 tiling 声明
-│   │   ├── matmul_probe/        # op_host/、op_kernel/、include/
-│   │   ├── matmul_bias_silu/    # op_host/、op_kernel/、include/
-│   │   └── flash_attention/    # op_host/、op_kernel/、include/
-│   └── recipes/                # matmul_probe / matmul_bias_silu / flash_attention JSON
+│   ├── kernels/         # 每个算子聚合 host、device 与共享 tiling 声明
+│   │   ├── gemm/                # matmul、matmul_bias_silu、grouped_matmul_swiglu_quant、matmul_probe
+│   │   └── attention/flash_attention/ # 每算子保留 op_host/、op_kernel/、include/
+│   └── recipes/                # 生产 recipe 由实现声明派生；另保留探针显式配方
 ├── tests/
 ├── examples/
 ├── tools/
@@ -196,9 +198,9 @@ flashinfer/
 | --- | --- | --- |
 | `flashinfer/prefill.py`、`decode.py` | **对外 API 门面（facade）**：函数签名对标 flashinfer 顶层模块，内部只做"签名构建 + 调 dispatcher + 持有 Plan 生命周期" | 不是算子——不含任何 kernel 逻辑，算子的实现在 backend 层之下 |
 | `flashinfer/attention/` | 各算子域的 plan/run wrapper 与域逻辑 | 与 prefill.py 的关系：prefill.py 是薄门面，域内复杂逻辑（paged KV、wrapper 状态）在域包里 |
-| `csrc/kernels/ascendc/` | **按算子聚合的编译输入**：`op_host` 放 OpDef/推形/tiling，`op_kernel` 放设备实现，`include` 放共享布局 | Triton Python 实现在 `flashinfer/triton/` |
-| `flashinfer/data/kernels/` | **运行时声明**：descriptor、冻结 spec 与 `manifest.schema.json` | 不存放设备源码或编译缓存 |
-| `csrc/` | **host 桥与设备源码**：共享 CMake、TorchNPU 适配、recipe，以及按算子聚合的 `kernels/ascendc/` | 已不再仅放 host 胶水；不能用目录名推断源码运行在 CPU 还是 AI Core |
+| `csrc/kernels/` | **按算子聚合的编译输入**：`op_host` 放 OpDef/推形/tiling，`op_kernel` 放设备实现，`include` 放共享布局 | Triton Python 实现在 `flashinfer/triton/` |
+| 包内 `flashinfer/data/kernels/` | **交付声明**：构建时生成 descriptor/冻结 spec；源码 schema 位于 `tools/metadata/` | 源码不维护生成副本，不存放设备源码或缓存 |
+| `csrc/` | **host 桥与设备源码**：共享 CMake、TorchNPU 适配、recipe，以及按算子聚合的 `kernels/` | 已不再仅放 host 胶水；不能用目录名推断源码运行在 CPU 还是 AI Core |
 
 **prefill.py/decode.py 与 csrc/kernels/ 的分工**：prefill.py 里一行 kernel 代码都没有——
 它接收用户张量、构建 `InputSignature`、委托 dispatcher 选择、返回结果。
@@ -206,7 +208,7 @@ CANN 路径调用内置算子；自研路径执行设备源码的 AOT 或 JIT �
 即：**API 文件是门面，设备 kernel 承担计算**，两者通过
 runtime 层的 descriptor/registry 间接关联（API 不直接 import kernel）。
 
-**设备源码统一位于 `csrc/kernels/ascendc/`**，位置参考 vLLM-Ascend 的 `csrc/kernels/`；
+**Ascend C 设备源码位于 `csrc/kernels/`**，位置参考 vLLM-Ascend 的 `csrc/kernels/`；
 flashinfer-ori: `csrc/`、`include/flashinfer/` 也将编译输入集中在源码目录。
 目录归一化阶段保留了探针字节与 ABI；当前对外配方已统一为 v2。原裸指针探针及冻结源码闭包移入 `tests/fixtures/legacy_ascendc/`，不再作为公开构建输入；公共 CMake/loader 改动按身份闭包重新冻结生产 spec。
 完整档交付闭环见 [完整档契约说明](reports/ascendc-contract-v2.md) 与 [接入清单](reports/custom-operator-onboarding.md)。
@@ -216,13 +218,83 @@ flashinfer-ori: `csrc/`、`include/flashinfer/` 也将编译输入集中在源�
 公共逻辑定义按 `flashinfer/operators/<domain>/<op>/operator.py` 组织；每个后端在
 `flashinfer/<backend>/<domain>/<op>/implementation.py` 声明自己的 Descriptor、Capability
 和 runner。一个逻辑 op 可以拥有多个实现，多个 kernel 也可以复用一个 runner 类。
-Ascend C 原生实现保留于 `csrc/kernels/ascendc/<domain>/<op>/`，包括 host、device、tiling
+Ascend C 原生实现保留于 `csrc/kernels/<domain>/<op>/`，包括 host、device、tiling
 及可选 CMake；Triton Python kernel 与其 runner 同目录。共有加载器和构建器继续集中复用。
 
 登记由框架收集并在同一个 KernelRegistry 中冻结。公共校验与输出推导先于选型；后端原生
 参数适配在所选 runner 内执行，实现专属的元数据限制由该候选的绑定契约检查，不提前加载
 Ascend C recipe 来限制其他后端。状态化 Attention 前端保留既有 plan/run 和资源生命周期协议。
+
+`operators` 统一维护公共逻辑定义与实现声明协议，后端目录分别维护具体实现。
+Ascend C、CANN 原生适配与 Triton 是同级后端，均按
+`flashinfer/<backend>/<domain>/<op>/implementation.py` 和同目录 `runner.py` 组织；
+`implementation.py` 声明实现身份、能力及 runner 绑定，`runner.py` 完成该实现的执行适配。
+共有 runner 工厂可以复用，计算本体的位置由实现方式决定：
+
+| 后端 | 计算本体 | runner 如何执行 |
+| --- | --- | --- |
+| `cann` | 已安装的 Torch/TorchNPU/CANN 预置算子，也可组合已有原语 | 直接适配调用已有实现，无本仓重新编译厂商算子的步骤 |
+| `ascendc` | `csrc/kernels/<domain>/<source-op>/` 中的 host/device/tiling | 通过共有加载器调用本仓构建的原生产物；AOT/JIT 及缺包策略由该实现声明 |
+| `triton` | `flashinfer/triton/<domain>/<op>/kernels.py` | 准备或复用 JIT 模块，按该实现的启动配置执行 |
+
+公共定义与后端实现通过显式的逻辑 `op` 值关联。例如 Matmul 的公共定义和三个实现
+均声明 `op="gemm.matmul"`；每个实现再声明自己的 `backend` 和全局唯一 `kernel_id`：
+
+```text
+逻辑 op: gemm.matmul
+  cann    → cann/gemm/matmul_v1
+  ascendc → ascendc/gemm/matmul/native/op_package/Ascend950
+  triton  → triton/gemm/matmul_v1/Ascend950
+```
+
+`op` 确定计算语义与候选集合，`backend` 表示实现后端，`kernel_id` 锁定具体实现。
+目录名或函数名不替代这些显式身份；同一 `op` 下的实现须遵守公共语义，并如实声明各自
+支持的输入范围。框架通过同一 KernelRegistry 汇总、校验和冻结 Descriptor 与 runner 绑定。
+生成的 `data/operators.json` 与 `data/implementations.json` 分别保存公共定义和实现索引，
+后者以 `op` 关联前者；它们是由作者源码派生的交付数据。
+
+对外接口按逻辑算子暴露，例如 `flashinfer.matmul` 与 `flashinfer.gemm.matmul` 是同一入口。
+一次调用先进入公共接口，完成公共元数据检查与签名构建，再由 dispatcher 在同一 `op`
+的候选中依据硬件、Capability、实现 admission、显式选型参数与调优策略选择 kernel。
+选型成功后准备输出，`run_selected(kernel_id, ...)` 调用所选 Descriptor 的 runner；
+公共接口不按后端各暴露一份，也不通过导入某个实现文件来决定使用哪个 kernel。
+显式 `kernel_id` 优先锁定实现，`backend` 限制候选后端；`auto` 先过滤再查有效 tuning，
+无记录时采用确定性配置顺序。执行异常保持原样传播，不自动换后端重试。
+
+既有接口仍可通过 `public_entry` 引用原门面；GMM 等无状态接口可直接提供 `schema/infer`
+供共有 runtime 编排。两种入口均通过逻辑 `op` 关联后端实现，目录归一化不表示旧前端已全部
+改为通用运行器。Matmul 的三个实现差异、Torch 接线和逐层调用见
+[统一 Matmul 接口与三后端执行](matmul-backends.md#公共定义三种实现与登记)。
+
 完整文件树、作者职责、交付与验证约束见 [算子与后端源码组织](operator-layout.md)。
+
+量化属于跨算子的能力语义。模型由 `runtime/schema.py` 中的 `QuantSpec`、`InferenceSpec`
+及 `CapabilityCase/CapabilitySpec` 表达，具体支持组合由后端 `implementation.py` 声明。
+没有实际量化算子接口和实现时，不单独建立只转导出类型的顶层 `quantization` 包。
+
+源码权威定义、生成的交付资源和产物清单应分别管理。`operators.json`、`implementations.json`
+及原生 recipe 可由作者声明生成；冻结 spec 和产物摘要承担发布身份与完整性校验职责。
+安装包需要相应元数据，不代表所有派生 JSON 都必须作为人工维护的源码长期登记。
+源码 checkout 直接发现 Python 声明；生成资源仅写入 `build/generated/`，打包时组装为包内 `data/`。
+安装入口严格校验随包索引与冻结契约，缺失或损坏时明确失败。API 对标账本属于诊断资料，外部 API 契约目录
+属于领域数据，二者也不应被当成可执行 kernel 清单。资源分类与上游对照见
+[源码资源与编译职责核对](reports/source-resources-and-jit-boundaries.md)。
+
+作者接口应以具名的实现事实和支持规则生成完整 Descriptor，不直接暴露其序列化字典。
+源码摘要、输入闭包、spec 指纹、格式版本及产物回执由框架推导，作者不手填 digest；
+真实硬件限制、原生 ABI、workspace 和同步协议仍须由作者或已有构建声明准确提供。
+源码树不再承载生成的 `flashinfer/data/`：开发时收集作者声明，显式构建输出到 build
+目录，打包时才在构建输出中组装 `data/`，安装运行只读随包资源。
+源码与安装包的加载入口应明确区分，缺失或损坏资源不能静默切换来源。
+作者接口采用 `Support`、`DimRange`、各后端 `Implementation` 与 `NativeBinding/BuildConfig`；
+全部既有实现已迁移，稳定 kernel ID、能力及 ABI 保持原值。接口与资源说明见
+[作者声明与交付资源](authoring-and-resources.md)。
+
+通用 `jit/` 基础设施负责 spec、编译、缓存、产物校验和加载，接收显式构建输入与特化身份；
+算子的 heads、mask、KV layout 等语义如何映射成这些输入，由领域适配器或后端算子声明决定。
+领域特化生成器需要理解算子语义，这不要求共有缓存或加载器理解每种算子。
+Attention 计划、特化身份及绑定协议已归入 `flashinfer/attention/jit/`；
+具体 kernel 的生成配置归入后端算子目录。协议层存在不构成真实编译或执行证据。
 
 ### 2.4 与上游的分层对比
 
@@ -1042,7 +1114,7 @@ caller:  graph.replay()
 上述限制的实现集中在 [`cann/attention/_shared.py`](../flashinfer/cann/attention/_shared.py) 和
 [`attention/public_batch.py`](../flashinfer/attention/public_batch.py)；验证范围及未完成项见
 [aclgraph 捕获重放验收](reports/T11B-report.md)、[NPU 扩展说明](npu_graph_extensions.md) 与
-[对标账本](../flashinfer/data/attention_api_parity.json)。新增算子先保留
+[对标账本](../tools/metadata/attention_api_parity.json)。新增算子先保留
 `NOT_CAPTURABLE`，取得对应路径的真实证据后才能提升声明。
 
 
@@ -1542,7 +1614,7 @@ flowchart TD
 - 每个封装必须声明支持的 dtype / shape / layout 谓词，注册进 registry。
 - 作为 fallback 时必须在 trace / dispatch reason 中可见，不静默发生。
 
-### 10.2 Ascend C 算子（`csrc/kernels/ascendc`）
+### 10.2 Ascend C 算子（`csrc/kernels`）
 
 当前两条生产 eager 路径使用完整档 recipe；接入目标是复用统一编译、存储与加载链路，
 设备源码位置仍待收敛（§2.3），生产算子入图尚未完成（§3.5）。

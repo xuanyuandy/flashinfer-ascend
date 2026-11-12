@@ -69,13 +69,14 @@ def build_inputs():
             continue
         if path.is_file() and (path.suffix in {".cpp", ".h", ".inc", ".cmake", ".json", ".py"}
                 or path.name in {"CMakeLists.txt", "LICENSE"}
-                or path.is_relative_to(Path("csrc/kernels/ascendc"))):
+                or path.is_relative_to(Path("csrc/kernels"))):
             yield path
 
 
     import json
     seen = set()
-    for recipe_file in sorted(Path("csrc/recipes").glob("*.json")):
+    from flashinfer._resources import recipe_root
+    for recipe_file in sorted(recipe_root(Path.cwd()).glob("*.json")):
         for recipe in json.loads(recipe_file.read_text()):
             for reference in recipe.get("extra_build_files", ()):
                 path = Path(reference["locator"])
@@ -90,8 +91,7 @@ class BuildPy(build_py):
     def run(self):
         mode = aot_mode()
         from flashinfer.operators.authoring import generate
-        # Publishing never silently packages stale author declarations.
-        generate(source_root=Path.cwd(), check=True)
+        generate(source_root=Path.cwd())
         package_output = Path(self.build_lib) / "flashinfer"
         package_source = Path(__file__).resolve().parent / "flashinfer"
         if package_output.exists():
@@ -102,6 +102,11 @@ class BuildPy(build_py):
             # otherwise leak from an earlier build into a new wheel.
             shutil.rmtree(package_output)
         super().run()
+        from flashinfer._resources import data_root, recipe_root
+        resources = Path(self.build_lib) / "flashinfer/data"
+        shutil.copytree("tools/metadata", resources, dirs_exist_ok=True)
+        shutil.copytree(data_root(), resources, dirs_exist_ok=True,
+                        ignore=shutil.ignore_patterns("op_packages", "aclnn", "build"))
         root = Path(self.build_lib) / "flashinfer/data/build"
         if root.exists():
             shutil.rmtree(root)
@@ -109,6 +114,7 @@ class BuildPy(build_py):
             target = root / path
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copyfile(path, target)
+        shutil.copytree(recipe_root(), root / "csrc/recipes", dirs_exist_ok=True)
         config = os.environ.get("FLASHINFER_AOT_CONFIG")
         prebuilt = os.environ.get("FLASHINFER_AOT_PREBUILT")
         destination = Path(self.build_lib) / "flashinfer/data/op_packages"
@@ -121,6 +127,11 @@ class BuildPy(build_py):
         if mode in {"FLASHINFER_AOT_ALL", "FLASHINFER_AOT_CONFIG"}:
             from flashinfer.aot.build import build_production_packages, compile_and_package
             from flashinfer.aclnn.build import build_adapter
+            from flashinfer.aot.declarations import freeze_production_kernels
+
+            catlass = build_catlass_root()
+            freeze_production_kernels(dependency_roots={"catlass": catlass} if catlass else None)
+            shutil.copytree(data_root() / "kernels", resources / "kernels", dirs_exist_ok=True)
 
             build_adapter(native_destination)
             native_log = native_destination / "build.log"

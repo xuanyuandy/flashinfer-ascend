@@ -1,21 +1,20 @@
-"""Descriptor and runner binding for cascade.merge_states."""
+"""reference implementation of cascade.merge_states."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    ReferenceImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.cascade.merge_states.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = ReferenceImplementation(
+    operator=OPERATOR,
+    kernel_id="reference/cascade/merge_states_v1",
+    support=Support(dtypes=("float16", "bfloat16", "float32")),
+    runner=run,
+    origin="flashinfer._cascade",
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'reference/cascade/merge_states_v1',
-     'op': 'cascade.merge_states',
-     'backend': 'reference',
-     'capability': {'op': 'cascade.merge_states',
-                    'dtypes': ['float16', 'bfloat16', 'float32'],
-                    'layouts': [],
-                    'soc_models': [],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('reference/cascade/merge_states_v1', 'cascade.merge_states', 'reference', descriptor, origin='flashinfer._cascade')
+descriptor = IMPLEMENTATION.bind

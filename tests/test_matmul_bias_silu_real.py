@@ -5,6 +5,7 @@ from dataclasses import replace
 import json
 import os
 from pathlib import Path
+from flashinfer._resources import data_root
 import shutil
 import subprocess
 import sys
@@ -30,7 +31,7 @@ def production_release(tmp_path_factory):
 
 @contextmanager
 def installed_release(release):
-    root = ROOT / "flashinfer/data/op_packages"
+    root = data_root(ROOT) / "op_packages"
     created = not root.exists()
     root.mkdir(parents=True, exist_ok=True)
     destination = root / release.name

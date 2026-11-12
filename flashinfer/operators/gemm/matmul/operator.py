@@ -2,26 +2,37 @@
 
 from flashinfer.operators.definition import OperatorDefinition
 
-OPERATOR = OperatorDefinition(name='matmul', domain='gemm', op='gemm.matmul', public_entry='flashinfer.gemm:matmul')
+OPERATOR = OperatorDefinition(
+    name="matmul",
+    domain="gemm",
+    op="gemm.matmul",
+    public_entry="flashinfer.gemm:matmul",
+    tensor_shapes=(("M", "K"), ("K", "N"), ("M", "N")),
+)
 
 
 from types import SimpleNamespace
 
+
 def _plain_matmul(a, b, *, backend=None, kernel_id=None):
     from flashinfer.gemm import _matmul_impl
+
     return _matmul_impl(a, b, backend=backend, kernel_id=kernel_id)
 
 
 def _plain_matmul_out(a, b, out, *, backend=None, kernel_id=None):
     from flashinfer.gemm import _matmul_impl
+
     _matmul_impl(a, b, out, backend=backend, kernel_id=kernel_id)
 
 
 def _plain_matmul_out_meta(a, b, out, *, backend=None, kernel_id=None):
     from flashinfer._matmul import metadata_reason
+
     reason = metadata_reason(a, b, out)
     if reason != "supported":
         from flashinfer.runtime import SchemaError
+
         raise SchemaError(reason)
 
 
@@ -36,10 +47,19 @@ def _plain_matmul_meta(a, b, *, backend=None, kernel_id=None):
 
 def torch_declarations():
     from flashinfer.jit.torch_library import AscendCOp
+
     return (
-        AscendCOp("flashinfer::matmul", '(Tensor a, Tensor b, *, str? backend=None, str? kernel_id=None) -> Tensor',
-                          _plain_matmul, _plain_matmul_meta),
-        AscendCOp("flashinfer::matmul_out",
-                          '(Tensor a, Tensor b, Tensor(a!) out, *, str? backend=None, str? kernel_id=None) -> ()',
-                          _plain_matmul_out, _plain_matmul_out_meta, ("out",)),
+        AscendCOp(
+            "flashinfer::matmul",
+            "(Tensor a, Tensor b, *, str? backend=None, str? kernel_id=None) -> Tensor",
+            _plain_matmul,
+            _plain_matmul_meta,
+        ),
+        AscendCOp(
+            "flashinfer::matmul_out",
+            "(Tensor a, Tensor b, Tensor(a!) out, *, str? backend=None, str? kernel_id=None) -> ()",
+            _plain_matmul_out,
+            _plain_matmul_out_meta,
+            ("out",),
+        ),
     )

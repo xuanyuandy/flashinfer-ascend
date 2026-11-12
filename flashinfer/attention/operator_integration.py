@@ -12,7 +12,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any, Mapping, Optional, Protocol, Sequence, Tuple, runtime_checkable
 
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     AttentionJitArtifactBinding,
     AttentionJitArtifactResolver,
     AttentionJitExecutorBinder,
@@ -83,9 +83,7 @@ class AttentionOperatorRuntimeAuthority:
     operation_id: str
     operation_fingerprint: str
     receipt: AttentionDispatchReceipt = field(repr=False, compare=False)
-    selection: AttentionOperatorProviderSelection = field(
-        repr=False, compare=False
-    )
+    selection: AttentionOperatorProviderSelection = field(repr=False, compare=False)
     schema_version: int = ATTENTION_OPERATOR_INTEGRATION_VERSION
 
     def __post_init__(self) -> None:
@@ -112,8 +110,7 @@ class AttentionOperatorRuntimeAuthority:
             raise TypeError("selection must be AttentionOperatorProviderSelection")
         if (
             self.receipt.plan_fingerprint != self.framework_plan_fingerprint
-            or self.selection.dispatch_receipt_fingerprint
-            != self.receipt.fingerprint
+            or self.selection.dispatch_receipt_fingerprint != self.receipt.fingerprint
             or self.selection.provider_probe_fingerprint
             != self.provider_probe_fingerprint
         ):
@@ -223,9 +220,7 @@ class AttentionOperatorPackageRuntimeImplementation:
         if jit_plan_resolver is not None and not isinstance(
             jit_plan_resolver, AttentionJitPlanResolver
         ):
-            raise TypeError(
-                "jit_plan_resolver must implement AttentionJitPlanResolver"
-            )
+            raise TypeError("jit_plan_resolver must implement AttentionJitPlanResolver")
         if jit_artifact_resolver is not None and not isinstance(
             jit_artifact_resolver, AttentionJitArtifactResolver
         ):
@@ -307,9 +302,7 @@ class AttentionOperatorPackageRuntimeImplementation:
             self._plan_gate.rejection_reasons(plan, str(device))
         )
         package_report = self._package_resolver.explain()
-        package_reasons = tuple(
-            "package: %s" % item for item in package_report.reasons
-        )
+        package_reasons = tuple("package: %s" % item for item in package_report.reasons)
         return _unique_reasons(gate_reasons + package_reasons)
 
     def _validate_authority(
@@ -386,9 +379,7 @@ class AttentionOperatorPackageRuntimeImplementation:
                 raise AttentionOperatorIntegrationError(
                     "ascendc_jit runtime requires a configured JIT planner binder"
                 )
-            jit_plan_binding = self._jit_plan_resolver.resolve(
-                plan, authority.receipt
-            )
+            jit_plan_binding = self._jit_plan_resolver.resolve(plan, authority.receipt)
             if not isinstance(jit_plan_binding, AttentionJitPlanBinding):
                 raise TypeError("JIT plan resolver returned an invalid binding")
             jit_plan_binding.validate_resolved_runtime(
@@ -398,24 +389,16 @@ class AttentionOperatorPackageRuntimeImplementation:
             # A cache miss cannot become an executable provider runtime until a
             # separately authorized builder has produced and verified an artifact.
             jit_plan_binding.require_ready()
-            jit_artifact_binding = self._jit_artifact_resolver.resolve(
-                jit_plan_binding
-            )
+            jit_artifact_binding = self._jit_artifact_resolver.resolve(jit_plan_binding)
             if not isinstance(jit_artifact_binding, AttentionJitArtifactBinding):
-                raise TypeError(
-                    "JIT artifact resolver returned an invalid binding"
-                )
+                raise TypeError("JIT artifact resolver returned an invalid binding")
             jit_artifact_binding.validate_plan_binding(jit_plan_binding)
             jit_module_binding = self._jit_module_resolver.resolve(
                 jit_plan_binding, jit_artifact_binding
             )
-            if not isinstance(
-                jit_module_binding, AttentionJitLoadedModuleBinding
-            ):
+            if not isinstance(jit_module_binding, AttentionJitLoadedModuleBinding):
                 raise TypeError("JIT module resolver returned an invalid binding")
-            jit_module_binding.validate_bindings(
-                jit_plan_binding, jit_artifact_binding
-            )
+            jit_module_binding.validate_bindings(jit_plan_binding, jit_artifact_binding)
 
         factory = AttentionMaterializingPlanFactory(
             self._logical_factory, self._tensor_materializer, str(device)
@@ -429,17 +412,14 @@ class AttentionOperatorPackageRuntimeImplementation:
                 raise TypeError("JIT planner binder returned an invalid binding")
             jit_planner_binding.validate(jit_module_binding)
             if (
-                jit_planner_binding.binder_id
-                != self._jit_planner_binder.binder_id
+                jit_planner_binding.binder_id != self._jit_planner_binder.binder_id
                 or jit_planner_binding.binder_version
                 != self._jit_planner_binder.binder_version
             ):
                 raise SchemaError("JIT planner binder changed its declared identity")
             factory = jit_planner_binding.factory
 
-        package = self._package_resolver.resolve(
-            expected_provider_probe=provider_probe
-        )
+        package = self._package_resolver.resolve(expected_provider_probe=provider_probe)
         self._validate_authority(authority, plan, package, str(device))
         executor = package.executor
         if authority.receipt.backend == Backend.ASCENDC_JIT:
@@ -455,26 +435,19 @@ class AttentionOperatorPackageRuntimeImplementation:
                 package.callable_binding,
             )
             if (
-                jit_executor_binding.binder_id
-                != self._jit_executor_binder.binder_id
+                jit_executor_binding.binder_id != self._jit_executor_binder.binder_id
                 or jit_executor_binding.binder_version
                 != self._jit_executor_binder.binder_version
             ):
-                raise SchemaError(
-                    "JIT executor binder changed its declared identity"
-                )
+                raise SchemaError("JIT executor binder changed its declared identity")
             if jit_executor_binding.executor is not package.executor:
                 raise SchemaError(
                     "JIT executor binder changed the authorized executor object"
                 )
             executor = jit_executor_binding.executor
-        run_adapter = AttentionMaterializingRunAdapter(
-            self._logical_run_adapter
-        )
+        run_adapter = AttentionMaterializingRunAdapter(self._logical_run_adapter)
         if self._run_adapter_factory is not None:
-            run_adapter = self._run_adapter_factory.build(
-                run_adapter, str(device)
-            )
+            run_adapter = self._run_adapter_factory.build(run_adapter, str(device))
         return AttentionResolvedOperatorRuntime(
             framework_plan_fingerprint=plan.fingerprint,
             factory=factory,

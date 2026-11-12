@@ -63,8 +63,8 @@ SOURCE_PATHS = (
     "flashinfer/ascendc/__init__.py", "flashinfer/ascendc/gemm/matmul/implementation.py",
     "flashinfer/ascendc/gemm/matmul/runner.py", "flashinfer/triton/gemm/matmul/implementation.py",
     "flashinfer/triton/gemm/matmul/runner.py",
-    "flashinfer/data/kernels/registry.json", "flashinfer/data/kernels/ascendc_specs.json",
-    "csrc/recipes/matmul.json",
+    "build/generated/flashinfer/data/kernels/registry.json", "build/generated/flashinfer/data/kernels/ascendc_specs.json",
+    "build/generated/csrc/recipes/matmul.json",
     "flashinfer/jit/runtime.py", "tools/routing_capability_demo.py",
     "flashinfer/jit/tensor_adapter.py", "flashinfer/aclnn/_native.py",
 )
@@ -304,7 +304,7 @@ CANN runner 进入厂商预编译调用；AOT runner 加载 op_package；Triton 
 
 源码依据：flashinfer/runtime/{schema,signature,hardware,registry,dispatch,runner}.py；
 flashinfer/{gemm,ascendc}.py；flashinfer/cann/gemm/；flashinfer/triton/gemm/；
-flashinfer/jit/runtime.py；flashinfer/data/kernels/{registry,ascendc_specs}.json。
+flashinfer/jit/runtime.py；build/generated/flashinfer/data/kernels/{registry,ascendc_specs}.json。
 """)
 
 
@@ -544,7 +544,7 @@ kernel_id 唯一，声明 backend/CapabilitySpec/compile_mode 并绑定 runner�
 backend 是来源分类，compile_mode 是本仓的编译策略，两者不能混为一谈。
 CANN 在 cann.gemm.gemm_descriptors 中构造 Python descriptor，cann_descriptors 汇总。
 Ascend C AOT 的 registry.json 提供 descriptor，ascendc_specs.json 提供冻结 spec，
-csrc/recipes/matmul.json 描述 host/kernel 源码与契约；ascendc_descriptors 经 bind_aot_kernel
+build/generated/csrc/recipes/matmul.json 描述 host/kernel 源码与契约；ascendc_descriptors 经 bind_aot_kernel
 绑定 AotKernelRunner。交付 op_package、host tiling/API、device binary、manifest 与原生桥。
 Triton 在 triton.gemm.gemm_descriptors 提供 descriptor + SourceRef，绑定延迟构建的
 TritonMatmulRunner；triton_descriptors 汇总。运行时生成 JitSpec，统一 build/load 并复用产物。
@@ -566,7 +566,7 @@ CANN 由 torch.mm 委托 TorchNPU/CANN，本材料未追踪其准确 task 类型
 
 源码与证据：flashinfer/runtime/registry.py；
 flashinfer/cann/gemm/；flashinfer/ascendc/__init__.py；flashinfer/triton/gemm/；
-flashinfer/data/kernels/{registry,ascendc_specs}.json；csrc/recipes/matmul.json；
+build/generated/flashinfer/data/kernels/{registry,ascendc_specs}.json；build/generated/csrc/recipes/matmul.json；
 docs/matmul-backends.md；docs/aclnn-torch-adapter.md；
 docs/flash-attention-call-chain.md。
 固定上游：Ascend/pytorch commit 3363ea59d49f3e08cfd8d4a1f532b756ccda0682，

@@ -7,7 +7,7 @@ import subprocess
 
 parser = argparse.ArgumentParser()
 parser.add_argument("entries", type=Path)
-parser.add_argument("--ledger", default="flashinfer/data/api_parity.json")
+parser.add_argument("--ledger", default="tools/metadata/api_parity.json")
 parser.add_argument("--stage-only", action="store_true")
 args = parser.parse_args()
 path = Path(args.ledger)

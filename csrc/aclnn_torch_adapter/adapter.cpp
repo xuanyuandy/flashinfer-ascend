@@ -194,9 +194,9 @@ void execute(const std::string& token, at::TensorList inputs, at::TensorList out
 // The original _execute boundary above retains its mandatory-Tensor/ND ABI.
 // This separately registered boundary requires explicit immutable conversion,
 // format, optional-input and attribute declarations from the verified recipe.
-void execute_extended(const std::string& token,
+void execute_attributes(const std::string& token,
                       const c10::List<c10::optional<at::Tensor>>& inputs,
-                      at::TensorList outputs, at::ArrayRef<at::Scalar> attributes) {
+                      at::TensorList outputs, const std::vector<c10::IValue>& attributes) {
     std::shared_ptr<Binding> binding;
     {
         std::lock_guard<std::mutex> lock(bindings_mutex);
@@ -247,7 +247,8 @@ void execute_extended(const std::string& token,
                         "ACLNN output Tensors must not overlap other arguments");
         }
     }
-    std::vector<at::Scalar> scalars(attributes.begin(), attributes.end());
+    // IValues own string storage until the asynchronous queue callback returns.
+    std::vector<c10::IValue> scalars(attributes.begin(), attributes.end());
     auto call = [state, binding, arguments, scalars, stream, raw_stream]() -> int {
         auto& api = tensor_api();
         state->handles.reserve(arguments.size());
@@ -287,19 +288,26 @@ void execute_extended(const std::string& token,
             TORCH_CHECK(handle, "aclCreateTensor failed for ", binding->name);
             state->handles.push_back(handle);
         }
-        struct Attribute { uint8_t boolean; int64_t integer; double floating; };
+        struct Attribute { uint8_t boolean; int64_t integer; double floating; const char* string; };
         std::vector<Attribute> values(scalars.size());
         std::vector<void*> ffi_values;
         for (size_t i = 0; i < binding->inputs; ++i) ffi_values.push_back(&state->handles[i]);
         for (size_t i = 0; i < scalars.size(); ++i) {
             if (binding->attributes[i] == 0) {
-                TORCH_CHECK(scalars[i].isBoolean(), "ACLNN expected bool attribute");
+                TORCH_CHECK(scalars[i].isBool(), "ACLNN expected bool attribute");
                 values[i].boolean = scalars[i].toBool(); ffi_values.push_back(&values[i].boolean);
             } else if (binding->attributes[i] == 1) {
-                TORCH_CHECK(scalars[i].isIntegral(false), "ACLNN expected int attribute");
-                values[i].integer = scalars[i].toLong(); ffi_values.push_back(&values[i].integer);
+                TORCH_CHECK(scalars[i].isInt(), "ACLNN expected int attribute");
+                values[i].integer = scalars[i].toInt(); ffi_values.push_back(&values[i].integer);
+            } else if (binding->attributes[i] == 2) {
+                TORCH_CHECK(scalars[i].isDouble() || scalars[i].isInt(), "ACLNN expected float attribute");
+                values[i].floating = scalars[i].isInt() ? scalars[i].toInt() : scalars[i].toDouble();
+                ffi_values.push_back(&values[i].floating);
             } else {
-                values[i].floating = scalars[i].toDouble(); ffi_values.push_back(&values[i].floating);
+                TORCH_CHECK(scalars[i].isString(), "ACLNN expected string attribute");
+                const auto& value = scalars[i].toStringRef();
+                TORCH_CHECK(value.find('\0') == std::string::npos, "ACLNN string attribute contains NUL");
+                values[i].string = value.c_str(); ffi_values.push_back(&values[i].string);
             }
         }
         for (size_t i = binding->inputs; i < arguments.size(); ++i) ffi_values.push_back(&state->handles[i]);
@@ -386,8 +394,9 @@ extern "C" __attribute__((visibility("default"))) int fi_aclnn_register_extended
         }
         binding->argument_types.assign(inputs, &ffi_type_pointer);
         for (auto type : binding->attributes) {
-            TORCH_CHECK(type >= 0 && type <= 2, "Invalid ACLNN attribute type");
-            binding->argument_types.push_back(type == 0 ? &ffi_type_uint8 : type == 1 ? &ffi_type_sint64 : &ffi_type_double);
+            TORCH_CHECK(type >= 0 && type <= 3, "Invalid ACLNN attribute type");
+            binding->argument_types.push_back(type == 0 ? &ffi_type_uint8 : type == 1 ? &ffi_type_sint64 :
+                                             type == 2 ? &ffi_type_double : &ffi_type_pointer);
         }
         binding->argument_types.insert(binding->argument_types.end(), outputs + 2, &ffi_type_pointer);
         TORCH_CHECK(ffi_prep_cif(&binding->workspace_signature, FFI_DEFAULT_ABI,
@@ -424,11 +433,29 @@ extern "C" __attribute__((visibility("default"))) int fi_aclnn_last_workspace_si
     }
 }
 
+void execute_extended(const std::string& token,
+                      const c10::List<c10::optional<at::Tensor>>& inputs,
+                      at::TensorList outputs, at::ArrayRef<at::Scalar> attributes) {
+    std::vector<c10::IValue> values;
+    for (const auto& attribute : attributes) values.emplace_back(attribute);
+    execute_attributes(token, inputs, outputs, values);
+}
+
+void execute_with_strings(const std::string& token,
+                         const c10::List<c10::optional<at::Tensor>>& inputs,
+                         at::TensorList outputs, const c10::List<c10::IValue>& attributes) {
+    std::vector<c10::IValue> values;
+    for (const auto& attribute : attributes) values.push_back(attribute);
+    execute_attributes(token, inputs, outputs, values);
+}
+
 TORCH_LIBRARY(flashinfer_aclnn, m) {
     m.def("_execute(str token, Tensor[] inputs, Tensor(a!)[] outputs) -> ()");
     m.def("_execute_extended(str token, Tensor?[] inputs, Tensor(a!)[] outputs, Scalar[] attributes) -> ()");
+    m.def("_execute_with_strings(str token, Tensor?[] inputs, Tensor(a!)[] outputs, Any[] attributes) -> ()");
 }
 TORCH_LIBRARY_IMPL(flashinfer_aclnn, PrivateUse1, m) {
     m.impl("_execute", TORCH_FN(execute));
     m.impl("_execute_extended", TORCH_FN(execute_extended));
+    m.impl("_execute_with_strings", TORCH_FN(execute_with_strings));
 }

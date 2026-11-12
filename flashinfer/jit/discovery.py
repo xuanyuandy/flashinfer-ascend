@@ -123,7 +123,8 @@ class AotPackageMatch:
 
 def op_package_search_paths():
     """Installed layout first, then explicitly configured extra search roots."""
-    default = Path(__file__).resolve().parents[1] / "data" / "op_packages"
+    from flashinfer._resources import data_root
+    default = data_root() / "op_packages"
     extra = (Path(value).expanduser() for value in
              os.environ.get("FLASHINFER_AOT_PATHS", "").split(os.pathsep) if value)
     return tuple(dict.fromkeys(path.absolute() for path in (default, *extra)))

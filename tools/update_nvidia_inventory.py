@@ -73,7 +73,7 @@ def main():
                                      sha256=hashlib.sha256(source.encode()).hexdigest()),
             ))
     for name in ("api_parity.json", "attention_api_parity.json"):
-        path = Path("flashinfer/data") / name
+        path = Path("tools/metadata") / name
         raw = (subprocess.check_output(["git", "show", "HEAD:" + str(path)], text=True)
                if args.stage_only else path.read_text())
         value = json.loads(raw)

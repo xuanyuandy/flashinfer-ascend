@@ -1,21 +1,19 @@
-"""Descriptor and runner binding for fused_moe.cutlass_fused_moe."""
+"""reference implementation of fused_moe.cutlass_fused_moe."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    ReferenceImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.fused_moe.cutlass_fused_moe.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = ReferenceImplementation(
+    operator=OPERATOR,
+    kernel_id="reference/fused_moe/cutlass_fused_moe_v1",
+    support=Support(),
+    runner=run,
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'reference/fused_moe/cutlass_fused_moe_v1',
-     'op': 'fused_moe.cutlass_fused_moe',
-     'backend': 'reference',
-     'capability': {'op': 'fused_moe.cutlass_fused_moe',
-                    'dtypes': [],
-                    'layouts': [],
-                    'soc_models': [],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('reference/fused_moe/cutlass_fused_moe_v1', 'fused_moe.cutlass_fused_moe', 'reference', descriptor, origin='flashinfer.runtime.reference_kernels')
+descriptor = IMPLEMENTATION.bind

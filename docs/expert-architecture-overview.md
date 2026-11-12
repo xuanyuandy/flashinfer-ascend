@@ -54,7 +54,7 @@ JIT 缓存复用的是编译产物和已加载代码，plan/run 复用的是具�
 | L3 调度与选型 | 形成负载和硬件信息，过滤支持域，查询 tuning，选择 kernel_id | `flashinfer/runtime/`、`flashinfer/tuning/` |
 | L3′ 产物准备与编译 | 已选实现需要产物时，发现 AOT、查询缓存、按策略构建并校验加载；AOT 发布也使用公共构建流水线 | `flashinfer/jit/`、`flashinfer/aot/` |
 | L2 后端适配与执行 | 将统一调用转换成具体后端的调用参数和执行协议，处理 Tensor、workspace、stream 与资源生命周期 | `flashinfer/cann/`、`flashinfer/jit/tensor_adapter.py`、`flashinfer/aclnn/`、`csrc/aclnn_torch_adapter/`、Triton launcher |
-| L1 算子实现 | host infer/tiling 与 device 计算代码，或已安装 CANN 算子实现 | `csrc/kernels/ascendc/<op>/op_host/`、`op_kernel/`；`flashinfer/triton/` |
+| L1 算子实现 | host infer/tiling 与 device 计算代码，或已安装 CANN 算子实现 | `csrc/kernels/<op>/op_host/`、`op_kernel/`；`flashinfer/triton/` |
 | L0 硬件 | 真正执行设备计算；硬件信息作为上层选择和 tiling 的输入 | 昇腾 NPU；探测入口 `flashinfer/runtime/hardware.py` |
 
 `flashinfer/jit/` 虽然名称包含 JIT，内部也有 AOT discovery、公共产物校验和加载器。目录名不意味着每次调用都会编译。
@@ -230,11 +230,11 @@ provenance.source      = 尚未绑定；首次成功后为 aot 或 jit
 | 9 | [package_tensor_runner:32](../flashinfer/jit/tensor_adapter.py#L32)、[TorchOpPackageRunner.__call__:60](../flashinfer/jit/tensor_adapter.py#L60) | 将已验证模块适配为 Tensor callable，再检查 dtype、shape、NPU、ND 和重叠 |
 | 10 | [_native.prepare:73](../flashinfer/aclnn/_native.py#L73)，调用内部算子在 [91](../flashinfer/aclnn/_native.py#L91) | 首次登记已验证 ACLNN API 地址并保持模块存活，后续复用绑定；Tensor 进入 C++ 内部 Torch 算子 |
 | 11 | [adapter.cpp execute:103](../csrc/aclnn_torch_adapter/adapter.cpp#L103)、[RunOpApi:180](../csrc/aclnn_torch_adapter/adapter.cpp#L180) | 使用 TorchNPU 当前 stream 和框架队列策略，提交 callback；当前同步 eager 返回 |
-| 12 | [adapter.cpp:163](../csrc/aclnn_torch_adapter/adapter.cpp#L163) → [FiFlashAttentionTiling:26](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp#L26) | 调用生成的 ACLNN GetWorkspaceSize，执行 host tiling，得到 workspace 大小和 executor |
+| 12 | [adapter.cpp:163](../csrc/aclnn_torch_adapter/adapter.cpp#L163) → [FiFlashAttentionTiling:26](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L26) | 调用生成的 ACLNN GetWorkspaceSize，执行 host tiling，得到 workspace 大小和 executor |
 | 13 | [adapter.cpp:169](../csrc/aclnn_torch_adapter/adapter.cpp#L169)、[launch:174](../csrc/aclnn_torch_adapter/adapter.cpp#L174) | 分配实际 workspace，调用 ACLNN launch，持有 Tensor/描述符等到同步完成 |
-| 14 | [catlass.cpp:9](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp#L9) → [FAInferTla:547](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/fai_kernel.h#L547) | CANN 提交 device kernel，按 DTYPE_Q 实例执行 CATLASS FA；结果写回 out |
+| 14 | [catlass.cpp:9](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L9) → [FAInferTla:547](../csrc/kernels/attention/flash_attention/op_kernel/fai_kernel.h#L547) | CANN 提交 device kernel，按 DTYPE_Q 实例执行 CATLASS FA；结果写回 out |
 
-ACLNN 的 `aclnnFiFlashAttentionGetWorkspaceSize` / launch host API 由 CANN 构建生成，不应在仓库里寻找一份同名手写实现。[op_host:94](../csrc/kernels/ascendc/attention/flash_attention/op_host/flash_attention.cpp#L94) 登记 dtype、格式、infer 与 tiling；[catlass.cpp:19](../csrc/kernels/ascendc/attention/flash_attention/op_kernel/catlass.cpp#L19) 是设备模板调用点。
+ACLNN 的 `aclnnFiFlashAttentionGetWorkspaceSize` / launch host API 由 CANN 构建生成，不应在仓库里寻找一份同名手写实现。[op_host:94](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L94) 登记 dtype、格式、infer 与 tiling；[catlass.cpp:19](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L19) 是设备模板调用点。
 
 运行中先进入 RunOpApi，callback 再执行两段式 ACLNN。上表按源码控制流说明职责，不能把 GetWorkspaceSize 画成绕开 TorchNPU 队列的独立默认执行路线。
 

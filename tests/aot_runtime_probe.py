@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 import sys
+from flashinfer._resources import data_root
 
 from flashinfer.jit import (
     AscendCBackend, AscendCToolchain, DiskJitBuildStore, JitSpec,
@@ -186,7 +187,7 @@ def run_scenario(scenario, declaration_release, store_root, second_release=None)
     assert counts["backend_factory"] == counts["compile"]
     assert counts["adapter"] == 1
     if expected_source == "aot":
-        assert Path(provenance.directory).parent == ROOT / "flashinfer/data/op_packages"
+        assert Path(provenance.directory).parent == data_root(ROOT) / "op_packages"
         assert store.lookup(spec) is None
     else:
         assert store.lookup(spec) is not None

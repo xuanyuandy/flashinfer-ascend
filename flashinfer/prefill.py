@@ -1,7 +1,7 @@
 """prefill 对外 API 门面（对标 flashinfer 顶层模块，§2.3、§3.1）。
 
 门面只做三件事：构建输入签名 → 委托 dispatcher 选择 kernel → 拉起执行。
-设备源码位于 csrc/kernels/ascendc/；本文件不包含 kernel 实现。
+设备源码位于 csrc/kernels/；本文件不包含 kernel 实现。
 """
 
 from __future__ import annotations
@@ -20,15 +20,31 @@ _OP_RAGGED_PREFILL = "attention.prefill"
 
 
 def single_prefill_with_kv_cache_with_jit_module(
-    jit_module, q, k, v, *args, kv_layout="NHD", mask_mode=0,
-    window_left=-1, return_lse=False,
+    jit_module,
+    q,
+    k,
+    v,
+    *args,
+    kv_layout="NHD",
+    mask_mode=0,
+    window_left=-1,
+    return_lse=False,
 ):
     from ._single_attention import run_single_jit
     from .attention.schema import AttentionMode
 
-    return run_single_jit(AttentionMode.SINGLE_PREFILL, jit_module, q, k, v, args,
-                          kv_layout=kv_layout, mask_mode=mask_mode,
-                          window_left=window_left, return_lse=return_lse)
+    return run_single_jit(
+        AttentionMode.SINGLE_PREFILL,
+        jit_module,
+        q,
+        k,
+        v,
+        args,
+        kv_layout=kv_layout,
+        mask_mode=mask_mode,
+        window_left=window_left,
+        return_lse=return_lse,
+    )
 
 
 def single_prefill_with_kv_cache(
@@ -61,15 +77,30 @@ def single_prefill_with_kv_cache(
     from .attention.schema import AttentionMode
 
     return single_attention(
-        AttentionMode.SINGLE_PREFILL, q, k, v, backend=backend,
-        kv_layout=kv_layout, pos_encoding_mode=pos_encoding_mode,
-        causal=causal, scale_q=scale_q, scale_k=scale_k, scale_v=scale_v,
-        k_scale=k_scale, v_scale=v_scale, o_dtype=o_dtype,
-        custom_mask=custom_mask, packed_custom_mask=packed_custom_mask,
-        sm_scale=sm_scale, window_left=window_left,
-        logits_soft_cap=logits_soft_cap, rope_scale=rope_scale,
-        rope_theta=rope_theta, use_fp16_qk_reduction=use_fp16_qk_reduction,
-        return_lse=return_lse, kv_cache_sf=kv_cache_sf,
+        AttentionMode.SINGLE_PREFILL,
+        q,
+        k,
+        v,
+        backend=backend,
+        kv_layout=kv_layout,
+        pos_encoding_mode=pos_encoding_mode,
+        causal=causal,
+        scale_q=scale_q,
+        scale_k=scale_k,
+        scale_v=scale_v,
+        k_scale=k_scale,
+        v_scale=v_scale,
+        o_dtype=o_dtype,
+        custom_mask=custom_mask,
+        packed_custom_mask=packed_custom_mask,
+        sm_scale=sm_scale,
+        window_left=window_left,
+        logits_soft_cap=logits_soft_cap,
+        rope_scale=rope_scale,
+        rope_theta=rope_theta,
+        use_fp16_qk_reduction=use_fp16_qk_reduction,
+        return_lse=return_lse,
+        kv_cache_sf=kv_cache_sf,
     )
 
 

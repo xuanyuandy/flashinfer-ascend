@@ -1,21 +1,24 @@
-"""Descriptor and runner binding for activation.silu_and_mul."""
+"""cann implementation of activation.silu_and_mul."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    CANNImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.activation.silu_and_mul.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = CANNImplementation(
+    operator=OPERATOR,
+    kernel_id="cann/activation/silu_and_mul_v1",
+    support=Support(
+        dtypes=("float16", "bfloat16", "float32"),
+        layouts=("ND",),
+        soc_models=("Ascend950",),
+    ),
+    runner=run,
+    origin="flashinfer._activation",
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'cann/activation/silu_and_mul_v1',
-     'op': 'activation.silu_and_mul',
-     'backend': 'cann',
-     'capability': {'op': 'activation.silu_and_mul',
-                    'dtypes': ['float16', 'bfloat16', 'float32'],
-                    'layouts': ['ND'],
-                    'soc_models': ['Ascend950'],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('cann/activation/silu_and_mul_v1', 'activation.silu_and_mul', 'cann', descriptor, origin='flashinfer._activation')
+descriptor = IMPLEMENTATION.bind

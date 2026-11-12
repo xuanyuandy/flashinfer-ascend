@@ -322,11 +322,8 @@ def bind_attention_operator_operation(
 
 
 def packaged_attention_operator_catalog_path() -> Path:
-    return (
-        Path(__file__).resolve().parent.parent
-        / "data"
-        / "attention_operator_operations.json"
-    )
+    from flashinfer._resources import resource_path
+    return resource_path("attention_operator_operations.json")
 
 
 def load_attention_operator_operation_catalog(

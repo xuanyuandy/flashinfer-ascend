@@ -32,7 +32,7 @@
 | 目标 / recipe 架构 | `Ascend950` / `dav-3510` | `Ascend950` / `dav-3510` |
 | 算子编译选项 | `-O2` | `-O2` |
 | 算子宏 | 无额外宏 | `CATLASS_ARCH=3510` |
-| 算子 include | `csrc/include` | `csrc/kernels/ascendc/attention/flash_attention` |
+| 算子 include | `csrc/include` | `csrc/kernels/attention/flash_attention` |
 | 外部依赖 | 无 | CATLASS `41bf90da655bba3c66d0acd7e00abe33960ecfd6` 的 include 树 |
 | spec 额外编译选项 / recipe 链接选项 | 均为空 | 均为空 |
 | 产物与契约 | `op_package`、recipe v2、tiling schema 2 | 同左 |
@@ -101,7 +101,7 @@ host 侧由 `npu_op_code_gen` 生成 ACLNN API 和注册代码，再构建 `cust
 
 | 接入点 | vLLM-Ascend 的实际做法 | 本仓对应做法 |
 | --- | --- | --- |
-| 源码组织 | `../vllm-ascend/csrc/<域>/<op>/op_host`、`op_kernel`，算子目录 CMake 加入编译列表 | 设备放 `csrc/kernels/ascendc/<op>/`，host 放 `csrc/op_package/<op>.cpp`；由 recipe 显式列出 |
+| 源码组织 | `../vllm-ascend/csrc/<域>/<op>/op_host`、`op_kernel`，算子目录 CMake 加入编译列表 | 设备放 `csrc/kernels/<op>/`，host 放 `csrc/op_package/<op>.cpp`；由 recipe 显式列出 |
 | SoC 选择 | `csrc/build_aclnn.sh` 的对应 SoC 分支选 `CUSTOM_OPS_ARRAY`，再以 `build.sh --pkg --ops=... --soc=...` 构建 | recipe 的目标/依赖/支持域与冻结声明共同决定构建；新生产条目进入登记后被普通 wheel 的全量生产构建包含 |
 | 算子级编译选项 | `add_ops_compile_options(OP_NAME ... COMPUTE_UNIT ... OPTIONS ...)`，有全局选项和按 SoC 分支的特例 | `definitions`、`include_dirs`、`compile_options` 写入该算子 recipe；同一驱动传递并计入身份 |
 | host tiling | OpDef 与 host callback、tiling 结构、workspace 配置共同交付 | v2 的 callback 字段必须与实际 host 源码及设备 tiling 结构一致 |

@@ -15,7 +15,7 @@
 | 公共定义 | `flashinfer/operators/<domain>/<op>/operator.py` 唯一定义逻辑身份；`definition.py:60` 区分公共 schema/infer 与既有 `public_entry` |
 | 实现声明 | `flashinfer/<backend>/<domain>/<op>/implementation.py` 声明 kernel_id、Capability、依赖和 runner 工厂；`operators/implementation.py:31` 检查绑定身份 |
 | 原生构建声明 | `flashinfer/ascendc/definition.py:35` 的 `NativeDefinition` 关联 ABI、源码目录和可选 CMake；`ascendc/authoring.py:12` 派生摘要、recipe、Descriptor |
-| 实现本体 | Ascend C 在 `csrc/kernels/ascendc/<domain>/<source-op>/`；Triton 的 `kernels.py` 与 runner 同目录；CANN/reference 的执行代码在各算子 runner 或同域共有模块中 |
+| 实现本体 | Ascend C 在 `csrc/kernels/<domain>/<source-op>/`；Triton 的 `kernels.py` 与 runner 同目录；CANN/reference 的执行代码在各算子 runner 或同域共有模块中 |
 | 框架收集 | `operators/authoring.py:75` 发现并生成交付索引；`operators/implementation.py:60` 校验随包源码及实现声明 |
 | 统一登记 | `runtime/registry.py:284` 汇总非 Ascend C 实现，Ascend C 通过 `ascendc/__init__.py:13` 绑定冻结声明；均加入同一个 Registry |
 | 选型和执行 | `operators/runtime.py:70` 完成公共检查、选型、输出与执行；`runtime/dispatch.py:214`、`:284` 在强制选型与自动选型中分别检查候选 admission；`runtime/runner.py` 交接到选中 runner |
@@ -46,7 +46,7 @@
 2. `flashinfer/operators/gemm/grouped_matmul_swiglu_quant/cases.py`：七组独立数值样例及容差。
 3. `flashinfer/ascendc/gemm/grouped_matmul_swiglu_quant/implementation.py:15`：Descriptor/runner 绑定、Capability、原生 ABI、源码和构建配置。
 4. 同目录 `runner.py:8`、`:37`：该候选的原生 admission、参数映射与执行适配。
-5. `csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/`：host、device、头文件、CMake 及来源许可。
+5. `csrc/kernels/gemm/grouped_matmul_swiglu_quant/`：host、device、头文件、CMake 及来源许可。
 
 框架从 `gemm.py` 暴露 `grouped_matmul_swiglu_quant`，从逻辑定义收集 Torch functional/out/FakeTensor 接线，先构造逻辑签名，再选择实现。Ascend C runner 在被选中后把逻辑参数映射到原生 ABI，复用验证过的 AOT 加载器和 ACLNN 桥。
 

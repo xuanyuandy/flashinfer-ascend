@@ -113,7 +113,7 @@ coverage policy v4 重跑上述 evidence/rule 交叉验证；仅仅填写一个�
 
 ## 5. 当前诚实状态
 
-packaged [`attention_capabilities.json`](../../flashinfer/data/attention_capabilities.json)
+packaged [`attention_capabilities.json`](../../tools/metadata/attention_capabilities.json)
 有效但 `profiles=[]`。CLI：
 
 ```bash

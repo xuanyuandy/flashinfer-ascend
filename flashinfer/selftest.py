@@ -32,15 +32,17 @@ class _SelftestSkip(Exception):
 
 
 def _package_root() -> Path:
-    return Path(__file__).resolve().parent / "data" / "op_packages"
+    from ._resources import data_root
+
+    return data_root() / "op_packages"
 
 
 def _production_descriptors():
     from .runtime import load_kernel_manifest
 
-    return load_kernel_manifest(
-        Path(__file__).resolve().parent / "data" / "kernels" / "registry.json"
-    )
+    from ._resources import resource_path
+
+    return load_kernel_manifest(resource_path("kernels/registry.json"))
 
 
 def _load_dependencies():
@@ -59,7 +61,9 @@ def _compare(torch, actual, expected, *, atol, rtol):
     expected = expected.double()
     torch.testing.assert_close(actual, expected, atol=atol, rtol=rtol)
     return "max_abs=%.6g, atol=%g, rtol=%g" % (
-        (actual - expected).abs().max().item(), atol, rtol,
+        (actual - expected).abs().max().item(),
+        atol,
+        rtol,
     )
 
 
@@ -70,7 +74,8 @@ def _matmul_bias_silu(torch, kernel_id):
     b = (torch.randn(48, 32) * 0.25).bfloat16()
     bias = (torch.randn(32) * 0.1).bfloat16()
     actual = matmul_bias_silu(
-        *(tensor.npu() for tensor in (a, b, bias)), kernel_id=kernel_id,
+        *(tensor.npu() for tensor in (a, b, bias)),
+        kernel_id=kernel_id,
     )
     expected = torch.nn.functional.silu(a.double() @ b.double() + bias.double())
     return _compare(torch, actual, expected, atol=0.008, rtol=0.008)
@@ -90,19 +95,24 @@ def _flash_attention(torch, kernel_id):
 
     comparisons = []
     for dtype in (torch.float16, torch.bfloat16):
-        cpu = tuple((torch.rand(shape) * 2 - 1).to(dtype) for shape in
-                    ((128, 2, 128), (256, 2, 128), (256, 2, 128)))
+        cpu = tuple(
+            (torch.rand(shape) * 2 - 1).to(dtype)
+            for shape in ((128, 2, 128), (256, 2, 128), (256, 2, 128))
+        )
         actual = single_prefill_with_kv_cache_catlass(
-            *(tensor.npu() for tensor in cpu), kernel_id=kernel_id,
+            *(tensor.npu() for tensor in cpu),
+            kernel_id=kernel_id,
         )
         if actual.dtype != dtype:
             raise ValueError("FlashAttention output dtype must match its inputs")
         # CPU FP64 reference uses the exact quantized values copied to the NPU.
         query, key, value = (tensor.double().transpose(0, 1) for tensor in cpu)
-        probability = torch.softmax((query @ key.transpose(1, 2)) / (128 ** 0.5), dim=-1)
+        probability = torch.softmax((query @ key.transpose(1, 2)) / (128**0.5), dim=-1)
         expected = (probability @ value).transpose(0, 1)
         atol, rtol = (0.001, 0.001) if dtype == torch.float16 else (0.004, 0.008)
-        comparisons.append(str(dtype) + ": " + _compare(torch, actual, expected, atol=atol, rtol=rtol))
+        comparisons.append(
+            str(dtype) + ": " + _compare(torch, actual, expected, atol=atol, rtol=rtol)
+        )
     return "; ".join(comparisons)
 
 
@@ -122,11 +132,14 @@ def _check_kernel(descriptor) -> SelftestResult:
         if case is None:
             from .operators.catalog import for_kernel
             from .operators.testing import selftest_case
+
             operator = for_kernel(kernel_id)
             if operator is not None:
                 case = lambda torch, selected: selftest_case(torch, operator.name)
         if case is None:
-            raise ValueError("no numerical selftest registered for op=%s" % descriptor.op)
+            raise ValueError(
+                "no numerical selftest registered for op=%s" % descriptor.op
+            )
         torch = _load_dependencies()
         from .ascendc import load_contract
         from .jit.discovery import AotMissingError, AotPackageIndex
@@ -140,7 +153,8 @@ def _check_kernel(descriptor) -> SelftestResult:
             index.find(spec, descriptor=descriptor, target_soc=spec.target_soc)
         except AotMissingError as error:
             raise _SelftestSkip(
-                "AOT artifact not bundled in %s; compilation=disabled; %s" % (root, error)
+                "AOT artifact not bundled in %s; compilation=disabled; %s"
+                % (root, error)
             ) from error
 
         runner = get_global_registry().get(kernel_id).runner
@@ -151,46 +165,66 @@ def _check_kernel(descriptor) -> SelftestResult:
         torch.manual_seed(20261026)
         comparison = case(torch, kernel_id)
         provenance = runner.provenance
-        if (provenance is None or provenance.source != "aot"
-                or provenance.directory.resolve().parent != root.resolve()
-                or provenance.spec_fingerprint != spec.fingerprint):
+        if (
+            provenance is None
+            or provenance.source != "aot"
+            or provenance.directory.resolve().parent != root.resolve()
+            or provenance.spec_fingerprint != spec.fingerprint
+        ):
             raise RuntimeError("execution did not use the bundled AOT artifact")
         return SelftestResult(
-            kernel_id, "PASS",
+            kernel_id,
+            "PASS",
             "bundled AOT hit; compilation=disabled; CPU reference matched (%s); spec=%s"
             % (comparison, spec.fingerprint),
         )
     except _SelftestSkip as error:
         return SelftestResult(kernel_id, "SKIP", str(error))
     except Exception as error:
-        return SelftestResult(kernel_id, "FAIL", "%s: %s" % (type(error).__name__, error))
+        return SelftestResult(
+            kernel_id, "FAIL", "%s: %s" % (type(error).__name__, error)
+        )
 
 
 def _run_kernel_process(kernel_id) -> SelftestResult:
-    environment = dict(os.environ, FLASHINFER_NPU_JIT_DISABLE="1", FLASHINFER_AOT_PATHS="")
+    environment = dict(
+        os.environ, FLASHINFER_NPU_JIT_DISABLE="1", FLASHINFER_AOT_PATHS=""
+    )
     command = [sys.executable, "-B", "-m", "flashinfer.selftest", "--kernel", kernel_id]
     try:
         completed = subprocess.run(
-            command, env=environment, capture_output=True, text=True, timeout=180,
+            command,
+            env=environment,
+            capture_output=True,
+            text=True,
+            timeout=180,
         )
     except (OSError, subprocess.TimeoutExpired) as error:
         return SelftestResult(kernel_id, "FAIL", "selftest process failed: %s" % error)
-    records = [line[len(_RESULT_PREFIX):] for line in completed.stdout.splitlines()
-               if line.startswith(_RESULT_PREFIX)]
+    records = [
+        line[len(_RESULT_PREFIX) :]
+        for line in completed.stdout.splitlines()
+        if line.startswith(_RESULT_PREFIX)
+    ]
     try:
         if len(records) != 1:
             raise ValueError("expected one selftest result record")
         result = SelftestResult(**json.loads(records[0]))
-        if (result.kernel_id != kernel_id or result.status not in {"PASS", "FAIL", "SKIP"}
-                or not isinstance(result.reason, str) or not result.reason
-                or completed.returncode != (0 if result.status == "PASS" else 1)):
+        if (
+            result.kernel_id != kernel_id
+            or result.status not in {"PASS", "FAIL", "SKIP"}
+            or not isinstance(result.reason, str)
+            or not result.reason
+            or completed.returncode != (0 if result.status == "PASS" else 1)
+        ):
             raise ValueError("invalid selftest result or exit status")
         return result
     except (TypeError, ValueError) as error:
         details = (completed.stderr or completed.stdout).strip()
         return SelftestResult(
-            kernel_id, "FAIL", "selftest process exit=%s: %s; %s"
-            % (completed.returncode, error, details),
+            kernel_id,
+            "FAIL",
+            "selftest process exit=%s: %s; %s" % (completed.returncode, error, details),
         )
 
 
@@ -215,9 +249,16 @@ def run_selftest(*, kernel_ids=()) -> int:
         result = _run_kernel_process(descriptor.kernel_id)
         counts[result.status] += 1
         print("%s %s: %s" % (result.status, descriptor.op, result.reason), flush=True)
-    print("Summary: %d PASS, %d FAIL, %d SKIP (total=%d)" % (
-        counts["PASS"], counts["FAIL"], counts["SKIP"], len(descriptors),
-    ), flush=True)
+    print(
+        "Summary: %d PASS, %d FAIL, %d SKIP (total=%d)"
+        % (
+            counts["PASS"],
+            counts["FAIL"],
+            counts["SKIP"],
+            len(descriptors),
+        ),
+        flush=True,
+    )
     return int(bool(counts["FAIL"] or counts["SKIP"]))
 
 
@@ -226,9 +267,13 @@ def _main() -> int:
     parser.add_argument("--kernel", required=True)
     args = parser.parse_args()
     descriptors = _production_descriptors()
-    descriptor = next((item for item in descriptors if item.kernel_id == args.kernel), None)
+    descriptor = next(
+        (item for item in descriptors if item.kernel_id == args.kernel), None
+    )
     if descriptor is None:
-        result = SelftestResult(args.kernel, "FAIL", "kernel is absent from the production registry")
+        result = SelftestResult(
+            args.kernel, "FAIL", "kernel is absent from the production registry"
+        )
     else:
         result = _check_kernel(descriptor)
     print(_RESULT_PREFIX + json.dumps(asdict(result), sort_keys=True), flush=True)

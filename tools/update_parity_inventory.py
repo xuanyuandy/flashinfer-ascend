@@ -358,12 +358,12 @@ def main():
     upstream = Upstream(args.upstream)
     manifests = {}
     for name in ("api_parity.json", "attention_api_parity.json"):
-        path = Path("flashinfer/data") / name
+        path = Path("tools/metadata") / name
         raw = (subprocess.check_output(["git", "show", "HEAD:" + str(path)], text=True)
                if args.stage_only else path.read_text())
         manifests[path] = json.loads(raw)
-    attention = manifests[Path("flashinfer/data/attention_api_parity.json")]
-    general = manifests[Path("flashinfer/data/api_parity.json")]
+    attention = manifests[Path("tools/metadata/attention_api_parity.json")]
+    general = manifests[Path("tools/metadata/api_parity.json")]
     # The scoped ledger holds the reviewed Attention Host/provider/native levels.
     general_entries = {e["upstream"]: e for e in general["entries"]}
     for entry in attention["entries"]:

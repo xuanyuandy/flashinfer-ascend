@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import Optional, Sequence, Tuple, Union
 
 from flashinfer.runtime import Backend, KernelDescriptor, SchemaError
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     AttentionJitArtifactResolver,
     AttentionJitExecutorBinder,
     AttentionJitModuleResolver,
@@ -90,9 +90,7 @@ class AttentionOperatorPackageRuntimeSpec:
     logical_run_adapter: AttentionOperatorRunAdapter
     tensor_materializer: AttentionOperatorTensorMaterializer
     quantization_bindings: Tuple[AttentionOperatorQuantizationBinding, ...] = ()
-    tensor_metadata_inspector: Optional[
-        AttentionOperatorTensorMetadataInspector
-    ] = None
+    tensor_metadata_inspector: Optional[AttentionOperatorTensorMetadataInspector] = None
     quant_physical_layout_catalog: QuantPhysicalLayoutCatalog = (
         EMPTY_QUANT_PHYSICAL_LAYOUT_CATALOG
     )
@@ -127,8 +125,7 @@ class AttentionOperatorPackageRuntimeSpec:
         profiles = tuple(self.profiles)
         descriptors = tuple(self.descriptors)
         if not profiles or any(
-            not isinstance(item, AttentionBackendCapabilityProfile)
-            for item in profiles
+            not isinstance(item, AttentionBackendCapabilityProfile) for item in profiles
         ):
             raise TypeError("bootstrap profiles must contain capability profiles")
         if not descriptors or any(
@@ -191,15 +188,11 @@ class AttentionOperatorPackageRuntimeSpec:
             self.physical_layout_evidence_bundle,
             AttentionVerifiedOperatorPhysicalEvidenceBundle,
         ):
-            raise TypeError(
-                "physical_layout_evidence_bundle must be a verified bundle"
-            )
+            raise TypeError("physical_layout_evidence_bundle must be a verified bundle")
         if self.jit_plan_resolver is not None and not isinstance(
             self.jit_plan_resolver, AttentionJitPlanResolver
         ):
-            raise TypeError(
-                "jit_plan_resolver must implement AttentionJitPlanResolver"
-            )
+            raise TypeError("jit_plan_resolver must implement AttentionJitPlanResolver")
         if self.jit_artifact_resolver is not None and not isinstance(
             self.jit_artifact_resolver, AttentionJitArtifactResolver
         ):
@@ -233,22 +226,16 @@ class AttentionOperatorPackageRuntimeSpec:
         if self.coverage_policy is not None and not isinstance(
             self.coverage_policy, AttentionCoveragePolicy
         ):
-            raise TypeError(
-                "bootstrap coverage_policy must be AttentionCoveragePolicy"
-            )
+            raise TypeError("bootstrap coverage_policy must be AttentionCoveragePolicy")
         tuned_ids = tuple(str(item) for item in self.tuned_kernel_ids)
-        if any(not item for item in tuned_ids) or len(set(tuned_ids)) != len(
-            tuned_ids
-        ):
+        if any(not item for item in tuned_ids) or len(set(tuned_ids)) != len(tuned_ids):
             raise SchemaError("bootstrap tuned kernel ids must be unique and non-empty")
         object.__setattr__(self, "operation_id", str(self.operation_id))
         object.__setattr__(self, "adapter_version", str(self.adapter_version))
         object.__setattr__(self, "supported_package_versions", tuple(sorted(versions)))
         object.__setattr__(self, "profiles", profiles)
         object.__setattr__(self, "descriptors", descriptors)
-        object.__setattr__(
-            self, "quantization_bindings", quantization_bindings
-        )
+        object.__setattr__(self, "quantization_bindings", quantization_bindings)
         object.__setattr__(self, "tuned_kernel_ids", tuned_ids)
         object.__setattr__(self, "replay_evidence", bool(self.replay_evidence))
 
@@ -359,8 +346,7 @@ def build_attention_operator_runtime_resolvers(
 
     values = tuple(specs)
     if any(
-        not isinstance(item, AttentionOperatorPackageRuntimeSpec)
-        for item in values
+        not isinstance(item, AttentionOperatorPackageRuntimeSpec) for item in values
     ):
         raise TypeError("specs must contain AttentionOperatorPackageRuntimeSpec values")
     if not values:
@@ -380,9 +366,7 @@ def build_attention_operator_runtime_resolvers(
     implementation_registry = AttentionOperatorRuntimeImplementationRegistry(
         implementations
     )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementation_registry),)
-    )
+    return AttentionOperatorRuntimeResolverRegistry((("npu", implementation_registry),))
 
 
 # No real integration is declared until exact package versions, runtime
@@ -393,8 +377,9 @@ _DEFAULT_ATTENTION_OPERATOR_PACKAGE_RUNTIME_SPECS: Tuple[
 ] = ()
 
 
-def build_default_attention_operator_runtime_resolvers(
-) -> AttentionOperatorRuntimeResolverRegistry:
+def build_default_attention_operator_runtime_resolvers() -> (
+    AttentionOperatorRuntimeResolverRegistry
+):
     """Build the process default; currently the intentionally empty registry."""
 
     return build_attention_operator_runtime_resolvers(

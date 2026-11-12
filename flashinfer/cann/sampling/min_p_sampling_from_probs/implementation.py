@@ -1,21 +1,24 @@
-"""Descriptor and runner binding for sampling.min_p_sampling_from_probs."""
+"""cann implementation of sampling.min_p_sampling_from_probs."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    CANNImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.sampling.min_p_sampling_from_probs.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = CANNImplementation(
+    operator=OPERATOR,
+    kernel_id="cann/sampling/min_p_sampling_from_probs_v1",
+    support=Support(
+        dtypes=("float16", "bfloat16", "float32"),
+        layouts=("ND",),
+        soc_models=("Ascend950",),
+    ),
+    runner=run,
+    origin="flashinfer._sampling",
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'cann/sampling/min_p_sampling_from_probs_v1',
-     'op': 'sampling.min_p_sampling_from_probs',
-     'backend': 'cann',
-     'capability': {'op': 'sampling.min_p_sampling_from_probs',
-                    'dtypes': ['float16', 'bfloat16', 'float32'],
-                    'layouts': ['ND'],
-                    'soc_models': ['Ascend950'],
-                    'min_aicore': 0,
-                    'specializations': []}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('cann/sampling/min_p_sampling_from_probs_v1', 'sampling.min_p_sampling_from_probs', 'cann', descriptor, origin='flashinfer._sampling')
+descriptor = IMPLEMENTATION.bind

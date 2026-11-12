@@ -14,6 +14,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from flashinfer._resources import data_root
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -210,7 +211,7 @@ def run_scenario(scenario, store_root):
     assert counts["compile"] == counts["toolchain"] == (expected_source == "jit")
     assert provenance.spec_fingerprint == spec.fingerprint
     if scenario == "hit_disabled":
-        assert provenance.directory.parent == ROOT / "flashinfer/data/op_packages"
+        assert provenance.directory.parent == data_root(ROOT) / "op_packages"
     errors = []
 
     def compare(shape, expected, result, dtype="float16"):

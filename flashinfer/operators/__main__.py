@@ -28,7 +28,9 @@ def main():
         selected = tuple(k for k in selected if k in native)
         if not selected:
             parser.error("build requires a source-backed Ascend C implementation")
-        freeze_production_kernels(source_root=args.source_root, kernel_ids=selected)
+        # A fresh checkout needs the complete immutable metadata catalog, even
+        # when only one of its optional binaries is requested for compilation.
+        freeze_production_kernels(source_root=args.source_root)
         build_production_packages(source_root=args.source_root, kernel_ids=selected,
                                   output_dir=args.output_dir, cache_dir=args.cache_dir)
     print(json.dumps(dict(action=args.action, kernels=list(selected), result="PASS")))

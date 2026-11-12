@@ -28,11 +28,15 @@ from .runtime import CompileMode, SchemaError, load_kernel_manifest
 
 
 def packaged_kernel_manifest_path() -> Path:
-    return Path(__file__).resolve().parent / "data" / "kernels" / "registry.json"
+    from ._resources import resource_path
+
+    return resource_path("kernels/registry.json")
 
 
 def packaged_attention_capability_manifest_path() -> Path:
-    return Path(__file__).resolve().parent / "data" / "attention_capabilities.json"
+    from ._resources import resource_path
+
+    return resource_path("attention_capabilities.json")
 
 
 def _show_config(_args: argparse.Namespace) -> int:
@@ -43,7 +47,11 @@ def _show_config(_args: argparse.Namespace) -> int:
 def _selftest(_args: argparse.Namespace) -> int:
     from .selftest import run_selftest
 
-    return run_selftest(kernel_ids=tuple(_args.kernel_id)) if _args.kernel_id else run_selftest()
+    return (
+        run_selftest(kernel_ids=tuple(_args.kernel_id))
+        if _args.kernel_id
+        else run_selftest()
+    )
 
 
 def _parity_report(args: argparse.Namespace) -> int:
@@ -66,7 +74,8 @@ def _parity_check(args: argparse.Namespace) -> int:
 
 
 def _list_kernels(_args: argparse.Namespace) -> int:
-    descriptors = load_kernel_manifest(packaged_kernel_manifest_path())
+    from .ascendc import ascendc_descriptors
+    descriptors = ascendc_descriptors()
     profiles = load_attention_capability_manifest(
         packaged_attention_capability_manifest_path()
     )
@@ -84,9 +93,11 @@ def _list_kernels(_args: argparse.Namespace) -> int:
                 (
                     descriptor.artifact.locator
                     if descriptor.artifact is not None
-                    else "aot (runtime discovery)"
-                    if descriptor.compile_mode == CompileMode.AOT
-                    else "reference"
+                    else (
+                        "aot (runtime discovery)"
+                        if descriptor.compile_mode == CompileMode.AOT
+                        else "reference"
+                    )
                 ),
             )
         )
@@ -122,9 +133,7 @@ def _attention_replay(args: argparse.Namespace) -> int:
             raise SchemaError(
                 "Attention trace exceeds --max-bytes (%d)" % args.max_bytes
             )
-        limits = DEFAULT_ATTENTION_JSON_ENVELOPE_LIMITS.with_max_bytes(
-            args.max_bytes
-        )
+        limits = DEFAULT_ATTENTION_JSON_ENVELOPE_LIMITS.with_max_bytes(args.max_bytes)
         trace = AttentionTrace.from_json(
             path.read_text(encoding="utf-8"), limits=limits
         )
@@ -144,11 +153,11 @@ def _attention_replay(args: argparse.Namespace) -> int:
         % (result.output.shape, result.output.dtype)
     )
     if result.lse is not None:
-        print("lse               : shape=%r dtype=%s" % (result.lse.shape, result.lse.dtype))
-    print(
-        "validation        : %s"
-        % ("skipped" if args.no_validate else "passed")
-    )
+        print(
+            "lse               : shape=%r dtype=%s"
+            % (result.lse.shape, result.lse.dtype)
+        )
+    print("validation        : %s" % ("skipped" if args.no_validate else "passed"))
     return 0
 
 
@@ -199,9 +208,7 @@ def _attention_accuracy(_args: argparse.Namespace) -> int:
     ) as error:
         print("attention accuracy failed: %s" % error, file=sys.stderr)
         return 2
-    accepted = sum(
-        report.quantization_within_budget for _case_id, report in reports
-    )
+    accepted = sum(report.quantization_within_budget for _case_id, report in reports)
     rejected = len(reports) - accepted
     print("Attention quantization accuracy")
     print("  corpus:   %s" % corpus.name)
@@ -271,8 +278,12 @@ def build_parser() -> argparse.ArgumentParser:
         "selftest", help="verify installed production AOT kernels on a real NPU"
     )
     selftest.set_defaults(handler=_selftest)
-    selftest.add_argument("--kernel-id", action="append", default=[],
-                          help="validate an explicit registered AOT kernel; repeat to select several")
+    selftest.add_argument(
+        "--kernel-id",
+        action="append",
+        default=[],
+        help="validate an explicit registered AOT kernel; repeat to select several",
+    )
 
     parity = subparsers.add_parser(
         "parity-report", help="summarize FlashInfer API parity"
@@ -294,7 +305,8 @@ def build_parser() -> argparse.ArgumentParser:
         "parity-check", help="validate both pinned API ledgers and report coverage"
     )
     parity_check.add_argument(
-        "--require-complete", action="store_true",
+        "--require-complete",
+        action="store_true",
         help="also require verified inventory and runnable stable API coverage",
     )
     parity_check.set_defaults(handler=_parity_check)

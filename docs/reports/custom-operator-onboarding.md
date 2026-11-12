@@ -153,7 +153,7 @@ recipe 固定 revision，并对解析时的实际头文件树计算摘要。
 | 交付件 / 校验入口 | native v2：以 matmul_bias_silu 为例 | catlass v2：FA 额外需要 |
 |---|---|---|
 | 数学和 envelope | 定义 BF16 GEMM+bias+SiLU、M/N/K 和误差 | 选定例子、确认定长条件，列出 mask/cache/head 限制。 |
-| kernel TU | `csrc/kernels/ascendc/matmul_bias_silu/native.cpp` | `csrc/kernels/ascendc/flash_attention/catlass.cpp` 实例化真实模板。 |
+| kernel TU | `csrc/kernels/matmul_bias_silu/native.cpp` | `csrc/kernels/flash_attention/catlass.cpp` 实例化真实模板。 |
 | device entry | `FI_DEVICE_ENTRY` 与 recipe `device_entry` 一致 | 验证 Arch/Tile/Policy 和 950 的混合核编译模式。 |
 | 共享 tiling | `csrc/include/flashinfer_ascend/matmul_bias_silu_tiling.h` | 带入原 FA tiling POD，明确字段来源及本地适配。 |
 | host TU | `csrc/op_package/matmul_bias_silu.cpp` | `csrc/op_package/flash_attention.cpp` 消除 standalone main/I/O。 |

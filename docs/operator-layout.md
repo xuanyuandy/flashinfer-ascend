@@ -34,9 +34,9 @@ flashinfer/
 ├── runtime/
 │   ├── registry.py                          # 所有后端共用的登记表
 │   └── runner.py                            # run_selected 执行交接
-└── data/                                    # 框架生成的交付索引与冻结声明
+└── data/                                    # 仅在构建输出/安装包：交付索引与冻结声明
 csrc/
-├── kernels/ascendc/<domain>/<op>/
+├── kernels/<domain>/<op>/
 │   ├── CMakeLists.txt                       # 用户：可选编译配置
 │   ├── op_host/                             # 用户：OpDef、推形和 tiling
 │   ├── op_kernel/                           # 用户：原生设备源码及头文件
@@ -80,3 +80,11 @@ Ascend C runner 复用既有 AOT 验证加载、允许策略下的 JIT、Torch/A
 ## 对照上游
 
 flashinfer-ori: `include/flashinfer/` 保存可独立于框架的 CUDA 实现，`csrc/` 保存原生实现、启动包装和绑定，`flashinfer/triton/` 及域内 Python kernel 包保存 Python DSL 实现，`flashinfer/jit/` 组织编译与加载。flashinfer-ori: `build_backend.py` 将原生源码作为安装资源收集。这里沿用这种语言与交付分层，并用显式实现声明和统一 KernelRegistry 关联多个后端。
+
+
+## 作者接口与资源位置的实施更新
+
+原先的目录已按 [作者声明与资源交付](authoring-and-resources.md) 实施：全部既有后端声明采用类型化作者接口，
+生成 JSON 只位于 `build/generated/` 与安装包；非派生契约源位于 `tools/metadata/`。
+Attention 编译协议已迁入 `flashinfer/attention/jit/`，历史导入保留薄兼容入口。
+上文关于“尚未迁移”的文字记录整改前状态；实际测试证据以本次整改报告为准。

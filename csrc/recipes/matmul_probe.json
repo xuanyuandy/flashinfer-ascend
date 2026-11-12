@@ -8,14 +8,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+      "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
       "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
         "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
@@ -23,13 +23,13 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
+        "locator": "csrc/kernels/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
         "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/gemm/matmul_probe/include"
+      "csrc/kernels/gemm/matmul_probe/include"
     ],
     "dependencies": [],
     "definitions": [],
@@ -55,7 +55,7 @@
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_host/matmul_probe.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_host/matmul_probe.cpp",
         "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
@@ -102,14 +102,14 @@
     "npu_arch": "dav-3510",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/catlass.cpp",
+      "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/catlass.cpp",
       "digest": "5c3b23c7107a1871ca6a22d7911acccd085019b2497255a831f5ba2f91532c27",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/catlass.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/catlass.cpp",
         "digest": "5c3b23c7107a1871ca6a22d7911acccd085019b2497255a831f5ba2f91532c27",
         "schema_version": 1
       }
@@ -117,13 +117,13 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
+        "locator": "csrc/kernels/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
         "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/gemm/matmul_probe/include"
+      "csrc/kernels/gemm/matmul_probe/include"
     ],
     "dependencies": [
       {
@@ -157,7 +157,7 @@
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_host/matmul_probe.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_host/matmul_probe.cpp",
         "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
@@ -204,14 +204,14 @@
     "npu_arch": "dav-2201",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+      "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
       "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
         "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
@@ -219,13 +219,13 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
+        "locator": "csrc/kernels/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
         "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/gemm/matmul_probe/include"
+      "csrc/kernels/gemm/matmul_probe/include"
     ],
     "dependencies": [],
     "definitions": [],
@@ -251,7 +251,7 @@
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_host/matmul_probe.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_host/matmul_probe.cpp",
         "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
@@ -298,14 +298,14 @@
     "npu_arch": "dav-2201",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+      "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
       "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
         "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
@@ -313,13 +313,13 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
+        "locator": "csrc/kernels/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
         "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/gemm/matmul_probe/include"
+      "csrc/kernels/gemm/matmul_probe/include"
     ],
     "dependencies": [],
     "definitions": [],
@@ -345,7 +345,7 @@
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_host/matmul_probe.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_host/matmul_probe.cpp",
         "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }
@@ -392,14 +392,14 @@
     "npu_arch": "dav-2002",
     "source": {
       "language": "ascendc",
-      "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+      "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
       "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
       "schema_version": 1
     },
     "sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_kernel/native.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_kernel/native.cpp",
         "digest": "abc42989d621fcab8eaeace1548fd85640d07fbbc6b5bf4064af2249bd066d25",
         "schema_version": 1
       }
@@ -407,13 +407,13 @@
     "headers": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
+        "locator": "csrc/kernels/gemm/matmul_probe/include/flashinfer_ascend/probe_tiling.h",
         "digest": "c1c8e11c6785c9e9a561f5d98b203f2b374d00856ec5b7a8acae7393bc6425f2",
         "schema_version": 1
       }
     ],
     "include_dirs": [
-      "csrc/kernels/ascendc/gemm/matmul_probe/include"
+      "csrc/kernels/gemm/matmul_probe/include"
     ],
     "dependencies": [],
     "definitions": [],
@@ -439,7 +439,7 @@
     "host_sources": [
       {
         "language": "ascendc",
-        "locator": "csrc/kernels/ascendc/gemm/matmul_probe/op_host/matmul_probe.cpp",
+        "locator": "csrc/kernels/gemm/matmul_probe/op_host/matmul_probe.cpp",
         "digest": "c3963bdb3975818c2f12210ca27cd964757b1c7ed381a7dd84b1c8d954559866",
         "schema_version": 1
       }

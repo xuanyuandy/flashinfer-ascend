@@ -1,21 +1,24 @@
-"""Descriptor and runner binding for attention.batch_decode_paged."""
+"""cann implementation of attention.batch_decode_paged."""
 
-from dataclasses import replace
-from flashinfer.operators.implementation import ImplementationDefinition
-from flashinfer.runtime.manifest import descriptor_from_dict
+from flashinfer.operators.author_api import (
+    CANNImplementation,
+    Support,
+    DimRange,
+    PythonKernel,
+)
+from flashinfer.operators.attention.batch_decode_paged.operator import OPERATOR
 from .runner import run
 
+IMPLEMENTATION = CANNImplementation(
+    operator=OPERATOR,
+    kernel_id="cann/attention/batch_decode_paged_fia_v1",
+    support=Support(
+        dtypes=("float16", "bfloat16"),
+        layouts=("NHD", "HND"),
+        soc_models=("Ascend950",),
+        specializations=(("head_dim", ("64", "128")),),
+    ),
+    runner=run,
+)
 
-def descriptor():
-    return replace(descriptor_from_dict({'kernel_id': 'cann/attention/batch_decode_paged_fia_v1',
-     'op': 'attention.batch_decode_paged',
-     'backend': 'cann',
-     'capability': {'op': 'attention.batch_decode_paged',
-                    'dtypes': ['float16', 'bfloat16'],
-                    'layouts': ['NHD', 'HND'],
-                    'soc_models': ['Ascend950'],
-                    'min_aicore': 0,
-                    'specializations': [['head_dim', ['64', '128']]]}}), runner=run)
-
-
-IMPLEMENTATION = ImplementationDefinition('cann/attention/batch_decode_paged_fia_v1', 'attention.batch_decode_paged', 'cann', descriptor, origin='flashinfer.cann.attention')
+descriptor = IMPLEMENTATION.bind

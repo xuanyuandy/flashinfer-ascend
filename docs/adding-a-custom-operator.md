@@ -62,8 +62,8 @@ flowchart LR
 
 | 内容 | CANN / 已有第三方 API 直通 | 本仓 Ascend C AOT | Triton JIT |
 | --- | --- | --- | --- |
-| 实现源码 | 薄 runner，调用已安装的 `torch`/`torch_npu` API；说明依赖与适用环境 | `csrc/kernels/ascendc/<domain>/<name>/op_host/`、`op_kernel/`、`include/`；host/device 共享布局、OpDef、tiling/workspace 回调 | `flashinfer/triton/<domain>/<name>/` 内的 lazy runner 与 `@triton.jit` kernel 源码 |
-| 注册来源 | `flashinfer/cann/<domain>/<name>/implementation.py` | `flashinfer/data/kernels/registry.json` 中的 descriptor | `flashinfer/triton/<domain>/<name>/implementation.py` |
+| 实现源码 | 薄 runner，调用已安装的 `torch`/`torch_npu` API；说明依赖与适用环境 | `csrc/kernels/<domain>/<name>/op_host/`、`op_kernel/`、`include/`；host/device 共享布局、OpDef、tiling/workspace 回调 | `flashinfer/triton/<domain>/<name>/` 内的 lazy runner 与 `@triton.jit` kernel 源码 |
+| 注册来源 | `flashinfer/cann/<domain>/<name>/implementation.py` | `flashinfer/ascendc/<domain>/<name>/implementation.py` | `flashinfer/triton/<domain>/<name>/implementation.py` |
 | 构建与身份 | 本仓 `compile_mode=NONE`；CANN 使用厂商预编译包，第三方说明其真实构建/运行依赖 | v2 `csrc/recipes/<name>.json`、源码/依赖摘要、`ascendc_specs.json` 冻结声明；`compile_mode=AOT` | `SourceRef` 及源码摘要、目标 SoC、`JitSpec`、signature/constexpr/options、编译环境与缓存身份；`compile_mode=JIT` |
 | runner 绑定 | descriptor 直接绑定 Python callable | `ascendc_descriptors()` 调用 `bind_aot_kernel()` 绑定 `AotKernelRunner`；包加载后由 factory 创建 Tensor runner | descriptor 绑定可调用的 lazy runner，执行时通过共享 build store 编译/加载并缓存模块 |
 | 安装交付 | Python 包及明确的 CANN/TorchNPU/第三方依赖 | 随 wheel 提供经过验证的 op_package、元数据及原生 TorchNPU 桥；只有源码的 wheel 无法满足 AOT-only 运行 | 随 Python 包提供 kernel 源码，运行环境具备匹配的 Triton/CANN 工具链；JIT 缓存留在本地 |
@@ -144,7 +144,7 @@ skip 原因和未验证项保存到 `build/` 或 CI，不再复制多份时点�
 
 本例移植 `vllm-ascend: csrc/gmm/grouped_matmul_swiglu_quant/` 的设备计算与 host tiling，
 不调用已安装的 vLLM 扩展。来源提交及原文件摘要保存在
-`csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/provenance.json`，版权头和 `LICENSE` 随源码保留。
+`csrc/kernels/gemm/grouped_matmul_swiglu_quant/provenance.json`，版权头和 `LICENSE` 随源码保留。
 生产身份是 `op=gemm.grouped_matmul_swiglu_quant`、`backend=ascendc`，kernel 为
 `ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B`。
 这里的 SoC 是本次接入的 Ascend910B；不能从原目录的产品声明推导其他 SoC 已完成迁移或数值验收。
@@ -158,9 +158,9 @@ dispatcher 和 host tiling 不读取该 Tensor 的内容。该路径保持 `NOT_
 
 | 接入层 | 本例文件与必须核对的内容 |
 | --- | --- |
-| host/device 源码 | `csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/`；独立 OpDef、共享 tiling、混合核同步与动态 workspace。ACLNN 调用不能假设 GE 的 `TilingParse` 已执行，tiler 显式查询本次平台的核数与 UB。 |
+| host/device 源码 | `csrc/kernels/gemm/grouped_matmul_swiglu_quant/`；独立 OpDef、共享 tiling、混合核同步与动态 workspace。ACLNN 调用不能假设 GE 的 `TilingParse` 已执行，tiler 显式查询本次平台的核数与 UB。 |
 | 构建声明 | `csrc/recipes/grouped_matmul_swiglu_quant.json`；v2、完整源闭包、目标、输入/输出顺序、可选 Tensor、标量属性及存储解释；`allow_jit_fallback=false`。 |
-| 能力与冻结身份 | `flashinfer/data/kernels/registry.json`、`flashinfer/data/kernels/ascendc_specs.json`；`flashinfer/ascendc/gemm/grouped_matmul_swiglu_quant/implementation.py:capability()` 给出 authoring cases，发布时冻结成 JSON，公共调用构造相同语义的 `InferenceSpec`。 |
+| 能力与冻结身份 | `build/generated/flashinfer/data/kernels/registry.json`、`build/generated/flashinfer/data/kernels/ascendc_specs.json`；`flashinfer/ascendc/gemm/grouped_matmul_swiglu_quant/implementation.py:capability()` 给出 authoring cases，发布时冻结成 JSON，公共调用构造相同语义的 `InferenceSpec`。 |
 | 公共函数与导出 | `flashinfer/operators/catalog.py`、`flashinfer/operators/runtime.py`；从随包目录声明暴露接口，接收原始 Tensor 与两个 out buffer，合法选型后分配输出；领域与顶层文件不再逐算子接线。 |
 | Torch 注册 | `flashinfer/operators/runtime.py:torch_declarations()` 生成 functional/out、PrivateUse1 与 FakeTensor 接线；`flashinfer/aclnn/_ops.py` 统一收集。Torch 2.9 的 custom_op 不接受 keyword-only Tensor，生成器自动调整 Torch 参数位置，保留可选标量的原 Torch 位置参数 ABI，Python 门面保留作者的关键字约定。 |
 | 执行 ABI | `flashinfer/jit/aclnn_contract.py`、`flashinfer/jit/recipe.py`、`flashinfer/jit/tensor_adapter.py`、`flashinfer/aclnn/_native.py`、`csrc/aclnn_torch_adapter/adapter.cpp`；显式扩展 ABI，原有必选 Tensor/ND 入口与护栏保留。 |
@@ -257,7 +257,7 @@ CANN API/二进制、产物清单和 wheel；公共接口、Torch 声明、能�
 
 | 本例文件组 | 本次实际来源与职责 | 后续作者应承担的部分 |
 | --- | --- | --- |
-| `csrc/kernels/ascendc/gemm/grouped_matmul_swiglu_quant/op_kernel/`（8 个文件） | 从上游复制设备计算；手工适配入口并修复 A8W4 裁剪 | 核心计算、同步及数值正确性 |
+| `csrc/kernels/gemm/grouped_matmul_swiglu_quant/op_kernel/`（8 个文件） | 从上游复制设备计算；手工适配入口并修复 A8W4 裁剪 | 核心计算、同步及数值正确性 |
 | 同目录 `op_host/`（5 个文件） | tiling/infer/共享布局来自移植；OpDef 聚合与诊断兼容头为手工适配 | 动态 tiling、workspace、特殊 infer；通用注册外壳应由框架提供 |
 | 同目录 `LICENSE`、`provenance.json` | 许可随源码保留；来源信息及摘要经本次迁移整理 | 确认来源与许可；摘要计算可自动化 |
 | `csrc/recipes/grouped_matmul_swiglu_quant.json` | 手工组织源闭包、ABI、类型/形状与编译选项；SHA256 经计算填入 | 声明真实编译输入/依赖；不应逐文件维护 SHA256 |
@@ -302,20 +302,20 @@ descriptor 汇总、源摘要、recipe/spec 派生与冻结、AOT 构建/验证�
 新入口按 [统一组织规范](operator-layout.md) 分开逻辑定义与后端实现。公共文件位于
 `flashinfer/operators/<domain>/<name>/`，后端声明与 runner 位于
 `flashinfer/<backend>/<domain>/<name>/`，Ascend C 原生源码位于
-`csrc/kernels/ascendc/<domain>/<name>/`。作者交付：
+`csrc/kernels/<domain>/<name>/`。作者交付：
 
 | 作者文件 | 必须表达的内容 |
 | --- | --- |
 | `op_kernel/`、`op_host/` | 计算、OpDef、tiling/workspace 及必要 infer；声明真实 native 参数与回调 |
 | 公共 `operator.py` | 导出 `OPERATOR: OperatorDefinition`；只定义公共 schema、语义、输出推导与校验 |
-| 后端 `implementation.py` | 导出实现声明；分别绑定 Descriptor、Capability、runner 和必要构建输入。Ascend C 的 `NATIVE: NativeDefinition` 持有 Tensor/属性 ABI 和 `BuildConfig` |
+| 后端 `implementation.py` | 导出实现声明；分别绑定 Descriptor、Capability、runner 和必要构建输入。Ascend C 使用 `AscendCImplementation`、`NativeBinding` 与 `BuildConfig` 声明 ABI 和构建输入 |
 | 后端 `runner.py` | 接收逻辑参数，在选型之后完成原生参数和启动适配；标准适配可复用框架工厂 |
 | `cases.py` | 独立 `sample(torch, torch_npu, **configuration)` 返回输入、关键字参数及 CPU golden；声明 `CASE_PARAMETERS`、逐输出 `TOLERANCES`，可提供语义效果检查 `verify_effect` |
 | 可选 `CMakeLists.txt`/`.cmake` | 在 `BuildConfig(cmake="CMakeLists.txt", ...)` 中启用；分别配置 host 与 kernel，所有本地 CMake 文件进入摘要闭包 |
 | 许可与来源 | 保留版权/许可；移植时记录来源 commit。源码摘要由框架计算 |
 
 `flashinfer/operators/definition.py` 是公共作者协议，`authoring.py` 发现并生成声明；
-`catalog.py` 仅读取随包冻结目录，`runtime.py` 提供通用调用流程，`testing.py` 提供公共验收驱动。
+`catalog.py` 在源码发现声明、在安装环境校验随包目录，`runtime.py` 提供通用调用流程，`testing.py` 提供公共验收驱动。
 这些是框架维护者编写的通用实现，不是每个算子生成一份执行器。
 
 作者的 `infer(arguments, layouts)` 返回 `Invocation(inputs, outputs, attributes, inference)`：
@@ -352,10 +352,10 @@ python -B -m flashinfer.operators check
 ```
 
 `build` 一次完成发现 → 校验 → 生成 → freeze → 现有 AOT 构建/导出，见 §0.6 的实测命令。
-生成器派生 `csrc/recipes/<name>.json`、`flashinfer/data/kernels/registry.json` 中的记录、
-`flashinfer/data/operators.json` 和 `flashinfer/data/implementations.json`；Python 定义直接随包，
+生成器只向 `build/generated/csrc/recipes/` 和 `build/generated/flashinfer/data/` 输出 recipe、
+Descriptor 与目录索引；Python 定义直接随包，
 目录索引与源码摘要由框架派生，不再复制成第二份运行模块。freeze 继续生成 `ascendc_specs.json`。这些文件只审阅 diff，
-不要手改；改作者目录后重新执行 `build`，`check` 和 wheel 构建会拒绝过期的派生文件。
+不要手改；改作者目录后重新执行 `build`。`check` 拒绝过期资源，wheel 构建会重新生成资源并为编译模式冻结身份。
 CMake、Python 钩子、本地头及声明依赖内容都绑定到构建身份，变化后不能复用旧 spec。
 
 公共导出和 Torch 注册从随包目录收集，新增作者目录不需要修改 `gemm.py`、`__init__.py`、
@@ -366,10 +366,41 @@ CMake、Python 钩子、本地头及声明依赖内容都绑定到构建身份�
 
 发布预期集中在独立审核的 `tests/production_inventory.py`；原有测试继续比较精确数量和集合。
 生成工具不会改写该文件，新增生产项仍需按 `AGENTS.md` 审核该预期，不能把运行时登记表
-直接当作自身的测试答案。已有算子的旧 recipe/接口路径保留；现有 47 个逻辑定义和
+直接当作自身的测试答案。旧配方探针与既有公共接口继续保留；现有 47 个逻辑定义和
 85 个全局实现已按此目录规范组织，另有 1 个显式启用的实验实现。既有富接口通过
 `public_entry` 引用原有前端，保留签名、plan/run 和资源协议。目录迁移不表示所有形状/SoC、
 其他构建协议或图模式已验收，当前验证结果见 [迁移验收记录](reports/operator-layout-migration.md)。
+
+### 0.7 类型化作者接口与构建资源落点
+
+全部既有 `implementation.py` 已采用后端声明类型；普通 Python 调用使用 `runner=`，
+需要 Descriptor 或原生产物的适配工厂使用 `runner_factory=`。能力用 `Support` 声明，
+具名维度通过公共 `OperatorDefinition.tensor_shapes` 映射到 Tensor 轴，`DimRange` 的单位为元素。
+常见字段、完整文件树与生成职责见 [作者声明与资源交付](authoring-and-resources.md)。
+
+```python
+from flashinfer.operators import Support, DimRange, TritonImplementation, PythonKernel
+
+IMPLEMENTATION = TritonImplementation(
+    operator=OPERATOR,
+    name="bf16_nd",
+    support=Support(soc="Ascend950", dtype="bfloat16", layout="ND",
+                    dimensions={name: DimRange(16, 256, 16) for name in ("M", "N", "K")}),
+    source=PythonKernel(file="kernels.py"),
+    runner_factory=make_runner,
+)
+```
+
+既有 kernel ID 保持显式原值；新实现缺省 ID 为 `<backend>/<domain>/<name>/<实现名>`。
+作者不填写源码 digest、spec 指纹、空默认字段或安装产物路径。原生参数顺序、可选输入、
+属性类型、存储转换、workspace 与同步规则仍是实际 ABI，必须准确声明。
+CANN/Triton/Ascend C 各自注册 Descriptor，共享一个逻辑 `op`；runner 始终在自己的后端目录。
+
+源码树没有 `flashinfer/data/`。下文历史示例中的生成 JSON 路径，在源码环境均对应
+`build/generated/` 下同名布局；wheel 内仍使用 `flashinfer/data/`，手写对标与外部 API
+契约位于 `tools/metadata/` 并随构建复制。`csrc/recipes/matmul_probe.json` 是显式探针输入，
+继续独立保留。源码注册不要求生成文件或 SDK；原生执行须有匹配的冻结元数据和产物。
+源码变更后旧冻结身份会被拒绝，安装资源损坏也不会回退到源码扫描。
 
 ## 1. 先明确接入契约与实现
 
@@ -453,9 +484,9 @@ python3 -B -m flashinfer.aot --all \
      明确 dtype / shape / layout / mask / batch 支持范围，以及数值容差
      ↓
 ② 写 kernel TU 与 host TU
-     csrc/kernels/ascendc/<domain>/<name>/op_kernel/    设备侧
-     csrc/kernels/ascendc/<domain>/<name>/op_host/      OpDef / InferShape / tiling / workspace 回调
-     csrc/kernels/ascendc/<domain>/<name>/include/      host/device 共享 tiling 布局
+     csrc/kernels/<domain>/<name>/op_kernel/    设备侧
+     csrc/kernels/<domain>/<name>/op_host/      OpDef / InferShape / tiling / workspace 回调
+     csrc/kernels/<domain>/<name>/include/      host/device 共享 tiling 布局
      ↓
 ③ 写 recipe 与集中 descriptor
      csrc/recipes/<name>.json          照抄 matmul_bias_silu.json 的字段
@@ -485,7 +516,7 @@ Ascend C 生产接口统一通过 Torch 算子接入，参考 [Torch/ACLNN 接�
 
 | 坑 | 症状 | 怎么避 |
 |---|---|---|
-| **改了源码没重算摘要** | 构建报 digest 不符，或命中了旧产物 | recipe 的 `sources`/`headers`/`host_sources` 都带 SHA256，**改任何源文件都要重算并重新冻结 spec** |
+| **改了源码没重算摘要** | 构建报 digest 不符，或命中了旧产物 | recipe 的 `sources`/`headers`/`host_sources` 都带 SHA256，**改源文件后重新执行生成/冻结；框架自动重算摘要** |
 | **改了 descriptor 没重新冻结** | 产物身份对不上 | kernel fingerprint **包含能力与 ABI 元数据**，改 descriptor 同样要重冻 |
 | **解释器用错** | `ModuleNotFoundError: torch` 或大批测试 skip | 必须用 `/root/miniforge3/envs/flashinfer-a5/bin/python`；默认 `python3` 和 `/usr/local/python3.12.14` **都没装 torch** |
 | **把 skip 当 pass** | 真机用例静默跳过还以为通过 | 跑前自检 `torch.npu.is_available()` 应为 `True 8`；`-m real_compile` 应 **0 skipped** |

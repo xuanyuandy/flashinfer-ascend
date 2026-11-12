@@ -22,7 +22,7 @@ wrapper 保留负载签名、能力校验、选择及资源管理；编译特化
 
 | 文件与位置 | 改动及边界 |
 | --- | --- |
-| `csrc/kernels/ascendc/<op>/op_host`、`op_kernel`、`include` | 16 个文件按算子聚合；移动源码字节全部不变，包括 host/device 共享 tiling 结构 |
+| `csrc/kernels/<op>/op_host`、`op_kernel`、`include` | 16 个文件按算子聚合；移动源码字节全部不变，包括 host/device 共享 tiling 结构 |
 | `csrc/cmake/OpPackage.cmake:5`、`csrc/cmake/op_package/` | 通用 CANN 构建模板移入共享构建目录；公开 recipe 更新路径，内部旧闭包保留 |
 | `flashinfer/jit/op_package.py:218` | 整组验证全部文件、建立 dot-free FD 别名、先配置全部 vendor 路径，再加载 host 库；失败恢复环境并关闭新 FD |
 | `flashinfer/jit/runtime.py:134`、`flashinfer/ascendc.py:102` | 首次生产 AOT 解析只依据可信 descriptor/spec 匹配当前已随包同目标生产项，整组激活；缺失同组项不触发编译 |

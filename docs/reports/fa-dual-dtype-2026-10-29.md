@@ -18,8 +18,8 @@
 | `flashinfer/jit/op_package.py:150` | 验证每个设备 binary 的参数顺序和完整 dtype 组合，并要求包覆盖所有声明组合；缺少任一种 dtype 的包失败 |
 | `tools/_production_release.py:10`、`tools/build_flash_attention.py:20` | descriptor 声明 dtype 集合与整组约束，重新冻结源码、recipe、descriptor、spec 身份 |
 | `flashinfer/attention/catlass_prefill.py:39`、`flashinfer/aclnn/_ops.py:65` | 真实输出、signature 和 FakeTensor 的 dtype 均遵循 Q，复用通用契约校验 |
-| `csrc/kernels/ascendc/flash_attention/op_host/flash_attention.cpp:83` | InferType 保留合法输入 dtype；OpDef 对齐 FP16/BF16 的 dtype/format 列表 |
-| `csrc/kernels/ascendc/flash_attention/op_kernel/catlass.cpp:19` | 使用 CANN 的 `DTYPE_Q` 实例化 CATLASS 模板，编译真实的两种计算实现 |
+| `csrc/kernels/flash_attention/op_host/flash_attention.cpp:83` | InferType 保留合法输入 dtype；OpDef 对齐 FP16/BF16 的 dtype/format 列表 |
+| `csrc/kernels/flash_attention/op_kernel/catlass.cpp:19` | 使用 CANN 的 `DTYPE_Q` 实例化 CATLASS 模板，编译真实的两种计算实现 |
 | `tests/flash_attention.py:25`、`flashinfer/selftest.py:83` | 同一脚本和 FA selftest 项循环两种 dtype，使用精确量化输入的 CPU FP64 参考 |
 
 这不是 FA 专用的 dtype 转换开关。通用契约 UT 还验证其他 Tensor 参数顺序下的完整混合组合表达，但那只是契约测试，不表示相应设备算子已经支持该组合。新增 dtype 仍须实现设备模板、同步 OpDef/recipe/登记并补数值证据，步骤见 [dtype 扩展指南](../adding-a-custom-operator.md#51-扩展-dtype以-fp16bf16-flashattention-为例)。

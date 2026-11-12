@@ -13,7 +13,7 @@ from flashinfer.attention import (
 )
 from flashinfer.attention.schema import AttentionMode
 from flashinfer.jit import JitCacheIndex, JitLoadedModule
-from flashinfer.jit.attention import (
+from flashinfer.attention.jit import (
     ConfiguredAttentionJitModuleResolver,
     attention_jit_entry_points,
 )
@@ -59,9 +59,7 @@ class AttentionJitModuleLoadingCheckpointTests(unittest.TestCase):
             return BatchAttention(kv_layout="NHD", device="npu:0")
 
     def loaded_case(self, *, symbol_mode="exact", loader=None):
-        plan, binding, record, cache, _, _, artifact_resolver = (
-            direct_artifact_case()
-        )
+        plan, binding, record, cache, _, _, artifact_resolver = direct_artifact_case()
         artifact_binding = artifact_resolver.resolve(binding)
         if loader is None:
             loader = SyntheticModuleLoader(symbol_mode=symbol_mode)
@@ -103,10 +101,7 @@ class AttentionJitModuleLoadingCheckpointTests(unittest.TestCase):
             binding.module_spec.jit_spec.entry_points,
         )
         self.assertEqual(
-            tuple(
-                item.name
-                for item in module_binding.loaded_module.receipt.symbols
-            ),
+            tuple(item.name for item in module_binding.loaded_module.receipt.symbols),
             ("plan", "run"),
         )
         self.assertEqual(len(loader.calls), 1)
@@ -128,9 +123,7 @@ class AttentionJitModuleLoadingCheckpointTests(unittest.TestCase):
 
     def test_cache_record_must_survive_until_load(self):
         _, binding, artifact, _, _, loader, _ = self.loaded_case()
-        resolver = ConfiguredAttentionJitModuleResolver(
-            JitCacheIndex(), loader
-        )
+        resolver = ConfiguredAttentionJitModuleResolver(JitCacheIndex(), loader)
         with self.assertRaisesRegex(SchemaError, "disappeared before load"):
             resolver.resolve(binding, artifact)
         self.assertEqual(loader.calls, [])
@@ -139,9 +132,7 @@ class AttentionJitModuleLoadingCheckpointTests(unittest.TestCase):
         components = build_components()
         environment = runtime_environment()
         base = components["implementation"]
-        jit_resolver = RecordingJitPlanResolver(
-            components["events"], environment
-        )
+        jit_resolver = RecordingJitPlanResolver(components["events"], environment)
         artifact_resolver = RecordingJitArtifactResolver(
             components["events"], jit_resolver
         )
@@ -167,9 +158,7 @@ class AttentionJitModuleLoadingCheckpointTests(unittest.TestCase):
         self.assertNotIn("resolve_callable", components["events"])
 
     def test_module_load_precedes_package_callable_import(self):
-        components, implementation, _, _, module_resolver = (
-            package_jit_implementation()
-        )
+        components, implementation, _, _, module_resolver = package_jit_implementation()
         resolved = implementation.resolve(framework_plan(), "npu:0")
         events = components["events"]
         self.assertIsNotNone(resolved.jit_module_binding)
