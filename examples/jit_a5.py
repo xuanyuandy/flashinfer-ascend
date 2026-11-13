@@ -72,7 +72,7 @@ def norm(root, cache_only, rebuild_check=False):
     from flashinfer.runtime.hardware import _normalize_soc_model
 
     package = Path(flashinfer.__file__).parent
-    locator = "triton/_norm_kernels.py"
+    locator = "triton/norm/gemma_fused_add_rmsnorm/kernels.py"
     arch = torch.npu.get_device_name(0)
     soc = _normalize_soc_model(arch)
     cann_info = Path(os.environ["ASCEND_HOME_PATH"]) / "share/info/runtime/version.info"

@@ -410,7 +410,7 @@ sequenceDiagram
 3. [已缓存 Triton 模块适配:246](../flashinfer/jit/loading.py#L246) 将输入、constexpr、grid、stream 传给已恢复的 Triton 可执行对象；native launcher 再将张量指针、标量和后端参数打包。当前测试的 Host 参数区为 80 字节，placeholder 数为 0。
 4. 安装依赖中的 `triton/backends/ascend/npu_utils.cpp` 的 `triton_async_launch` 将 callback 交给 `OpCommand.Name(...).SetCustomHandler(...).Run()`。TorchNPU 使用 `COMPILE_AND_EXECUTE` 队列类型；该枚举名称**不表示缓存命中后每次调用都重新编译 Triton**。
 5. callback 调用 `cann_launch_kernel → aclrtLaunchKernelWithHostArgs → aclrtLaunchKernelWithHostArgsImpl → rtsLaunchKernelWithHostArgs`，跳过 ACLNN 描述符、executor 及两段式协议。当前 CANN 版本走此新 API，安装 driver 还保留旧版本的 `rtKernelLaunch*` 兼容分支，不能将后者写成本次实测路径。
-6. [_dense_prefill_kernel:8](../flashinfer/triton/_attention_kernels.py#L8) 用 `program_id(0)` 划分 Q 的行，用 `program_id(1)` 选择 head，并按 T 循环读取 K/V，计算 online softmax 后写入 out。设备端需要的局部资源由编译结果安排。
+6. [_dense_prefill_kernel:8](../flashinfer/triton/attention/single_prefill_catlass/kernels.py#L8) 用 `program_id(0)` 划分 Q 的行，用 `program_id(1)` 选择 head，并按 T 循环读取 K/V，计算 online softmax 后写入 out。设备端需要的局部资源由编译结果安排。
 7. [runner:117](../flashinfer/triton/attention/single_prefill_catlass/runner.py) 在 `finally` 中再次同步当前 stream，确保已提交执行完成；因此当前接口返回时 out 已完成。本实现同样是同步 eager、`NOT_CAPTURABLE`。
 
 ### 8.6 Host 入队、NPU 提交与同步的共同部分

@@ -52,7 +52,7 @@ def configuration_registry(soc):
     import flashinfer
 
     package = Path(flashinfer.__file__).parent
-    locator = "triton/_norm_kernels.py"
+    locator = "triton/norm/gemma_fused_add_rmsnorm/kernels.py"
     source = SourceRef("triton", locator, digest((package / locator).read_bytes()))
     registry = KernelRegistry(
         KernelDescriptor(

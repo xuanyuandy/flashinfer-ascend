@@ -53,8 +53,8 @@
 
 ## 动态事实来源
 
-- Attention API 对标状态：`flashinfer/data/attention_api_parity.json`；
-- backend capability：`flashinfer/data/attention_capabilities.json`；
+- Attention API 对标状态：`tools/metadata/attention_api_parity.json`；
+- 外部 provider 能力资料：`tools/metadata/attention_capabilities.json`；实现能力以各后端声明为准；
 - kernel/artifact 声明：对应的版本化 manifest；
 - conformance case 与覆盖统计：版本化 corpus 和 coverage policy；
 - 测试是否通过：CI 或当前测试命令的输出。
@@ -70,3 +70,6 @@
 
 文档生成入口为 `tools/build_dispatcher_slides.py` 和 `tools/inspect_dispatch_data_model.py`。
 文字提取、路由演示与产物检查结果写入 `build/dispatcher-docs/`；历史布局、测试流水和重复预览不进入文档树。
+
+过期的 `TASKS.md`、`tasks/` 和交接状态已从当前文档树清理，历史版本通过 Git 查看。
+带基线提交的 `reports/` 保留为时点证据，不作为当前接口与支持范围的事实源。

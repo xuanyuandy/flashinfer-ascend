@@ -965,7 +965,7 @@ dispatch，也不会自动重跑 host 侧参数推导。本仓的办法是在 **
 
 #### 6.2 责任划分与调用生命周期
 
-责任边界见 [图模式职责划分](tasks/T12-rewrite-design-3-4.md)：
+责任边界见 [图模式扩展契约](npu_graph_extensions.md)：
 
 | 动作 | 调用方（如 vllm-ascend） | 本仓 |
 | --- | --- | --- |

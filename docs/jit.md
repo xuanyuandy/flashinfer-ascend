@@ -167,7 +167,7 @@ module = build_and_load(spec, backend=backend, store=store, cache=cache)
 module.opaque_module[(rows,)](x, residual, weight, hidden, eps)
 ```
 
-可直接运行的真实声明见 `examples/jit_a5.py`，复用 `_norm_kernels.py` 的
+可直接运行的真实声明见 `examples/jit_a5.py`，复用 `triton/norm/gemma_fused_add_rmsnorm/kernels.py` 的
 Gemma fused RMSNorm。没有修改内置 79 条 descriptor、capability 或 dispatch，
 也没有自动给旧 Attention 配方赋予可执行 ABI。
 
