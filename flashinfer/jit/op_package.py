@@ -40,6 +40,7 @@ def package_target(soc):
     key = soc.lower()
     known = {"ascend910b": ("ascend910b", "dav-2201"),
              "ascend910b1": ("ascend910b", "dav-2201"),
+             "ascend910c": ("ascend910_93", "dav-2201"),
              "ascend910_9391": ("ascend910_93", "dav-2201"),
              "ascend310p1": ("ascend310p", "dav-2002")}
     if re.fullmatch(r"ascend950[a-z0-9_]*", key):

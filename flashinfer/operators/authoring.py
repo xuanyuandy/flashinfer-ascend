@@ -183,15 +183,17 @@ def generate(*, source_root=None, kernel_ids=(), check=False):
             implementation_record(root, directory, declaration)
         )
         prepare = getattr(module, "prepare_outputs", None)
+        prepare_key = (provider, None)
         if prepare is None:
             prepare = getattr(declaration, "prepare_outputs", None)
+            prepare_key = (provider, declaration.kernel_id)
         if (
             declaration.kernel_id not in selected
             or prepare is None
-            or provider in prepared_modules
+            or prepare_key in prepared_modules
         ):
             continue
-        prepared_modules.add(provider)
+        prepared_modules.add(prepare_key)
         prepared = prepare(root)
         for item in prepared if isinstance(prepared, (tuple, list)) else (prepared,):
             descriptor = item["descriptor"]

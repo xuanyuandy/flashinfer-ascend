@@ -50,6 +50,9 @@ _SOC_PREFIXES = (
 def _normalize_soc_model(device_name: str) -> str:
     """``"Ascend910B3"`` → ``"Ascend910B"``：只保留系列型号。"""
     name = device_name.replace(" ", "")
+    # TorchNPU reports A3 SKUs as Ascend910_93xx; capabilities use the family.
+    if name.startswith("Ascend910_93"):
+        return "Ascend910C"
     for prefix in _SOC_PREFIXES:
         if name.startswith(prefix):
             return prefix

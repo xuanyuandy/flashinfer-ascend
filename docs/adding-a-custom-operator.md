@@ -80,15 +80,14 @@ flowchart LR
 
 | 路线 | 作者需要接上的登记链路 |
 | --- | --- |
-| CANN | `flashinfer/cann/<domain>.py` 的 descriptors 函数 → `flashinfer/cann/__init__.py:cann_descriptors()` → `_builtin_descriptors()` |
-| Triton | 按域/算子的实现声明 → 随包实现索引 → 统一 KernelRegistry |
-| Ascend C AOT | `flashinfer/data/kernels/` 下的 registry/spec JSON → `flashinfer/ascendc/_catalog.py:_contracts()` 按 kernel_id 关联并校验 → `ascendc_descriptors()` 绑定 runner |
+| CANN | `flashinfer/cann/<domain>/<name>/implementation.py` → 框架发现作者声明 → 统一 KernelRegistry |
+| Triton | `flashinfer/triton/<domain>/<name>/implementation.py` → 框架发现作者声明 → 统一 KernelRegistry |
+| Ascend C AOT | `flashinfer/ascendc/<domain>/<name>/implementation.py` → 静态 Descriptor 与延迟 runner；显式构建生成 recipe 并冻结 spec，安装模式校验包内索引 |
 
-`get_global_registry()` 首次构造 `_builtin_descriptors() + ascendc_descriptors()`，统一登记后冻结。
-CANN 和 Triton 各有一个 `gemm_descriptors()`，它们是不同模块的函数；共同的
-`op="gemm.matmul"` 使记录参与同一次选型，唯一 `kernel_id` 区分具体实现。
-新增领域文件时要显式接入上表汇总函数，仅存在同名函数不会自动发现。
-已有领域只需向已有返回集合增加记录，通常无需改 Registry 核心代码。
+`get_global_registry()` 首次统一收集后端声明并冻结；源码模式发现 Python 声明，
+安装模式使用随包索引。共同的 `op="gemm.matmul"` 使记录参与同一次选型，
+唯一 `kernel_id` 区分具体实现。新增常规实现不编辑 Registry 或按域汇总函数；
+作者维护 `operator.py`、后端 `implementation.py`、runner、计算源码及独立数值样例。
 登记阶段应保持 import-safe：不导入可选设备 provider，不探测编译器或创建设备 Tensor；
 这些动作延迟到选中 runner 后按需执行。
 
@@ -97,6 +96,13 @@ AOT 的 JSON 无法保存 Python callable，因此由绑定层补齐 `runner`；
 **运行时可选择的实现与能力**，冻结 spec 负责**构建与产物身份**，三者不能互相替代。
 改源码/头文件要更新摘要，改 descriptor/recipe 也要重新冻结；命令见 §1.4。
 新增 kernel 如触及既有精确清单，先按 `AGENTS.md` 取得确认，再保持精确集合更新断言。
+
+同一算子接入 A2/A3/A5 时，公共 schema 和 runner 可共享；设备源码在算子内部按
+`op_kernel/arch22`、`arch35` 组织。相同 native ABI 用
+`AscendCImplementation.for_targets(...)` 自动派生各目标的独立 Descriptor/recipe/spec。
+目标映射、文件树和适配边界见
+[同一算子的多目标交付](authoring-and-resources.md#同一-ascend-c-算子的-a2a3a5-交付)。
+每个目标分别编译并验收；无对应硬件的运行项必须标记未验证。
 
 可以先检查记录是否进入同一个 op 的目录；`callable` 仅证明已绑定，不能证明产物存在或数值正确：
 

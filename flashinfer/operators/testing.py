@@ -59,19 +59,29 @@ def selftest_case(torch, name):
     return "author CPU reference matched; max_abs=" + repr(observations["0"]["max_abs"])
 
 
+def target_aot_implementations(name):
+    """Acceptance candidates on this device; callers still require a unique choice."""
+    from flashinfer.runtime import current_hardware
+    from .implementation import implementations
+
+    operator = definition(name)
+    soc = current_hardware().soc_model
+    return tuple(
+        d for d in implementations(backend="ascendc")
+        if d.op == operator.op and d.bind().target_soc == soc
+    )
+
+
 def run(name, mode="matrix"):
     import torch
     import torch_npu
     import flashinfer
     from flashinfer.runtime import current_hardware
 
-    operator = definition(name)
     assert torch.npu.is_available() and torch.npu.device_count() > 0, "missing NPU/runtime is a failure"
     index = int(os.environ.get("FLASHINFER_TEST_NPU_DEVICE", "0"))
     torch.npu.set_device(index)
-    from .implementation import implementations
-    choices = implementations(backend="ascendc")
-    choices = [d for d in choices if d.op == operator.op]
+    choices = target_aot_implementations(name)
     assert len(choices) == 1, "acceptance must identify one explicit AOT implementation"
     kernel_id = choices[0].kernel_id
     from flashinfer.ascendc import load_contract

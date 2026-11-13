@@ -11,7 +11,7 @@
 
 ### 1.1 项目定位
 
-本仓是面向昇腾 NPU 的推理算子库，对外接口对标上游 FlashInfer：
+本仓是面向昇腾 NPU 的推理算子适配框架，对外接口对标上游 FlashInfer：
 
 本仓的工程重心是**“把一个自研算子从源码送到用户调用”这条交付链路**：
 自定义算子包、AOT/JIT、wheel 打包发布与可被调用方捕获入图共同构成基础设施。
@@ -29,9 +29,10 @@
   （SoC 型号、AI Core 数量，见 §8.1）构成 hash key 查询 kernel 缓存：
   命中则直接拉起该 kernel；未命中则现场编译、写入缓存后再拉起。
 
-上述 AOT/JIT 分工是目标态；当前绝大多数公共接口仍走 CANN aclnn，生产自研仅
-`matmul_bias_silu`、`flash_attention` 两条，自动 AOT 发现仅对已登记并绑定 runner 的
-Ascend C 算子生效，见 [AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md) 与 [接入交付](reports/custom-operator-onboarding.md)。
+上述 AOT/JIT 分工是目标态；当前绝大多数公共接口仍走 CANN aclnn。生产 Ascend C AOT
+登记包含 Matmul、MatmulBiasSilu、FlashAttention 和 GroupedMatmulSwigluQuant 四条；
+登记不代表所有产品均已验证。自动发现只对已绑定 runner 的实现生效，支持边界见
+[作者声明与交付资源](authoring-and-resources.md) 与附录 A。
 
 ### 1.2 设计目标
 
@@ -289,6 +290,9 @@ Ascend C、CANN 原生适配与 Triton 是同级后端，均按
 作者接口采用 `Support`、`DimRange`、各后端 `Implementation` 与 `NativeBinding/BuildConfig`；
 全部既有实现已迁移，稳定 kernel ID、能力及 ABI 保持原值。接口与资源说明见
 [作者声明与交付资源](authoring-and-resources.md)。
+同一 Ascend C 算子的 A2/A3/A5 复用公共接口与 ABI 一致的 runner；框架按目标派生独立
+Descriptor、recipe、冻结 spec 和 AOT 包，设备代码在算子内部按 `arch22/arch35` 组织。
+格式及目标映射见 [多目标算子交付](authoring-and-resources.md#同一-ascend-c-算子的-a2a3a5-交付)。
 
 通用 `jit/` 基础设施负责 spec、编译、缓存、产物校验和加载，接收显式构建输入与特化身份；
 算子的 heads、mask、KV layout 等语义如何映射成这些输入，由领域适配器或后端算子声明决定。
@@ -1209,7 +1213,7 @@ wrapper.run(...)    # O(1)：校验 + 已缓存 kernel handle 的异步 launch
 
 ### 7.4 已支持接口面与统计口径
 
-当前以 [逐 op 清单](generated/operator-coverage/local-operators.md) 和 [上游接口对比](operator-coverage.md) 为准：**84 条 descriptor / 46 个 op**，其中 **44 个 op 至少绑定一个 NPU runner、2 个仅 reference**，分属 9 个已有 NPU 路线的能力域。一个 op 可有多个 backend descriptor；[旧接口面报告](reports/api-surface-by-category.md) 保留历史快照，不能用其混合计数代替当前登记表。REFERENCE 不计作 NPU 加速或生产自研。
+当前以 [逐 op 清单](generated/operator-coverage/local-operators.md) 和 [上游接口对比](operator-coverage.md) 为准：**85 条 descriptor / 47 个 op**，其中 **45 个 op 至少绑定一个 NPU runner、2 个仅 reference**，分属 9 个已有 NPU 路线的能力域。一个 op 可有多个 backend descriptor；[旧接口面报告](reports/api-surface-by-category.md) 保留历史快照，不能用其混合计数代替当前登记表。REFERENCE 不计作 NPU 加速或生产自研。
 已有入口也不等于该能力域已经完整对齐，下面进一步列出同域内部的具名缺口。
 
 ### 7.5 已支持能力域内的接口差异

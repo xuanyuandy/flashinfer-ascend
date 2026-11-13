@@ -7,7 +7,7 @@ import shutil
 import subprocess
 import sys
 
-from .catalog import definition
+from .testing import target_aot_implementations
 
 
 def prepare_release(name, directory):
@@ -19,9 +19,7 @@ def prepare_release(name, directory):
 
     assert torch.npu.is_available(), "missing NPU/runtime dependency is a failure"
     torch.npu.set_device(int(os.environ.get("FLASHINFER_TEST_NPU_DEVICE", "0")))
-    operator = definition(name)
-    from .implementation import implementations
-    choices = [d for d in implementations(backend="ascendc") if d.op == operator.op]
+    choices = target_aot_implementations(name)
     assert len(choices) == 1, "acceptance requires an explicit AOT implementation"
     kernel_id = choices[0].kernel_id
     from flashinfer.ascendc import load_contract
@@ -55,8 +53,7 @@ def execute(name, mode, directory, release, **overrides):
 
 def damaged_release(name, directory, release):
     from flashinfer.ascendc import load_contract
-    from .implementation import implementations
-    choices = [d for d in implementations(backend="ascendc") if d.op == definition(name).op]
+    choices = target_aot_implementations(name)
     assert len(choices) == 1
     spec = load_contract(choices[0].kernel_id)[2]
     source = Path(release["FLASHINFER_AOT_PATHS"]) / spec.fingerprint

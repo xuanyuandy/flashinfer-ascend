@@ -79,6 +79,73 @@ ShapeRange。底层 `CapabilityCase`、量化布局、融合顺序和图证据�
 Ascend C 的缺省 ID 还带唯一目标 SoC。源码变化由摘要和 spec 指纹区分，不自动更名。
 作者不用填写 digest；`BuildConfig.dependencies` 中外部依赖的版本仍需明确钉住。
 
+## 同一 Ascend C 算子的 A2/A3/A5 交付
+
+公共层只暴露一个 `flashinfer.<domain>.<name>(..., backend="ascendc")`，逻辑 `op`、
+Torch schema 和输出语义保持一份。产品差异落在设备实现、host tiling 和构建目标中，
+沿用 vLLM-Ascend 的算子内部目录约定：
+
+```text
+flashinfer/operators/<domain>/<name>/operator.py  # 公共接口与语义
+flashinfer/ascendc/<domain>/<name>/
+├── implementation.py                           # 一次声明，展开各目标 Descriptor
+└── runner.py                                   # 共享 Tensor/属性到 ACLNN 的适配
+csrc/kernels/<domain>/<name>/
+├── op_kernel/
+│   ├── <name>.cpp                              # 根据 __CCE_AICORE__ 选择设备实现
+│   ├── arch22/                                 # A2/A3 实现
+│   └── arch35/                                 # A5 实现
+├── op_host/                                    # 共享 OpDef；tiling 按平台能力处理差异
+├── include/                                    # 共享 host/device 参数布局
+└── CMakeLists.txt                              # 可选的编译规则扩展
+```
+
+| 产品 | `Support.soc` 使用的运行时系列名 | CANN compute unit | 编译架构 / 设备目录 |
+| --- | --- | --- | --- |
+| A2 | `Ascend910B` | `ascend910b` | `dav-2201` / `arch22` |
+| A3 | `Ascend910C` | `ascend910_93` | `dav-2201` / `arch22` |
+| A5 | `Ascend950` | `ascend950` | `dav-3510` / `arch35` |
+
+硬件探测将 TorchNPU 的 A3 名称 `Ascend910_93xx` 归一化为 `Ascend910C`；作者使用
+表中的系列名。该映射不扩大既有实现的 capability。
+
+这些是目标映射，不是任意源码均支持三个产品的承诺。设备入口可参考
+`vllm-ascend: csrc/attention/sparse_flash_attention/op_kernel/sparse_flash_attention.cpp`：
+`__CCE_AICORE__ == 310` 包含 `arch35`，其余已声明的 A2/A3 目标包含 `arch22`。
+OpDef 必须登记相应产品，host tiling 仍要处理不同平台的核数、UB 等资源。
+
+相同能力范围、native ABI 和 runner 的多目标实现使用下列形式；`BUILD`、`BINDING`
+是该算子已有的 `BuildConfig`、`NativeBinding`，无需按目标复制：
+
+```python
+IMPLEMENTATIONS = AscendCImplementation.for_targets(
+    operator=OPERATOR,
+    support=Support(soc=("Ascend910B", "Ascend910C", "Ascend950"),
+                    dtype="float32", layout="ND"),
+    build=BUILD,
+    binding=BINDING,
+    runner_factory=make_runner,
+)
+```
+
+框架为每个目标派生独立的 kernel ID、Descriptor、recipe 文件、冻结 spec 与 AOT 包，
+例如 recipe 文件为 `<name>__Ascend910C.json`。逻辑 `op` 和 ACLNN ABI 仍相同；
+`arch22/arch35` 源文件都进入源码闭包，修改任一分支必须重新生成并冻结。
+运行时按硬件系列、能力与目标精确匹配，只加载选中的产物；显式指定其他 SoC 的 ID 会拒绝。
+构建多个目标时用重复的 `--kernel-id` 选择各变体，不能拿一个目标的包替代另一目标。
+
+runner 不按 `arch22/arch35` 分支。它接收已匹配的模块、recipe 和 spec，处理公共参数、
+workspace 与当前 stream，再调用同名 ACLNN 接口。只有 Tensor/属性 ABI 或语义确实不同，
+才需要不同 binding/适配工厂；此时分别声明实现，并复用共同的参数处理代码。
+目标特有编译选项可在算子 CMake 中按 `ASCEND_COMPUTE_UNIT` 配置；不同能力范围则分别
+声明实现，不能靠扩大 `Support` 掩盖源码限制。
+
+私有验收 `tests/test_multiarch_authoring.py` 使用同一个逻辑定义和真实原生 runner，
+编译三个目标，并在当前可见硬件上验证 functional/out 数值与 AOT 禁编译执行。
+它不增加生产登记项；通过一个设备的运行测试不代表其他设备已验证。
+通用算子验收也先过滤当前目标，再要求恰好一个 AOT 实现；不会因同 op 登记多个 SoC
+而误判为不明确，也不会在同一目标存在多个实现时任意选取一个。
+
 ## 源码、构建与安装的资源边界
 
 源码模式从 Python 声明收集公共定义和实现；注册只读取作者源码，不读取生成 JSON，

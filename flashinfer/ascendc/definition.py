@@ -76,6 +76,44 @@ class NativeBinding:
 class AscendCImplementation(ImplementationDefinition):
     """Author declaration that derives the native recipe and lazy execution binding."""
 
+    @classmethod
+    def for_targets(cls, *, support, **configuration):
+        """Expand one ABI/runner declaration into immutable per-SoC build units.
+
+        Use canonical runtime models (Ascend910B/Ascend910C/Ascend950).
+        The source entry selects arch22/arch35 just as in vLLM-Ascend; the
+        Python runner and logical operator are shared by every variant.
+        """
+        if not isinstance(support, Support):
+            raise SchemaError("multi-target Ascend C requires Support")
+        targets = support.rules.get("soc_models", ())
+        if not targets or len(set(targets)) != len(targets):
+            raise SchemaError("multi-target Ascend C requires unique target SoCs")
+        if configuration.get("kernel_id") is not None:
+            raise SchemaError("multi-target IDs are derived from name and target SoC")
+        from flashinfer.jit.op_package import package_target
+
+        for target in targets:
+            if target not in {"Ascend910B", "Ascend910C", "Ascend950"}:
+                raise SchemaError(
+                    "multi-target declarations require canonical A2/A3/A5 SoC models"
+                )
+            package_target(target)
+        variants = []
+        for target in targets:
+            rules = dict(support.rules, soc_models=(target,))
+            variant = cls(
+                support=Support(
+                    dimensions=support.dimensions,
+                    contiguous=support.contiguous,
+                    **rules,
+                ),
+                **configuration,
+            )
+            object.__setattr__(variant, "_recipe_target_suffix", target)
+            variants.append(variant)
+        return tuple(variants)
+
     def __init__(
         self,
         *,
@@ -90,7 +128,7 @@ class AscendCImplementation(ImplementationDefinition):
         workspace_bound=0,
         allow_jit_fallback=False,
         admission=None,
-        **metadata
+        **metadata,
     ):
         from flashinfer.jit.recipe import ShapeConstraint
 
@@ -158,4 +196,12 @@ class AscendCImplementation(ImplementationDefinition):
             / self.operator.domain
             / self.operator.name
         )
-        return prepare_native(root, directory, self.native)
+        prepared = prepare_native(root, directory, self.native)
+        suffix = getattr(self, "_recipe_target_suffix", None)
+        if suffix is not None:
+            # Keep a shared recipe_id, with distinct generated files per target.
+            prepared["outputs"] = {
+                path.with_name(path.stem + "__" + suffix + path.suffix): value
+                for path, value in prepared["outputs"].items()
+            }
+        return prepared
