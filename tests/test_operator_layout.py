@@ -18,10 +18,26 @@ from flashinfer.runtime.runner import run_selected
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_existing_85_capabilities_survive_the_layout_migration_exactly():
+def test_existing_85_and_new_arch22_sparse_capabilities_match_exactly():
     baseline = json.loads((ROOT / 'tests/fixtures/operator_layout/capabilities.json').read_text())
     actual = {d.kernel_id: d.capability.to_dict() for d in get_global_registry().descriptors()}
-    assert actual == baseline
+    # Keep the original 85 declarations frozen. The new entry is independently
+    # reviewed here, rather than copied from implementation discovery.
+    expected = dict(baseline)
+    expected["ascendc/attention/sparse_flash_attention/native/Ascend910B"] = CapabilitySpec(
+        op="attention.sparse_flash_attention",
+        soc_models=("Ascend910B",),
+        dtypes=("float16", "bfloat16", "int32", "float32", "none"),
+        cases=tuple(CapabilityCase(
+            name="arch22_mla_lse" if lse else "arch22_mla_no_lse",
+            compute_dtypes=("float16", "bfloat16"),
+            accumulator_dtypes=("float32",), attention_variants=("mla",),
+            kv_cache_types=("dense", "ragged", "paged"), causal_values=(False, True),
+            sparse_formats=("block_sparse",),
+            auxiliary_outputs=("softmax_max", "softmax_sum") if lse else (),
+        ) for lse in (False, True)),
+    ).to_dict()
+    assert actual == expected
 
 
 def test_all_existing_implementations_have_one_authority_and_a_bound_runner():
@@ -29,8 +45,8 @@ def test_all_existing_implementations_have_one_authority_and_a_bound_runner():
     production = [d for _, _, d in declarations if d.scope == 'global']
     registry = get_global_registry()
     assert {d.kernel_id for d in production} == {d.kernel_id for d in registry.descriptors()}
-    assert len(production) == 85
-    assert len(discover(ROOT)) == 47
+    assert len(production) == 86
+    assert len(discover(ROOT)) == 48
     assert len([d for _, _, d in declarations if d.scope == 'experimental']) == 1
     for directory, _, declaration in declarations:
         assert directory.parent.parent.name == declaration.backend.value

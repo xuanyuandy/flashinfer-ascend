@@ -706,6 +706,13 @@ def validate_attention_kernel_bindings(
     for descriptor in descriptor_values:
         is_attention = descriptor.op.startswith("attention.")
         binding = descriptor.capability_binding
+        if binding is not None and binding.domain == "operator":
+            # Direct schema/ACLNN operators carry their own derived binding.
+            # They do not implement the AttentionPlan POD launch protocol.
+            from flashinfer.operators.capability import validate_direct_operator_binding
+
+            validate_direct_operator_binding(descriptor)
+            continue
         if is_attention and descriptor.backend != Backend.REFERENCE and binding is None:
             raise SchemaError(
                 "Attention kernel %s requires a capability binding"

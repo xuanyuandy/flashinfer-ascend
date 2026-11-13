@@ -10,6 +10,20 @@ from .catalog import definition
 from .definition import Invocation
 
 
+def allocate_output(specification):
+    """Allocate a fresh public output with the declared row-major ND storage."""
+    import torch
+    output = torch.empty(specification.shape, dtype=getattr(torch, specification.dtype),
+                         device=specification.device)
+    if output.device.type == torch._C._get_privateuse1_backend_name():
+        import torch_npu
+        # TorchNPU labels four-dimensional empty/empty_like tensors NCHW,
+        # including empty_with_format(..., acl_format=2) on this runtime.
+        # Only fresh framework outputs are converted; supplied out stays intact.
+        output = torch_npu.npu_format_cast(output, 2)
+    return output
+
+
 def metadata(name, arguments, *, check_layouts=False):
     operator = definition(name)
     if operator.infer is None:
@@ -81,7 +95,7 @@ def execute(name, arguments):
         operator.validate_values(arguments)
     outputs = tensors[-len(invocation.outputs):]
     if arguments.get("out") is None:
-        outputs = tuple(torch.empty(s.shape, dtype=getattr(torch, s.dtype), device=s.device) for s in invocation.outputs)
+        outputs = tuple(allocate_output(s) for s in invocation.outputs)
         tensors = invocation.inputs + outputs
     run_selected(decision.kernel_id, *tensors, **invocation.attributes)
     return outputs[0] if len(outputs) == 1 else outputs

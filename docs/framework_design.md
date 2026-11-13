@@ -425,7 +425,7 @@ AOT 与 JIT 共用产物契约；流水线中的 wheel 是发布出口，运行�
    之间的接线；新增算子仍须各自登记、冻结 spec 并绑定 runner，见 §5.5、§3。
 
 8. **可选的调用方捕获入图**让固定资源与更新契约下的算子参与 capture/replay。
-   当前公共 single-decode wrapper 仅有单一配置的真实证据，覆盖 **1/85**、
+   当前公共 single-decode wrapper 仅有单一配置的真实证据，覆盖 **1/86**、
    `CAPTURE_SAFE` 为 **0**；两条生产自研与 batch 入图仍未完成，见 §6。
 
 ## 3. 自定义 kernel 接入
@@ -1148,7 +1148,7 @@ K/V `(1024,2,64)`、heads=8/2、head_dim=64、scale=0.125、无 mask、非 causa
 误差均为 **0**；容量超限、冻结身份变更、漏调参数更新、未 plan 直接捕获均被拒绝。
 证据见 [图模式交付](reports/graph-mode-delivery.md)、[示例](../examples/single_decode_graph.py)
 与 [真机测试](../tests/test_single_decode_graph_real.py)。报告计数是该 wrapper 交付时点的快照；
-当前覆盖仍为 **1/85**、`CAPTURE_SAFE` 为 **0**，两条生产自研算子均不可入图，
+当前覆盖仍为 **1/86**、`CAPTURE_SAFE` 为 **0**，两条生产自研算子均不可入图，
 batch 入图与下游模型接入也未因此完成。
 目标是在调用方持有图的边界内逐条扩展已验证路径；新增生产算子和 batch 路径须先
 完成各自的静态资源规划与真实重放验收，再公开对应的支持范围。
@@ -1213,7 +1213,7 @@ wrapper.run(...)    # O(1)：校验 + 已缓存 kernel handle 的异步 launch
 
 ### 7.4 已支持接口面与统计口径
 
-当前以 [逐 op 清单](generated/operator-coverage/local-operators.md) 和 [上游接口对比](operator-coverage.md) 为准：**85 条 descriptor / 47 个 op**，其中 **45 个 op 至少绑定一个 NPU runner、2 个仅 reference**，分属 9 个已有 NPU 路线的能力域。一个 op 可有多个 backend descriptor；[旧接口面报告](reports/api-surface-by-category.md) 保留历史快照，不能用其混合计数代替当前登记表。REFERENCE 不计作 NPU 加速或生产自研。
+当前以 [逐 op 清单](generated/operator-coverage/local-operators.md) 和 [上游接口对比](operator-coverage.md) 为准：**86 条 descriptor / 48 个 op**，其中 **46 个 op 至少绑定一个 NPU runner、2 个仅 reference**，分属 9 个已有 NPU 路线的能力域。一个 op 可有多个 backend descriptor；[旧接口面报告](reports/api-surface-by-category.md) 保留历史快照，不能用其混合计数代替当前登记表。REFERENCE 不计作 NPU 加速或生产自研。
 已有入口也不等于该能力域已经完整对齐，下面进一步列出同域内部的具名缺口。
 
 ### 7.5 已支持能力域内的接口差异
@@ -1863,8 +1863,8 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 ## 附录 A · 实现进展
 
 本附录把目标设计与已交付范围对照，验收报告保留各自验收时点；历史计数不作为
-当前总量。当前口径采用本次已核实基线：**85 条 descriptor / 47 个 op**，其中 45 个绑定 NPU runner、2 个仅 reference，backend 为
-**ascendc 4 / CANN 41 / REFERENCE 38 / TRITON 2**；9 个能力域已有 NPU 路线，其余上游接口族的逐项范围见 [算子与接口清单](operator-coverage.md)。
+当前总量。当前口径采用本次已核实基线：**86 条 descriptor / 48 个 op**，其中 46 个绑定 NPU runner、2 个仅 reference，backend 为
+**ascendc 5 / CANN 41 / REFERENCE 38 / TRITON 2**；9 个能力域已有 NPU 路线，其余上游接口族的逐项范围见 [算子与接口清单](operator-coverage.md)。
 “有 op”不表示该域逐参数、逐执行模式都已验证，REFERENCE 条目也不计作生产自研。本次目录迁移的设备实测与未通过项见 [迁移验收记录](reports/operator-layout-migration.md)。
 
 ### A.1 核心交付机制
@@ -1874,7 +1874,7 @@ flashinfer clear-cache --tuning             # 仅清本地 tuning cache
 | JIT | 完整 spec 身份、真实编译/加载、per-spec flock、不可变 generation、原子发布与失败诊断已接通。两条生产算子在限定 envelope 内有 missing → 冷 JIT → 公共 API 数值执行证据，产物复用统一 store/loader。缓存淘汰与旧 generation 自动清理、统一治理仍未完成。 | [JIT 并发与发布验收](reports/T18B-report.md)、[JIT 测试](../tests/test_jit_build.py)、[生产算子接入交付](reports/custom-operator-onboarding.md)、§4 |
 | AOT | 已验证产物可导出为 op-package，运行期发现、硬件/spec 匹配、延迟 runner 绑定与公共调用已接通，四条生产登记复用该链路。corrupt、load error 与 identity 冲突拒绝且不回落，但全部 incompatible 仍可能汇总为 missing 后在 enabled 下转 JIT。CANN runtime 版本校验、多 package identity 与安装真实 wheel 后的生产矩阵仍有缺口。 | [发现说明](aot-runtime-discovery.md)、[AOT 运行期发现验收](p0-2-aot-runtime-validation-2026-10-25.md)、[生产登记](../flashinfer/ascendc/__init__.py)、§5.5 |
 | wheel 打包发布 | 普通 `setup.py` 构建默认编译全部已登记生产 AOT，也可显式选择 CONFIG/PREBUILT 或仅源码模式；按 spec 指纹放入主 wheel 的 `flashinfer/data/op_packages/`。两条 Ascend950 生产算子已有携带 AOT 的 wheel 隔离安装、禁编译数值自检与源码布局验收；这不替代完整目标矩阵。是否拆分发包仍待按矩阵决定，当前没有独立 provider / cubin 分包。 | [构建入口](../setup.py)、[导出实现](../flashinfer/aot/build.py)、[wheel 与源码布局验收](reports/kernel-layout-2026-10-27.md)、§5.6 |
-| 入图 | 固定资源、最大 workspace、plan 冻结与重放前参数更新契约已实现，公共 single-decode wrapper 在单一配置上完成调用方捕获与 8 次更新重放，输出/LSE 误差均为 0。当前仅 **1/85** descriptor 可入图，`CAPTURE_SAFE` 为 **0**。两条生产自研、batch 入图及下游完整模型接入仍未完成。 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py)、§6 |
+| 入图 | 固定资源、最大 workspace、plan 冻结与重放前参数更新契约已实现，公共 single-decode wrapper 在单一配置上完成调用方捕获与 8 次更新重放，输出/LSE 误差均为 0。当前仅 **1/86** descriptor 可入图，`CAPTURE_SAFE` 为 **0**。两条生产自研、batch 入图及下游完整模型接入仍未完成。 | [aclgraph 捕获重放验收](reports/T11B-report.md)、[图模式交付](reports/graph-mode-delivery.md)、[真机测试](../tests/test_single_decode_graph_real.py)、§6 |
 | 自定义算子接入 | 公开 recipe 统一为 v2，旧格式仅在内部兼容边界校验，变参 Tensor ABI、动态 workspace、shape 驱动 host tiling 与混合核同步契约、native/catlass 范本已有实现。两条生产 eager 路径与 33 项清单给出源码、冻结 spec、编译/导出、runner 和公共调用的有限闭环。任意 scalar/attribute ABI、数据内容驱动 tiling、异步生命周期及入图不能由此外推。 | [操作指南](adding-a-custom-operator.md)、[33 项清单](reports/custom-operator-onboarding.md)、[完整档契约说明](reports/ascendc-contract-v2.md)、§3.5 |
 | Torch / ACLNN | 完整 wheel 提供 TorchNPU OpCommand host 桥；所有生产 Ascend C 调用首次准备原生绑定并复用，按框架 queue/stream 下发，保持同步 eager。生产 AOT 首次激活可信 vendor 集合以支持同进程多算子；Python 公共函数统一转发至 Torch schema。任意参数 ABI、异步返回和生产入图未验证。 | [接入说明](aclnn-torch-adapter.md)、[架构重构验收](reports/architecture-refactor-2026-10-28.md) |
 

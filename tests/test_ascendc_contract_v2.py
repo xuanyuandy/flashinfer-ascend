@@ -16,6 +16,7 @@ import pytest
 from flashinfer.jit.core import JitSpec, _canonical_hash
 from flashinfer.jit.op_package import OP_PACKAGE_ADAPTER_HASH, OpPackageModule, verify_op_package
 from flashinfer.jit.recipe import BuildRecipe, ShapeConstraint, TensorParameter
+from flashinfer.jit.aclnn_contract import AttributeParameter
 from flashinfer.runtime import SchemaError
 
 from tests.test_ascendc_op_package import elf_fixture, write_fixture
@@ -262,6 +263,82 @@ def mixed_package(v2, tmp_path):
 def test_mixed_package_verifies_both_core_entries_and_declared_abi(mixed_package):
     directory, spec, recipe, _, _ = mixed_package
     assert verify_op_package(directory, spec)[1] == recipe
+
+
+@pytest.fixture
+def string_attribute_package(mixed_package):
+    directory, spec, recipe, paths, metadata = mixed_package
+    recipe = replace(recipe, attributes=(AttributeParameter("layout", "string", "BSND"),
+                                         AttributeParameter("enabled", "bool", False)))
+    spec = replace(spec, input_fingerprints=tuple(
+        (key, recipe.fingerprint if key == "build_recipe" else value)
+        for key, value in spec.input_fingerprints))
+    manifest_path = directory / spec.output_path
+    manifest = json.loads(manifest_path.read_text())
+    manifest.update(recipe=recipe.to_dict(), spec_fingerprint=spec.fingerprint)
+    manifest_path.write_text(json.dumps(manifest))
+    for key in ("inputs", "outputs"):
+        for parameter in metadata["supportInfo"][key]:
+            parameter.update(format="ND", paramType="required")
+    metadata["supportInfo"]["attrs"] = [dict(name="layout", dtype="str"), dict(name="enabled", dtype="bool")]
+    metadata_path = directory / paths["metadata"]
+    metadata_path.write_text(json.dumps(metadata))
+    return directory, spec, recipe, metadata_path, metadata
+
+
+def test_string_attributes_match_the_exact_cann_contract(string_attribute_package):
+    directory, spec, recipe, _, _ = string_attribute_package
+    assert verify_op_package(directory, spec)[1] == recipe
+
+
+@pytest.mark.parametrize("mutation", ["type", "name", "order"])
+def test_string_attributes_keep_exact_type_name_and_order_checks(string_attribute_package, mutation):
+    directory, spec, _, path, metadata = string_attribute_package
+    attrs = metadata["supportInfo"]["attrs"]
+    if mutation == "order":
+        attrs.reverse()
+    else:
+        attrs[0]["dtype" if mutation == "type" else "name"] = "int" if mutation == "type" else "wrong"
+    path.write_text(json.dumps(metadata))
+    with pytest.raises(SchemaError, match="attribute order/types"):
+        verify_op_package(directory, spec)
+
+
+def test_ctypes_workspace_call_encodes_string_attributes_as_utf8(v2):
+    recipe = replace(v2, attributes=(AttributeParameter("layout", "string", "BSND"),))
+    calls = []
+    def workspace(*args):
+        calls.append(args[:-2])
+        C.cast(args[-2], C.POINTER(C.c_uint64))[0] = 0
+        C.cast(args[-1], C.POINTER(C.c_void_p))[0] = 1234
+        return 0
+    api = SimpleNamespace(**{recipe.host_entry + "GetWorkspaceSize": workspace})
+    module = OpPackageModule(recipe, Path("/unloaded-string-package"), api)
+    size, executor = module.get_workspace_size(1, 2, 3, 4)
+    assert (size, executor.value) == (0, 1234)
+    assert calls[-1] == (1, 2, 3, b"BSND", 4)
+    module.get_workspace_size(1, 2, 3, 4, layout="序列")
+    assert calls[-1] == (1, 2, 3, "序列".encode("utf-8"), 4)
+    with pytest.raises(SchemaError, match="without NUL"):
+        module.get_workspace_size(1, 2, 3, 4, layout="BSND\0TND")
+
+
+def test_absent_optional_tensor_resolves_only_a_coherent_declared_dtype(v2):
+    recipe = replace(v2,
+        tensor_parameters=tuple(replace(p, optional=True) if p.name == "bias" else p
+                                for p in v2.tensor_parameters),
+        dtype_signatures=(("bfloat16",) * 4, ("float16",) * 4))
+    data = metadata()
+    data["shapes"]["bias"] = None
+    data["dtypes"] = dict(a="float16", b="float16", bias=None, out="float16")
+    assert recipe.validate_tensor_metadata(**data) == dict(M=16, K=64, N=32)
+    data["dtypes"]["b"] = "bfloat16"
+    with pytest.raises(SchemaError, match="not a declared combination"):
+        recipe.validate_tensor_metadata(**data)
+    data["dtypes"]["b"] = "float16"
+    data["dtypes"]["bias"] = "float16"
+    with pytest.raises(SchemaError, match="absent dtype"):
+        recipe.validate_tensor_metadata(**data)
 
 
 @pytest.fixture

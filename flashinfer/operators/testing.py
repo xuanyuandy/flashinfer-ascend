@@ -9,7 +9,8 @@ import sys
 from unittest.mock import patch
 
 from .catalog import cases_module, definition
-from .runtime import public_function
+from .definition import OutputSpec
+from .runtime import allocate_output, public_function
 
 
 def _outputs(result, count):
@@ -34,7 +35,8 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False):
         outputs = _outputs(call(*args, **options), len(operator.output_names))
         if hasattr(cases, "verify_effect"):
             cases.verify_effect(torch, call, args, options, outputs)
-        supplied = tuple(torch.empty_like(t) for t in outputs)
+        supplied = tuple(allocate_output(OutputSpec(tuple(t.shape), str(t.dtype).removeprefix("torch."), t.device))
+                         for t in outputs)
         output_pointers = tuple(t.data_ptr() for t in supplied)
         returned = _outputs(call(*args, out=supplied[0] if len(supplied) == 1 else supplied, **options), len(supplied))
         assert all(a is b for a, b in zip(returned, supplied)), "out identity changed"
@@ -43,7 +45,9 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False):
         expected = _outputs(expected, len(outputs))
         errors = []
         for actual, reference, (atol, rtol) in zip(outputs, expected, cases.TOLERANCES):
-            errors.append(float((actual.cpu().double() - reference.double()).abs().max()))
+            assert actual.shape == reference.shape, "reference output shape differs"
+            errors.append(float((actual.cpu().double() - reference.double()).abs().max())
+                          if actual.numel() else 0.0)
         print(json.dumps(dict(case=configuration, max_abs=errors), sort_keys=True), flush=True)
         for output_tuple in (outputs, returned):
             for actual, reference, (atol, rtol) in zip(output_tuple, expected, cases.TOLERANCES):

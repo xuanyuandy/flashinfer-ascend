@@ -169,7 +169,7 @@ def verify_op_package(directory, spec):
                             or (packaged.get("paramType") == "optional") != declared.optional):
                         raise SchemaError("extended package Tensor format/optionality differs from recipe")
                 attributes = support.get("attrs", ())
-                expected = [(a.name, {"bool": "bool", "int64": "int", "float64": "float"}[a.dtype])
+                expected = [(a.name, {"bool": "bool", "int64": "int", "float64": "float", "string": "str"}[a.dtype])
                             for a in recipe.attributes]
                 if [(a.get("name"), a.get("dtype")) for a in attributes] != expected:
                     raise SchemaError("extended package attribute order/types differ from recipe")
@@ -217,6 +217,8 @@ class OpPackageModule:
         names = self.recipe.tensor_parameter_names
         attributes = {a.name: named_tensors.pop(a.name) for a in self.recipe.attributes if a.name in named_tensors}
         scalar_values = self.recipe.validate_attributes(attributes)
+        scalar_values = tuple(value.encode("utf-8") if parameter.dtype == "string" else value
+                              for parameter, value in zip(self.recipe.attributes, scalar_values))
         if named_tensors:
             if tensors or set(named_tensors) != set(names):
                 raise SchemaError("ACLNN tensor arguments must match recipe order: " + ", ".join(names))
@@ -309,7 +311,7 @@ def load_op_packages(directories, *, target_soc):
                 api = C.CDLL(str(_file(directory, data["api_library"])), mode=C.RTLD_LOCAL)
                 workspace = getattr(api, recipe.host_entry + "GetWorkspaceSize")
                 inputs = sum(p.role == "input" for p in recipe.tensor_parameters) if recipe.schema_version == 2 else len(recipe.tensor_parameter_names)
-                scalar_types = [{"bool": C.c_bool, "int64": C.c_int64, "float64": C.c_double}[a.dtype]
+                scalar_types = [{"bool": C.c_bool, "int64": C.c_int64, "float64": C.c_double, "string": C.c_char_p}[a.dtype]
                                 for a in recipe.attributes]
                 workspace.argtypes = ([C.c_void_p] * inputs + scalar_types
                                       + [C.c_void_p] * (len(recipe.tensor_parameter_names) - inputs)

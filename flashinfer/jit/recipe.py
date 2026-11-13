@@ -390,6 +390,16 @@ class _Recipe:
                 if dtypes[p.name] is not None:
                     raise SchemaError("absent Tensor must have absent dtype metadata")
                 dtype_values[p.name] = p.dtype
+        if absent:
+            # An absent optional Tensor has no dtype. Resolve its placeholder
+            # from one coherent declared signature, constrained by EVERY
+            # present Tensor; do not invent an extra executable combination.
+            for candidate in self.tensor_dtype_signatures:
+                if all(p.name in absent or dtypes[p.name] == dtype
+                       for p, dtype in zip(self.tensor_parameters, candidate)):
+                    dtype_values.update((p.name, dtype) for p, dtype in zip(self.tensor_parameters, candidate)
+                                        if p.name in absent)
+                    break
         self.validate_tensor_dtypes(dtype_values)
         dimensions = {}
         for parameter in self.tensor_parameters:

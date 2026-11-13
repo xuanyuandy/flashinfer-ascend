@@ -10,6 +10,7 @@ distributions.
 | --- | --- | --- |
 | `csrc/kernels/attention/flash_attention/` | CATLASS, `examples/49_ascend950_flash_attention_infer/` | `41bf90da655bba3c66d0acd7e00abe33960ecfd6` |
 | `csrc/kernels/gemm/grouped_matmul_swiglu_quant/` | vllm-ascend, `csrc/gmm/grouped_matmul_swiglu_quant/` | `535ae0bb911cb378819f52fcf2e7c8b67fde3f51` |
+| `csrc/kernels/attention/sparse_flash_attention/` | vllm-ascend, `csrc/attention/sparse_flash_attention/` (arch22) | `535ae0bb911cb378819f52fcf2e7c8b67fde3f51` |
 
 These sources include local adaptations for FlashInfer's operator definitions,
 tiling, workspace, native entry points and supported input envelopes. Original

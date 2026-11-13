@@ -373,8 +373,8 @@ CMake、Python 钩子、本地头及声明依赖内容都绑定到构建身份�
 
 发布预期集中在独立审核的 `tests/production_inventory.py`；原有测试继续比较精确数量和集合。
 生成工具不会改写该文件，新增生产项仍需按 `AGENTS.md` 审核该预期，不能把运行时登记表
-直接当作自身的测试答案。旧配方探针与既有公共接口继续保留；现有 47 个逻辑定义和
-85 个全局实现已按此目录规范组织，另有 1 个显式启用的实验实现。既有富接口通过
+直接当作自身的测试答案。旧配方探针与既有公共接口继续保留；现有 48 个逻辑定义和
+86 个全局实现已按此目录规范组织，另有 1 个显式启用的实验实现。既有富接口通过
 `public_entry` 引用原有前端，保留签名、plan/run 和资源协议。目录迁移不表示所有形状/SoC、
 其他构建协议或图模式已验收，当前验证结果见 [迁移验收记录](reports/operator-layout-migration.md)。
 
@@ -408,6 +408,65 @@ CANN/Triton/Ascend C 各自注册 Descriptor，共享一个逻辑 `op`；runner 
 契约位于 `tools/metadata/` 并随构建复制。`csrc/recipes/matmul_probe.json` 是显式探针输入，
 继续独立保留。源码注册不要求生成文件或 SDK；原生执行须有匹配的冻结元数据和产物。
 源码变更后旧冻结身份会被拒绝，安装资源损坏也不会回退到源码扫描。
+
+### 0.8 SparseFlashAttention 的 arch22 接入案例
+
+`sparse_flash_attention` 从 vLLM-Ascend 的 arch22 实现接入，同一个逻辑
+`attention.sparse_flash_attention` 对应 Ascend910B 的 AOT 实现。作者文件如下；
+无需手工修改公共导出、Torch 注册、AOT loader 或 selftest 清单。
+
+| 作者文件 | 在调用链路中的作用 |
+| --- | --- |
+| `flashinfer/operators/attention/sparse_flash_attention/operator.py` | 公共 schema、MLA 语义、输出推导、索引/长度/页表校验 |
+| 同目录 `cases.py` | 独立 CPU golden、FP16/BF16 与 BSND/TND/分页 KV 样例 |
+| `flashinfer/ascendc/attention/sparse_flash_attention/implementation.py` | Ascend910B Capability、原生参数/属性顺序、编译输入与 runner 绑定 |
+| 同目录 `runner.py` | 原生参数适配；适配关闭时的空辅助输出，保留调用方输入和 out |
+| `csrc/kernels/attention/sparse_flash_attention/op_kernel/arch22/` | 上游 Cube/Vector 计算；上层统一 `.cpp` 入口明确拒绝其他架构 |
+| 同算子目录 `op_host/arch22/`、`op_host/` | 平台 tiling/workspace、共享 OpDef 与输出推导 |
+| 同算子目录 `CMakeLists.txt` | 此实现的 host/device 编译选项 |
+
+公共入口自动暴露为 `flashinfer.sparse_flash_attention` 和
+`flashinfer.attention.sparse_flash_attention`；Torch functional/out/FakeTensor 注册也从
+`OPERATOR` 派生。接口返回 `(attention_out, softmax_max, softmax_sum)`，
+默认后两个输出为 `(0,)`；传 `return_softmax_lse=True` 才返回 FP32 辅助统计值。
+`out=` 必须提供全部三个输出并满足各自 shape/dtype，框架保留其对象身份和存储。
+本原生实现要求连续 ND 输入；TorchNPU 的四维默认分配可能带 NCHW 标签，
+调用方用 `torch_npu.npu_format_cast(tensor, 2)` 显式准备 ND 输入及自供 out。
+框架为未提供 out 的调用分配 ND 输出，不自动改写输入或替换调用方的 out。
+
+框架还从 schema、backend 和 `CapabilitySpec` 自动生成 `domain="operator"` 的能力绑定，
+并校验接口、实现 ID、能力指纹及原生 ACLNN 协议。它与已有 AttentionPlan 的 POD 启动协议
+分开；直接算子不冒充 AttentionPlan profile，原有 attention profile/ABI 校验继续执行。
+作者不需要手写 profile JSON 或 digest，`list-kernels` 可统一列出两类实现。
+
+本例还展示了原生假设的适配边界：上游 V 聚合分支复用 K 缓存计算 P@V，
+本次统一选择原有 C 模板，确保公共接口使用独立的 K/V；V 聚合分支未启用。
+关闭辅助输出时，runner 使用两个内部占位缓冲；框架已有原生正尺寸校验保持不变。
+这里的分支选择与缓冲适配不构成性能结论；图能力保持 `NOT_CAPTURABLE`。
+
+```python
+import flashinfer
+
+attention_out, softmax_max, softmax_sum = flashinfer.sparse_flash_attention(
+    query, key, value, sparse_indices, scale_value,
+    query_rope=query_rope, key_rope=key_rope,
+    sparse_mode=3, return_softmax_lse=True, backend="ascendc",
+)
+```
+
+用通用入口生成、冻结并编译：
+
+```bash
+python -B -m flashinfer.operators build \
+  --kernel-id ascendc/attention/sparse_flash_attention/native/Ascend910B \
+  --output-dir build/sparse-attention-aot
+export FLASHINFER_AOT_PATHS="$PWD/build/sparse-attention-aot"
+```
+
+生成的 recipe、Descriptor、索引和 spec 位于 `build/generated/`，不需要作者手写 JSON。
+通用真机验收自动发现 `cases.py`，涵盖三种队列、非默认流、数值、out、缺包与损坏包拒绝；
+新增生产项仍须独立审核精确登记预期。具体支持边界和实际结果见
+[arch22 移植验证记录](reports/sparse-flash-attention-arch22.md)。
 
 ## 1. 先明确接入契约与实现
 

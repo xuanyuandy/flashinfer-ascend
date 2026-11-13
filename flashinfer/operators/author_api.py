@@ -218,6 +218,11 @@ class PythonImplementation(ImplementationDefinition):
             capability=self.support.capability(self.operator),
             **metadata
         )
+        if self.operator.schema and value.capability_binding is None:
+            from .capability import direct_operator_binding
+
+            value = replace(value, capability_binding=direct_operator_binding(
+                self.operator, value.capability, value.backend, value.kernel_id))
         runner = (
             self._runner if self._runner is not None else self._runner_factory(value)
         )

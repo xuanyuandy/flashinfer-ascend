@@ -152,6 +152,11 @@ class AscendCImplementation(ImplementationDefinition):
             ShapeConstraint(n, d.minimum, d.maximum, d.multiple_of)
             for n, d in support.dimensions.items()
         )
+        if operator.schema:
+            from flashinfer.operators.capability import direct_operator_binding
+
+            metadata.setdefault("capability_binding", direct_operator_binding(
+                operator, capability, "ascendc", kernel_id))
         native = NativeDefinition(
             name=build.recipe_id or operator.name,
             kernel_id=kernel_id,
