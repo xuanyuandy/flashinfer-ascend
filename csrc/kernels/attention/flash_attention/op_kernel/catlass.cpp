@@ -5,7 +5,12 @@
 #ifndef K_MAX_SHAPE_DIM
 #define K_MAX_SHAPE_DIM 0
 #endif
-#include "fai_kernel.h"
+#include "kernel_operator.h"
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 310
+#include "arch35/fai_kernel.h"
+#else
+#error "flash_attention currently requires arch35 (__CCE_AICORE__ == 310)"
+#endif
 
 extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
     GM_ADDR q, GM_ADDR k, GM_ADDR v, GM_ADDR out, GM_ADDR workspace, GM_ADDR tiling) {

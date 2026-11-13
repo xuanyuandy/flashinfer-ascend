@@ -110,7 +110,7 @@ def test_new_directory_generates_all_glue_without_changing_framework_sources(pro
         ("logical", "operator.py"),
         ("logical", "cases.py"),
         ("implementation", "runner.py"),
-        ("native", "op_kernel/grouped_matmul_swiglu_quant.h"),
+        ("native", "op_kernel/arch22/grouped_matmul_swiglu_quant.h"),
         ("native", "op_kernel/extra.hpp"),
     ],
 )

@@ -605,7 +605,7 @@ specializations = (("tensor_contract", "supported"),)
 | TorchNPU 提交 | [adapter.cpp execute:103](../csrc/aclnn_torch_adapter/adapter.cpp#L103)、[RunOpApi:180](../csrc/aclnn_torch_adapter/adapter.cpp#L180) | 按当前 stream 与框架队列策略提交同步调用 |
 | ACLNN 第一段 | [adapter.cpp:163](../csrc/aclnn_torch_adapter/adapter.cpp#L163)、[FiFlashAttentionTiling:26](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L26) | 执行 host tiling，获得 executor 和 workspace 大小 |
 | workspace 与 launch | [adapter.cpp:169](../csrc/aclnn_torch_adapter/adapter.cpp#L169)、[174](../csrc/aclnn_torch_adapter/adapter.cpp#L174) | 分配实际 workspace 并提交设备执行 |
-| 设备实现 | [catlass.cpp:9](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L9) → [FAInferTla:547](../csrc/kernels/attention/flash_attention/op_kernel/fai_kernel.h#L547) | 按 DTYPE_Q 实例执行 CATLASS FA，结果写入 out |
+| 设备实现 | [catlass.cpp:15](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L15) → [FAInferTla:547](../csrc/kernels/attention/flash_attention/op_kernel/arch35/fai_kernel.h#L547) | 按 DTYPE_Q 实例执行 CATLASS FA，结果写入 out |
 
 CANN 构建生成 `aclnnFiFlashAttentionGetWorkspaceSize` 与 launch host API；手写 [op_host:94](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L94) 定义 dtype/格式、infer 和 tiling 关联。ACLNN 两段式调用均在 RunOpApi callback 中执行。
 

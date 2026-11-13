@@ -14,7 +14,7 @@
  */
 
 #include "fi_host_checks.h"
-#include "grouped_matmul_swiglu_quant_tiling.cpp"
+#include "arch22/grouped_matmul_swiglu_quant_tiling.cpp"
 #include "grouped_matmul_swiglu_quant_infershape.cpp"
 #include "register/op_def_registry.h"
 #define FI_STRING_INNER(value) #value

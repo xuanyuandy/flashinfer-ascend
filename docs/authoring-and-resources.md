@@ -114,6 +114,12 @@ csrc/kernels/<domain>/<name>/
 `__CCE_AICORE__ == 310` 包含 `arch35`，其余已声明的 A2/A3 目标包含 `arch22`。
 OpDef 必须登记相应产品，host tiling 仍要处理不同平台的核数、UB 等资源。
 
+现有 `csrc` 已按此规范分离：GMM 的计算与 tiler 位于 `arch22/`；Matmul、MatmulBiasSilu
+和 CATLASS FlashAttention 的设备实现位于 `arch35/`，后者的专用 tiler 也位于
+`op_host/arch35/`。原生 Matmul 探针的通用计算位于 `op_kernel/common/`。
+设备入口 `.cpp` 保持稳定，按 `__CCE_AICORE__` 引入已有架构实现；没有实现的架构明确
+编译失败。公共 schema、native ABI 和 runner 不因目录拆分而复制。
+
 相同能力范围、native ABI 和 runner 的多目标实现使用下列形式；`BUILD`、`BINDING`
 是该算子已有的 `BuildConfig`、`NativeBinding`，无需按目标复制：
 

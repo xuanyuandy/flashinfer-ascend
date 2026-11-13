@@ -3,27 +3,12 @@
 #ifndef K_MAX_SHAPE_DIM
 #define K_MAX_SHAPE_DIM 0
 #endif
-#include "catlass/gemm/kernel/basic_matmul_tla.hpp"
-#include "catlass/arch/arch.hpp"
-#include "catlass/catlass.hpp"
-#include "catlass/gemm/block/block_mmad.hpp"
-#include "catlass/gemm/block/block_swizzle.hpp"
-#include "catlass/gemm/dispatch_policy.hpp"
-#include "catlass/gemm/gemm_type.hpp"
-#include "catlass/layout/layout.hpp"
-#include "tla/layout.hpp"
-#include "flashinfer_ascend/probe_tiling.h"
-
-using namespace Catlass;
-using namespace tla;
-using Policy = Gemm::MmadPingpong<Arch::Ascend950, true, false, 1, false, 2, 2, 2, 2>;
-using L1Shape = Shape<Int<256>, Int<256>, Int<128>>;
-using L0Shape = Shape<Int<256>, Int<256>, Int<32>>;
-using Tag = layout::RowMajor;
-using Copy = Gemm::Tile::PackedTileCopyTla<Arch::Ascend950, float, Tag, float, Tag, float, Tag, void>;
-using Mmad = Gemm::Block::BlockMmadTla<Policy, L1Shape, L0Shape, float, float, float, void, Copy>;
-using Scheduler = Gemm::Block::GemmIdentityBlockSwizzle<3, 0>;
-using Kernel = Gemm::Kernel::BasicMatmulTla<Mmad, void, Scheduler>;
+#include "kernel_operator.h"
+#if defined(__CCE_AICORE__) && __CCE_AICORE__ == 310
+#include "arch35/catlass.h"
+#else
+#error "CATLASS matmul_probe currently requires arch35 (__CCE_AICORE__ == 310)"
+#endif
 
 extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
     GM_ADDR a, GM_ADDR b, GM_ADDR c, GM_ADDR workspace, GM_ADDR tiling) {

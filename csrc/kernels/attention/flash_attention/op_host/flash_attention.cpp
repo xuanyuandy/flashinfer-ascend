@@ -2,7 +2,7 @@
 // 41bf90da655bba3c66d0acd7e00abe33960ecfd6. Dense, batch=1 envelope only.
 #include "register/op_def_registry.h"
 #include "tiling/platform/platform_ascendc.h"
-#include "fai_tiling.h"
+#include "arch35/fai_tiling.h"
 
 #define FI_STRING_INNER(x) #x
 #define FI_STRING(x) FI_STRING_INNER(x)

@@ -232,7 +232,7 @@ provenance.source      = 尚未绑定；首次成功后为 aot 或 jit
 | 11 | [adapter.cpp execute:103](../csrc/aclnn_torch_adapter/adapter.cpp#L103)、[RunOpApi:180](../csrc/aclnn_torch_adapter/adapter.cpp#L180) | 使用 TorchNPU 当前 stream 和框架队列策略，提交 callback；当前同步 eager 返回 |
 | 12 | [adapter.cpp:163](../csrc/aclnn_torch_adapter/adapter.cpp#L163) → [FiFlashAttentionTiling:26](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L26) | 调用生成的 ACLNN GetWorkspaceSize，执行 host tiling，得到 workspace 大小和 executor |
 | 13 | [adapter.cpp:169](../csrc/aclnn_torch_adapter/adapter.cpp#L169)、[launch:174](../csrc/aclnn_torch_adapter/adapter.cpp#L174) | 分配实际 workspace，调用 ACLNN launch，持有 Tensor/描述符等到同步完成 |
-| 14 | [catlass.cpp:9](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L9) → [FAInferTla:547](../csrc/kernels/attention/flash_attention/op_kernel/fai_kernel.h#L547) | CANN 提交 device kernel，按 DTYPE_Q 实例执行 CATLASS FA；结果写回 out |
+| 14 | [catlass.cpp:15](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L15) → [FAInferTla:547](../csrc/kernels/attention/flash_attention/op_kernel/arch35/fai_kernel.h#L547) | CANN 提交 device kernel，按 DTYPE_Q 实例执行 CATLASS FA；结果写回 out |
 
 ACLNN 的 `aclnnFiFlashAttentionGetWorkspaceSize` / launch host API 由 CANN 构建生成，不应在仓库里寻找一份同名手写实现。[op_host:94](../csrc/kernels/attention/flash_attention/op_host/flash_attention.cpp#L94) 登记 dtype、格式、infer 与 tiling；[catlass.cpp:19](../csrc/kernels/attention/flash_attention/op_kernel/catlass.cpp#L19) 是设备模板调用点。
 
