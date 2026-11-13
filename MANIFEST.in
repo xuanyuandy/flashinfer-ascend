@@ -1,5 +1,5 @@
 recursive-include csrc CMakeLists.txt *.cmake *.json *.h *.inc *.cpp *.py
-recursive-include csrc LICENSE
+include LICENSES/*.txt THIRD_PARTY_NOTICES.md
 recursive-include tools/metadata *.json
 recursive-include csrc/kernels *
 recursive-include examples ascendc*.py ascendc*.json

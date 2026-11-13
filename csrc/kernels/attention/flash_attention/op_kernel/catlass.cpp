@@ -1,5 +1,6 @@
 // Migrated from catlass example 49 at revision
-// 41bf90da655bba3c66d0acd7e00abe33960ecfd6. See LICENSE in this directory.
+// 41bf90da655bba3c66d0acd7e00abe33960ecfd6.
+// See LICENSES/CANN-Open-Software-License-2.0.txt at the repository root.
 // Only dense batch=1, equal heads, FP16/BF16 D=128, unmasked attention is exposed.
 #ifndef K_MAX_SHAPE_DIM
 #define K_MAX_SHAPE_DIM 0

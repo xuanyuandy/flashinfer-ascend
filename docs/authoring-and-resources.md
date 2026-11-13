@@ -48,6 +48,11 @@ build/generated/                            # 框架输出，忽略 Git，不是
 数值 golden、真实原生 ABI、实际支持范围与 capture/replay 证据仍需作者负责。
 独立发布清单 `tests/production_inventory.py` 由维护者审核，生成器不会改写测试预期。
 
+算子目录不维护重复的 `LICENSE` 或 `provenance.json`。导入源码保留版权头，
+上游仓库、版本与原路径在根目录 `THIRD_PARTY_NOTICES.md` 集中记录；许可原文放入
+根目录 `LICENSES/` 并自动随 sdist/wheel 交付。本地文件摘要由框架的 recipe 生成，
+不再复制成一份人工维护的来源 JSON；这与 runner 的运行产物 provenance 是不同信息。
+
 ## 声明字段
 
 | 声明 | 需要作者表达的事实 | 框架负责派生的内容 |

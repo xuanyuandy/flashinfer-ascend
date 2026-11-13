@@ -143,8 +143,9 @@ skip 原因和未验证项保存到 `build/` 或 CI，不再复制多份时点�
 ### 0.6 迁移实例：GroupedMatmulSwigluQuant 走本仓 AOT
 
 本例移植 `vllm-ascend: csrc/gmm/grouped_matmul_swiglu_quant/` 的设备计算与 host tiling，
-不调用已安装的 vLLM 扩展。来源提交及原文件摘要保存在
-`csrc/kernels/gemm/grouped_matmul_swiglu_quant/provenance.json`，版权头和 `LICENSE` 随源码保留。
+不调用已安装的 vLLM 扩展。来源提交统一记录在根目录 `THIRD_PARTY_NOTICES.md`，
+许可文本集中在 `LICENSES/` 并随包交付；版权头保留，算子目录不维护 `LICENSE` 或 `provenance.json`。
+当前本地源码摘要由框架生成的 recipe 记录，无需手写另一份 JSON。
 生产身份是 `op=gemm.grouped_matmul_swiglu_quant`、`backend=ascendc`，kernel 为
 `ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B`。
 这里的 SoC 是本次接入的 Ascend910B；不能从原目录的产品声明推导其他 SoC 已完成迁移或数值验收。
@@ -259,7 +260,7 @@ CANN API/二进制、产物清单和 wheel；公共接口、Torch 声明、能�
 | --- | --- | --- |
 | `csrc/kernels/gemm/grouped_matmul_swiglu_quant/op_kernel/`（8 个文件） | 从上游复制设备计算；手工适配入口并修复 A8W4 裁剪 | 核心计算、同步及数值正确性 |
 | 同目录 `op_host/`（5 个文件） | tiling/infer/共享布局来自移植；OpDef 聚合与诊断兼容头为手工适配 | 动态 tiling、workspace、特殊 infer；通用注册外壳应由框架提供 |
-| 同目录 `LICENSE`、`provenance.json` | 许可随源码保留；来源信息及摘要经本次迁移整理 | 确认来源与许可；摘要计算可自动化 |
+| 原同目录 `LICENSE`、`provenance.json`（已移除） | 许可及来源归入根目录 `LICENSES/`、`THIRD_PARTY_NOTICES.md`；本地摘要由框架生成 | 保留版权头；不重复维护许可副本或 JSON 摘要 |
 | `csrc/recipes/grouped_matmul_swiglu_quant.json` | 手工组织源闭包、ABI、类型/形状与编译选项；SHA256 经计算填入 | 声明真实编译输入/依赖；不应逐文件维护 SHA256 |
 | 整改前的 `flashinfer/_grouped_matmul_swiglu_quant.py`（已移除） | 手写能力、输出元数据、属性映射，同时混入 dispatch/分配/fake 样板 | 保留量化/融合语义、输出推导、特殊校验和属性映射；执行样板应下沉 |
 | `flashinfer/gemm.py`、`flashinfer/__init__.py`、`flashinfer/aclnn/_ops.py` | 手写门面、导出、functional/out schema 与回调接线 | 在一个算子声明中注册接口；不应逐个修改公共汇总文件 |
