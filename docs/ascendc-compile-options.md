@@ -4,7 +4,7 @@
 
 ## 1. 本仓的配置入口
 
-新增生产算子采用完整的 `BuildRecipe` 契约，即 `schema_version=2`。配置写在 `csrc/recipes/<op>.json`，经冻结声明进入生产构建；AOT、冷 JIT 共用 `flashinfer/jit/ascendc.py`，没有按算子另开编译器流程。
+新增生产算子在 `flashinfer/ascendc/<domain>/<op>/implementation.py` 使用 `BuildConfig/NativeBinding` 声明，框架生成 v2 recipe 至 `build/generated/csrc/recipes/`，再冻结并构建。可选算子 CMake 提供 host/kernel hook，文件与选项进入身份；AOT、冷 JIT 共用 `flashinfer/jit/ascendc.py`。完整字段见 [作者声明](authoring-and-resources.md)。
 
 | 配置 | 当前作用与落点 |
 | --- | --- |
@@ -23,16 +23,19 @@
 
 实现位置：[recipe 校验与指纹](../flashinfer/jit/recipe.py)、[驱动组装](../flashinfer/jit/ascendc.py)、[设备选项传递](../csrc/cmake/op_package/kernel/CMakeLists.txt)、[host 生成与链接](../csrc/cmake/op_package/host/CMakeLists.txt)。
 
-## 2. 当前两条生产算子的明确配置
+## 2. 两个 Ascend950 生产实例的明确配置
+
+以下表格只展开 MatmulBiasSiLU 与 CATLASS FA。其余生产实现的配置由各自
+`implementation.py` 与可选 CMake 声明；当前五项清单见 [仓库说明](../README.md#随包预编译的-ascend-c-算子)。
 
 | 项目 | MatmulBiasSiLU | FlashAttention |
 | --- | --- | --- |
-| recipe | `csrc/recipes/matmul_bias_silu.json` | `csrc/recipes/flash_attention.json` |
-| 实现 / dtype | native / BF16 | CATLASS / FP16 |
+| 生成 recipe | `build/generated/csrc/recipes/matmul_bias_silu.json` | `build/generated/csrc/recipes/flash_attention.json` |
+| 实现 / dtype | native / BF16 | CATLASS / FP16、BF16（完整同 dtype 组合） |
 | 目标 / recipe 架构 | `Ascend950` / `dav-3510` | `Ascend950` / `dav-3510` |
 | 算子编译选项 | `-O2` | `-O2` |
 | 算子宏 | 无额外宏 | `CATLASS_ARCH=3510` |
-| 算子 include | `csrc/include` | `csrc/kernels/attention/flash_attention` |
+| 算子 include | `csrc/kernels/gemm/matmul_bias_silu/{op_host,op_kernel,include}` | `csrc/kernels/attention/flash_attention/{op_host,op_kernel,include}` |
 | 外部依赖 | 无 | CATLASS `41bf90da655bba3c66d0acd7e00abe33960ecfd6` 的 include 树 |
 | spec 额外编译选项 / recipe 链接选项 | 均为空 | 均为空 |
 | 产物与契约 | `op_package`、recipe v2、tiling schema 2 | 同左 |
@@ -101,7 +104,7 @@ host 侧由 `npu_op_code_gen` 生成 ACLNN API 和注册代码，再构建 `cust
 
 | 接入点 | vLLM-Ascend 的实际做法 | 本仓对应做法 |
 | --- | --- | --- |
-| 源码组织 | `../vllm-ascend/csrc/<域>/<op>/op_host`、`op_kernel`，算子目录 CMake 加入编译列表 | 设备放 `csrc/kernels/<op>/`，host 放 `csrc/op_package/<op>.cpp`；由 recipe 显式列出 |
+| 源码组织 | `../vllm-ascend/csrc/<域>/<op>/op_host`、`op_kernel`，算子目录 CMake 加入编译列表 | `csrc/kernels/<domain>/<op>/{op_host,op_kernel}`；设备按 `arch22/arch35`，由类型化声明生成 recipe |
 | SoC 选择 | `csrc/build_aclnn.sh` 的对应 SoC 分支选 `CUSTOM_OPS_ARRAY`，再以 `build.sh --pkg --ops=... --soc=...` 构建 | recipe 的目标/依赖/支持域与冻结声明共同决定构建；新生产条目进入登记后被普通 wheel 的全量生产构建包含 |
 | 算子级编译选项 | `add_ops_compile_options(OP_NAME ... COMPUTE_UNIT ... OPTIONS ...)`，有全局选项和按 SoC 分支的特例 | `definitions`、`include_dirs`、`compile_options` 写入该算子 recipe；同一驱动传递并计入身份 |
 | host tiling | OpDef 与 host callback、tiling 结构、workspace 配置共同交付 | v2 的 callback 字段必须与实际 host 源码及设备 tiling 结构一致 |

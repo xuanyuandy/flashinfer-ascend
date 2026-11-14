@@ -2,6 +2,10 @@
 
 本文按“定位 → AOT/JIT 的价值 → 总体架构 → 关键概念 → FA 源码调用 → 新增 JIT 实现”展开，适合作为技术介绍的讲稿。能力描述以当前实现为准；扩展方案明确标为设计示意。源码行号对应撰写时的工作树，后续可结合函数名查找。
 
+当前接入入口与文件职责以 [算子组织规范](operator-layout.md)、[作者声明](authoring-and-resources.md)
+和 [接入指南](adding-a-custom-operator.md) 为准。公共 `operator.py` 只定义语义；各后端的
+`implementation.py/runner.py` 登记能力并执行。生成 JSON 位于构建输出及 wheel，不由作者手写。
+
 ## 1. 先说明我们在做什么
 
 可以这样开场：
@@ -13,7 +17,7 @@
 | 对标 FlashInfer | 对齐算子分类、接口语义及适用接口的 plan/run 生命周期，让模型接入方式保持一致 | 逐接口对标，尚未覆盖上游全部算子和参数；直接函数也属于正常使用方式 |
 | 一个接口、多个 backend | 模型表达计算需求，由框架在兼容实现中选择，或允许调用方锁定实现 | FA 的隔离 registry 已接入 CATLASS AOT 与 Triton JIT；默认生产登记仍保留原集合 |
 | 多种实现技术栈 | 接入 CANN 内置算子、Ascend C/CATLASS 源码和 Triton 实现 | Ascend C 与 Triton 是不同编程/编译方式，CANN 是已有算子库；并非每个 op 都具有这三种实现 |
-| AOT/JIT 共存 | 同一计算实现可以提前构建，也可以在部署后按策略补建 | 当前生产 Ascend C 优先 AOT，缺失时可 JIT；不自动生成任意新 dtype/head_dim 的源码 |
+| AOT/JIT 共存 | 同一计算实现可以提前构建，也可以在部署后按策略补建 | 当前 Ascend C 优先 AOT；仅声明允许回落的实现可在缺包时 JIT，AOT-only 缺包失败；不自动生成任意新 dtype/head_dim 的源码 |
 | 按负载选择合适实现 | 支持域过滤后，使用有效测量记录选择该负载下的胜者 | 当前随包 tuning 记录为空，未命中时使用确定性规则；不能宣称已经总能选到最快实现 |
 
 “选择最优”需要三个前提：**存在多个语义兼容的实现、都有可执行接入、有适用的测量证据**。测量记录反映特定条件与被测候选集合，不是所有实现、所有时刻的全局最优证明。只具备统一接口和 registry，不能直接推出性能优势。当前能力全集见 [算子覆盖](operator-coverage.md)。
@@ -208,8 +212,8 @@ provenance.source      = 尚未绑定；首次成功后为 aot 或 jit
 
 | 顺序 | 源码位置 | 发生什么 |
 | --- | --- | --- |
-| 1 | [FA recipe:1](../csrc/recipes/flash_attention.json#L1)、[生产 descriptor:132](../flashinfer/data/kernels/registry.json#L132) | 作者声明源码、依赖、支持域与执行 ABI |
-| 2 | [freeze_production_kernels:41](../flashinfer/aot/declarations.py#L41)、[冻结 FA 记录:174](../flashinfer/data/kernels/ascendc_specs.json#L174) | 关联声明、解析输入身份并冻结 spec，不在冻结动作中编译 |
+| 1 | [FA 类型化声明](../flashinfer/ascendc/attention/single_prefill_catlass/implementation.py)、[生成器](../flashinfer/operators/authoring.py) | 作者声明 Support、NativeBinding、BuildConfig；框架生成 recipe、摘要及 Descriptor |
+| 2 | [冻结入口](../flashinfer/aot/declarations.py)、[资源交付约定](authoring-and-resources.md#源码构建与安装的资源边界) | 关联声明、解析输入身份并冻结 spec，不在冻结动作中编译；JSON 位于 `build/generated/` |
 | 3 | [build_production_packages:110](../flashinfer/aot/build.py#L110) → [_publish:98](../flashinfer/aot/build.py#L98) → [_build_record:75](../flashinfer/jit/build.py#L75) | 批量入口先预检，再复用缓存或构建；每个 kernel 独立产物 |
 | 4 | [AscendCBackend.compile:257](../flashinfer/jit/backends.py#L257) → [compile_recipe:102](../flashinfer/jit/ascendc.py#L102) | 使用公共 CANN/CMake driver 构建 op-package，校验并发布 |
 

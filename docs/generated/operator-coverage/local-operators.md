@@ -1,6 +1,9 @@
-# 当前本仓逻辑 op 清单
+# 本仓逻辑 op 清单：原静态审计快照
 
-由当前运行时登记表生成，按 op 而非公开别名或 descriptor 计数。
+此表保留原基线的 45 op / 81 Descriptor；当前登记及类型化声明入口见
+[当前实现说明](../../operator-coverage.md#本仓当前实现全集)，不要据此遗漏后续 Matmul、GMM 或 SFA。
+
+由原审计时的运行时登记表生成，按 op 而非公开别名或 descriptor 计数。
 `npu-runner-bound-limited` 表示存在受限 NPU runner，不表示所有上游参数、产品或图模式已验证。
 完整 dtype/shape/SoC 能力字段与 runner 来源见同目录 CSV/JSON。
 

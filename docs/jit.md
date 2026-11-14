@@ -1,10 +1,12 @@
-# JIT 声明、惰性编译与装载（T18A / T18B / T13-I）
+# JIT 声明、惰性编译与装载
 
 `flashinfer.jit` 的编译单元沿用 `JitSpec`。声明、登记、选型和查询仍无需
 Triton、torch 或 CANN 编译器。只有显式调用 `build_and_load()` 才进入
 编译 / 装载路径。Triton 与 Ascend C host_shared 均已在 A5 上完成真实编译和执行。
 Ascend C 的工具链发现与配方解析也是显式操作，不由 import、auto 或纯声明触发。
-JIT 主产物为 host `.so`；AOT 的标准 op-package 留给 T13-II。
+公开 Ascend C 的 AOT/JIT 共用 v2 `op_package`；下文 `host_shared`/host `.so` 为内部历史探针协议。
+当前作者入口是类型化后端声明，recipe/摘要由框架生成，见 [作者资源边界](authoring-and-resources.md)。
+通用 `jit/` 不按算子种类建目录；Attention 领域协议位于 `flashinfer/attention/jit/`，旧导入只保留薄兼容文件。
 
 ## A5 实测产物先于装载设计
 
@@ -255,7 +257,7 @@ manifest 和全部产物先完成，再发布同一个指针，读者看到完�
 表示入口未导出 / 未解析；二者保存 traceback 日志。Python API 装载没有进程返回码，
 此时 `returncode=None`，不会虚构编译命令或成功产物。
 
-Ascend C 使用 `bisheng` 和 CANN ASC CMake，host wrapper 与 device binary 一起链接为
+内部旧 `host_shared` 探针使用 `bisheng` 和 CANN ASC CMake，host wrapper 与 device binary 一起链接为
 host `ET_DYN`。不把 NPU relocatable `.o` 交给 CDLL。跨模块 device linking、运行时
 ABI 跨版本适配，以及把旧 Attention 配方接到真实 kernel，仍需各自实现和验证。
 

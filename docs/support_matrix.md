@@ -9,6 +9,10 @@ production batch CANN facades and Ascend C operators have separate executable
 routes. Their current inventory and verification boundaries are listed in
 [operator coverage](operator-coverage.md); this contract table does not replace it.
 
+Direct operators such as arch22 SparseFlashAttention use typed operator/backend declarations
+and an `operator` capability binding. Their ACLNN package path is described in
+[authoring and resources](authoring-and-resources.md), separately from this profile/POD contract.
+
 ## Status vocabulary
 
 | Status | Meaning |

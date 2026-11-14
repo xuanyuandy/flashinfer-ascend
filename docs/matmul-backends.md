@@ -134,7 +134,7 @@ python -B -m flashinfer.aot \
   --kernel-id ascendc/gemm/matmul/native/op_package/Ascend950 \
   --cache-dir build/matmul/aot-cache --output-dir build/matmul/release
 
-# 默认 wheel 自动包含四条生产 Ascend C 声明及公共 Torch/ACLNN 桥。
+# 默认 wheel 自动包含五条生产 Ascend C 声明及公共 Torch/ACLNN 桥。
 python -B setup.py bdist_wheel
 ```
 
@@ -166,8 +166,8 @@ python -B tools/run_regression.py --profile full
 | 按选中 ID 查找并调用 runner | `flashinfer/runtime/runner.py` |
 | 公共定义与 Torch functional / out / FakeTensor | `flashinfer/operators/gemm/matmul/operator.py`；`flashinfer/aclnn/_ops.py` 负责收集注册 |
 | CANN 声明与 runner | `flashinfer/cann/gemm/matmul/` |
-| native host/device 与 recipe | `csrc/kernels/gemm/matmul/`、`csrc/recipes/matmul.json` |
-| native 声明与 runner / 冻结交付元数据 | `flashinfer/ascendc/gemm/matmul/`；`flashinfer/data/kernels/registry.json`、`flashinfer/data/kernels/ascendc_specs.json` |
+| native host/device 与生成 recipe | `csrc/kernels/gemm/matmul/op_kernel/arch35/`、同算子 `op_host/`；生成至 `build/generated/csrc/recipes/matmul.json` |
+| native 声明与 runner / 冻结交付元数据 | `flashinfer/ascendc/gemm/matmul/`；生成至 `build/generated/flashinfer/data/kernels/`，安装后位于 `flashinfer/data/kernels/` |
 | Triton 声明、runner 与 kernel | `flashinfer/triton/gemm/matmul/` |
 | 元数据、分配、路由、FakeTensor 与合成调优 UT | `tests/test_matmul.py` |
 | 真机矩阵、AOT 错误、JIT 冷/热缓存与队列验证 | `tests/test_matmul_real.py`、`tests/matmul_acceptance.py` |

@@ -2,7 +2,10 @@
 
 > 状态：Kernel manifest v3 / artifact protocol v1 / binary ABI v1  
 > 日期：2026-08-20  
-> 范围：Host 侧 provenance、内容身份和 launcher 参数协议；当前没有真实 Ascend artifact
+> 范围：AttentionPlan/provider 的 Host provenance、内容身份和 POD launcher 协议；本路径不携带生产 artifact
+
+本仓原生直接算子已有另一条 ACLNN op-package 交付路径，见 [当前作者资源规范](../authoring-and-resources.md)。
+该路径用类型化接口/能力绑定及冻结 recipe/spec 校验，不要求伪造 AttentionPlan profile 或 POD artifact。
 
 ## 1. 为什么裸路径不够
 
@@ -14,7 +17,7 @@
 - launcher 应调用哪个 entry point、按什么顺序传递参数；
 - metadata、pointer width、stream 和 mutation ABI 是否兼容。
 
-Kernel manifest v3 因此禁止裸字符串 artifact。所有非 reference descriptor 必须同时携带
+此 AttentionPlan manifest v3 因此禁止裸字符串 artifact。进入本协议的非 reference descriptor 必须同时携带
 `ArtifactRef`、`KernelLaunchABI` 和 `KernelBinaryABI`；reference descriptor 则禁止伪造
 这三个字段。
 

@@ -1,6 +1,6 @@
 # AOT 运行期发现与 JIT 回落
 
-算子作者用 `flashinfer.jit.runtime.bind_aot_kernel` 将冻结的 `KernelDescriptor`、
+框架用 `flashinfer.jit.runtime.bind_aot_kernel` 将冻结的 `KernelDescriptor`、
 `JitSpec` 和 ABI adapter 组成延迟 runner，再经现有 `KernelRegistry` 登记。
 绑定不读文件、不探测设备或编译器，也不改变 descriptor 的序列化指纹。
 应用继续调用已有公共 API：dispatch 按原规则选型，选中后的 runner 自动完成
@@ -18,10 +18,13 @@ registry.register(bind_aot_kernel(
 ))
 ```
 
-这是算子登记接口。descriptor、spec 和 adapter 必须由算子实现提供，不从搜索到的
+这是框架内部的底层绑定示例。当前作者在 `flashinfer/ascendc/<domain>/<op>/implementation.py`
+声明 `AscendCImplementation`、`Support`、`NativeBinding/BuildConfig` 和 runner 工厂；框架发现并绑定，
+无需逐算子调用 `registry.register`，见 [接入指南](adding-a-custom-operator.md)。可信声明不从搜索到的
 任意产物反推可信契约。AOT adapter 收到现有 `load_op_package` 的
 `OpPackageModule`；JIT adapter 收到现有 `build_and_load` 的 `JitLoadedModule`。
-生产 Ascend C 登记表目前仍为空；此次只用测试登记的固定 16×16 FP32 probe 证明机制。
+源码模式直接收集 Python 声明，生成资源位于 `build/generated/`；安装模式校验包内索引与冻结身份。
+生产登记已有五项，probe 保留为独立兼容测试；登记不要求可选二进制已存在，执行时才解析产物。
 
 ## 发现与缓存
 
@@ -65,10 +68,11 @@ registry.register(bind_aot_kernel(
 
 ## 范围与已知缺口
 
-- 最初发现机制的验收只使用 probe；目前生产登记有 MatmulBiasSiLU 与 CATLASS FlashAttention。两者仍限定各自的 dtype/shape/语义域，不由发现能力扩大支持范围。
+- 最初发现机制的验收只使用 probe；目前生产登记含 Matmul、MatmulBiasSiLU、CATLASS FA、GMM 与 arch22 SFA。各项仍限定自己的 dtype/shape/SoC/语义域，不由发现能力扩大支持范围；AOT-only 项缺包时不编译。
 - **当前 CANN 版本兼容校验未做**。记录中的完整 spec 一致并不能证明当前 CANN 与
   构建时环境兼容；既有加载器不重新比较当前版本。
 - 生产 AOT 首次解析会按可信声明匹配当前随包的同目标生产项，整组校验并激活 vendor 路径；该组不同 op type/API 的产物允许同进程共存。未随包的同组项不编译。同 vendor 另一 generation 或跨 vendor 同名注册仍明确拒绝，保留 fresh-process 提示，不改为 JIT。激活后追加 vendor 也要求新进程。整组失败恢复环境并关闭新 FD；多个冷 JIT 包须先构建，再用 `load_op_packages` 一次性准备。
-- 其他设备/CANN 版本、真实 wheel 安装环境、graph capture 下的延迟绑定，以及已激活
-  模块跨 fork 的复用均为**未验证**。当前真机证据与可复现命令见
+- 不同设备的证据分别见 [A2 SFA 安装验收](reports/sparse-flash-attention-arch22.md) 与
+  [Ascend950 交付验收](reports/kernel-layout-2026-10-27.md)，不能把单项目标推广到整个矩阵。
+  其他 CANN 版本、graph capture 下的延迟绑定及已激活模块跨 fork 的复用仍为**未验证**。最初探针证据见
   [P0-2 验收报告](p0-2-aot-runtime-validation-2026-10-25.md)。

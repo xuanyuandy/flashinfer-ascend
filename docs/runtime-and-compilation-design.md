@@ -8,6 +8,11 @@ FlashInfer Ascend 面向昇腾 NPU 提供推理算子接口、实现选择机制
 
 本文规定运行时与编译系统的数据模型、模块边界、选择算法、产物生命周期和后端接入要求，并以生产 CATLASS FlashAttention 为实例列出源码路径。第 9 节中的独立 JIT FA 接入属于扩展设计；其余章节描述现有机制及实现约束。源码行号对应本文编写时的工作树。
 
+作者入口是公共 `OperatorDefinition` 与各后端类型化 `Implementation`；文件树见
+[算子组织规范](operator-layout.md)，逐步操作见 [接入指南](adding-a-custom-operator.md)。
+Ascend C、CANN、Triton 各自维护 `implementation.py/runner.py`，共享逻辑 `op`；
+公共 schema 的导出与 Torch 接线由框架生成，已有富接口通过 `public_entry` 复用前端。
+
 ### 1.1 设计目标
 
 1. 对齐 FlashInfer 的接口语义与适用接口的生命周期，保留直接函数、plan/run wrapper 和 run-only wrapper 等调用方式。
@@ -19,7 +24,7 @@ FlashInfer Ascend 面向昇腾 NPU 提供推理算子接口、实现选择机制
 
 ### 1.2 实现范围
 
-多实现选择是运行时提供的接入能力。当前内置生产登记中，同一逻辑 op 尚未接入多个 NPU 实现；部分 op 另有 reference 实现，reference 默认不参与普通自动选择。默认生产 registry 中 CATLASS FA 仅有 Ascend C 候选；第 9.4 节的隔离 registry 已为同一入口加入 Triton FA，CANN single-prefill 尚未接入该候选集合。
+多实现选择已用于 `gemm.matmul` 的 Ascend C、CANN、Triton 候选；各候选独立声明支持域，按实际输入和硬件过滤。部分 op 另有 reference 实现，reference 默认不参与普通自动选择。默认生产 registry 中 CATLASS FA 仅有 Ascend C 候选；第 9.4 节的隔离 registry 为同一入口加入实验 Triton FA，CANN single-prefill 属于另一逻辑 op。
 
 生产 Ascend C FA 与 MatmulBiasSiLU 已采用 AOT 优先、缺失时按策略 JIT 的产物解析机制。两者通过统一 Torch 注册与 C++ TorchNPU/ACLNN 桥执行。CANN 内置算子和现有 Triton 算子保留各自的执行适配。
 
@@ -75,7 +80,7 @@ JIT 运行：build_and_load → _build_record → 校验与加载
 | L3 实现选择 | 查询候选实现，执行支持域和策略过滤，查询调优记录，形成 DispatchDecision | `flashinfer/runtime/`、`flashinfer/tuning/` |
 | L3′ 构建与产物管理 | 声明编译单元、发现 AOT、查询构建缓存、受控编译、验证和加载产物 | `flashinfer/jit/`、`flashinfer/aot/` |
 | L2 后端适配 | 将公共调用转换为后端参数与执行协议，管理 native 调用、workspace、stream 和资源生命周期 | `flashinfer/cann/`、`flashinfer/jit/tensor_adapter.py`、`flashinfer/aclnn/`、`csrc/aclnn_torch_adapter/`、Triton launcher |
-| L1 算子实现 | 实现 host infer/tiling、设备计算及相应 launcher | `csrc/kernels/<op>/op_host/`、`csrc/kernels/<op>/op_kernel/`、`flashinfer/triton/` |
+| L1 算子实现 | 实现 host infer/tiling、设备计算及相应 launcher | `csrc/kernels/<domain>/<op>/op_host/`、`op_kernel/arch22/arch35/`、`flashinfer/triton/<domain>/<op>/` |
 | L0 硬件执行 | 执行设备计算，提供上层选型与 tiling 使用的设备特征 | 昇腾 NPU；探测模块为 `flashinfer/runtime/hardware.py` |
 
 L3′ 为所选实现提供产物准备能力，不是每次调用的必经编译步骤。CANN 内置实现使用已安装的运行栈；当前生产 Ascend C 实现通过该层解析 AOT/JIT；Triton 可以使用其自身的 JIT launcher。
@@ -444,7 +449,7 @@ loader 将可信产物转换为进程内模块，完成符号解析、目标检�
 
 ### 6.1 声明与构建准备
 
-生产 Ascend C 配方位于 `csrc/recipes/`，descriptor 位于 `flashinfer/data/kernels/registry.json`，冻结声明位于 `flashinfer/data/kernels/ascendc_specs.json`。
+生产声明位于 `flashinfer/ascendc/<domain>/<op>/implementation.py`。生成器输出 `build/generated/csrc/recipes/` 与 `build/generated/flashinfer/data/kernels/registry.json`；freeze 生成同目录 `ascendc_specs.json`。这些资源在 wheel 中位于 `flashinfer/data/`，源码不维护生成 JSON；`csrc/recipes/` 只保留显式探针。
 
 [freeze_production_kernels](../flashinfer/aot/declarations.py#L41) 按 kernel_id 关联 descriptor 与 recipe，解析源码和依赖身份，并形成冻结 spec。该步骤不编译算子，也不根据源码自动扩大 capability、workspace 或 ABI 声明。
 
@@ -562,7 +567,7 @@ kernel_id   = ascendc/t4/flash_attention/catlass/op_package/Ascend950
 compile_mode = aot
 ```
 
-该 kernel_id 表达现有实现身份，不要求每个运行期 shape 分别登记。其 recipe 与 descriptor 分别位于 [flash_attention.json:1](../csrc/recipes/flash_attention.json#L1) 和 [registry.json:132](../flashinfer/data/kernels/registry.json#L132)，冻结记录位于 [ascendc_specs.json:174](../flashinfer/data/kernels/ascendc_specs.json#L174)。
+该 kernel_id 表达现有实现身份，不要求每个运行期 shape 分别登记。recipe 与 Descriptor 源于 [FA 后端声明](../flashinfer/ascendc/attention/single_prefill_catlass/implementation.py)，冻结规则见 [作者资源边界](authoring-and-resources.md#源码构建与安装的资源边界)。生成 JSON 不作为源码链接或手工登记入口。
 
 ### 8.2 公共调用与签名
 
@@ -656,7 +661,7 @@ Triton 实现不使用 Ascend C 的 ACLNN Tensor adapter 作为通用 launcher�
 
 当前生产 Ascend C freezer 在 [declarations.py:74](../flashinfer/aot/declarations.py#L74) 仅接受 backend=ascendc、compile_mode=AOT；[AotKernelRunner](../flashinfer/jit/runtime.py#L36) 也限定 AOT 优先登记。新增纯 JIT 生产 descriptor 不能只修改 JSON 的 compile_mode，必须同时提供对应 runner 和登记接线。
 
-公共 `build_and_load`、构建存储和 compiler backend 已被 [Triton FA](../flashinfer/triton/attention/single_prefill_catlass/runner.py) 复用。其独立 manifest 位于 `flashinfer/data/kernels/triton_registry.json`，不进入默认生产登记入口。
+公共 `build_and_load`、构建存储和 compiler backend 已被 [Triton FA](../flashinfer/triton/attention/single_prefill_catlass/runner.py) 复用。实验声明位于同目录 `implementation.py`，生成 `build/generated/flashinfer/data/kernels/triton_registry.json`，不进入默认生产登记入口。
 
 当前 CATLASS 公共实现的 recipe 校验位于 [catlass_prefill.py:76](../flashinfer/attention/catlass_prefill.py#L76)。若新候选支持域不同，需要将公共语义检查与各候选的能力检查分离，使某一份 backend 配方不再决定整个公共接口的支持上限。
 

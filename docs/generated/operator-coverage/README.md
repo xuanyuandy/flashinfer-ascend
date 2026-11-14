@@ -3,6 +3,10 @@
 本目录由 `tools/audit_operator_surface.py` 与 `tools/build_operator_comparison.py` 生成。
 范围、结论及官方文档见 [完整说明](../../operator-coverage.md)，调用方式和 UT 见 [生命周期说明](../../operator-call-patterns.md)。
 
+本目录的 CSV/JSON 保留原审计基线（本地 45 op / 81 Descriptor），不是当前作者目录的即时视图。
+当前登记为 48 op / 86 Descriptor，接入和资源位置见 [作者规范](../../authoring-and-resources.md)；
+单次静态扫描不证明新增实现已通过数值、编译或设备验收。
+
 | 文件 | 口径 |
 | --- | --- |
 | `upstream-api-comparison.csv` | 顶层及扫描清单内公共模块的 Python 函数/类导出，包含未在测试直接出现的补集 |

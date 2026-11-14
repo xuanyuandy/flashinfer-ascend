@@ -22,7 +22,10 @@ It is not a user-facing kernel compiler API.
 
 ## 2. Package structure
 
-The `flashinfer.jit` package is divided by responsibility:
+Generic compilation and artifact contracts live in `flashinfer.jit`; Attention-specific
+specialization, planning and module binding live in `flashinfer.attention.jit`.
+`flashinfer/jit/attention.py` is an import compatibility shim, not a second implementation.
+The current operator/backend layout is specified in [operator layout](../operator-layout.md).
 
 | Area | Responsibility |
 |---|---|
@@ -31,7 +34,7 @@ The `flashinfer.jit` package is divided by responsibility:
 | `cache` | Cache records and side-effect-free cache decisions |
 | `artifacts` | Artifact metadata and verified-byte receipts |
 | `loading` | Module loader and exact symbol-resolution contracts |
-| `attention` | Attention specialization, registry and wrapper integration |
+| `flashinfer.attention.jit` | Attention specialization, registry and wrapper integration |
 
 Concrete compilers, filesystem caches and NPU loaders are dependencies injected
 behind these contracts. They are not activated by importing the package.

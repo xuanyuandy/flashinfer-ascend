@@ -1,4 +1,9 @@
-# T13-II：BuildRecipe 驱动的标准 op-package
+# Ascend C 标准 op-package：构建、装载与兼容探针
+
+新增生产算子使用 [类型化作者声明](authoring-and-resources.md) 与
+[接入指南](adding-a-custom-operator.md)：框架生成 recipe/Descriptor，freeze 绑定构建环境，
+每个目标分别构建与验收。本文保留显式 `matmul_probe` 的底层协议和早期实测；
+其固定三 Tensor、零 workspace 不限制当前 `NativeBinding` 的可选 Tensor、属性或动态 workspace。
 
 当前公开入口已统一为 v2；旧 v1/raw host launch 仅留在内部兼容与测试设施。本文后半的原始日志保留为早期时点证据，最新实现和结果见 [v2 迁移验收](reports/v2-migration-2026-10-28.md)。
 
@@ -40,7 +45,7 @@ release 导出保留该 store manifest，去掉其本来就不参与校验的 `b
 ```python
 from flashinfer.jit.op_package import load_op_package
 
-# fresh process，必须在 aclInit / 其它 CANN 算子初始化之前调用
+# 显式 probe 的底层调用示例；生产路径由框架准备可信包集合并延迟绑定
 module = load_op_package(release_directory, target_soc="ascend950")
 # 调用方初始化 ACL、选择 device、创建 stream 与三个 aclTensor*。
 workspace_bytes, executor = module.get_workspace_size(a_tensor, b_tensor, c_tensor)
@@ -73,8 +78,8 @@ CANN 会把源码入口重命名成 `<OpType>_<hash>_<tiling-key>`，验证器�
 `coreType=AiCore / magic=RT_DEV_BINARY_MAGIC_ELF` 契约；A2/A3/A5 使用
 `core_type=AIC / magic=RT_DEV_BINARY_MAGIC_ELF_AICUBE`。
 
-CANN 的 vendor 注册与环境读取属于进程状态。首次装载前不得已经初始化其它 ACLNN
-路径；本版主动拒绝在同进程切换另一个 package generation，避免假装支持热切换。
+CANN 的 vendor 注册与环境读取属于进程状态。生产路径在首次激活前准备互不冲突的可信包集合；
+该集合可同进程复用，同名 generation 替换或激活后追加 vendor 仍要求新进程，不能当作热替换。
 每个对照实验使用独立进程。
 
 需要 PyTorch 注册接口时，可用 `flashinfer.jit.torch_library.matmul_probe_op()`

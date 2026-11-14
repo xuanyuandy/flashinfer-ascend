@@ -12,6 +12,7 @@ All Ascend C operator sources live under `csrc/kernels/<domain>/<op>/`:
 - `gemm/matmul/` and `gemm/matmul_bias_silu/`: production native implementations.
 - `gemm/grouped_matmul_swiglu_quant/`: grouped integer GEMM, SwiGLU and quantization.
 - `attention/flash_attention/`: production CATLASS implementation.
+- `attention/sparse_flash_attention/`: arch22 MLA sparse attention, with an Ascend910B AOT-only declaration.
 
 Each operator owns `op_host/` (OpDef, inference and tiling), `op_kernel/`
 (device code) and `include/` (shared tiling layouts). Production recipes are generated under
@@ -39,7 +40,7 @@ live in architecture directories, following vLLM-Ascend's per-operator layout:
 └── include/                 # shared host/device wire layouts
 ```
 
-GMM's implementation and tiler currently live in `arch22/`. Matmul,
+GMM and SparseFlashAttention implementations and tilers currently live in `arch22/`. Matmul,
 MatmulBiasSilu and CATLASS FlashAttention implementations live in `arch35/`;
 their entries reject other device architectures at compile time. The native
 FP32 Matmul probe uses `common/`; its CATLASS variant uses `arch35/`.

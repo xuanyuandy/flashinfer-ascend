@@ -1,23 +1,23 @@
 # FlashInfer 总体架构设计
 
-> 文档状态：Architecture draft v0.1
+> 文档范围：总体目标、当前模块分层与长期架构决策
 > 项目名：`flashinfer`；Python 包名：`flashinfer`
 >
-> 仓库范围：当前只建设 Attention 框架层，不包含 NPU kernel 实现，也不把
-> Host 合同解释为可用的 Ascend 算子。GEMM、MoE、sampling 等其他能力域不在
-> 本阶段范围。Attention 细化设计见
-> `docs/attention/framework.md`。
+> 当前仓库是多后端算子 adapter，已接入 Ascend C、CANN、Triton 及显式 reference。
+> 公共逻辑定义与各后端实现分目录；§14 为当前文件树，早期规划目录保留在附录。
+> 作者规范见 [算子组织](operator-layout.md)、[作者声明](authoring-and-resources.md) 和
+> [接入指南](adding-a-custom-operator.md)。各项长期目标不构成已有执行或性能证据。
 
 ## 1. 摘要
 
-FlashInfer 是面向昇腾推理场景的高性能算子库与内核生成系统。项目在能力域、API 语义、`plan/run` 生命周期、JIT/AOT 交付、测试和基准方法上对标 FlashInfer；在实现上针对 Ascend AI Core、CANN、Ascend C、ACL Runtime 和 `torch_npu` 重新设计，不逐行翻译 CUDA 内核。
+FlashInfer Ascend 是面向昇腾推理场景的算子适配框架。项目在能力域、API 语义、适用接口的 `plan/run` 生命周期、JIT/AOT 交付、测试和基准方法上对标 FlashInfer；接入 Ascend C、CANN、Triton 的实际实现，不逐行翻译 CUDA 内核。
 
 首期重点是量化大模型推理：量化 GEMM、量化 KV Cache、prefill/decode attention、MLA、MoE 以及与这些主路径相邻的融合算子。长期目标覆盖 FlashInfer 的全部稳定能力域，并为 vLLM、SGLang 等服务框架提供低侵入适配。
 
 本设计的核心结论是：
 
 1. 公共 API 与底层实现解耦。Python API 尽量保持 FlashInfer 的名称、参数、布局和行为语义，内核只依赖框架无关的张量视图、设备指针、workspace、tiling metadata 和 `aclrtStream`。
-2. 所有复杂算子统一采用 `plan()` / `run()`。Host 侧规划、kernel 选择、workspace 计算和 metadata 生成不进入热路径；`run()` 不做隐式 Host 同步和临时内存分配。
+2. 有状态接口沿用 `plan()` / `run()`；无状态算子保留直接函数。计划资源复用属于接口契约，当前原生 eager runner 仍包含 host tiling、动态 workspace 与同步边界，不能据此宣称热路径零分配。
 3. 统一后端注册与选择。Ascend C AOT、Ascend C JIT、CANN/aclnn 组合实现和 reference 实现共享同一套 capability/registry/dispatch 协议。
 4. 量化格式是一等公民。scale、zero point、分组方式和物理排布必须由版本化的 `QuantSpec` 描述，不能依靠调用者与内核之间的隐含约定。
 5. 开发期允许 JIT，生产默认 AOT。缓存键同时覆盖源码、编译参数、SoC、CANN、`torch_npu` ABI 和算子特化参数，避免错误复用二进制。
@@ -235,11 +235,13 @@ class KernelDescriptor:
 ```
 
 Descriptor 来自代码注册或构建生成的 manifest，不允许通过 import side effect 隐式覆盖同名 kernel。
-Kernel manifest v3 禁止裸 artifact 路径；非 reference descriptor 必须同时携带带
+AttentionPlan/provider manifest v3 禁止裸 artifact 路径；进入该协议的非 reference descriptor 必须同时携带带
 digest/size/target/build identity 的 `ArtifactRef`、版本化逻辑 `KernelLaunchABI` 和冻结
 C primitive/POD/error contract 的 `KernelBinaryABI`。内容与 ABI 规则见
 [`attention/kernel_artifact.md`](attention/kernel_artifact.md) 和
 [`attention/launcher_abi.md`](attention/launcher_abi.md)。
+直接算子用 `domain="operator"` 的类型化能力绑定与 ACLNN 启动协议；静态登记可不携带二进制，
+原生执行时再按冻结 recipe/spec 验证 op-package，不能把两类 ABI 混用。
 六种 Attention mode 的 canonical plan payload 见
 [`attention/plan_metadata_wire.md`](attention/plan_metadata_wire.md)。
 
@@ -536,69 +538,45 @@ flashinfer parity-report
 
 不使用 `import flashinfer` 劫持原包。迁移层可放在 `flashinfer.compat.flashinfer`，通过显式 import 或下游 adapter 使用。
 
-## 14. 推荐仓库结构
+## 14. 当前仓库结构
 
 ```text
-flash-infer-npu/
-├── include/flashinfer/
-│   ├── arch/                    # SoC capability 与底层抽象
-│   ├── primitives/              # move/cube/vector/reduce/quant
-│   └── kernels/
-│       ├── attention/
-│       ├── gemm/
-│       ├── moe/
-│       ├── quantization/
-│       ├── sampling/
-│       ├── norm/
-│       └── comm/
-├── csrc/
-│   ├── runtime/                 # artifact loader、C ABI、ACL runtime
-│   ├── ops/                     # host launchers
-│   └── frontend/torch_npu/      # PyTorch dispatcher adapter
-├── flashinfer/
-│   ├── attention/
-│   ├── gemm/
-│   ├── fused_moe/
-│   ├── quantization/
-│   ├── comm/
-│   ├── jit/                     # spec、codegen、cache、build
-│   ├── runtime/                 # planner、registry、workspace
-│   ├── trace/
-│   ├── testing/
-│   ├── compat/
-│   ├── decode.py
-│   ├── prefill.py
-│   ├── page.py
-│   ├── cascade.py
-│   ├── rope.py
-│   ├── norm.py
-│   ├── activation.py
-│   └── sampling.py
-├── kernels/                     # op manifest 与 codegen 配置
-├── integrations/
-│   ├── vllm/
-│   └── sglang/
-├── tests/
-│   ├── unit/
-│   ├── conformance/
-│   ├── hardware/
-│   ├── integration/
-│   └── trace/
-├── benchmarks/
-│   ├── micro/
-│   ├── serving/
-│   └── baselines/
-├── docs/
-│   ├── architecture.md
-│   ├── support_matrix.md
-│   └── api_parity.md
-├── cmake/
-├── tools/
-├── pyproject.toml
-└── CMakeLists.txt
+flashinfer/
+├── gemm.py / attention/ / norm.py / ...      # 对外领域接口
+├── operators/<domain>/<op>/
+│   ├── operator.py                          # 公共 schema、语义、输出推导
+│   └── cases.py                             # 独立 golden、样例和容差
+├── ascendc/<domain>/<op>/
+│   ├── implementation.py                    # Support、NativeBinding、BuildConfig
+│   └── runner.py                            # 公共参数到原生 ABI 的执行适配
+├── cann/<domain>/<op>/
+│   ├── implementation.py                    # CANN 能力与 runner 绑定
+│   └── runner.py                            # 调用已安装的厂商实现
+├── triton/<domain>/<op>/
+│   ├── implementation.py                    # Triton 能力与源码引用
+│   ├── runner.py                            # 特化、缓存和启动
+│   └── kernels.py                           # 实际 Triton 实现
+├── reference/<domain>/<op>/                 # 显式参考实现及 runner
+├── runtime/                                # 共用 registry、dispatch、run_selected
+├── jit/ / aot/                             # 共用编译、缓存、验证、加载与发布
+└── attention/jit/                          # Attention 领域的计划/编译身份协议
+csrc/
+├── kernels/<domain>/<op>/
+│   ├── op_kernel/<entry>.cpp                # 统一设备入口
+│   ├── op_kernel/arch22/                    # A2/A3，按实际实现提供
+│   ├── op_kernel/arch35/                    # A5，按实际实现提供
+│   ├── op_host/                            # OpDef、推形及按架构组织的 tiler
+│   └── CMakeLists.txt                       # 可选算子配置
+├── cmake/ / aclnn_torch_adapter/            # 框架构建模板与 TorchNPU 桥
+└── recipes/matmul_probe.json                # 显式兼容探针
+tools/metadata/                             # 非派生对标资料与外部契约
+build/generated/                            # 忽略 Git 的 recipe、索引及冻结声明
 ```
 
-目录按职责而不是按某个 framework 组织。`kernels/` 的 manifest 是 codegen、AOT、文档和测试参数化的共同来源，禁止各自维护四份 capability 列表。
+同一逻辑 `op` 聚合多份 Descriptor；选型后调用各自 runner。生产 recipe 由后端声明生成，
+安装时位于 `flashinfer/data/`，不手改源码 JSON。`arch22/arch35` 的分支与构建目标绑定，
+同一 ABI 共享 runner；每个目标的编译和运行须分别验证。详细调用顺序见
+[运行时与编译设计](runtime-and-compilation-design.md)。
 
 ## 15. 测试与验证
 
@@ -842,3 +820,69 @@ flowchart LR
 - 切片通过后，再并行进入 quantized GEMM 与 paged decode attention，能显著降低基础设施返工。
 
 这条切片的完成定义：同一 workload 在 reference、Ascend C JIT 和 AOT 三条 backend 数值一致；`run()` 无内存分配和 Host 同步；artifact/capability 不匹配时可解释降级；benchmark 和 msProf trace 可由一条 CLI 重放。
+
+## 附录：早期规划目录（历史方案）
+
+以下保留最初的目录建议作为设计背景；实际文件位置以 §14 与算子组织规范为准。
+
+```text
+flash-infer-npu/
+├── include/flashinfer/
+│   ├── arch/                    # SoC capability 与底层抽象
+│   ├── primitives/              # move/cube/vector/reduce/quant
+│   └── kernels/
+│       ├── attention/
+│       ├── gemm/
+│       ├── moe/
+│       ├── quantization/
+│       ├── sampling/
+│       ├── norm/
+│       └── comm/
+├── csrc/
+│   ├── runtime/                 # artifact loader、C ABI、ACL runtime
+│   ├── ops/                     # host launchers
+│   └── frontend/torch_npu/      # PyTorch dispatcher adapter
+├── flashinfer/
+│   ├── attention/
+│   ├── gemm/
+│   ├── fused_moe/
+│   ├── quantization/
+│   ├── comm/
+│   ├── jit/                     # spec、codegen、cache、build
+│   ├── runtime/                 # planner、registry、workspace
+│   ├── trace/
+│   ├── testing/
+│   ├── compat/
+│   ├── decode.py
+│   ├── prefill.py
+│   ├── page.py
+│   ├── cascade.py
+│   ├── rope.py
+│   ├── norm.py
+│   ├── activation.py
+│   └── sampling.py
+├── kernels/                     # op manifest 与 codegen 配置
+├── integrations/
+│   ├── vllm/
+│   └── sglang/
+├── tests/
+│   ├── unit/
+│   ├── conformance/
+│   ├── hardware/
+│   ├── integration/
+│   └── trace/
+├── benchmarks/
+│   ├── micro/
+│   ├── serving/
+│   └── baselines/
+├── docs/
+│   ├── architecture.md
+│   ├── support_matrix.md
+│   └── api_parity.md
+├── cmake/
+├── tools/
+├── pyproject.toml
+└── CMakeLists.txt
+```
+
+目录按职责而不是按某个 framework 组织。`kernels/` 的 manifest 是 codegen、AOT、文档和测试参数化的共同来源，禁止各自维护四份 capability 列表。

@@ -5,6 +5,10 @@
 
 ## 1. 当前范围
 
+本文描述 AttentionPlan/provider 的框架合同。仓库还提供直接执行的 CANN 适配、CATLASS FA
+和 arch22 SparseFlashAttention，它们的公共定义、后端实现及 runner 按
+[算子组织规范](../operator-layout.md) 管理，不能用本页的 Host 合同范围替代全仓执行范围。
+
 本阶段只对标 FlashInfer 的核心 MHA/GQA Attention 框架面：
 
 - `BatchAttention` 统一 mixed prefill/decode。

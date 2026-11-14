@@ -2,7 +2,11 @@
 
 > 状态：Capability schema v1  
 > 日期：2026-08-19  
-> 当前 manifest：空；没有注册或暗示任何可运行昇腾 backend
+> 当前 profile manifest：空；此处描述 AttentionPlan/provider 协议，不代表全局 kernel registry 为空
+
+直接算子（如 `attention.sparse_flash_attention`）使用类型化公共 schema 与后端 `Support`，
+由 `flashinfer/operators/capability.py` 自动生成并校验 `domain="operator"` 绑定；
+它们不借用本页的 profile/POD ABI，也不扩大其验证范围。文件与构建链路见 [作者规范](../authoring-and-resources.md)。
 
 ## 1. 为什么需要 Attention 专用 profile
 
@@ -31,7 +35,7 @@ descriptor 再从范围内选择具体 AOT/JIT/aclnn 实现。两者都必须通
 
 ## 1.1 Kernel capability binding
 
-每个非 reference 的 `attention.*` kernel descriptor 必须携带
+进入 AttentionPlan/profile 验证路径的非 reference `attention.*` kernel descriptor 必须携带
 `KernelCapabilityBinding(domain="attention")`，其中固定 profile id、rule id 和完整 profile
 fingerprint。联合 validator 做双向证明：
 

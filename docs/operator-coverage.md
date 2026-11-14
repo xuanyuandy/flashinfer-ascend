@@ -2,6 +2,10 @@
 
 核对日期：2026-10-28。上游为 flashinfer-ori 提交 `62b5ae4e52e14d841e1b0455dc3cfa7053181741`，扫描时工作树干净；本仓为 `infer` 的 `b742c5a` 加当前架构重构工作树。硬件自检 **True 8**。本页把静态接口清单、当前实现和实际测试证据分开。
 
+上段和 `generated/operator-coverage/` 记录原始静态审计时点，未重新扫描上游。
+下文当前登记口径已按类型化作者目录更新；文件与调用链以 [组织规范](operator-layout.md)、
+[作者声明](authoring-and-resources.md) 和 [接入指南](adding-a-custom-operator.md) 为准。
+
 ## 先回答调用方式
 
 **上游不要求所有算子先创建 wrapper，再 plan/run。** 其公共入口同时包含：
@@ -32,7 +36,7 @@
 | 其他测试可见入口 | **4759 个函数/类/方法拼写**，包含 backend、experimental、内部 primitive、工具和生命周期方法；没有因不属于公共 facade 就丢弃 |
 | 其他静态引用 | 2044 个值/常量引用、1671 个未解析属性引用；未解析不等于缺失算子 |
 | 动态访问 | 88 处非字面量 getattr/hasattr，保留表达式及来源；部分名称可静态恢复，任意运行时名称不假装已经解析 |
-| 本仓运行时登记表 | **81 条 descriptor / 45 个 op**；其中 **43 个至少绑定一个 NPU runner**，2 个仅 reference |
+| 本仓当前运行时登记表 | **86 条 descriptor / 48 个 op**；其中 **46 个至少绑定一个 NPU runner**，2 个仅 reference；原审计快照仍为 81/45 |
 
 这里的“规范声明”按源码定义位置合并导出别名，仍不等于物理 kernel 数。薄封装即使调用同一 kernel，也可能有不同参数、输出、原地和状态契约；反过来一个 API 也可能选择多份 backend/特化二进制。
 
@@ -48,13 +52,13 @@
 
 ## 本仓当前实现全集
 
-[逐 op 的完整 45 行清单](generated/operator-coverage/local-operators.md) 列出公共入口、backend 和 reference-only 状态；[CSV](generated/operator-coverage/local-operators.csv) 另含源码行号、kernel_id、图能力和完整能力约束，[descriptor 快照](generated/operator-coverage/local-descriptors.json) 保留全部 81 条记录。
+[原审计的 45 行快照](generated/operator-coverage/local-operators.md) 与 [CSV](generated/operator-coverage/local-operators.csv) 保留当时的入口、backend、源码行号和约束，[descriptor 快照](generated/operator-coverage/local-descriptors.json) 保留当时 81 项；它们不充当当前完整清单。当前 48 项以 `flashinfer/operators/`、各后端声明及 `tests/production_inventory.py` 的独立精确预期为准。
 [本仓公开函数/类拼写](generated/operator-coverage/local-public-interfaces.csv) 另外保留别名及 Host/框架类型。CSV 中的 Torch 入口需按对应注册函数显式启用，functional/out 共享 op，不另计为新算子。qualified 名称也包含可从子模块 import 的符号；同名顶层函数可以遮蔽子模块属性，不能假定所有名称都能在一次顶层 import 后逐级 getattr。
 
 | 能力域 | 至少绑定 NPU runner 的 op | 当前公共入口与边界 |
 | --- | --- | --- |
-| Attention | 7 | single prefill/decode、paged decode、paged/ragged prefill、CUDNN 命名兼容入口、限定形状 CATLASS prefill；不等于混合 BatchAttention、MLA、sparse、POD 全部支持 |
-| GEMM | 6 | BF16 MM/BMM、FP8 BMM/groupwise、Segment GEMM、生产 MatmulBiasSiLU；FP8 与自研的 dtype/SoC/shape 范围有限 |
+| Attention | 8 | single prefill/decode、paged decode、paged/ragged prefill、CUDNN 兼容入口、CATLASS prefill、Ascend910B arch22 MLA SFA；不等于混合 BatchAttention、全部 MLA/sparse/POD 家族已支持 |
+| GEMM | 8 | BF16 MM/BMM、FP8 BMM/groupwise、Segment GEMM、MatmulBiasSiLU、三后端 Matmul、Ascend910B GMM/SwiGLU/量化；各自受 dtype/SoC/shape 限制 |
 | sampling | 10 | 概率/logits 采样、top-k/top-p/min-p、过滤/重归一化、chain speculative sampling；由设备侧过滤及采样步骤组合 |
 | RoPE | 6 | 普通、pos_ids、cos/sin cache 及各自原地版本；不包含 Llama3.1 频率缩放族 |
 | norm | 5 | RMSNorm、Add RMSNorm、Gemma 两种、LayerNorm；Gemma fused add 为 Triton 路径 |
@@ -62,7 +66,7 @@
 | MoE | 3 | 非量化、FP8 per-tensor、FP8 block-scale 的有限实现；不是完整上游 MoE/EP 产品面 |
 | cascade | 2 | merge_state、merge_states；没有独立 merge_state_in_place 公共入口 |
 | page | 1 | 普通 paged KV append；MLA/FP4 append、公开 metadata helper 仍缺 |
-| 合计 | **43** | 不把两个内部 reference-only `attention.decode` / `attention.prefill` 算作 NPU 加速 |
+| 合计 | **46** | 不把两个内部 reference-only `attention.decode` / `attention.prefill` 算作 NPU 加速 |
 
 “NPU runner 已绑定”表示该实现可被调度，不能外推为所有 dtype、shape、量化布局、产品和图模式都通过。普通 Torch/CANN 组合也不能自动称为一个 fused kernel。此次未新增或更改任何生产算子、冻结 ABI、精确登记集合或 graph_capability。
 
@@ -72,7 +76,7 @@
 它通过另一套 holistic provider runtime 解析 NPU 执行；默认尚无生产 provider 闭环。普通 `BatchPrefillWithPagedKVCacheWrapper`、ragged wrapper 和 paged decode 则已有 CANN 内置执行路线。
 **不能把“有 BatchAttention 类”写成“mixed batch NPU 已支持”，也不能把本仓说成完全没有这个接口。**
 
-MoE 也有类似边界：`flashinfer/cann/moe.py` 已有 `ep_size>1` 的外部 `cann_ops_transformer` 接入分支；缺少依赖会明确失败。本轮没有验证该分支的多 rank 执行，也没有完整的上游 `flashinfer.moe_ep` 接口族，不能简单记为“全部支持”或“源码中完全没有 EP 分支”。
+MoE 也有类似边界：`flashinfer/cann/fused_moe/` 已有 `ep_size>1` 的外部 `cann_ops_transformer` 接入分支；缺少依赖会明确失败。原审计未验证多 rank 执行，也没有完整的上游 `flashinfer.moe_ep` 接口族，不能简单记为“全部支持”或“源码中完全没有 EP 分支”。
 
 ## Ascend 官方能力与实现差距
 
@@ -121,11 +125,15 @@ MoE 也有类似边界：`flashinfer/cann/moe.py` 已有 `ep_size>1` 的外部 `
 
 ## 复现
 
+以下复现原基线的静态审计；该 AST 工具不解析类型化 schema 动态导出的新门面，
+不作为当前作者目录的生成入口。当前接入使用 `python -m flashinfer.operators generate/check`，
+见 [接入指南](adding-a-custom-operator.md)。本次未重新执行上游盘点或重生成历史 CSV/JSON。
+
 ```bash
 # 只解析源码；不 import 上游、不编译 CUDA、不执行上游 GPU 测试
 python3 -B tools/audit_operator_surface.py --upstream ../flashinfer-ori --output-dir "$WORK/upstream"
 
-# local-registry.json 是当前环境 get_global_registry() 的 descriptor/能力快照
+# local-registry.json 使用原审计基线的 descriptor/能力快照；不混入当前动态导出的接口
 python3 -B -m tools.build_operator_comparison --inventory "$WORK/upstream/test-api-inventory.json" --upstream ../flashinfer-ori --local-registry "$WORK/local-registry.json" --output-dir docs/generated/operator-coverage
 
 python3 -B tools/run_regression.py --profile quick

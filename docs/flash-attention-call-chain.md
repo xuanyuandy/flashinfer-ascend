@@ -4,6 +4,11 @@
 
 当前 Ascend C 生产链已经支持同一个 kernel 优先使用 AOT、缺失时按策略使用 JIT。多后端选择发生在产物解析之前；默认生产 registry 中这个 FA 入口只有 Ascend C 候选，隔离 registry 已接入 Triton FA，可通过同一公共入口强制选择或查询调优记录。两条路径的内存、tiling、队列及同步时序见第 8 节。
 
+本文的 CATLASS FA 是保留 `public_entry` 的既有富接口。新增直接算子按
+[接入指南](adding-a-custom-operator.md) 声明 schema、`infer`、后端实现与 runner，由框架生成接口，
+例如 [arch22 SparseFlashAttention](adding-a-custom-operator.md#62-sparseflashattention-的-arch22-接入案例)。
+两者共用登记、选型与构建机制；本例允许缺包 JIT，不代表 AOT-only 算子也允许。
+
 ## 1. 调用身份与支持范围
 
 | 对象 | 职责 | 当前 FA 示例 |
@@ -26,7 +31,7 @@ kernel_id    = ascendc/t4/flash_attention/catlass/op_package/Ascend950
 
 其数学语义是 `softmax(Q @ K.T / sqrt(128)) @ V`。当前支持 Ascend950 上连续 ND Tensor，逻辑布局 NHD，Q 为 `[S,H,128]`，K/V 为 `[T,H,128]`；S/T 是 128..512 范围内的 128 倍数，H 为 1..8，隐含 batch=1，Q/K/V/out 全部为 FP16 或全部为 BF16。仅支持非 causal、无 mask，不接收运行期长度 Tensor。
 
-支持域来自 [recipe](../csrc/recipes/flash_attention.json) 和 [生产声明](../flashinfer/data/kernels/registry.json)。`kernel_id` 中的路径文字不替代 descriptor 的 backend、能力或编译身份检查。
+支持域来自 [类型化后端声明](../flashinfer/ascendc/attention/single_prefill_catlass/implementation.py) 的 `Support/NativeBinding/BuildConfig`，recipe 与静态 Descriptor 由框架生成。`kernel_id` 中的路径文字不替代 backend、能力或编译身份检查。
 
 ## 2. 从公共入口到设备的调用图
 
@@ -111,7 +116,7 @@ specializations = (("tensor_contract", "supported"),)
 
 ### 3.3 注册 descriptor 并绑定 lazy runner
 
-[get_global_registry()](../flashinfer/runtime/registry.py) 首次访问时组合内置声明和 `ascendc_descriptors()`，完成初始化后冻结内置登记。生产 Ascend C 声明从 `flashinfer/data/kernels/registry.json` 与 `flashinfer/data/kernels/ascendc_specs.json` 读取，并校验 descriptor、recipe、spec 的相互绑定。
+[get_global_registry()](../flashinfer/runtime/registry.py) 首次访问时收集各后端作者声明并冻结内置登记。源码从 Python 目录发现，安装模式校验随包索引；Ascend C runner 延迟读取冻结 recipe/spec 并核对绑定。生成资源位于 `build/generated/`，安装后位于 `flashinfer/data/`，登记不要求已有二进制。
 
 [ascendc_descriptors()](../flashinfer/ascendc/__init__.py) 通过 `bind_aot_kernel()` 为每个生产 descriptor 提供：
 
@@ -253,7 +258,7 @@ CANN 当前运行时版本与构建版本的兼容比较尚未接通。以上候
 | --- | --- |
 | 数学语义、公共参数、signature、输出组织 | [CATLASS facade](../flashinfer/attention/catlass_prefill.py) |
 | host OpDef、infer、tiling 与设备实现 | [FA 算子目录](../csrc/kernels/attention/flash_attention/) |
-| Tensor 顺序、dtype 组合、shape、源码摘要、编译配置 | [FA recipe](../csrc/recipes/flash_attention.json) |
+| Tensor 顺序、dtype 组合、shape、编译输入与选项；框架生成源码摘要 | [FA 后端声明](../flashinfer/ascendc/attention/single_prefill_catlass/implementation.py) |
 | descriptor、冻结 spec 和 lazy runner | [集中声明与冻结](../flashinfer/aot/declarations.py)、[生产声明与绑定](../flashinfer/ascendc/__init__.py) |
 | AOT/JIT 构建、导出与校验 | [共享构建](../flashinfer/jit/build.py)、[AOT 发布](../flashinfer/aot/build.py) |
 | Torch schema、FakeTensor、原生下发 | [算子 Torch 声明](../flashinfer/operators/attention/single_prefill_catlass/operator.py)、[Tensor adapter](../flashinfer/jit/tensor_adapter.py) |

@@ -65,6 +65,7 @@ build/generated/                            # 框架输出，忽略 Git，不是
 | `AscendCImplementation` | 公共定义、支持范围、`NativeBinding`、`BuildConfig`；必要的 workspace 上界 | 静态 Descriptor、recipe、源码闭包、延迟 AOT runner |
 | `NativeBinding` | Tensor/属性顺序、可选性、逻辑形状、合法 dtype 组合与显式存储转换 | 契约校验、标准 Tensor ABI 适配 |
 | `BuildConfig` | 设备/host 源码、OpDef 名、tiling 回调与特殊构建规则 | 默认目录和入口、输入摘要；独立 CMake 配置接入共有构建流程 |
+| 直接算子能力绑定 | 公共 schema、后端 `Support`；无额外 profile 文件 | `operators/capability.py` 绑定 schema、输出、backend、能力及 ACLNN 启动协议并校验 |
 
 `runner=` 接受普通 callable；`runner_factory=` 接受适配工厂，二者必须且只能选择一个。
 Python 工厂接收 Descriptor，Ascend C 工厂接收已验证模块、冻结 spec 和 recipe。
@@ -114,11 +115,13 @@ csrc/kernels/<domain>/<name>/
 `__CCE_AICORE__ == 310` 包含 `arch35`，其余已声明的 A2/A3 目标包含 `arch22`。
 OpDef 必须登记相应产品，host tiling 仍要处理不同平台的核数、UB 等资源。
 
-现有 `csrc` 已按此规范分离：GMM 的计算与 tiler 位于 `arch22/`；Matmul、MatmulBiasSilu
+现有 `csrc` 已按此规范分离：GMM、SparseFlashAttention 的计算与 tiler 位于 `arch22/`；Matmul、MatmulBiasSilu
 和 CATLASS FlashAttention 的设备实现位于 `arch35/`，后者的专用 tiler 也位于
 `op_host/arch35/`。原生 Matmul 探针的通用计算位于 `op_kernel/common/`。
 设备入口 `.cpp` 保持稳定，按 `__CCE_AICORE__` 引入已有架构实现；没有实现的架构明确
 编译失败。公共 schema、native ABI 和 runner 不因目录拆分而复制。
+当前 GMM、SparseFlashAttention 的生产声明仅覆盖 Ascend910B；目录名 `arch22` 不代表 A3 已验收。
+SparseFlashAttention 的公开导出、作者文件与运行边界见 [接入案例](adding-a-custom-operator.md#62-sparseflashattention-的-arch22-接入案例)。
 
 相同能力范围、native ABI 和 runner 的多目标实现使用下列形式；`BUILD`、`BINDING`
 是该算子已有的 `BuildConfig`、`NativeBinding`，无需按目标复制：
@@ -163,8 +166,11 @@ workspace 与当前 stream，再调用同名 ACLNN 接口。只有 Tensor/属性
 ```bash
 python -B -m flashinfer.operators generate
 python -B -m flashinfer.operators check
-python -B -m flashinfer.operators build --kernel-id <kernel-id> --output-dir <release-dir>
+python -B -m flashinfer.operators build --kernel-id "$KERNEL_ID" --output-dir "$RELEASE_DIR"
 ```
+
+构建前将 `KERNEL_ID` 设为实际声明的实现 ID，`RELEASE_DIR` 设为发布目录；
+可直接复用 [SFA 案例](adding-a-custom-operator.md#62-sparseflashattention-的-arch22-接入案例) 中的完整命令。
 
 原生 runner 在首次需要构建契约时读取冻结 metadata，并比较当前声明与 recipe 身份；
 缺失或过期时明确要求生成/冻结。注册实现不要求二进制存在；执行才解析匹配产物。

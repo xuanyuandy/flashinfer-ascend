@@ -9,7 +9,7 @@ FlashInfer Ascend 是面向昇腾 NPU 的推理算子库与 kernel 接入框架�
 
 编译 AOT wheel、创建独立 conda 环境并直接运行测试脚本，见
 [wheel 编译与 conda 安装指南](README-wheel-conda.md)。未设置其他构建模式时，
-普通 wheel 构建会编译并打包当前登记的四条生产 Ascend C 算子。
+普通 wheel 构建会编译并打包当前登记的五条生产 Ascend C 算子。
 
 完整接口清单、上游调用方式及实现差距见 [算子覆盖对比](docs/operator-coverage.md)
 和 [公共接口生命周期与测试要求](docs/operator-call-patterns.md)。
@@ -23,13 +23,13 @@ FlashInfer Ascend 是面向昇腾 NPU 的推理算子库与 kernel 接入框架�
 - **多后端选择**：基于输入 signature、硬件 signature 和 kernel registry 过滤能力，
   支持显式指定 `backend`、`kernel_id` 并解释选择结果。调优层位于实现选择层，
   可使用有效的测量记录；当前随包调优记录为空，未命中时使用确定性策略，不在算子调用中现场测量。
-- **通用 Ascend C 编译框架**：集中 descriptor 与 recipe 按 `kernel_id` 关联，统一冻结声明、
+- **通用 Ascend C 编译框架**：从类型化后端声明生成 descriptor 与 recipe，按 `kernel_id` 关联，统一冻结声明、
   解析依赖和批量构建。普通 wheel 随包提供生产 AOT；运行期优先加载已验证 AOT，
   缺失时按策略使用 JIT。缓存和产物仍按 kernel 保存，损坏或加载失败明确报错。
-- **目录式算子接入**：作者在算子目录维护 `operator.py`、可选 CMake、`cases.py` 与 host/device
+- **目录式算子接入**：作者维护公共 `operator.py`、后端 `implementation.py/runner.py`、可选 CMake、`cases.py` 与 host/device
   实现；`python -m flashinfer.operators build` 自动生成声明/摘要、冻结并构建 AOT。
   公共导出、Torch functional/out/FakeTensor 和装后检查使用通用接线，见
-  [作者入口与 CMake 配置](docs/adding-a-custom-operator.md#063-已实现的目录接入入口)。
+  [作者文件与 CMake 配置](docs/adding-a-custom-operator.md#15-作者文件自动生成项与共有框架)。
 - **统一 TorchNPU / ACLNN 执行**：FA 与 MatmulBiasSiLU 的 Python 公共函数是自动注册的
   薄封装，统一进入 `torch.ops.flashinfer.*`，再经 C++ `OpCommand` 桥调用 ACLNN。
   提供 functional/out schema 与 FakeTensor 元数据实现；`enable_aclnn()` 仅做幂等注册，
@@ -40,7 +40,7 @@ FlashInfer Ascend 是面向昇腾 NPU 的推理算子库与 kernel 接入框架�
 - **开发与交付工具**：产物完整性校验、装后 selftest、保存日志/JUnit/退出码的分档回归，
   以及算子和公共接口清单。
 
-四条生产 Ascend C 算子的统一调用链为：Python 薄封装或直接 Torch 调用 → Torch schema /
+五条生产 Ascend C 算子的统一调用链为：Python 薄封装或直接 Torch 调用 → Torch schema /
 PrivateUse1 实现 → signature / dispatch → AOT/JIT → 已验证 Tensor runner →
 C++ TorchNPU `OpCommand` → ACLNN host tiling / workspace / launch → device kernel。
 CANN 内置算子与 Triton 保留各自的执行路线。逐层职责见 [FA 完整调用链](docs/flash-attention-call-chain.md)。
@@ -51,9 +51,9 @@ CATLASS AOT 与新增 Triton JIT FA 可在独立 registry 中比较，并通过�
 
 ## 算子范围
 
-当前运行时登记表包含 **47 个逻辑 op、85 条实现描述（descriptor）**，其中
-**45 个 op 至少绑定一个 NPU runner**；内部 `attention.decode`、`attention.prefill`
-仅有 reference 实现。85 条描述由 41 条 CANN、4 条 Ascend C、2 条 Triton 和 38 条 reference 组成。
+当前运行时登记表包含 **48 个逻辑 op、86 条实现描述（descriptor）**，其中
+**46 个 op 至少绑定一个 NPU runner**；内部 `attention.decode`、`attention.prefill`
+仅有 reference 实现。86 条描述由 41 条 CANN、5 条 Ascend C、2 条 Triton 和 38 条 reference 组成。
 这些是登记数量，各实现的实际支持域与验证范围另行限定。
 
 同一逻辑算子可以有多个后端实现；同一实现也可以提供多个公共入口。
@@ -61,7 +61,7 @@ CATLASS AOT 与新增 Triton JIT FA 可在独立 registry 中比较，并通过�
 
 | 能力域 | 绑定 NPU runner 的 op 数 | 代表性公共接口 | 当前实现范围 |
 | --- | --- | --- | --- |
-| Attention | 7 | `single_prefill_with_kv_cache`、`single_decode_with_kv_cache`、paged/ragged batch wrapper、`single_prefill_with_kv_cache_catlass` | CANN single/batch 路线与限定支持域的 CATLASS FA；普通 batch 路线组合 gather/FIA/concat |
+| Attention | 8 | `single_prefill_with_kv_cache`、`single_decode_with_kv_cache`、paged/ragged batch wrapper、`single_prefill_with_kv_cache_catlass`、`sparse_flash_attention` | CANN single/batch、限定支持域的 CATLASS FA 与 Ascend910B arch22 SFA；普通 batch 路线组合 gather/FIA/concat |
 | GEMM 与线性计算 | 8 | `mm_bf16`、`bmm_bf16`、`bmm_fp8`、`gemm_fp8_nt_groupwise`、`SegmentGEMMWrapper`、`matmul`、`matmul_bias_silu`、`grouped_matmul_swiglu_quant` | CANN BF16/FP8、Matmul 三后端与 Ascend C 融合算子；GroupedMatmulSwigluQuant 为 Ascend910B AOT-only |
 | MoE | 3 | `fused_moe`、`fp8_per_tensor_scale_moe`、`fp8_block_scale_moe` | 基于 CANN 的路由与专家计算，受各接口契约限制；分布式 EP 数值未验证 |
 | 归一化 | 5 | `rmsnorm`、`fused_add_rmsnorm`、`gemma_rmsnorm`、`gemma_fused_add_rmsnorm`、`layernorm` | CANN 路线；Gemma fused Add RMSNorm 使用 Triton |
@@ -71,13 +71,13 @@ CATLASS AOT 与新增 Triton JIT FA 可在独立 registry 中比较，并通过�
 | KV cache | 1 | `append_paged_kv_cache` | 普通 paged KV 追加 |
 | Attention 状态合并 | 2 | `merge_state`、`merge_states` | output/LSE 合并；完整多级 cascade wrapper 尚未接齐 |
 
-逐接口信息见 [完整本地 op 清单](docs/generated/operator-coverage/local-operators.md)
+逐接口信息见 [当前登记说明](docs/operator-coverage.md#本仓当前实现全集) 与[原静态审计快照](docs/generated/operator-coverage/local-operators.md)
 和 [上游接口对比](docs/operator-coverage.md)。`cudnn_batch_decode_with_kv_cache`
 等兼容名称在昇腾侧使用本仓后端，不要求 CUDA/cuDNN。
 
 ### 随包预编译的 Ascend C 算子
 
-普通 AOT wheel 会编译并携带以下四条生产算子。CANN 算子使用已安装的 TorchNPU/CANN
+普通 AOT wheel 会编译并携带以下五条生产算子。CANN 算子使用已安装的 TorchNPU/CANN
 组件，Triton 使用自己的 JIT 路线。Ascend C 的 `op_package` 是 CANN 生成的算子交付包，
 包含 host 调用/注册/tiling 库与设备二进制，由 manifest 及摘要绑定身份。
 
@@ -86,21 +86,24 @@ CATLASS AOT 与新增 Triton JIT FA 可在独立 registry 中比较，并通过�
 | CATLASS FlashAttention | FP16 或 BF16，Q/K/V/out 必须同 dtype；连续 Tensor，逻辑布局 NHD、物理格式 ND，batch=1；Q 为 `[S,H,128]`，K/V 为 `[T,H,128]`；S/T 是 128..512 范围内的 128 倍数，H=1..8；非 causal、无 mask |
 | MatmulBiasSiLU | BF16、连续 ND；A 为 `[M,K]`，B 为 `[K,N]`，bias 为 `[N]`；M/N/K 是 16..256 范围内的 16 倍数；计算 `silu(A @ B + bias)` |
 | Matmul | Ascend950 上 BF16、连续 ND；M/N/K 是 16..256 范围内的 16 倍数；使用本仓 AOT，缺包不转 JIT |
-| GroupedMatmulSwigluQuant | Ascend910B 上 A8W8/A8W4，grouped GEMM → 反量化 → SwiGLU → token INT8；返回量化输出与 FP32 scale。完整存储/属性契约、AOT-only 构建和安装验收见 [迁移案例](docs/adding-a-custom-operator.md#06-迁移实例groupedmatmulswigluquant-走本仓-aot) |
+| GroupedMatmulSwigluQuant | Ascend910B 上 A8W8/A8W4，grouped GEMM → 反量化 → SwiGLU → token INT8；返回量化输出与 FP32 scale。完整存储/属性契约、AOT-only 构建和安装验收见 [迁移案例](docs/adding-a-custom-operator.md#61-迁移实例groupedmatmulswigluquant-走本仓-aot) |
+| SparseFlashAttention | Ascend910B arch22 MLA，FP16/BF16、D=512、KV head=1；支持声明域内 BSND/TND/分页 KV，连续 ND 输入与 out；仅本仓 AOT，未接入 Triton/CANN 变体。边界与真机证据见 [移植验收](docs/reports/sparse-flash-attention-arch22.md) |
 
-这四条 Ascend C 路径当前均为同步 eager 执行，图能力保持 `NOT_CAPTURABLE`。
+这五条 Ascend C 路径当前均为同步 eager 执行，图能力保持 `NOT_CAPTURABLE`。
 
 ## 快速开始
 
 ### 环境要求
 
-最近的定向真机与 wheel 验证使用 **Ascend950**、Python 3.12、Torch `2.10.0+cpu`、
+Ascend950 的定向真机与 wheel 验证使用 Python 3.12、Torch `2.10.0+cpu`、
 TorchNPU `2.10.0.post7` 和 CANN 9.2.0。其他版本组合需单独验证；其他 SoC 的探针
 交叉编译结果不能作为该设备数值执行已通过的证据。
+Ascend910B3 的 SFA 定向数值、AOT 与安装验证见 [arch22 验收记录](docs/reports/sparse-flash-attention-arch22.md)；
+各设备记录的通过范围分别成立，不代表全量回归或其他产品已通过。
 
 源码构建需要匹配的 Torch/TorchNPU 库与头文件、包含 `bisheng` 和打包工具的 CANN、
 CMake、C++17 编译器，以及 libffi 开发头文件和库。先激活构建环境，再加载本机
-CANN `set_env.sh`。CATLASS 使用 [FA recipe](csrc/recipes/flash_attention.json) 声明的固定 revision。
+CANN `set_env.sh`。CATLASS 使用 [FA 构建声明](flashinfer/ascendc/attention/single_prefill_catlass/implementation.py) 中固定的 revision。
 安装完整 AOT wheel 后，执行仍需要匹配的 Torch/TorchNPU、CANN runtime 和 libffi，
 无需编译器或 CATLASS 头文件。
 
@@ -114,7 +117,7 @@ python3 -B -c "import torch, torch_npu; print(torch.npu.is_available(), torch.np
 python3 -B setup.py bdist_wheel
 ```
 
-默认构建包含四条生产 AOT 算子包、构建源码输入和原生 TorchNPU 桥。
+默认构建包含五条生产 AOT 算子包、构建源码输入和原生 TorchNPU 桥。
 CATLASS 头文件仅在构建时使用，wheel 不携带完整 CATLASS 依赖 checkout。
 
 编译框架也提供独立批量入口，保留按 kernel 的缓存和产物，无需为每个算子复制构建脚本：
@@ -146,6 +149,8 @@ python3 -B -m flashinfer selftest
 ```
 
 FA 脚本通过原生桥测试 FP16/BF16；独立 selftest 禁用 JIT，只运行安装包随附的 AOT 算子。
+无 `--kernel-id` 时 selftest 检查整个生产登记；A2/A5 项需在匹配设备分别验收，
+可按 ID 选择单项。缺包、失败或 skip 都不能记为完整通过。
 脚本会检查 `flashinfer` 是否来自运行环境。验证 wheel 时应避免 editable 安装抢先导入源码，
 隔离方法见 [安装说明](README-wheel-conda.md)。纯路径依赖共享不等于使用 `--system-site-packages`。
 
@@ -235,7 +240,7 @@ python3 -B tools/run_regression.py --profile full
 | 运行时与编译系统技术设计 | [数据模型、调度、AOT/JIT 与 FA 接入](docs/runtime-and-compilation-design.md) |
 | 架构介绍提纲 | [项目定位与概念整理](docs/expert-architecture-overview.md) |
 | FA 调用链与多后端接入 | [适配层、分发、AOT/JIT 与 ACLNN](docs/flash-attention-call-chain.md) |
-| 算子全集与上游对比 | [覆盖总览](docs/operator-coverage.md)、[生成的 op 清单](docs/generated/operator-coverage/local-operators.md) |
+| 算子全集与上游对比 | [当前登记与上游对比](docs/operator-coverage.md)、[原静态审计快照](docs/generated/operator-coverage/local-operators.md) |
 | 新增 kernel 或 dtype | [算子接入指南](docs/adding-a-custom-operator.md)、[源码组织](csrc/kernels/README.md) |
 | TorchNPU 队列与 ACLNN 接入 | [Torch/ACLNN 适配层](docs/aclnn-torch-adapter.md) |
 | 公共 wrapper 生命周期 | [调用方式与 UT](docs/operator-call-patterns.md) |
@@ -247,7 +252,7 @@ python3 -B tools/run_regression.py --profile full
 参与开发前请阅读 [协作指南](CONTRIBUTING.md) 和 [算子接入指南](docs/adding-a-custom-operator.md)。
 README 的组织参考 flashinfer-ori: `README.md`，能力描述以本仓 Ascend 实现为准。
 项目使用 [Apache-2.0](LICENSE)；迁移的 CATLASS FA 实现保留其
-[源码许可证](csrc/kernels/ascendc/attention/flash_attention/LICENSE) 与声明。
+[源码许可证](LICENSES/CANN-Open-Software-License-2.0.txt) 与集中[来源声明](THIRD_PARTY_NOTICES.md)。
 
 ## Attention 框架契约
 
@@ -301,7 +306,7 @@ registry generation 的诊断信息，其中不包含可执行 plan、module、c
 框架内部通过声明式 bootstrap 组合精确 package 版本、能力证据、kernel/ABI 来源、provider
 adapter 和 Tensor 物化器，形成自动 NPU resolver。当前该框架随包的集成声明为空；只有安装
 经过独立验证的集成后，才会导入或调用真实 CANN/flash-attention-npu provider 包。
-此处为空不影响前文普通 CANN batch wrapper 与四条生产 Ascend C 算子的执行路线。
+此处为空不影响前文普通 CANN batch wrapper 与五条生产 Ascend C 算子的执行路线。
 
 provider 集成在进程 bootstrap 阶段原子安装。每个 NPU `BatchAttention` 实例在创建时捕获
 一个不可变 resolver generation，后续集成更新不会改变已有 wrapper 的 plan/run 授权。

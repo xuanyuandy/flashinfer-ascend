@@ -9,6 +9,8 @@ flashinfer/
 ├── gemm.py                                  # 公共接口门面
 ├── operators/
 │   ├── definition.py                        # 公共定义协议
+│   ├── author_api.py                        # Support、DimRange 与 Python 后端声明
+│   ├── capability.py                        # 直接算子的类型化能力绑定与校验
 │   ├── implementation.py                    # 实现声明协议
 │   ├── catalog.py                           # 已安装接口索引
 │   ├── authoring.py                         # 检查及生成
@@ -40,6 +42,9 @@ csrc/
 │   ├── CMakeLists.txt                       # 用户：可选编译配置
 │   ├── op_host/                             # 用户：OpDef、推形和 tiling
 │   ├── op_kernel/                           # 用户：原生设备源码及头文件
+│   │   ├── <entry>.cpp                      # 统一设备入口，选择已提供的架构分支
+│   │   ├── arch22/                          # A2/A3 实现，按实际提供情况存在
+│   │   └── arch35/                          # A5 实现，按实际提供情况存在
 │   └── include/                             # 用户：需要时提供共享声明
 ├── cmake/                                   # 框架共有构建模板
 └── aclnn_torch_adapter/                      # 框架共有执行桥
@@ -58,6 +63,14 @@ csrc/
 现有富接口通过 `OperatorDefinition.public_entry` 引用域内前端，沿用原有签名及公共元数据检查；这类接口的语义代码仍可由前端及共有模块实现。新增无状态接口可以直接声明 `schema`、`infer`、`validate_values`，由框架生成公共 callable 及 Torch 接线。两者使用同一个实现目录与登记表。
 
 后端 `implementation.py` 声明实现身份、Capability、编译方式以及 runner 或 runner 工厂。Capability 归具体实现：dtype、shape、物理布局、SoC、量化绑定、图能力可以不同，公共定义不复制某一实现的完整限制。未执行 capture/replay 验证的实现继续声明 `NOT_CAPTURABLE`。
+
+量化能力由 `flashinfer/runtime/schema.py` 的 `QuantSpec/CapabilityCase/CapabilitySpec` 表达，
+具体组合仍在后端声明；它不要求独立的 `flashinfer/quantization/` 实现目录。
+
+作者使用 `CANNImplementation`、`TritonImplementation`、`ReferenceImplementation` 或
+`AscendCImplementation`，由 `Support` 派生 Descriptor。带公共 schema 的直接算子自动绑定
+schema、输出、backend 和完整能力；AttentionPlan 继续使用其 profile/POD 协议。
+多目标 Ascend C 实现通过 `for_targets(...)` 派生各 SoC 的独立构建身份，共享 ABI 一致的 runner。
 
 初始化时，框架收集实现，将静态 Descriptor 与惰性 runner 绑定，再加入已有 `KernelRegistry` 并冻结。登记不触发设备初始化、编译或设备源码导入。静态清单不序列化 Python callable；安装后的框架负责恢复 runner 绑定。
 
@@ -82,9 +95,9 @@ Ascend C runner 复用既有 AOT 验证加载、允许策略下的 JIT、Torch/A
 flashinfer-ori: `include/flashinfer/` 保存可独立于框架的 CUDA 实现，`csrc/` 保存原生实现、启动包装和绑定，`flashinfer/triton/` 及域内 Python kernel 包保存 Python DSL 实现，`flashinfer/jit/` 组织编译与加载。flashinfer-ori: `build_backend.py` 将原生源码作为安装资源收集。这里沿用这种语言与交付分层，并用显式实现声明和统一 KernelRegistry 关联多个后端。
 
 
-## 作者接口与资源位置的实施更新
+## 当前作者接口与资源入口
 
 原先的目录已按 [作者声明与资源交付](authoring-and-resources.md) 实施：全部既有后端声明采用类型化作者接口，
 生成 JSON 只位于 `build/generated/` 与安装包；非派生契约源位于 `tools/metadata/`。
 Attention 编译协议已迁入 `flashinfer/attention/jit/`，历史导入保留薄兼容入口。
-上文关于“尚未迁移”的文字记录整改前状态；实际测试证据以本次整改报告为准。
+完整接入步骤见 [接入指南](adding-a-custom-operator.md)；实际运行范围以对应的验收报告为准。

@@ -3,10 +3,17 @@
 在仓库根目录使用已配置依赖的 Python 环境运行 pytest；A5 环境准备见
 [`a5.md`](a5.md)。以下 `python` 指该环境的解释器。
 
+执行前确认实际设备；缺设备、缺依赖或 skip 均不计为成功。回归入口会保存日志、JUnit、
+pytest 原始退出码及最终状态，有 skip 或未执行用例时返回失败。
+
+```bash
+python -B -c 'import torch,torch_npu;print(torch.npu.is_available(),torch.npu.device_count())'
+```
+
 ## 本地日常快速检查
 
 ```bash
-python -m pytest tests/ -m "not real_compile" -q
+python -B tools/run_regression.py --profile quick
 ```
 
 `real_compile` 表示测试（含 fixture）会调用真实编译器，或构建、落盘、
@@ -21,20 +28,28 @@ python -m pytest tests/ -m "not real_compile" -q
 ## CI / 提交前全量检查
 
 ```bash
-python -m pytest tests/ -q
+python -B tools/run_regression.py --profile full
 ```
 
 直接运行 `pytest tests/` 默认执行全部测试，包括 `real_compile`；配置中
 没有默认排除条件。CI 和提交前使用完整环境执行全量，以保留编译、缓存、
 装载和数值覆盖。
+`full` 已包含 `real_compile`，通过后无需紧接着重复相同编译矩阵。
 
 需要单独验证编译组时运行：
 
 ```bash
-python -m pytest tests/ -m "real_compile" -q
+python -B tools/run_regression.py --profile compile
 ```
 
 ## 新增编译类测试
+
+类型化作者目录的元数据与路由检查由 `tests/test_operator_authoring.py`、
+`tests/test_author_api.py`、`tests/test_operator_layout.py` 等覆盖。
+新增原生算子提供 `cases.py` 的独立 golden、参数矩阵和容差，
+`tests/test_operator_packages_real.py` 与 `flashinfer.operators.testing` 复用通用 AOT/out/stream/安装验收。
+精确生产清单仍由维护者审核，不由生成器改写。只改文档或清单生成工具时执行静态检查及受影响 UT，
+无需重复冷构建与 wheel 安装；编译/设备源码改动补受影响 compile，跨层重构执行 full。
 
 新增用例若会直接或通过 fixture 调用真实编译器、生成或加载真实编译产物，
 在测试函数或方法上添加：

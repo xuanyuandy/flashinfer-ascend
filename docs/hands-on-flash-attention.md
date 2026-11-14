@@ -3,11 +3,11 @@
 本文走一遍完整发布链路：
 **构建全部可预编算子 → 打进同一个 wheel → 装到隔离环境 → selftest → 移走产物做反证**。
 
-环境为 8× Ascend950PR / CANN 9.2.0-beta.2。
+下文保留 8× Ascend950PR / CANN 9.2.0-beta.2 的历史输出；操作说明按当前作者目录与生成资源更新。
 机制背景见 `framework_design.md` §3（自定义算子接入）、§5（AOT 与 wheel 发布）。
 
-**“全部算子都编译打包”的口径**：43 个 op 中，40 个走 CANN aclnn（无需编译），
-1 个 Triton 在运行期 JIT，真正需要 AOT 预编的是 2 个 Ascend C 生产算子。
+**“全部生产 AOT”的口径**：当前全局登记 48 个逻辑 op、86 个 Descriptor，
+其中 5 个 Ascend C 生产实现需要预编；41 个 CANN、2 个 Triton、38 个 reference Descriptor 各自沿用其运行方式。
 因此 wheel 应携带**全部可预编算子的产物，以及其余构建所需源码**；
 统一的 `csrc/**` 构建输入随包放在 `flashinfer/data/build/csrc/`。
 
@@ -17,7 +17,7 @@
 ## 1. 环境自检
 
 ```bash
-mountpoint -q /mnt/fi || mount --bind /home/dy/projects /mnt/fi   # 重启后失效，需重做
+cd "$(git rev-parse --show-toplevel)"           # 在源码 checkout 中运行
 source /usr/local/Ascend/cann-9.2.0-beta.2/set_env.sh
 ls /dev/davinci* | head -3
 echo $ASCEND_HOME_PATH                       # /usr/local/Ascend/cann-9.2.0-beta.2
@@ -34,24 +34,27 @@ ls $ASCEND_HOME_PATH/bin/bisheng             # 编译器
 ## 2. 一条命令构建全部生产 AOT 产物
 
 ```bash
-cd /mnt/fi/flashinfer
-FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref \
+cd "$(git rev-parse --show-toplevel)"
+FLASHINFER_CATLASS_ROOT=../catlass-ref \
 /root/miniforge3/envs/flashinfer-a5/bin/python -B \
-  -m flashinfer.aot --all --output-dir /tmp/t10-release
+  -m flashinfer.operators build --output-dir /tmp/t10-release
 ```
 
-全量算子清单从生产登记表 `flashinfer/data/kernels/registry.json` 与
-`flashinfer/data/kernels/ascendc_specs.json` 中的冻结 recipe 推导，
-不在命令中逐个列名。按配置选择单个 recipe 时，扫描 `csrc/recipes/*.json`。
+作者声明位于 `flashinfer/ascendc/<domain>/<op>/implementation.py`，框架生成并冻结
+`build/generated/csrc/recipes/` 与 `build/generated/flashinfer/data/kernels/`，
+仅在安装包中使用 `flashinfer/data/`。`build` 先生成、冻结完整目录，再构建所选项，支持重复 `--kernel-id`。
 当前应同时产出：
 
 - `gemm.matmul_bias_silu`：native Ascend C，BF16；
 - `ascendc.single_prefill_catlass`：catlass FlashAttention，FP16/BF16，Q/K/V/out 同 dtype。
+- `gemm.matmul`：Ascend950 native，BF16；
+- `gemm.grouped_matmul_swiglu_quant`：Ascend910B arch22，AOT-only；
+- `attention.sparse_flash_attention`：Ascend910B arch22 MLA，FP16/BF16，AOT-only。
 
 每个产物导出到 `/tmp/t10-release/<spec-sha>/`，输出中会列出各自 kernel、
 spec 与 package 路径。新增生产 AOT 算子会自动纳入全量构建。
 
-本环境一次冷构建的产物如下，两个算子的 `disk_cache_hit` 均为 `false`：
+以下是早期仅有两个生产项时的冷构建记录，保留为时点证据；不代表当前五项的产物身份：
 
 | recipe | spec-sha | bytes |
 | --- | --- | --- |
@@ -75,8 +78,8 @@ catlass checkout 只在构建时需要；安装完整 wheel 后，selftest 无�
 ## 3. 打进 wheel
 
 ```bash
-cd /mnt/fi/flashinfer
-FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref FLASHINFER_AOT_ALL=1 \
+cd "$(git rev-parse --show-toplevel)"
+FLASHINFER_CATLASS_ROOT=../catlass-ref FLASHINFER_AOT_ALL=1 \
 /root/miniforge3/envs/flashinfer-a5/bin/python -B setup.py -q bdist_wheel -d /tmp/t10-wheel
 ```
 
@@ -116,7 +119,7 @@ with zipfile.ZipFile(wheel) as z:
 PY
 ```
 
-当前应看到两个不同 `<spec-sha>` 目录，对应 §2 的两个生产算子。
+当前全量 wheel 应有五个 `<spec-sha>` 目录，对应 §2 的五个生产实现；PREBUILT 子集按实际选择核对。
 产物仍沿用 `flashinfer/data/op_packages/<spec-sha>/` 布局与导出校验。
 本次 wheel 含 34 个 `data/op_packages` 文件条目，两个 manifest 的 spec-sha 与 §2 表中一致。
 
@@ -178,9 +181,10 @@ cd /tmp
 入口只依赖安装包，**不需要源码 checkout 或 `tests/`**。它遍历随包生产登记表，
 逐算子执行真机调用并与参考实现数值比对。对随包 AOT 算子，会在禁编译策略下验证命中。
 每个算子输出 `PASS`、`FAIL` 或 `SKIP` 及原因，末尾给出汇总。
-当前完整 wheel 应为两个生产算子均 PASS，退出码为 0。
+当前全量 selftest 会检查五项登记。单设备验收使用 `--kernel-id` 选择匹配 SoC 的实现；
+选中范围须零失败、零跳过。A5 不能据此声称 Ascend910B 的 GMM/SFA 已执行。
 
-本次隔离 wheel 安装后的实际输出如下，退出码为 0：
+以下保留早期双算子 wheel 的隔离安装输出，不能当作当前全量回归结果：
 
 ```text
 PASS gemm.matmul_bias_silu: bundled AOT hit; compilation=disabled; CPU reference matched (max_abs=0.00358111, atol=0.008, rtol=0.008); spec=4e13377d4b8047efbb9f0c98f8f633b842887dcbaf9741bb2b5f4c080e7334cd
@@ -269,17 +273,19 @@ except Exception as e: print(str(e)[:200])"
 ## 8. 跑仓库自带验收
 
 ```bash
-cd /mnt/fi/flashinfer
+cd "$(git rev-parse --show-toplevel)"
 P=/root/miniforge3/envs/flashinfer-a5/bin/python
-$P -B -m pytest -p no:cacheprovider -q                            # 至少 1975 passed，0 failed
-FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref \
-  $P -B -m pytest -p no:cacheprovider -q -m real_compile          # 期望 80 passed, 0 skipped
+export FLASHINFER_CATLASS_ROOT=../catlass-ref
+$P -B tools/run_regression.py --profile quick
+$P -B tools/run_regression.py --profile full   # 已包含 real_compile，不再紧接着重复 compile
 ```
 
-本次实际结果：全量 `1978 passed`，`real_compile` 为
+以下仅为早期双算子基线：全量 `1978 passed`，`real_compile` 为
 `80 passed, 1898 deselected`；两者均为 0 failed、0 skipped，退出码为 0。
 新增的 24 个发布检查由 3 个独立子进程套件执行，隔离 setup/provider 模拟对
 原有真机测试进程状态的影响；原有测试及断言保持不变。
+当前定向验证及全量限制见 [arch22 验收记录](reports/sparse-flash-attention-arch22.md)；
+上述历史数字不作为当前全量成功证明。只改文档时按 [测试规范](testing.md) 执行静态检查与受影响 UT。
 
 **`0 skipped` 比 `80 passed` 更重要**：真机用例在没有 NPU/CANN 的环境里会静默跳过，
 届时 `passed` 仍是绿的，但什么都没验证。
@@ -295,7 +301,7 @@ FLASHINFER_CATLASS_ROOT=/mnt/fi/catlass-ref \
 | `GetWorkspaceSize returned 561002` | unset 了 `ASCEND_HOME_PATH`，CANN runtime 失效 | 保留该变量，用 `FLASHINFER_NPU_JIT_DISABLE=1` 禁编译 |
 | 构建报 catlass 头缺失 | 未设 `FLASHINFER_CATLASS_ROOT` | wheel 不自带 catlass，需自备 checkout |
 | 真机用例大量 skipped | 解释器用错或无设备 | 用 `flashinfer-a5`，并确认 `True 8` |
-| `/mnt/fi` 路径不存在 | 重启后 bind mount 失效 | 重新 `mount --bind /home/dy/projects /mnt/fi` |
+| 源码路径与文档不一致 | 机器上的 checkout 或依赖目录不同 | 从仓库根目录运行，并将 `FLASHINFER_CATLASS_ROOT` 指向实际 checkout |
 
 ## 10. 单算子调试与新增算子
 

@@ -1,4 +1,9 @@
-# T13 分析：统一 Ascend C 构建框架与可选 CATLASS
+# 统一 Ascend C 构建框架与可选 CATLASS：设计依据
+
+本文保留当时的源码分析、目录建议与实验输出。当前已实施的目录见
+[算子组织规范](operator-layout.md)，当前类型化声明、生成 recipe、算子 CMake 及多架构规则见
+[作者声明](authoring-and-resources.md)。下文早期 `host_shared` 与 raw-pointer 方案属于历史分析；
+当前公开生产/探针构建统一采用 v2 `op_package`，不要按早期建议新建并行构建链路。
 
 日期：2026-10-23。本文是分析与设计建议，不是实现完成报告。本次仓库内只新增本文；编译用的小程序、构建目录和日志全部位于临时目录，没有修改任何参考仓库、`flashinfer/` 或任务文档，没有 commit/push。
 
@@ -532,7 +537,9 @@ compiler adapter 可以从**显式传入的冻结 recipe 集合**按 spec 中的
 
 `docs/framework_design.md` §2.3 的设备源码目录现已统一为 `csrc/kernels/`，探针与生产算子按算子分目录；构建工程、launcher 与可选 op-package host 层同属 `csrc/`。位置参考 vLLM-Ascend 的 `csrc/kernels/`，源码选择仍由显式 recipe 决定。[L7]
 
-设备源码位置已按下列目录收敛；其余编译工程细分仍为本分析的建议：
+以下保留早期目录建议，实际落点已采用 `csrc/kernels/<domain>/<op>/{op_host,op_kernel}`，
+设备分支位于 `op_kernel/arch22/arch35/`。生产 recipe 生成至 `build/generated/csrc/recipes/`；
+`csrc/recipes/` 仅保留显式探针，不按下列旧建议手写生产 JSON：
 
 ```text
 3rdparty/catlass/                     # 可选、固定版本的 submodule

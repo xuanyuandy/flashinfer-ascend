@@ -24,6 +24,11 @@
 
 ## 阅读顺序
 
+新增算子先读 [接入指南](adding-a-custom-operator.md)，按作者文件、注册、构建和验收的顺序执行。
+文件位置以 [算子组织规范](operator-layout.md) 为准，类型化字段、生成 JSON 与 wheel 资源边界见
+[作者声明与资源交付](authoring-and-resources.md)。Ascend C、CANN、Triton 各自维护实现与 runner，
+公共 `operators/` 维护逻辑语义；多目标 Ascend C 共享接口与 ABI 一致的 runner。
+
 运行时数据模型、实现选择、AOT/JIT 产物管理、执行边界和 FA 接入规范见
 [运行时与编译系统技术设计](runtime-and-compilation-design.md)。
 [架构介绍提纲](expert-architecture-overview.md) 用于整理介绍思路，不作为正式设计规范。
@@ -55,7 +60,9 @@
 
 - Attention API 对标状态：`tools/metadata/attention_api_parity.json`；
 - 外部 provider 能力资料：`tools/metadata/attention_capabilities.json`；实现能力以各后端声明为准；
-- kernel/artifact 声明：对应的版本化 manifest；
+- 公共接口与实现能力：`flashinfer/operators/<domain>/<op>/operator.py` 与各后端 `implementation.py`；
+- recipe/Descriptor/spec：由作者声明生成至 `build/generated/`，构建时组装入 wheel 的 `flashinfer/data/`；
+- kernel/artifact 身份：对应的冻结 spec 与经过校验的版本化 manifest；
 - conformance case 与覆盖统计：版本化 corpus 和 coverage policy；
 - 测试是否通过：CI 或当前测试命令的输出。
 

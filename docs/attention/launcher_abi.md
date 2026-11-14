@@ -231,7 +231,7 @@ lifetime、stream、receipt 或 execution identity 任一变化都视为 stale�
 
 ## 6. Manifest 与接入门禁
 
-Kernel manifest v3 的非 reference descriptor 必须同时具有：
+AttentionPlan/provider manifest v3 的非 reference descriptor 必须同时具有：
 
 1. `ArtifactRef`：制品 provenance、digest、size、SoC 与 build identity；
 2. `KernelLaunchABI`：entry point、逻辑参数顺序和 mutation set；
@@ -243,3 +243,6 @@ set 和 opaque stream 与 binary ABI 一致。包含任一非逻辑 `QuantSpec` 
 v2；v1 会明确失败。当前 packaged manifest 仍
 为 `kernels=[]`；租约 registry 也只是 Host 状态机，不读取真实地址、不创建事件、不调用
 aclrt/aclnn。因此这些证据只说明协议能拒绝已知错误，不说明存在可运行的 NPU backend。
+
+上述空 manifest 指本页的 AttentionPlan/POD 路径。直接算子的 ACLNN 实现另由
+[类型化声明与冻结资源](../authoring-and-resources.md) 管理，`domain="operator"` 绑定不会授权本页的 POD launcher。

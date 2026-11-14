@@ -17,7 +17,12 @@ python3 -m pip install --force-reinstall --no-deps \
 (cd tests && python3 matmul_bias_silu.py)
 ```
 
-普通 `bdist_wheel` 默认执行生产登记表中三条 Ascend C 算子的 AOT 编译，并把 host 库、设备二进制、manifest 和 Torch/ACLNN C++ 适配库一起打进 wheel。构建会自动查找 `3rdparty/catlass` 或相邻的 `../catlass-ref`，仍校验固定 revision 和头文件摘要。CANN 调用路径使用已安装的 CANN 运行时；Triton 路径沿用其现有编译方式。
+普通 `bdist_wheel` 默认执行生产登记表中五条 Ascend C 算子的 AOT 编译，并把 host 库、设备二进制、manifest 和 Torch/ACLNN C++ 适配库一起打进 wheel。构建会自动查找 `3rdparty/catlass` 或相邻的 `../catlass-ref`，仍校验固定 revision 和头文件摘要。CANN 调用路径使用已安装的 CANN 运行时；Triton 路径沿用其现有编译方式。
+
+作者文件与构建资源见 [接入指南](docs/adding-a-custom-operator.md)：公共定义在 `operators/`，
+各后端维护 `implementation.py/runner.py`；生成 JSON 在 `build/generated/`，打包时组装入 `flashinfer/data/`。
+下文脚本演示 Ascend950 的三个实例；Ascend910B 的 GMM/SFA 使用对应的
+[通用验收](docs/authoring-and-resources.md)，设备不匹配不计通过。
 
 新增 `flashinfer.matmul(a, b, out=out, backend=...)` 使用同一接口路由到 CANN、native Ascend C AOT 或 Triton JIT；共同输入、内存与编译策略见 [Matmul 多后端说明](docs/matmul-backends.md)。native Matmul 的 AOT 包缺失时明确失败。
 
@@ -45,7 +50,7 @@ FA 脚本无参数时依次测试 FP16、BF16，经 TorchNPU 原生桥调用 Tor
 | `flashinfer.single_prefill_with_kv_cache_catlass(q, k, v)` | catlass Ascend C，wheel 内 AOT | FP16/BF16，Q/K/V/out 同 dtype，`q[128,2,128]`、`k/v[256,2,128]` |
 | `torch.ops.flashinfer.rmsnorm(out, x, w, ...)` | CANN RMSNorm，经 torch.library 注册 | FP32，`x[4,128]`、`w[128]` |
 
-前两个公共函数直接接收和返回 `torch.Tensor`，自动注册并转发到同名 Torch 算子。完整 wheel 统一通过 C++/OpCommand → ACLNN 适配库执行；直接使用 `torch.ops` 时先注册一次，`enable_aclnn()` 不再切换执行模式。两个生产算子可同进程调用，也可分别执行下面的测试命令：
+前两个公共函数直接接收和返回 `torch.Tensor`，自动注册并转发到同名 Torch 算子。完整 wheel 统一通过 C++/OpCommand → ACLNN 适配库执行；直接使用 `torch.ops` 时先注册一次，`enable_aclnn()` 不再切换执行模式。这两个示例可同进程调用，也可分别执行下面的测试命令：
 
 ```python
 import torch
@@ -104,7 +109,7 @@ PY
 
 ## 2. 用全新缓存重新编译并打包
 
-默认构建或显式 `FLASHINFER_AOT_ALL=1` 都会编译当前登记的三条生产 Ascend C 算子并收入同一个 wheel。下面每次创建新输出目录和新缓存，便于确认这次确实重新编译。
+默认构建或显式 `FLASHINFER_AOT_ALL=1` 都会编译当前登记的五条生产 Ascend C 算子并收入同一个 wheel。下面每次创建新输出目录和新缓存，便于确认这次确实重新编译。
 
 ```bash
 cd "$FI_REPO"
@@ -202,7 +207,9 @@ cat "$FI_RUN_DIR/selftest.log"
 test "$FI_SELFTEST_RC" -eq 0
 ```
 
-当前三条生产算子的验收输出应以 `Summary: 3 PASS, 0 FAIL, 0 SKIP (total=3)` 结束。`SKIP` 表示验收未完成，需要检查运行依赖、设备或 wheel 中的 AOT 产物。
+无选择器时 selftest 检查五项生产登记；A2 与 A5 实现须分别在匹配设备验收。单项验收可加
+`--kernel-id ascendc/attention/sparse_flash_attention/native/Ascend910B`（A2），或选择 A5 的 FA/Matmul ID。
+所选范围应为零失败、零跳过；`SKIP` 表示该项未完成，不得把单设备的部分结果写成全套通过。
 
 ## 5. 自己用 torch Tensor / torch.ops 调用并对照 CPU
 
