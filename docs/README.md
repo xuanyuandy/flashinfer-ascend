@@ -19,7 +19,7 @@
 | 提交正确性、路由与产物验证 | [测试规范](development/testing.md) |
 | 维护冻结 ABI 与兼容边界 | [ABI 兼容规则](development/abi-compatibility.md) |
 | 接入已有受限图能力 | [图模式](npu_graph_extensions.md) |
-| 理解原生准备复用、图资源与后续执行协议 | [特性设计](features/README.md) |
+| 理解原生准备、图模式与 AutoTuner 执行协议 | [特性设计](features/README.md) |
 | 显式采集、保存和使用调优记录 | [Tuning](tuning.md) |
 | 判断上游签名、后端与参数兼容性 | [上游兼容性](upstream-compatibility.md) |
 | 查看图、调优和接口扩展目标 | [规划与差距](roadmap.md) |

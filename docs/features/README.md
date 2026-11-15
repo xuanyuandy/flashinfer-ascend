@@ -5,6 +5,7 @@
 | 主题 | 设计文档 | 当前接口与限制 |
 | --- | --- | --- |
 | Wrapper、原生准备复用与 NPU 图模式 | [执行会话、资源与图协调设计](wrapper-and-aclgraph-design.md) | [图模式接口与范围](../npu_graph_extensions.md)；只有受限 CANN single-decode 声明图参数更新，生产 Ascend C 均不可入图 |
+| AutoTuner、tactic 搜索与选择复用 | [候选、测量、缓存与执行交接设计](autotuner-design.md) | [离线调优](../tuning.md)；已有显式采集和冠军 ID 查询，没有通用 autotune 上下文或 tactic 搜索 |
 
 ## 文档约定
 

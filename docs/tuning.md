@@ -8,6 +8,8 @@
 
 `FLASHINFER_NPU_ONLINE_TUNING` 只有 config 读取/显示，未接入在线采样。发布目录的 manifest 当前不提供测量 shard；本地或应用显式准备的有效证据可以参与查询。
 
+通用 `autotune` 上下文、tactic 搜索及 prepared/图模式测量属于 [AutoTuner 设计](features/autotuner-design.md)，不是当前接口。
+
 ## 候选与采集
 
 BenchmarkCandidate 指定 Descriptor 与 prepare 函数。`prepare(iterations)` 在计时外执行，计时内运行其返回的 callable 并同步；编译、分配和正确性检查需要由采集方提前完成，callable 内仍执行的工作会计入结果。每个样本应准备独立输入，原地算子不能反复消费已经改变的同一输入后当作相同比较。
@@ -40,6 +42,8 @@ export FLASHINFER_NPU_TUNING_DB=build/fa-tuning/tuning.sqlite3
 数据库路径为 `FLASHINFER_NPU_TUNING_DB`，默认取 `$XDG_CACHE_HOME/flashinfer/tuning.sqlite3`。空值关闭本地与随包查询；只想用随包数据时可给一个不存在的本地路径。读取不创建数据库，写入是显式操作。`FLASHINFER_NPU_TUNING_DIR` 当前不控制这条存储路径。
 
 硬件的 SoC、核数和 UB 必须完整，unknown/零值不能建立可信匹配。bucket 来自实际声明 shape_ranges 的交集，其他轴、dtype、布局和语义保持精确；区间可复用不代表区间内每个点都已测过。
+
+v1 查询校验记录中的比较者；新增候选本身不会使旧记录失效。执行身份由可选的 `runner.tuning_identity` 提供，未统一强制覆盖所有后端；发布导出校验 Descriptor/Capability，但不调用该钩子重算执行身份。采集方还需补完整策略与 admission 筛选；采集器本身只检查 capability/target。
 
 同进程写入会刷新查询与决策缓存。其他进程写入或原地替换发布数据后使用 `reload_tuning_records()` 或新进程；软件/源码未如实进入声明身份的变更不能靠查表自动识别。
 

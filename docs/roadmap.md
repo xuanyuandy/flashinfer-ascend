@@ -21,7 +21,7 @@
 | 运行时不自动采样 | 若引入在线探索，单独定义资源和延迟预算 | 开关、触发、隔离、正确性与失败策略都接入代码并测试，不能只新增配置名 |
 | 发布目录为空，已有显式导出器 | 交付经过审核的发布测量集合 | 来源可复核、大小受控、目标硬件完整，查询不绕过正常准入 |
 
-当前 `FLASHINFER_NPU_ONLINE_TUNING` 和 `FLASHINFER_NPU_TUNING_DIR` 的显示值不代表这些目标已实现。实际存储与查询见 [Tuning](tuning.md)。
+当前 `FLASHINFER_NPU_ONLINE_TUNING` 和 `FLASHINFER_NPU_TUNING_DIR` 的显示值不代表这些目标已实现。实际存储与查询见 [Tuning](tuning.md)，显式上下文、完整候选快照与 tactic 执行交接见 [AutoTuner 设计](features/autotuner-design.md)。
 
 ## 接口与后端一致性
 
