@@ -81,21 +81,23 @@ $P -B -m pytest -p no:cacheprovider -q -m real_compile     # 基线 80 passed / 
 | 退出码测出来总是 0 | `$?` 取的是管道末端命令的 | 先重定向到文件再取 `$?`，不要经过 `| tail` |
 | 构建报 catlass 头缺失 | 未设 `FLASHINFER_CATLASS_ROOT` | wheel 不自带 catlass 头树，需自备 checkout |
 | 改了源码但命中旧产物 | recipe 的 `sources`/`headers` 带 SHA256 | 改任何源文件后重算摘要并**重新冻结 spec**；改 descriptor 同样要重冻（fingerprint 含能力元数据） |
-| 契约校验直接拒绝 | v1 受限档：定形 tiling / AIC-only / 零 workspace / 固定三 Tensor | 用完整档（`schema_version=2`），见 `docs/adding-a-custom-operator.md` |
+| 契约校验直接拒绝 | v1 受限档：定形 tiling / AIC-only / 零 workspace / 固定三 Tensor | 用完整档（`schema_version=2`），见 `docs/development/adding-an-operator.md` |
 
 ## 7. 先读哪些文档
 
 | 文档 | 内容 |
 |---|---|
-| `docs/framework_design.md` | 架构、交付链路、实现进展（附录 A）、对标路线图（附录 B） |
-| `docs/adding-a-custom-operator.md` | 新增算子的决策树、按序工作流、踩坑清单 |
-| `docs/hands-on-flash-attention.md` | 编译 → 打 wheel → 安装 → selftest 全流程 |
-| `docs/reports/custom-operator-onboarding.md` | 33 项交付件对照表 |
-| `docs/reports/api-surface-by-category.md` | 本仓真实接口面（43 op / 9 域） |
-| `docs/reports/ascend-architecture-review.md` | 架构评审与风险排序 |
+| `docs/README.md` | 正式文档导航与事实来源 |
+| `docs/concepts/architecture.md` | 分层、术语、作者文件与调用路径 |
+| `docs/concepts/backend-routing.md` | 实际路由、覆盖、回退与前端差异 |
+| `docs/backends/overview.md` | 当前登记、dtype/SoC 与测试定义 |
+| `docs/development/adding-an-operator.md` | 类型化声明、CMake、runner 与接入步骤 |
+| `docs/ascendc_aot.md` | 生成、冻结、构建、加载与 wheel |
+| `docs/development/testing.md` | 正确性、编译、安装与能力证据 |
+| `docs/development/abi-compatibility.md` | 冻结 ABI 与现有决定依据 |
+| `docs/roadmap.md` | 图、调优、接口与参考项目的待补目标 |
 
-**注意**：`docs/reports/` 下的报告是**时点证据**，带各自基线 commit。
-其中对 `framework_design.md` 的行号引用针对写作时点，不对应当前版本。
+不再从历史过程报告和旧生成快照获取当前支持事实。冻结测试保留的两个旧依据路径仅作为兼容入口。
 
 ## 8. 交付报告要有什么
 

@@ -1,7 +1,7 @@
 # 贡献约定
 
 协作与验证遵循根目录 `AGENTS.md`。架构和新增算子分别参考
-`docs/framework_design.md`、`docs/adding-a-custom-operator.md`，改动按职责独立提交。
+[架构](docs/concepts/architecture.md)、[算子接入](docs/development/adding-an-operator.md)，改动按职责独立提交。
 修改、实际命令、结果与未验证项记录在交付报告中；旧开发任务清单由 Git 历史保留。
 
 对标固定上游提交 `2895577720741ddfedff118202c89584996b8875`，逐项核对公开名称、
@@ -23,3 +23,5 @@
 运行当前单元的数值与契约测试，并记录实际命令和退出码。CANN descriptor 只声明有依据的
 dtype/layout/SoC 能力；真实 NPU 执行、Host reference 和外部包模拟证据分别说明。
 不更改冻结 ABI 指纹断言来适配未知的序列化形式，也不以占位声明冒充已实现接口。
+
+正式文档围绕当前实现、支持限制、接入方式与验收维护；后续目标放入 [规划](docs/roadmap.md)，不采用内部任务或优先级编号。源数据以声明和测试为准，不提交临时报告、旧扫描快照或没有目标实现的独立使用说明。

@@ -49,5 +49,7 @@ SoC support. Host ABI and Python runners remain shared. Source moves require
 recipe regeneration and spec refreezing before compiling or loading artifacts.
 
 Logical definitions and backend descriptor/runner declarations follow
-[the operator layout](../../docs/operator-layout.md); generated recipes and
+[the operator layout](../../docs/concepts/architecture.md#作者目录与框架职责); generated recipes and
 packaged indexes are derived from those declarations.
+
+Author workflow: [adding an operator](../../docs/development/adding-an-operator.md). Build and package rules: [compilation and delivery](../../docs/ascendc_aot.md).
