@@ -15,13 +15,15 @@ python list 形式传入（tensor 形式触发 aclnnGroupedMatmulV5 161002），
 
 from __future__ import annotations
 
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
+
 from typing import Any, Tuple
 
 from flashinfer.runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescriptor
 
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "int32", "int64", "float32")
 
-_SUPPORTED_SOCS = ("Ascend910B", "Ascend910_93", "Ascend950")
+_SUPPORTED_SOCS = GENERAL_ASCEND_SOCS
 
 _FP8_SUPPORTED_DTYPES = _SUPPORTED_DTYPES + ("float8_e4m3fn",)
 

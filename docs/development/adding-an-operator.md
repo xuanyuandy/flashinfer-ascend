@@ -42,13 +42,31 @@ CANN runner 调用已有原生 API；reference 按相同后端声明协议提供
 
 `runner=` 和 `runner_factory=` 只能选一个。普通 Python 工厂接收 Descriptor；Ascend C 工厂接收已验证模块、spec 和 recipe。作者不填写 digest、冻结指纹或安装产物路径。
 
+Ascend C 构建在 OpDef codegen 后强制校验 NativeBinding 与对应 ACLNN 头的参数名、顺序和类型，生成并编译该算子的类型化适配文件。新增算子只需维护真实 OpDef 和 NativeBinding；不维护生成适配源码或身份 JSON。失配必须修复声明或 OpDef，不能绕过生成步骤。
+
 带 schema 的直接算子自动生成 `domain="operator"` 能力绑定；它不代替 AttentionPlan 的 profile/POD 协议。图能力默认保持 `NOT_CAPTURABLE`，只有完成匹配设备的捕获/重放证据后才修改声明。
+
+## 设备 kernel 入口
+
+作者在设备源码中直接定义具名的 `__global__ __aicore__` 函数，并在 `BuildConfig.device_entry` 中填写同一名称；默认值为 `fi_<算子名>`。构建强制核对它与 OpDef codegen 的 `opInterface.value` 一致，再由编译器检查真实定义。框架不使用 `FI_DEVICE_ENTRY` 重命名当前算子的源码入口。
+
+| 实现 | 源码入口 / device_entry |
+| --- | --- |
+| Matmul | `fi_matmul` |
+| MatmulBiasSiLU | `fi_matmul_bias_silu` |
+| CATLASS prefill | `fi_flash_attention` |
+| GroupedMatmulSwigluQuant | `fi_grouped_matmul_swiglu_quant` |
+| SparseFlashAttention | `fi_sparse_flash_attention` |
+| native Matmul probe | `fi_matmul_probe_native` |
+| CATLASS Matmul probe | `fi_matmul_probe_catlass` |
+
+自定义名称需同步源码、`device_entry` 和 OpDef 的接口配置；失配终止构建。B/C 等多目标可以共享同一个源码入口，分别编译为各自的产物。源码入口、路由 `kernel_id`、ACLNN `host_entry` 各有用途；最终设备 ELF 符号由 CANN 按 OpType、摘要和 tiling key 生成，不等于源码函数名。
 
 ## 多目标与 CMake
 
-ABI 和支持规则相同的多目标原生实现使用 `AscendCImplementation.for_targets(...)`，以规范 SoC 名声明真实目标：Ascend910B、Ascend910C、Ascend950。每个目标拥有独立 Descriptor/recipe/spec/产物，runner 不按 arch22/arch35 分支；原生 ABI 或语义不同则分别声明适配。
+ABI 和支持规则相同的多目标原生实现使用 `AscendCImplementation.for_targets(...)`，以规范 SoC 名声明真实目标：Ascend910B、Ascend910C、Ascend950。A2/A3 的共同目标集合使用 `flashinfer.runtime.targets.ARCH22_SOCS`；`default_target="Ascend910B"` 可保留既有 B recipe 文件名。每个目标拥有独立 Descriptor/recipe/spec/产物，runner 不按 arch22/arch35 分支；原生 ABI 或语义不同则分别声明适配。
 
-设备入口按 `__CCE_AICORE__` 选择已有架构实现，没有分支的架构明确编译失败。A2/A3 目录同为 arch22 不能证明两种产品均已接入；OpDef、tiler 和能力声明都要对应实际产品。
+设备入口按 `__CCE_AICORE__` 选择已有架构实现，没有分支的架构明确编译失败。A2/A3 目录同为 arch22 不能证明两种产品均已接入；OpDef、tiler 和能力声明都要对应实际产品。910B wheel 同时收集已声明的 B/C 变体；OpDef 使用框架传入的 `FI_COMPUTE_UNIT`，不要硬编码 ascend910b。A3 设备名 Ascend910_93xx 归一为 Ascend910C，编译单元为 ascend910_93，仍与 B 严格区分。
 
 算子 CMake 在 BuildConfig 中显式启用。可提供以下 hook：
 

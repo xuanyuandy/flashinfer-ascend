@@ -13,13 +13,14 @@ def run(mode, first):
         torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
 
     import flashinfer
-    from flashinfer.aclnn import enable_aclnn, _native
+    from flashinfer.aclnn import _native
+    from flashinfer.aclnn._ops import ensure_registered
     from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID, MATMUL_BIAS_SILU_KERNEL_ID
     from flashinfer.runtime import get_global_registry
 
     torch_npu.npu.set_task_queue_enable(mode)
     assert torch_npu.npu.get_task_queue_enable() == mode
-    enable_aclnn()
+    ensure_registered()
     torch.manual_seed(20261028)
     ac = (torch.randn(16, 48) * .2).bfloat16()
     bc = (torch.randn(48, 32) * .2).bfloat16()

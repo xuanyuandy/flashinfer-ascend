@@ -40,10 +40,10 @@ class TestCudnnDecodeRegistration:
         ids = {d.kernel_id for d in finpu.get_global_registry().descriptors()}
         assert {DECODE_ID_CANN, DECODE_ID_REF} <= ids
 
-    def test_cann_descriptor_declares_verified_support_set(self):
+    def test_cann_descriptor_declares_support_set(self):
         descriptor = finpu.get_global_registry().get(DECODE_ID_CANN)
         assert descriptor.backend == Backend.CANN
-        assert descriptor.capability.soc_models == ("Ascend910B", "Ascend950")
+        assert descriptor.capability.soc_models == ("Ascend910B", "Ascend910C", "Ascend950")
         assert set(descriptor.capability.dtypes) == {
             "float16",
             "bfloat16",
@@ -230,7 +230,7 @@ class TestCudnnDecodeNumerics:
     def test_auto_dispatch_picks_cann_on_npu(self):
         self._require_npu()
         hardware = finpu.current_hardware()
-        assert hardware.soc_model in ("Ascend910B", "Ascend950")
+        assert hardware.soc_model in ("Ascend910B", "Ascend910C", "Ascend950")
         assert finpu.dispatch(_decode_sig(), hardware).kernel_id == DECODE_ID_CANN
 
     @pytest.mark.parametrize(

@@ -30,23 +30,23 @@
 | backend | 登记数 | 执行与范围 |
 | --- | ---: | --- |
 | `cann` | 41 | 已安装的 Torch/TorchNPU/CANN API；逐算子核对 SoC/dtype |
-| `ascendc` | 5 | Ascend950 三项、Ascend910B 两项，v2 ACLNN op-package |
+| `ascendc` | 9 | Ascend910B/Ascend910C/Ascend950 各三项，v2 ACLNN op-package |
 | `triton` | 2 | Matmul、Gemma fused Add RMSNorm，JIT |
 | `reference` | 38 | 显式参考计算，不是运行失败自动兜底 |
 
-共 48 个逻辑 op、86 条全局记录，另有独立实验实现。支持标签依据登记与测试定义，不是当前机器验收成绩；图能力和完整 dtype 组合见 [逐算子支持矩阵](docs/backends/overview.md)。
+源码目录共 48 个逻辑 op、90 条全局记录，另有独立实验实现；二进制 wheel 的原生目录只登记随包交付的目标。支持标签依据登记与测试定义，不是当前机器验收成绩；图能力和完整 dtype 组合见 [逐算子支持矩阵](docs/backends/overview.md)。
 
 ## Getting Started
 
 使用本仓构建、与部署平台和运行栈匹配的 wheel；NPU 执行需要匹配的 Torch/TorchNPU/CANN，Triton 路线还需要 Triton Ascend。
 
 ```bash
-python -m pip install ./flashinfer-0.1.0.dev0-py3-none-linux_aarch64.whl
+python -m pip install ./flashinfer_ascend910b-0.1.0.dev0-py3-none-linux_aarch64.whl
 python -m flashinfer --help
 python -m flashinfer show-config
 ```
 
-示例 wheel 文件名对应 aarch64；按手头产物选择。AOT-only 缺包会失败，源码模式不是其替代；构建模式与依赖见 [后端概览](docs/backends/overview.md#安装与构建边界)。
+示例对应 A2/A3 共用的 910B 包、aarch64；A5 选择 `flashinfer_ascend950`，导入名均为 `flashinfer`，同一环境只安装一种芯片包。pip 不识别 NPU 芯片，需要显式选包。910B 包包含 A2/A3 各自的三项原生产物，共享 arch22 源码与 runner；各 SoC 运行验收分别记录，A3 未验证。AOT-only 缺包会失败；构建模式与依赖见 [后端概览](docs/backends/overview.md#安装与构建边界)。
 
 ## 文档
 

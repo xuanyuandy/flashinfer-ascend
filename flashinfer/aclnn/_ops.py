@@ -11,7 +11,7 @@ def _declarations():
     return torch_declarations()
 
 
-def enable():
+def ensure_registered():
     global _registered
     if _registered:
         return
@@ -20,7 +20,7 @@ def enable():
     from flashinfer._torch_library import _register_ascendc_ops, _validate_ascendc_ops
 
     if not (hasattr(torch.library, "custom_op") and hasattr(torch.library, "register_fake")):
-        raise RuntimeError("enable_aclnn requires torch >= 2.4")
+        raise RuntimeError("ACLNN operator registration requires torch >= 2.4")
     with _registration_lock:
         if _registered:
             return

@@ -19,7 +19,7 @@
 #error "grouped_matmul_swiglu_quant currently requires arch22 (__CCE_AICORE__ == 220)"
 #endif
 
-extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(GM_ADDR x, GM_ADDR weight, GM_ADDR weightScale,
+extern "C" __global__ __aicore__ void fi_grouped_matmul_swiglu_quant(GM_ADDR x, GM_ADDR weight, GM_ADDR weightScale,
                                                                   GM_ADDR xScale, GM_ADDR weightAssistanceMatrix,
                                                                   GM_ADDR groupList, GM_ADDR y, GM_ADDR yScale,
                                                                   GM_ADDR workspace, GM_ADDR tiling)

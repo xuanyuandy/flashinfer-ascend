@@ -1,4 +1,4 @@
-"""A2 arch22 implementation; native build manifests are framework generated."""
+"""Shared A2/A3 arch22 source and runner; per-SoC manifests are generated."""
 
 from flashinfer.ascendc.definition import AscendCImplementation, BuildConfig, NativeBinding
 from flashinfer.jit.aclnn_contract import AttributeParameter
@@ -6,6 +6,7 @@ from flashinfer.jit.recipe import ShapeConstraint, TensorParameter
 from flashinfer.operators.author_api import Support
 from flashinfer.operators.attention.sparse_flash_attention.operator import INT64_MAX, OPERATOR
 from flashinfer.runtime import CapabilityCase
+from flashinfer.runtime.targets import ARCH22_SOCS
 from .runner import admission, make_runner
 
 
@@ -14,10 +15,11 @@ def _tensor(name, role, dtype, shape, alternate=(), optional=False):
                            shape_alternatives=alternate, optional=optional)
 
 
-IMPLEMENTATION = AscendCImplementation(
+IMPLEMENTATIONS = AscendCImplementation.for_targets(
     operator=OPERATOR,
+    default_target="Ascend910B",
     support=Support(
-        soc="Ascend910B", dtype=("float16", "bfloat16", "int32", "float32", "none"),
+        soc_models=ARCH22_SOCS, dtype=("float16", "bfloat16", "int32", "float32", "none"),
         cases=tuple(CapabilityCase(
             name="arch22_mla_lse" if lse else "arch22_mla_no_lse",
             compute_dtypes=("float16", "bfloat16"),
@@ -75,4 +77,5 @@ IMPLEMENTATION = AscendCImplementation(
     workspace_bound=128 * 1024 * 1024,
 )
 
+IMPLEMENTATION = IMPLEMENTATIONS[0]
 NATIVE = IMPLEMENTATION.native

@@ -47,7 +47,9 @@ def _source_root():
 
 def _for_target(recipe, target):
     compute, arch = package_target(target)
-    if recipe.implementation == "catlass" and compute != "ascend950":
+    if recipe.implementation == "catlass" and (
+            recipe.schema_version == 1 and compute != "ascend950"
+            or recipe.schema_version == 2 and compute not in {"ascend910b", "ascend910_93", "ascend950"}):
         raise SchemaError(
             "this CATLASS recipe instantiates Arch::Ascend950; no recipe for " + target
         )
@@ -56,6 +58,12 @@ def _for_target(recipe, target):
         target_soc=target,
         npu_arch=arch,
         kernel_id=recipe.kernel_id.rsplit("/", 1)[0] + "/" + target,
+        definitions=tuple(
+            "CATLASS_ARCH=" + arch.rsplit("-", 1)[1]
+            if recipe.schema_version == 2 and recipe.implementation == "catlass"
+               and definition.startswith("CATLASS_ARCH=") else definition
+            for definition in recipe.definitions
+        ),
     )
 
 
@@ -76,11 +84,13 @@ def _export_op_package(directory, output_dir, *, allow_legacy):
     from flashinfer.jit import JitSpec
 
     spec = JitSpec.from_dict(data["spec"])
-    _, recipe = verify_op_package(directory, spec)
+    package, recipe = verify_op_package(directory, spec)
     if recipe.schema_version != 2 and not allow_legacy:
         raise SchemaError(
             "new releases require a v2 recipe; legacy v1 artifacts are read-only compatibility"
         )
+    if recipe.schema_version == 2 and package["schema_version"] != 2 and not allow_legacy:
+        raise SchemaError("new releases require a matching generated ACLNN adapter; rebuild the package")
     output_dir.mkdir(parents=True, exist_ok=True)
     target = output_dir / spec.fingerprint
     if target.exists():

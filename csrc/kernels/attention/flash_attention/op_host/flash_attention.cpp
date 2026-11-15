@@ -1,8 +1,13 @@
 // CANN host adapter for catlass example 49, revision
-// 41bf90da655bba3c66d0acd7e00abe33960ecfd6. Dense, batch=1 envelope only.
+// 6c0a3242b2effd861ac91aab1999f2226b643614. Dense, batch=1 envelope only.
 #include "register/op_def_registry.h"
 #include "tiling/platform/platform_ascendc.h"
+#if CATLASS_ARCH == 2201
+#include "acl/acl_rt.h"
+#include "arch22/fai_tiling.h"
+#else
 #include "arch35/fai_tiling.h"
+#endif
 
 #define FI_STRING_INNER(x) #x
 #define FI_STRING(x) FI_STRING_INNER(x)
@@ -42,7 +47,30 @@ ge::graphStatus FiFlashAttentionTiling(gert::TilingContext *context) {
     auto *data = context->GetTilingData<FATilingData>();
     if (!data) return ge::GRAPH_FAILED;
     *data = {};
+    platform_ascendc::PlatformAscendC platform(context->GetPlatformInfo());
+    const uint32_t rowTiles = static_cast<uint32_t>(h * s / 128);
+    const uint32_t blockDim = std::min(platform.GetCoreNumAic(), rowTiles);
+    if (blockDim == 0) return ge::GRAPH_FAILED;
     FAInferTiling::FAInfo info;
+#if CATLASS_ARCH == 2201
+    info.batch = 1;
+    info.numHeads = h;
+    info.kvHeads = h;
+    info.embeddingSize = 128;
+    info.blockSize = 128;
+    info.numBlocks = t / 128;
+    info.maskType = FAInferTiling::MaskType::NO_MASK;
+    int64_t qLength = s, kvLength = t;
+    info.qSeqlenList = &qLength;
+    info.kvSeqlenList = &kvLength;
+    if (FAInferTiling::GetFATilingParam(info, blockDim, *data) != 0)
+        return ge::GRAPH_FAILED;
+    data->qSeqlen = s;
+    void *syncAddress = nullptr;
+    if (aclrtGetHardwareSyncAddr(&syncAddress) != ACL_SUCCESS || syncAddress == nullptr)
+        return ge::GRAPH_FAILED;
+    data->hardwareSyncAddr = reinterpret_cast<uint64_t>(syncAddress);
+#else
     info.batchSize = 1;
     info.numOfHeads = h;
     info.numOfKVHeads = h;
@@ -54,17 +82,20 @@ ge::graphStatus FiFlashAttentionTiling(gert::TilingContext *context) {
     info.maxBlockNumPerBatch = static_cast<uint32_t>(t / 128);
     // actualSeqLengths/actualSeqLengthsKV remain null: the upstream tiler
     // derives full lengths from seqSize/seqInnerSize, without reading tensors.
-    platform_ascendc::PlatformAscendC platform(context->GetPlatformInfo());
-    const uint32_t rowTiles = static_cast<uint32_t>(h * s / 128);
-    const uint32_t blockDim = std::min(platform.GetCoreNumAic(), rowTiles);
     if (blockDim == 0 || blockDim >= MAX_CORE_NUM ||
         FAInferTiling::GetFATilingParam(info, blockDim, *data) != 0)
         return ge::GRAPH_FAILED;
+#endif
     context->SetTilingKey(0);
+#if CATLASS_ARCH == 2201
+    context->SetBlockDim(blockDim);
+    context->GetWorkspaceSizes(1)[0] = platform.GetLibApiWorkSpaceSize() + data->workSpaceSize;
+#else
     context->SetBlockDim(static_cast<uint32_t>(data->multiCoreParamsRegbase.coreNum));
     // Dynamic, nonzero CANN system workspace only. All algorithm scratch is
     // local L1/UB in this source kernel; there is no extra user GM allocation.
     context->GetWorkspaceSizes(1)[0] = platform.GetLibApiWorkSpaceSize();
+#endif
     return ge::GRAPH_SUCCESS;
 }
 

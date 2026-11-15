@@ -130,14 +130,14 @@ def public_function(name):
         ("str?", "kernel_id", None, True)))
     def call(*args, **kwargs):
         import torch
-        from flashinfer.aclnn import enable_aclnn
+        from flashinfer.aclnn._ops import ensure_registered
         operator = definition(record["op"])
         bound = operator.public_signature.bind(*args, **kwargs)
         bound.apply_defaults()
         arguments = dict(bound.arguments)
         out = arguments.pop("out")
         arguments["backend"] = getattr(arguments.get("backend"), "value", arguments.get("backend"))
-        enable_aclnn()
+        ensure_registered()
         if out is None:
             return getattr(torch.ops.flashinfer, name)(**arguments)
         outputs = (out,) if len(operator.output_names) == 1 and isinstance(out, torch.Tensor) else out

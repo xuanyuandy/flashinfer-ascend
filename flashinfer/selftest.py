@@ -135,7 +135,7 @@ def _check_kernel(descriptor) -> SelftestResult:
 
             operator = for_kernel(kernel_id)
             if operator is not None:
-                case = lambda torch, selected: selftest_case(torch, operator.name)
+                case = lambda torch, selected: selftest_case(torch, operator.name, kernel_id=selected)
         if case is None:
             raise ValueError(
                 "no numerical selftest registered for op=%s" % descriptor.op
@@ -156,6 +156,11 @@ def _check_kernel(descriptor) -> SelftestResult:
                 "AOT artifact not bundled in %s; compilation=disabled; %s"
                 % (root, error)
             ) from error
+
+        from .runtime.hardware import current_hardware
+        soc = current_hardware().soc_model
+        if soc != spec.target_soc:
+            raise ValueError("selftest kernel requires %s; local SoC is %s" % (spec.target_soc, soc))
 
         runner = get_global_registry().get(kernel_id).runner
         if runner is None or runner.provenance is not None:
@@ -228,8 +233,42 @@ def _run_kernel_process(kernel_id) -> SelftestResult:
         )
 
 
+def _wheel_metadata():
+    from ._resources import resource_path
+
+    path = resource_path("wheel.json")
+    return json.loads(path.read_text()) if path.is_file() else None
+
+
+def _local_wheel_descriptors(descriptors):
+    metadata = _wheel_metadata()
+    if metadata is None:
+        return descriptors
+    from ._wheel import distribution_name, family_socs
+    from .runtime.hardware import current_hardware
+
+    family = metadata.get("family")
+    socs = family_socs(family)
+    if (metadata.get("schema_version") != 2
+            or metadata.get("soc_models") != list(socs)
+            or metadata.get("distribution") != distribution_name(family)
+            or metadata.get("kernel_ids") != sorted(d.kernel_id for d in descriptors)
+            or any(d.target_soc not in socs for d in descriptors)):
+        raise ValueError("wheel metadata does not match the production registry")
+    _load_dependencies()
+    soc = current_hardware().soc_model
+    if soc not in socs:
+        raise ValueError("wheel family %s does not match local SoC %s" % (family, soc))
+    local = tuple(d for d in descriptors if d.target_soc == soc)
+    if not local:
+        raise ValueError("wheel contains no production kernel for local SoC " + soc)
+    print("Scope: %s; %d of %d packaged kernels; other SoCs are not runtime-validated"
+          % (soc, len(local), len(descriptors)), flush=True)
+    return local
+
+
 def run_selftest(*, kernel_ids=()) -> int:
-    """Report every packaged production entry; skips are incomplete validation."""
+    """Check the wheel's physical local target; skips remain incomplete validation."""
     try:
         descriptors = _production_descriptors()
         if kernel_ids:
@@ -238,6 +277,8 @@ def run_selftest(*, kernel_ids=()) -> int:
             if len(requested) != len(set(requested)) or set(requested) - known:
                 raise ValueError("selftest requires unique registered kernel IDs")
             descriptors = tuple(d for d in descriptors if d.kernel_id in requested)
+        else:
+            descriptors = _local_wheel_descriptors(descriptors)
         if not descriptors:
             raise ValueError("production registry is empty")
     except Exception as error:

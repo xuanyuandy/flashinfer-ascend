@@ -153,8 +153,8 @@ def test_fake_functional_and_out_never_dispatch_or_read_values(monkeypatch, vari
 def test_generated_torch_schema_preserves_positional_scalar_compatibility():
     import torch
     from torch._subclasses.fake_tensor import FakeTensorMode
-    from flashinfer.aclnn import enable_aclnn
-    enable_aclnn()
+    from flashinfer.aclnn._ops import ensure_registered
+    ensure_registered()
     with FakeTensorMode():
         x = torch.empty(8, 256, dtype=torch.int8)
         weight = torch.empty(3, 256, 256, dtype=torch.int8)

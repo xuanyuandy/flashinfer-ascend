@@ -1,4 +1,4 @@
-"""The bounded, fixed-length Ascend950 CATLASS prefill entry.
+"""The bounded, fixed-length A2/A3/A5 CATLASS prefill entry.
 
 The internal ``ascendc.single_prefill_catlass`` op uses the generic ACLNN tensor
 ABI. The reserved ``attention.*`` domain binds the separate Attention POD ABI;
@@ -13,7 +13,7 @@ def single_prefill_with_kv_cache_catlass(
     q, k, v, *, causal=False, kv_layout="NHD", custom_mask=None, out=None,
     backend="auto", kernel_id=None,
 ):
-    """Compute dense ``softmax(q @ k.T / sqrt(128)) @ v`` on Ascend950.
+    """Compute dense ``softmax(q @ k.T / sqrt(128)) @ v`` on A2/A3/A5.
 
     Inputs are contiguous FP16 or BF16 NPU ND tensors sharing one dtype: ``q[S,H,128]`` and
     ``k[T,H,128]``, ``v[T,H,128]``. S and T are multiples of 128 in
@@ -29,10 +29,10 @@ def single_prefill_with_kv_cache_catlass(
     graph capturable. It does not claim support for data-dependent tiling.
     """
     import torch
-    from ..aclnn import enable_aclnn
+    from ..aclnn._ops import ensure_registered
     from ..runtime import Backend
 
-    enable_aclnn()
+    ensure_registered()
     options = dict(causal=causal, kv_layout=kv_layout, custom_mask=custom_mask,
                    backend=backend.value if isinstance(backend, Backend) else backend,
                    kernel_id=kernel_id)

@@ -19,7 +19,8 @@ from .core import _canonical_hash, _sha256
 from .aclnn_contract import AttributeParameter, TensorDtypeConversion
 
 
-CATLASS_REVISION = "41bf90da655bba3c66d0acd7e00abe33960ecfd6"
+CATLASS_REVISION = "6c0a3242b2effd861ac91aab1999f2226b643614"  # v2.2.0
+_LEGACY_CATLASS_REVISION = "41bf90da655bba3c66d0acd7e00abe33960ecfd6"
 _SYMBOL = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,127}$")
 _TENSOR_DTYPES = frozenset({
     "bfloat16", "float16", "float32", "float64", "int8", "uint8", "int16", "int32", "int64", "bool",
@@ -55,8 +56,14 @@ class BuildDependency:
         if not re.fullmatch(r"[0-9a-f]{40}", self.revision):
             raise SchemaError("dependency revision must be a full Git commit")
         _path(self.include_dir)
-        if self.name == "catlass" and self.revision != CATLASS_REVISION:
+        required = (_LEGACY_CATLASS_REVISION
+                    if type(self) is _LegacyBuildDependency else CATLASS_REVISION)
+        if self.name == "catlass" and self.revision != required:
             raise SchemaError("this adapter requires the pinned CATLASS revision")
+
+
+class _LegacyBuildDependency(BuildDependency):
+    """Decode the old frozen input exactly; never admit it to new recipes."""
 
 
 @dataclass(frozen=True)
@@ -470,7 +477,8 @@ class _Recipe:
             for name in ("sources", "headers"):
                 data[name] = tuple(SourceRef.from_dict(r) for r in data[name])
             data["host_sources"] = tuple(SourceRef.from_dict(r) for r in data.get("host_sources", ()))
-            data["dependencies"] = tuple(BuildDependency(**d) for d in data["dependencies"])
+            dependency_type = _LegacyBuildDependency if data.get("schema_version", 1) == 1 else BuildDependency
+            data["dependencies"] = tuple(dependency_type(**d) for d in data["dependencies"])
             data["tensor_parameters"] = tuple(TensorParameter.from_dict(p) for p in data.get("tensor_parameters", ()))
             data["attributes"] = tuple(AttributeParameter(**a) for a in data.get("attributes", ()))
             data["extra_build_files"] = tuple(SourceRef.from_dict(r) for r in data.get("extra_build_files", ()))
@@ -510,6 +518,8 @@ class BuildRecipe(_Recipe):
     def __post_init__(self):
         if type(self.schema_version) is not int or self.schema_version != 2:
             raise SchemaError("public BuildRecipe requires schema_version=2; legacy v1 is read-only compatibility")
+        if any(d.name == "catlass" and d.revision != CATLASS_REVISION for d in self.dependencies):
+            raise SchemaError("public recipes require the current pinned CATLASS revision")
         super().__post_init__()
 
 
@@ -660,10 +670,12 @@ class ResolvedBuildRecipe:
 
 
 def _build_inputs(recipe):
+    adapter_inputs = (("csrc/cmake/operator/aclnn_adapter.py",)
+                      if recipe.schema_version == 2 and recipe.output_kind == "op_package" else ())
     if recipe.extra_build_files:
         return ("csrc/cmake/operator/CMakeLists.txt", "csrc/cmake/operator/OpPackage.cmake",
                 "csrc/cmake/operator/host/CMakeLists.txt", "csrc/cmake/operator/kernel/CMakeLists.txt"
-                ) + tuple(r.locator for r in recipe.extra_build_files)
+                ) + adapter_inputs + tuple(r.locator for r in recipe.extra_build_files)
     if recipe.output_kind == "host_shared":
         return ("csrc/CMakeLists.txt", "csrc/cmake/HostShared.cmake")
     if recipe.schema_version == 1:
@@ -672,7 +684,7 @@ def _build_inputs(recipe):
                 "csrc/op_package/host/CMakeLists.txt", "csrc/op_package/kernel/CMakeLists.txt")
     return ("csrc/CMakeLists.txt", "csrc/cmake/OpPackage.cmake",
             "csrc/cmake/op_package/host/CMakeLists.txt", "csrc/cmake/op_package/kernel/CMakeLists.txt"
-            ) + tuple(r.locator for r in recipe.extra_build_files)
+            ) + adapter_inputs + tuple(r.locator for r in recipe.extra_build_files)
 
 
 def _resolve_build_recipe(recipe: _Recipe, *, source_root: Path,

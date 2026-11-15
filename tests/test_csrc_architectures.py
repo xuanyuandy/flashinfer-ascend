@@ -48,7 +48,7 @@ def test_native_declarations_close_the_selected_architecture_and_platform_tiler(
         if declaration.operator.name == "grouped_matmul_swiglu_quant":
             assert any("/op_host/arch22/" in ref.locator for ref in recipe.headers)
         if declaration.operator.name == "single_prefill_catlass":
-            assert any("/op_host/arch35/" in ref.locator for ref in recipe.headers)
+            assert any("/op_host/" + architecture + "/" in ref.locator for ref in recipe.headers)
         # Resolving checks every new path/hash and the complete framework build input set.
         resolve_build_recipe(
             recipe,
@@ -72,8 +72,8 @@ def test_native_declarations_close_the_selected_architecture_and_platform_tiler(
         ),
         ("gemm/matmul/op_kernel/native.cpp", 220, "arch35"),
         ("gemm/matmul_bias_silu/op_kernel/native.cpp", 220, "arch35"),
-        ("attention/flash_attention/op_kernel/catlass.cpp", 220, "arch35"),
-        ("gemm/matmul_probe/op_kernel/catlass.cpp", 220, "arch35"),
+        ("attention/flash_attention/op_kernel/catlass.cpp", 200, "arch22 or arch35"),
+        ("gemm/matmul_probe/op_kernel/catlass.cpp", 200, "arch22 or arch35"),
     ],
 )
 def test_missing_device_implementation_fails_at_preprocessing(
@@ -84,6 +84,8 @@ def test_missing_device_implementation_fails_at_preprocessing(
     (tmp_path / "kernel_operator.h").write_text(
         "// SDK stub: only preprocessing is exercised.\n"
     )
+    (tmp_path / "lib").mkdir()
+    (tmp_path / "lib/matmul_intf.h").write_text("// SDK wrapper stub for preprocessing only.\n")
     source = KERNELS / entry
     result = subprocess.run(
         [

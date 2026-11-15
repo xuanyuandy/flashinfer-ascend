@@ -7,7 +7,7 @@
 #error "matmul currently requires arch35 (__CCE_AICORE__ == 310)"
 #endif
 
-extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
+extern "C" __global__ __aicore__ void fi_matmul(
     GM_ADDR a, GM_ADDR b, GM_ADDR out, GM_ADDR workspace, GM_ADDR tiling) {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIC_ONLY);
     REGISTER_TILING_DEFAULT(FiMatmulTilingData);

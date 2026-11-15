@@ -9,6 +9,7 @@ from pathlib import Path
 
 from .recipe import _Recipe as BuildRecipe, _BuildConfig as AscendCBuildConfig
 from .recipe import _resolve_build_recipe as resolve_build_recipe
+from .recipe import _LegacyBuildDependency, _LEGACY_CATLASS_REVISION
 
 
 def load_build_recipes(path):

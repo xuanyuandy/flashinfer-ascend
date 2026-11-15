@@ -66,7 +66,26 @@ def test_builtin_partition_is_complete_disjoint_and_has_no_within_stack_data():
     assert len(legacy) == 81
     assert {d.kernel_id for d in flat} - {d.kernel_id for d in legacy} == PRODUCTION_KERNEL_IDS
     assert {id(d) for d in flat} == {id(d) for d in registry.descriptors()}
-    assert all(max(Counter(d.op for d in s.descriptors).values()) == 1 for s in stacks)
+    duplicates = {
+        (s.stack_id, op): frozenset(d.kernel_id for d in s.descriptors if d.op == op)
+        for s in stacks for op, count in Counter(d.op for d in s.descriptors).items()
+        if count > 1
+    }
+    assert duplicates == {
+        ("ascendc", "ascendc.single_prefill_catlass"): frozenset({
+            "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
+            "ascendc/t4/flash_attention/catlass/op_package/Ascend910C",
+            "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+        }),
+        ("ascendc", "gemm.grouped_matmul_swiglu_quant"): frozenset({
+            "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
+            "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910C",
+        }),
+        ("ascendc", "attention.sparse_flash_attention"): frozenset({
+            "ascendc/attention/sparse_flash_attention/native/Ascend910B",
+            "ascendc/attention/sparse_flash_attention/native/Ascend910C",
+        }),
+    }
     assert before == [(d.kernel_id, d.fingerprint) for d in registry.descriptors()]
     assert registry.stacks(op="missing.op") == ()
 

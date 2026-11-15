@@ -1,14 +1,15 @@
 """Production AOT wheels by default; explicit source-only opt-out.
 
-FLASHINFER_AOT_CONFIG=<json> FLASHINFER_AOT_SOCS=ascend950,... builds packages
+FLASHINFER_AOT_CONFIG=<json> FLASHINFER_AOT_SOCS=Ascend950 builds one family's packages
 through the same recipe driver/store. FLASHINFER_AOT_PREBUILT=<release-dir>
 packages already verified exports without requiring a compiler.
-An ordinary wheel build includes every registered production op-package.
+An ordinary wheel includes the local family: A2/A3 share the 910B distribution.
 FLASHINFER_AOT_ALL=0 builds a source-only wheel. Explicit ALL=1, CONFIG and
 PREBUILT modes remain mutually exclusive. No installer runs.
 """
 
 import os
+import json
 from pathlib import Path
 import shutil
 
@@ -50,6 +51,19 @@ def build_catlass_root():
 
 
 class AOTDistribution(Distribution):
+    def parse_config_files(self, filenames=None, ignore_option_errors=False):
+        super().parse_config_files(filenames=filenames, ignore_option_errors=ignore_option_errors)
+        if aot_requested():
+            from flashinfer._wheel import distribution_name
+            self.metadata.name = distribution_name(self.wheel_target)
+
+    @property
+    def wheel_target(self):
+        if not hasattr(self, "_wheel_target"):
+            from flashinfer._wheel import wheel_target
+            self._wheel_target = wheel_target()
+        return self._wheel_target
+
     def has_ext_modules(self):
         # ctypes host ELFs and NPU binaries are platform-specific, but have no
         # CPython extension ABI. AOTWheel supplies the corresponding wheel tag.
@@ -57,6 +71,12 @@ class AOTDistribution(Distribution):
 
 
 class AOTWheel(bdist_wheel):
+    def finalize_options(self):
+        if aot_requested():
+            from flashinfer._wheel import distribution_name
+            self.distribution.metadata.name = distribution_name(self.distribution.wheel_target)
+        super().finalize_options()
+
     def get_tag(self):
         python, abi, platform = super().get_tag()
         return ("py3", "none", platform) if aot_requested() else (python, abi, platform)
@@ -90,6 +110,7 @@ def build_inputs():
 class BuildPy(build_py):
     def run(self):
         mode = aot_mode()
+        target = self.distribution.wheel_target if mode else None
         from flashinfer.operators.authoring import generate
         generate(source_root=Path.cwd())
         package_output = Path(self.build_lib) / "flashinfer"
@@ -111,9 +132,9 @@ class BuildPy(build_py):
         if root.exists():
             shutil.rmtree(root)
         for path in build_inputs():
-            target = root / path
-            target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(path, target)
+            build_target = root / path
+            build_target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(path, build_target)
         shutil.copytree(recipe_root(), root / "csrc/recipes", dirs_exist_ok=True)
         config = os.environ.get("FLASHINFER_AOT_CONFIG")
         prebuilt = os.environ.get("FLASHINFER_AOT_PREBUILT")
@@ -125,7 +146,7 @@ class BuildPy(build_py):
         if destination.exists():
             shutil.rmtree(destination)
         if mode in {"FLASHINFER_AOT_ALL", "FLASHINFER_AOT_CONFIG"}:
-            from flashinfer.aot.build import build_production_packages, compile_and_package
+            from flashinfer.aot.build import build_production_packages
             from flashinfer.aclnn.build import build_adapter
             from flashinfer.aot.declarations import freeze_production_kernels
 
@@ -138,15 +159,41 @@ class BuildPy(build_py):
             if native_log.is_file():
                 shutil.move(native_log, Path(self.build_lib).parent / "aclnn-native-build.log")
 
-            targets = tuple(s.strip() for s in os.environ.get("FLASHINFER_AOT_SOCS", "").split(",") if s.strip())
-            options = dict(output_dir=destination, targets=targets,
+            options = dict(output_dir=destination,
                 cache_dir=os.environ.get("FLASHINFER_AOT_CACHE_DIR"),
                 cann_root=os.environ.get("ASCEND_HOME_PATH"),
                 catlass_root=build_catlass_root())
             if mode == "FLASHINFER_AOT_ALL":
-                build_production_packages(**options)
+                from flashinfer._wheel import production_kernel_ids
+                kernel_ids = production_kernel_ids(target)
+                build_production_packages(kernel_ids=kernel_ids, **options)
             else:
-                compile_and_package(config, **options)
+                from flashinfer.jit import AscendCBuildConfig
+                from flashinfer._wheel import family_socs, production_kernel_ids
+                from flashinfer.operators.implementation import implementations
+
+                # CONFIG selects authored variants across the delivery family.
+                # Every unit retains its own strict physical target binding.
+                selected_config = AscendCBuildConfig.from_file(config)
+                if selected_config.recipe_id == "all":
+                    build_production_packages(kernel_ids=production_kernel_ids(target), **options)
+                else:
+                    implementation = dict(selected_config.overrides).get(
+                        selected_config.recipe_id, selected_config.implementation)
+                    selected = tuple(d.kernel_id for d in implementations(backend="ascendc")
+                        if d.native.target_soc in family_socs(target)
+                        and d.native.name == selected_config.recipe_id
+                        and d.native.build.implementation == implementation)
+                    if not selected:
+                        raise ValueError("CONFIG has no production implementation in wheel family " + target)
+                    build_production_packages(kernel_ids=selected, **options)
+                from flashinfer.jit.cache import verify_build_directory
+                releases = tuple(p for p in destination.iterdir()
+                                 if p.is_dir() and (p / "manifest.json").is_file())
+                for release in releases:
+                    verify_build_directory(release)
+                kernel_ids = tuple(json.loads((p / "manifest.json").read_text())["spec"]["kernel_id"]
+                                   for p in releases)
         elif prebuilt:
             from flashinfer.aot.build import export_op_package
             from flashinfer.aclnn.build import bundle_adapter
@@ -154,13 +201,18 @@ class BuildPy(build_py):
             # PREBUILT remains compiler-free, but the single execution path
             # requires a compatible prebuilt Torch bridge as well as packages.
             bundle_adapter(native_destination)
-            release = Path(prebuilt).resolve(strict=True)
-            packages = (release,) if (release / "manifest.json").is_file() else tuple(
-                p for p in sorted(release.iterdir()) if p.is_dir() and (p / "manifest.json").is_file())
+            from flashinfer._wheel import prebuilt_packages, canonical_target, restore_prebuilt_specs
+            packages = tuple(p for p in prebuilt_packages(prebuilt)
+                if canonical_target(json.loads((p / "manifest.json").read_text())["spec"]["target_soc"]) == target)
             if not packages:
-                raise ValueError("FLASHINFER_AOT_PREBUILT contains no verified op-package releases")
+                raise ValueError("PREBUILT contains no op-package for wheel target " + target)
             for package in packages:
                 export_op_package(package, destination)
+            restore_prebuilt_specs(package_output, packages)
+            kernel_ids = tuple(json.loads((p / "manifest.json").read_text())["spec"]["kernel_id"] for p in packages)
+        if mode:
+            from flashinfer._wheel import finalize_resources
+            finalize_resources(package_output, target=target, kernel_ids=kernel_ids)
         self._aot_outputs = [str(p) for p in destination.rglob("*") if p.is_file()] if destination.exists() else []
         self._native_outputs = ([str(p) for p in native_destination.iterdir()
                                  if p.name in {"libflashinfer_aclnn.so", "manifest.json"}]

@@ -38,16 +38,14 @@ def package_target(soc):
     The full requested product is still bound into the recipe/spec/release.
     """
     key = soc.lower()
-    known = {"ascend910b": ("ascend910b", "dav-2201"),
-             "ascend910b1": ("ascend910b", "dav-2201"),
-             "ascend910c": ("ascend910_93", "dav-2201"),
-             "ascend910_9391": ("ascend910_93", "dav-2201"),
-             "ascend310p1": ("ascend310p", "dav-2002")}
-    if re.fullmatch(r"ascend950[a-z0-9_]*", key):
-        return "ascend950", "dav-3510"
-    if key not in known:
-        raise SchemaError("unsupported op-package SOC: " + soc)
-    return known[key]
+    from flashinfer.runtime.targets import canonical_soc_model, SOC_TARGETS
+
+    if key == "ascend310p1":
+        return "ascend310p", "dav-2002"
+    try:
+        return SOC_TARGETS[canonical_soc_model(soc)]
+    except ValueError as error:
+        raise SchemaError("unsupported op-package SOC: " + soc) from error
 
 
 def _file(root, relative):
@@ -72,6 +70,11 @@ def collect_package(spec, recipe, build, directory):
         spec_fingerprint=spec.fingerprint, recipe=recipe.to_dict(),
         vendor_path=vendor, api_library=vendor + "/op_api/lib/libcust_opapi.so",
         compute_unit=package_target(recipe.target_soc)[0], run_file="op-package.run")
+    if recipe.schema_version == 2:
+        for suffix in (".cpp", ".json", ".h"):
+            shutil.copyfile(build / ("fi_aclnn_adapter" + suffix),
+                            directory / ("fi_aclnn_adapter" + suffix))
+        data.update(schema_version=2, native_adapter="fi_aclnn_adapter.json")
     (directory / spec.output_path).write_text(json.dumps(data, indent=2, sort_keys=True) + "\n")
     verify_op_package(directory, spec)
 
@@ -87,13 +90,16 @@ def verify_op_package(directory, spec):
             or dict(spec.input_fingerprints).get("output_adapter") != OP_PACKAGE_ADAPTER_HASH):
         raise SchemaError("spec does not declare the op-package adapter")
     data = json.loads(_file(directory, spec.output_path).read_text())
-    if set(data) != {"schema_version", "output_adapter", "spec_fingerprint", "recipe",
-                     "vendor_path", "api_library", "compute_unit", "run_file"}:
+    fields = {"schema_version", "output_adapter", "spec_fingerprint", "recipe",
+              "vendor_path", "api_library", "compute_unit", "run_file"}
+    if data.get("schema_version") == 2:
+        fields.add("native_adapter")
+    if set(data) != fields:
         raise SchemaError("invalid op-package manifest fields")
     recipe = _recipe_from_artifact(data["recipe"])
     vendor = "packages/vendors/" + str(recipe.package_vendor)
     compute = package_target(recipe.target_soc)[0]
-    if (data["schema_version"] != 1 or data["output_adapter"] != "ascendc.op_package.v1"
+    if (data["schema_version"] not in (1, 2) or data["output_adapter"] != "ascendc.op_package.v1"
             or recipe.output_kind != "op_package" or data["spec_fingerprint"] != spec.fingerprint
             or recipe.target_soc != spec.target_soc or recipe.source != spec.source
             or recipe.kernel_id != spec.kernel_id or spec.entry_points != (recipe.host_entry,)
@@ -108,6 +114,8 @@ def verify_op_package(directory, spec):
     for entry in (recipe.host_entry, recipe.host_entry + "GetWorkspaceSize"):
         if entry not in symbols:
             raise OpPackageSymbolError("op-package host ELF has no ACLNN symbol: " + entry)
+    if data["schema_version"] == 2:
+        _verify_native_adapter(directory, data, recipe, symbols)
     kernel = vendor + "/op_impl/ai_core/tbe/kernel/"
     config = json.loads(_file(directory, kernel + "config/" + compute + "/binary_info_config.json").read_text())
     if set(config) != {recipe.package_op_type}:
@@ -183,6 +191,30 @@ def verify_op_package(directory, spec):
         raise SchemaError("v2 package is missing a declared dtype signature executable")
     _file(directory, data["run_file"])
     return data, recipe
+
+
+def _verify_native_adapter(directory, data, recipe, symbols):
+    """Match generated adaptation to this exact native ABI before loading code."""
+    if recipe.schema_version != 2 or data["native_adapter"] != "fi_aclnn_adapter.json":
+        raise SchemaError("typed ACLNN adapter requires its exact v2 recipe")
+    record = json.loads(_file(directory, data["native_adapter"]).read_text())
+    fields = {"schema_version", "kernel_id", "recipe_fingerprint", "host_entry",
+              "tensor_parameters", "attributes", "header_sha256", "source_sha256"}
+    expected = json.loads(json.dumps(recipe.to_dict()))
+    if (set(record) != fields or record["schema_version"] != 1
+            or record["kernel_id"] != recipe.kernel_id
+            or record["recipe_fingerprint"] != recipe.fingerprint
+            or record["host_entry"] != recipe.host_entry
+            or record["tensor_parameters"] != expected["tensor_parameters"]
+            or record["attributes"] != expected.get("attributes", [])):
+        raise SchemaError("generated ACLNN adapter does not match the operator NativeBinding")
+    for suffix, key in ((".h", "header_sha256"), (".cpp", "source_sha256")):
+        payload = _file(directory, "fi_aclnn_adapter" + suffix).read_bytes()
+        if hashlib.sha256(payload).hexdigest() != record[key]:
+            raise SchemaError("generated ACLNN adapter source/header digest mismatch")
+    required = {"fi_aclnn_binding_fingerprint", "fi_aclnn_workspace", "fi_aclnn_launch"}
+    if not required <= symbols:
+        raise OpPackageSymbolError("op-package is missing its generated ACLNN adapter symbols")
 
 
 _load_lock = RLock()
@@ -309,6 +341,14 @@ def load_op_packages(directories, *, target_soc):
                 os.environ["ASCEND_CUSTOM_OPP_PATH"] = os.pathsep.join(paths)
             for name, (directory, record, data, recipe) in pending.items():
                 api = C.CDLL(str(_file(directory, data["api_library"])), mode=C.RTLD_LOCAL)
+                if data["schema_version"] == 2:
+                    identity = api.fi_aclnn_binding_fingerprint
+                    identity.argtypes, identity.restype = [], C.c_char_p
+                    if identity() != recipe.fingerprint.encode("ascii"):
+                        raise SchemaError("loaded ACLNN adapter identity differs from its operator")
+                    # All callers use the generated, header-checked wrappers.
+                    setattr(api, recipe.host_entry + "GetWorkspaceSize", api.fi_aclnn_workspace)
+                    setattr(api, recipe.host_entry, api.fi_aclnn_launch)
                 workspace = getattr(api, recipe.host_entry + "GetWorkspaceSize")
                 inputs = sum(p.role == "input" for p in recipe.tensor_parameters) if recipe.schema_version == 2 else len(recipe.tensor_parameter_names)
                 scalar_types = [{"bool": C.c_bool, "int64": C.c_int64, "float64": C.c_double, "string": C.c_char_p}[a.dtype]

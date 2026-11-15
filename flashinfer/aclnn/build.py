@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 
 
@@ -54,6 +55,12 @@ def build_adapter(output_dir, *, source_root=None):
             command += ["-I", include]
         for directory in library_paths() + [str(npu / "lib"), str(cann / "lib64")]:
             command += ["-L", directory]
+        # Conda/venv development packages belong to the active interpreter,
+        # rather than to the system compiler's default header search path.
+        for prefix in dict.fromkeys((Path(sys.prefix), Path(sys.base_prefix))):
+            if (prefix / "include/ffi.h").is_file() and (prefix / "lib/libffi.so").is_file():
+                command += ["-I", str(prefix / "include"), "-L", str(prefix / "lib")]
+                break
         command += ["-ltorch", "-ltorch_cpu", "-lc10", "-ltorch_npu", "-lascendcl", "-lffi", "-ldl",
                     "-Wl,-rpath,$ORIGIN/../../../torch/lib:$ORIGIN/../../../torch_npu/lib"]
         log = destination / "build.log"

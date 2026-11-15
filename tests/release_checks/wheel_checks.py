@@ -1,6 +1,7 @@
 """Wheel build modes must preserve complete releases and reject ambiguity."""
 
 from pathlib import Path
+import json
 import runpy
 
 import pytest
@@ -112,6 +113,7 @@ def test_all_wheel_build_exports_every_builder_output(
             (output_dir / name).write_text("fixture native adapter")
 
     monkeypatch.setattr(aclnn_build, "build_adapter", native_build)
+    monkeypatch.setenv("FLASHINFER_AOT_SOCS", "Ascend950")
     if all_value is not None:
         monkeypatch.setenv("FLASHINFER_AOT_ALL", all_value)
     monkeypatch.setenv("FLASHINFER_CATLASS_ROOT", "/explicit-catlass")
@@ -179,9 +181,66 @@ def test_all_wheel_build_exports_every_builder_output(
     assert not distribution.has_ext_modules()
 
 
-def test_default_wheel_requests_all_production_packages(wheel_setup):
+def test_default_wheel_requests_exactly_the_local_chip(wheel_setup, monkeypatch):
+    from types import SimpleNamespace
+    from flashinfer import _wheel
+    monkeypatch.delenv("FLASHINFER_AOT_SOCS", raising=False)
+    monkeypatch.setattr(_wheel, "current_hardware", lambda: SimpleNamespace(soc_model="Ascend910B"))
     assert wheel_setup["aot_mode"]() == "FLASHINFER_AOT_ALL"
+    assert _wheel.wheel_target() == "a2a3"
+    assert _wheel.distribution_name("Ascend910B") == "flashinfer_ascend910b"
     assert wheel_setup["AOTDistribution"]().has_ext_modules()
+
+
+@pytest.mark.parametrize("selector", ["flash_attention", "all"])
+def test_config_selects_implementations_within_the_wheel_chip(
+    wheel_setup, monkeypatch, tmp_path, selector
+):
+    from flashinfer.aot import build, declarations
+    from flashinfer.aclnn import build as aclnn_build
+    from flashinfer.ascendc import _contracts
+    from flashinfer.jit import cache
+    from tests.production_inventory import PRODUCTION
+
+    monkeypatch.chdir(ROOT)
+    monkeypatch.setenv("FLASHINFER_AOT_SOCS", "Ascend910B")
+    config = tmp_path / "config.json"
+    config.write_text(json.dumps(dict(recipe_id=selector, implementation="catlass",
+                                     target_soc="Ascend950", output_kind="op_package")))
+    monkeypatch.setenv("FLASHINFER_AOT_CONFIG", str(config))
+    monkeypatch.setattr(build_py, "run", lambda _: None)
+    monkeypatch.setattr(declarations, "freeze_production_kernels", lambda **kwargs: None)
+    monkeypatch.setattr(aclnn_build, "build_adapter", lambda output: output.mkdir(parents=True))
+    monkeypatch.setattr(cache, "verify_build_directory", lambda _: None)
+    calls = []
+
+    def publish(kernel_ids, output_dir):
+        for kernel_id in kernel_ids:
+            spec = _contracts()[kernel_id][2]
+            destination = output_dir / spec.fingerprint
+            destination.mkdir(parents=True)
+            (destination / "manifest.json").write_text(json.dumps(dict(spec=spec.to_dict())))
+
+    def compile_config(value, **options):
+        pytest.fail("wheel CONFIG must select exact frozen variants across its family")
+
+    def compile_all(**options):
+        calls.append("a2a3")
+        assert set(options["kernel_ids"]) == {row[0] for row in PRODUCTION
+            if row[-1] in ("Ascend910B", "Ascend910C")
+            and (selector == "all" or row[2] == "flash_attention")}
+        publish(options["kernel_ids"], options["output_dir"])
+
+    monkeypatch.setattr(build, "compile_and_package", compile_config)
+    monkeypatch.setattr(build, "build_production_packages", compile_all)
+    command = wheel_setup["BuildPy"](wheel_setup["AOTDistribution"]())
+    command.build_lib = str(tmp_path / "build")
+    command.run()
+    assert calls == ["a2a3"]
+    metadata = json.loads((tmp_path / "build/flashinfer/data/wheel.json").read_text())
+    assert metadata["family"] == "a2a3"
+    assert metadata["soc_models"] == ["Ascend910B", "Ascend910C"]
+    assert len(metadata["kernel_ids"]) == (2 if selector == "flash_attention" else 6)
 
 
 @pytest.mark.parametrize("value", ["0", ""])

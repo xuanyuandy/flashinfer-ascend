@@ -11,13 +11,15 @@ fp16/bf16/fp32，rotary_mode=half 与 interleave 均与 fp64 参考一致。
 
 from __future__ import annotations
 
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
+
 from typing import Any, Tuple
 
 from flashinfer.runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescriptor
 
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "float32", "int32", "int64")
 
-_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
+_SUPPORTED_SOCS = GENERAL_ASCEND_SOCS
 
 def _rope_cos_sin(pos_ids: Any, rotary_dim: int, rope_scale: float, rope_theta: float):
     """按上游 pos_enc.cuh 的公式生成 cos/sin。

@@ -1,5 +1,7 @@
 """cann implementation of gemm.bmm_bf16."""
 
+
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
 from flashinfer.operators.author_api import (
     CANNImplementation,
     Support,
@@ -14,7 +16,7 @@ IMPLEMENTATION = CANNImplementation(
     kernel_id="cann/gemm/bmm_bf16_v1",
     support=Support(
         dtypes=("bfloat16", "float16", "float32"),
-        soc_models=("Ascend910B", "Ascend950"),
+        soc_models=GENERAL_ASCEND_SOCS,
     ),
     runner=run,
 )

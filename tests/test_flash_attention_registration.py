@@ -70,7 +70,7 @@ def test_frozen_catlass_declaration_requires_no_dependency_or_compiler(monkeypat
     assert contract.tensor_parameter_names == ("q", "k", "v", "out")
     assert contract.device_parameter_order == ("q", "k", "v", "out", "workspace", "tiling")
     assert [(item.name, item.revision, item.include_dir) for item in contract.dependencies] == [
-        ("catlass", "41bf90da655bba3c66d0acd7e00abe33960ecfd6", "include"),
+        ("catlass", "6c0a3242b2effd861ac91aab1999f2226b643614", "include"),
     ]
     assert dict(spec.input_fingerprints)["kernel"] == descriptor.fingerprint
     assert dict(spec.input_fingerprints)["build_recipe"] == contract.fingerprint

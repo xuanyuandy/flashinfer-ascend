@@ -256,9 +256,9 @@ def test_torch_functional_out_and_fake_metadata(monkeypatch):
     import torch
     import flashinfer
     from torch._subclasses.fake_tensor import FakeTensorMode
-    from flashinfer.aclnn import enable_aclnn
+    from flashinfer.aclnn._ops import ensure_registered
 
-    enable_aclnn()
+    ensure_registered()
     monkeypatch.setattr(gemm, "_run_selected", forbidden)
     with FakeTensorMode():
         a = torch.empty((32, 48), dtype=torch.bfloat16)

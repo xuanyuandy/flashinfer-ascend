@@ -14,6 +14,8 @@ scale 保留原始 FP8 点积，显式输出 fp32 后再应用调用方的 scale
 
 from __future__ import annotations
 
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
+
 from typing import Any, Tuple
 
 from flashinfer.runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescriptor
@@ -22,7 +24,7 @@ _SUPPORTED_DTYPES = ("float8_e4m3fn", "float8_e5m2", "float32")
 
 _SUPPORTED_SOCS = ("Ascend950",)
 
-_GENERAL_SOCS = ("Ascend910B", "Ascend950")
+_GENERAL_SOCS = GENERAL_ASCEND_SOCS
 
 def _fp8_grouped_gemm(x8: Any, weight_list: list, group_list: list) -> Any:
     """fp8 grouped GEMM（950 上 npu_grouped_matmul 的 fp8 路径）。

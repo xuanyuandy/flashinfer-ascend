@@ -28,6 +28,8 @@ sys.meta_path.insert(0,Deny())
 def forbidden(*args,**kwargs): raise AssertionError('compiler/subprocess')
 subprocess.Popen=forbidden
 import flashinfer.aclnn
+assert flashinfer.aclnn.__all__ == []
+assert not hasattr(flashinfer.aclnn, 'enable_aclnn')
 import flashinfer.aclnn._native
 import flashinfer.aclnn.build
 import flashinfer.aclnn._ops
@@ -39,10 +41,11 @@ def test_aclnn_registration_and_fake_execution_do_not_load_native():
 import sys,torch
 import flashinfer.norm
 from torch._subclasses.fake_tensor import FakeTensorMode
-from flashinfer.aclnn import enable_aclnn,_native
+from flashinfer.aclnn import _native
+from flashinfer.aclnn._ops import ensure_registered
 def forbidden(): raise AssertionError('native execution from FakeTensor')
 _native.load_adapter=forbidden
-enable_aclnn();enable_aclnn()
+ensure_registered();ensure_registered()
 assert flashinfer.norm._torch_library_ops is None, 'production registration must not reroute unrelated norm ops'
 assert 'torch_npu' not in sys.modules
 with FakeTensorMode():
@@ -69,11 +72,29 @@ assert 'torch_npu' not in sys.modules
 ''')
 
 
+def test_public_call_registers_aclnn_automatically():
+    run('''
+import torch,flashinfer
+from torch._subclasses.fake_tensor import FakeTensorMode
+from flashinfer.aclnn import _native,_ops
+assert not _ops._registered
+def forbidden(): raise AssertionError('FakeTensor must not load the native bridge')
+_native.load_adapter=forbidden
+with FakeTensorMode():
+ a=torch.empty((16,16),dtype=torch.bfloat16)
+ bias=torch.empty((16,),dtype=torch.bfloat16)
+ assert flashinfer.matmul_bias_silu(a,a,bias).shape==(16,16)
+ assert _ops._registered
+ out=torch.empty_like(a)
+ assert flashinfer.matmul_bias_silu(a,a,bias,out=out) is out
+''')
+
+
 def test_aclnn_has_no_cpu_numerical_fallback():
     run('''
 import torch
-from flashinfer.aclnn import enable_aclnn
-enable_aclnn()
+from flashinfer.aclnn._ops import ensure_registered
+ensure_registered()
 try:
  torch.ops.flashinfer.matmul_bias_silu(torch.zeros((16,16),dtype=torch.bfloat16),torch.zeros((16,16),dtype=torch.bfloat16),torch.zeros(16,dtype=torch.bfloat16))
 except NotImplementedError: pass

@@ -20,10 +20,10 @@ from flashinfer._resources import data_root
 ROOT = Path(__file__).resolve().parents[1]
 PYTHON = Path(os.environ.get("FLASHINFER_TEST_PYTHON", sys.executable))
 CATLASS_ROOT = Path(os.environ.get(
-    "FLASHINFER_TEST_CATLASS_ROOT", os.environ.get("FLASHINFER_CATLASS_ROOT", "/mnt/fi/catlass-ref"),
+    "FLASHINFER_TEST_CATLASS_ROOT", os.environ.get("FLASHINFER_CATLASS_ROOT", str(ROOT / "3rdparty/catlass")),
 ))
-CATLASS_REVISION = "41bf90da655bba3c66d0acd7e00abe33960ecfd6"
-GENERATOR = CATLASS_ROOT / "examples/49_ascend950_flash_attention_infer/gen_data.py"
+CATLASS_REVISION = "6c0a3242b2effd861ac91aab1999f2226b643614"
+GENERATOR = ROOT / "tests/fixtures/catlass-golden/gen_data.py"
 GENERATOR_SHA256 = "c988b56dc2113990f2d0978185db3eda2cd18db05018b2f042ae3c2f4a6f2fb9"
 GOLDEN_SHAPES = (
     (128, 128, 1), (128, 256, 2), (256, 384, 4),

@@ -12,7 +12,7 @@ def main():
     import torch
     import torch_npu  # noqa: F401
     import flashinfer
-    from flashinfer.aclnn import enable_aclnn
+    from flashinfer.aclnn._ops import ensure_registered
 
     location = Path(flashinfer.__file__).resolve()
     print("flashinfer:", location, flush=True)
@@ -21,7 +21,7 @@ def main():
     if not torch.npu.is_available():
         raise RuntimeError("FlashAttention requires an available Ascend NPU")
 
-    enable_aclnn()
+    ensure_registered()
     for dtype in (torch.float16, torch.bfloat16):
         torch.manual_seed(20261026)
         cpu = tuple((torch.rand(shape) * 2 - 1).to(dtype) for shape in

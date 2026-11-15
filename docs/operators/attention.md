@@ -9,8 +9,8 @@
 | single prefill/decode | `single_prefill_with_kv_cache`、`single_decode_with_kv_cache` | CANN FIA；FP16/BF16，NHD/HND、GQA 等以公共校验和 runner 为准 |
 | batch paged/ragged prefill | 对应 BatchPrefill wrapper 的 plan/run | 真实 Tensor 路径为 CANN；组合逐请求 gather/FIA/拼接，不等于完整 fused scheduler |
 | batch paged decode | BatchDecode wrapper 的 plan/run | CANN 路径，计划与 workspace 由 wrapper 持有；名字带 CUDAGraph 不扩大图能力 |
-| 独立 dense CATLASS | `single_prefill_with_kv_cache_catlass` | Ascend950、本仓 AOT，允许声明范围内的缺包 JIT |
-| MLA sparse | `sparse_flash_attention` | Ascend910B arch22、本仓 AOT-only；没有同 op 的 CANN/Triton 生产实现 |
+| 独立 dense CATLASS | `single_prefill_with_kv_cache_catlass` | Ascend910B/Ascend910C/Ascend950、本仓 AOT，允许声明范围内的缺包 JIT |
+| MLA sparse | `sparse_flash_attention` | Ascend910B/Ascend910C 共用 arch22、本仓 AOT-only；没有同 op 的 CANN/Triton 生产实现 |
 
 普通 single 的 auto 会读取全局默认，普通 batch Tensor 的非 reference plan 分支固定请求 cann；它们不是任意后端的统一占位接口。完整规则见 [后端路由](../concepts/backend-routing.md)。
 
@@ -57,9 +57,11 @@ attention_out, softmax_max, softmax_sum = flashinfer.sparse_flash_attention(
 
 索引、长度与页表的值约束由公共 validate_values 校验；native ABI 的正尺寸约束保持不变，关闭辅助输出时由 runner 提供内部占位缓冲。当前图声明为 NOT_CAPTURABLE，不从 eager 或编译成功推导图支持。
 
+A2/A3 使用相同公共接口与 runner，910B 包含各自的冻结原生产物；A3 真机数值未验证。
+
 ## 支持与缺口
 
-普通 CANN Attention 的登记范围主要是 Ascend950，个别兼容入口另有 Ascend910B 声明；按 [逐项矩阵](../backends/overview.md) 核对，不按设备目录名外推。
+普通 CANN Attention 的登记范围主要是 Ascend950，个别兼容入口另有 Ascend910B/Ascend910C 声明；按 [逐项矩阵](../backends/overview.md) 核对，不按设备目录名外推。
 
 混合 BatchAttention、量化 KV provider 和完整上游 MLA/sparse/POD wrapper 尚未形成默认 NPU 产品面。保留的 Host 合同不是可运行后端说明；接口与图扩展目标集中在 [规划](../roadmap.md)。
 

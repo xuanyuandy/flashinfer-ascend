@@ -1,5 +1,7 @@
 """triton implementation of norm.gemma_fused_add_rmsnorm."""
 
+
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
 from flashinfer.operators.author_api import (
     TritonImplementation,
     Support,
@@ -14,7 +16,7 @@ IMPLEMENTATION = TritonImplementation(
     kernel_id="triton/norm/gemma_fused_add_rmsnorm_v1",
     support=Support(
         dtypes=("float16", "bfloat16", "float32"),
-        soc_models=("Ascend910B", "Ascend950"),
+        soc_models=GENERAL_ASCEND_SOCS,
     ),
     runner=_gemma_fused_add_rmsnorm_triton,
 )

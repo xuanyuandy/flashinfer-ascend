@@ -188,9 +188,9 @@ def matmul(
     This is synchronous eager execution, without a graph-capture promise.
     """
     import torch
-    from .aclnn import enable_aclnn
+    from .aclnn._ops import ensure_registered
 
-    enable_aclnn()
+    ensure_registered()
     options = dict(backend=backend.value if isinstance(backend, Backend) else backend,
                    kernel_id=kernel_id)
     if out is None:
@@ -243,9 +243,9 @@ def matmul_bias_silu(
     compile only when JIT is enabled. This eager entry is not graph capturable.
     """
     import torch
-    from .aclnn import enable_aclnn
+    from .aclnn._ops import ensure_registered
 
-    enable_aclnn()
+    ensure_registered()
     options = dict(backend=backend.value if isinstance(backend, Backend) else backend,
                    kernel_id=kernel_id)
     if out is None:

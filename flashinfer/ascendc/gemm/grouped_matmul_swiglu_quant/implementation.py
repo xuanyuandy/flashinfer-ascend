@@ -14,6 +14,7 @@ from flashinfer.operators.gemm.grouped_matmul_swiglu_quant.operator import (
     quantization,
 )
 from flashinfer.runtime import CapabilityCase, FeatureConstraint, QuantSpec, ShapeRange
+from flashinfer.runtime.targets import ARCH22_SOCS
 from flashinfer.jit.recipe import ShapeConstraint, TensorParameter
 from flashinfer.jit.aclnn_contract import AttributeParameter, TensorDtypeConversion
 from .runner import make_runner, admission
@@ -88,15 +89,16 @@ def _support():
                 specializations=(("tensor_contract", ("supported",)),),
             )
         )
-    return Support(soc_models=("Ascend910B",), cases=tuple(cases))
+    return Support(soc_models=ARCH22_SOCS, cases=tuple(cases))
 
 
 # Native tiling bounds workspace use to 80 MiB.
 MAX_WORKSPACE_BYTES = 80 * 1024 * 1024
 
-IMPLEMENTATION = AscendCImplementation(
+IMPLEMENTATIONS = AscendCImplementation.for_targets(
     operator=OPERATOR,
-    kernel_id="ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
+    name="native/op_package",
+    default_target="Ascend910B",
     support=_support(),
     build=BuildConfig(
         device="op_kernel/grouped_matmul_swiglu_quant.cpp",
@@ -227,6 +229,7 @@ IMPLEMENTATION = AscendCImplementation(
     admission=admission,
 )
 
+IMPLEMENTATION = IMPLEMENTATIONS[0]
 NATIVE = IMPLEMENTATION.native
 descriptor = IMPLEMENTATION.bind
 

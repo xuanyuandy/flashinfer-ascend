@@ -111,30 +111,37 @@ def test_production_corrupt_rejects_jit(production_release, tmp_path):
 
 
 def incompatible_release(release, root):
-    """Re-publish valid inventory with another A5 product identity.
+    """Build a valid package bound to another A5 product identity.
 
-    The numerical executable is not run on the mismatched product. This
-    deliberate metadata fixture isolates the target check from corruption.
+    A generated adapter binds the complete recipe, including its target.
+    Rewriting only JSON would produce a corrupt fixture. Compilation here
+    prepares the fixture; the runtime assertion still forbids JIT entirely.
     """
-    from flashinfer.jit import DiskJitBuildStore, JitSpec
-    from flashinfer.jit.build import _verify_output
+    from flashinfer.ascendc import load_contract
+    from flashinfer.jit import (AscendCBackend, AscendCToolchain, DiskJitBuildStore,
+                               JitSpec, JitSpecRegistry, declare_kernel, resolve_build_recipe)
+    from flashinfer.jit.build import _build_record
     from flashinfer.jit.cache import verify_build_directory
     from flashinfer.jit.recipe import BuildRecipe
+    from flashinfer.runtime import KernelRegistry
 
     verify_build_directory(release)
     spec = JitSpec.from_dict(json.loads((release / "manifest.json").read_text())["spec"])
     package = json.loads((release / "op-package.json").read_text())
     recipe = replace(BuildRecipe.from_dict(package["recipe"]), target_soc="Ascend950DT")
-    inputs = dict(spec.input_fingerprints, build_recipe=recipe.fingerprint)
-    spec = replace(spec, target_soc=recipe.target_soc, input_fingerprints=tuple(sorted(inputs.items())))
-    package.update(recipe=recipe.to_dict(), spec_fingerprint=spec.fingerprint)
+    descriptor = replace(load_contract(spec.kernel_id)[0], target_soc=recipe.target_soc)
+    toolchain = AscendCToolchain.discover()
+    resolved = resolve_build_recipe(recipe, source_root=ROOT,
+                                    toolchain_fingerprint=toolchain.fingerprint)
+    backend = AscendCBackend(recipes=(resolved,), toolchain=toolchain)
+    spec = declare_kernel(descriptor.kernel_id, backend=backend,
+        registry=KernelRegistry((descriptor,)), spec_registry=JitSpecRegistry(),
+        output_path="op-package.json", entry_point=recipe.host_entry,
+        environment_fingerprint=toolchain.fingerprint,
+        specialization_fingerprint=spec.specialization_fingerprint,
+        compile_options=spec.compile_options)
     store = DiskJitBuildStore(root)
-    with store.staging(spec) as staging:
-        shutil.copytree(release, staging, dirs_exist_ok=True,
-                        ignore=shutil.ignore_patterns("manifest.json", "build.log"))
-        (staging / "op-package.json").write_text(json.dumps(package, sort_keys=True))
-        artifact = _verify_output(spec, staging)
-        record = store.publish(spec, staging, artifact)
+    record = _build_record(spec, backend=backend, store=store)
     return store.directory(record)
 
 

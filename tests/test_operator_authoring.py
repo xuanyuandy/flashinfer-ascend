@@ -60,6 +60,15 @@ def project(tmp_path):
                 "flashinfer.operators.gemm.grouped_matmul_swiglu_quant.operator",
             )
             if source.name == "implementation.py":
+                # This fixture authors one explicit B probe and an editable ID
+                # for the takeover negative case. Production GMM now expands
+                # B/C variants; keep the fixture's original single-unit scope.
+                text = text.replace('soc_models=ARCH22_SOCS', 'soc_models=("Ascend910B",)')
+                text = text.replace('IMPLEMENTATIONS = AscendCImplementation.for_targets(',
+                                    'IMPLEMENTATION = AscendCImplementation(')
+                text = text.replace('default_target="Ascend910B",', 'kernel_id=KERNEL_ID,')
+                text = text.replace('IMPLEMENTATION = IMPLEMENTATIONS[0]',
+                                    'IMPLEMENTATIONS = (IMPLEMENTATION,)')
                 text = text.replace(
                     "from .runner import make_runner, admission",
                     "from .runner import make_runner, admission\nfrom dataclasses import replace\n"

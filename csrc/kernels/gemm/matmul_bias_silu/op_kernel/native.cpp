@@ -8,7 +8,7 @@
 #error "matmul_bias_silu currently requires arch35 (__CCE_AICORE__ == 310)"
 #endif
 
-extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
+extern "C" __global__ __aicore__ void fi_matmul_bias_silu(
     GM_ADDR a, GM_ADDR b, GM_ADDR bias, GM_ADDR out, GM_ADDR workspace, GM_ADDR tiling) {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2);
     REGISTER_TILING_DEFAULT(FiMatmulBiasSiluTilingData);

@@ -6,7 +6,7 @@
 
 `flashinfer` 在 FlashInfer 风格 API 下接入 CANN、Ascend C、Triton 和显式 reference。公共 API 名称、逻辑算子和具体实现分别建模；同名接口不保证与上游所有参数、设备或执行模式等价。
 
-全局目录有 48 个逻辑 op、86 个 Descriptor；其中 46 个 op 有 NPU runner，2 个内部 op 只有 reference。数字表示登记与绑定，不能替代运行、图模式或性能证据。
+源码全局目录有 48 个逻辑 op、90 个 Descriptor；其中 46 个 op 有 NPU runner，2 个内部 op 只有 reference。分芯片 wheel 的原生目录与随包产物一致。数字表示登记与绑定，不能替代运行、图模式或性能证据。
 
 ## 分层
 
@@ -34,6 +34,8 @@ flowchart TD
 | Descriptor | 一个实现的身份、能力、构建方式、准入与 runner 绑定 |
 | `kernel_id` | 具体实现的唯一选择键；不按调用顺序推断 |
 | `InputSignature` | 本次调用的 dtype、shape、布局、语义与特化事实；不含 Tensor 数据内容 |
+| wheel family | 交付分组：910B 包覆盖 A2/A3，950 包覆盖 A5；不替代编译或路由的物理 SoC |
+| source architecture | arch22 为 A2/A3 共用源码架构，arch35 为 A5；同架构不表示二进制可互换 |
 | `HardwareSignature` | 探测得到的 SoC 系列、核数及可用资源信息；不是完整设备功能清单 |
 | capability / admission | 声明能力组合与实现特有的元数据准入检查 |
 | runner | 选中后执行公共参数到后端 ABI 的适配、资源准备及提交 |
@@ -92,7 +94,7 @@ build/generated/             生成 recipe、索引、Descriptor 与冻结 spec
 
 ## 特殊路径
 
-- 多目标 Ascend C 通过 `for_targets(...)` 为每个 SoC 派生独立 Descriptor/recipe/spec/产物，ABI 相同则共享 runner；生产登记只覆盖实际声明的目标，不因有 arch22 目录而支持 A3。
+- 多目标 Ascend C 通过 `for_targets(...)` 为每个 SoC 派生独立 Descriptor/recipe/spec/产物，ABI 相同则共享 runner；当前 CATLASS prefill、GMM/SwiGLU/量化和 SFA 均声明 A2/A3，共用 arch22 源码与 runner。硬件名 `Ascend910_93xx` 归一为 `Ascend910C`，不归一为 `Ascend910B`；加载仍按各自 SoC 校验。910B wheel 同时携带两套产物，A3 真机数值未验证。
 - `QuantSpec`、CapabilityCase 和 NativeBinding 表达量化组合；没有独立 `flashinfer/quantization/` 目录并不意味着没有量化能力，也不等于已实现上游量化转换 API。
 - 直接算子 schema 的 `domain="operator"` 能力绑定与 AttentionPlan 的 profile/POD 协议分开。后者的 Host 合同、trace、量化 KV 和资源租约不自动提供可运行 provider；默认 provider 集成目录为空。
 

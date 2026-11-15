@@ -4,7 +4,7 @@
 
 ## 当前范围
 
-全局只有 `cann/attention/single_decode_fia_v1` 声明 `needs_param_update`；其余 85 条为 `not_capturable`，`capture_safe` 为零。5 条生产 Ascend C 均保持 NOT_CAPTURABLE。类名带 CUDAGraph、FakeTensor 或“固定尺寸”不构成图证据。
+源码全局只有 `cann/attention/single_decode_fia_v1` 声明 `needs_param_update`；其余 89 条为 `not_capturable`，`capture_safe` 为零。9 条生产 Ascend C 均保持 NOT_CAPTURABLE。类名带 CUDAGraph、FakeTensor 或“固定尺寸”不构成图证据。
 
 该 single-decode 声明限定 Ascend950、BSND `.out`、固定 workspace/out、无 mask；query 为 `[1,1,8,64]`，K/V 为 `[1,1024,2,64]`、FP16/BF16、8/2 heads、scale=0.125、返回 LSE。更新的逻辑 KV 长度是长度为 1 的 host list，元素范围 1..1024。
 

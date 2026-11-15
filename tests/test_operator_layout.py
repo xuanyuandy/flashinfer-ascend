@@ -18,12 +18,16 @@ from flashinfer.runtime.runner import run_selected
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_existing_85_and_new_arch22_sparse_capabilities_match_exactly():
+def test_existing_85_and_reviewed_arch22_capabilities_match_exactly():
     baseline = json.loads((ROOT / 'tests/fixtures/operator_layout/capabilities.json').read_text())
     actual = {d.kernel_id: d.capability.to_dict() for d in get_global_registry().descriptors()}
-    # Keep the original 85 declarations frozen. The new entry is independently
-    # reviewed here, rather than copied from implementation discovery.
+    # Keep the original 85-entry fixture frozen. Reviewed additions and SoC
+    # changes are explicit below, never copied from implementation discovery.
     expected = dict(baseline)
+    expected["ascendc/t4/flash_attention/catlass/op_package/Ascend910B"] = dict(
+        baseline["ascendc/t4/flash_attention/catlass/op_package/Ascend950"],
+        soc_models=["Ascend910B"],
+    )
     expected["ascendc/attention/sparse_flash_attention/native/Ascend910B"] = CapabilitySpec(
         op="attention.sparse_flash_attention",
         soc_models=("Ascend910B",),
@@ -37,6 +41,36 @@ def test_existing_85_and_new_arch22_sparse_capabilities_match_exactly():
             auxiliary_outputs=("softmax_max", "softmax_sum") if lse else (),
         ) for lse in (False, True)),
     ).to_dict()
+    # Only these reviewed general-purpose backends extend their SoC lists.
+    # The frozen fixture remains unchanged; every other capability field is exact.
+    for kernel_id in (
+        'cann/cascade/merge_state_attention_update_v1',
+        'cann/decode/cudnn_batch_decode_fia_v1',
+        'cann/fused_moe/cutlass_fused_moe_gmm_v1',
+        'cann/gemm/bmm_bf16_v1',
+        'cann/gemm/mm_bf16_v1',
+        'cann/gemm/segment_gemm_v1',
+        'cann/norm/fused_add_rmsnorm_aclnn_v1',
+        'cann/norm/gemma_rmsnorm_aclnn_v1',
+        'cann/norm/layernorm_aclnn_v1',
+        'cann/norm/rmsnorm_aclnn_v1',
+        'cann/rope/apply_rope_cos_sin_cache_aclnn_v1',
+        'cann/rope/apply_rope_cos_sin_cache_out_v1',
+        'cann/rope/apply_rope_inplace_v1',
+        'cann/rope/apply_rope_pos_ids_inplace_v1',
+        'cann/rope/apply_rope_pos_ids_v1',
+        'cann/rope/apply_rope_v1',
+        'triton/norm/gemma_fused_add_rmsnorm_v1',
+    ):
+        expected[kernel_id] = dict(baseline[kernel_id],
+                                   soc_models=["Ascend910B", "Ascend910C", "Ascend950"])
+    for kernel_id in (
+        "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
+        "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
+        "ascendc/attention/sparse_flash_attention/native/Ascend910B",
+    ):
+        expected[kernel_id.rsplit("/", 1)[0] + "/Ascend910C"] = dict(
+            expected[kernel_id], soc_models=["Ascend910C"])
     assert actual == expected
 
 
@@ -45,7 +79,7 @@ def test_all_existing_implementations_have_one_authority_and_a_bound_runner():
     production = [d for _, _, d in declarations if d.scope == 'global']
     registry = get_global_registry()
     assert {d.kernel_id for d in production} == {d.kernel_id for d in registry.descriptors()}
-    assert len(production) == 86
+    assert len(production) == 90
     assert len(discover(ROOT)) == 48
     assert len([d for _, _, d in declarations if d.scope == 'experimental']) == 1
     for directory, _, declaration in declarations:

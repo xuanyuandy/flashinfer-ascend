@@ -146,3 +146,72 @@ def test_empty_registry_is_not_success(monkeypatch, capsys):
     monkeypatch.setattr(selftest, "_production_descriptors", lambda: ())
     assert selftest.run_selftest() == 1
     assert "production registry is empty" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('soc', ['Ascend910B', 'Ascend910C'])
+def test_shared_wheel_selftest_scopes_to_physical_soc_without_counting_foreign_passes(monkeypatch, capsys, soc):
+    from flashinfer.runtime import hardware
+    descriptors = tuple(d for d in selftest._production_descriptors()
+                        if d.target_soc in ('Ascend910B', 'Ascend910C'))
+    monkeypatch.setattr(selftest, '_production_descriptors', lambda: descriptors)
+    monkeypatch.setattr(selftest, '_wheel_metadata', lambda: dict(schema_version=2,
+        family='a2a3', soc_models=['Ascend910B', 'Ascend910C'], distribution='flashinfer_ascend910b',
+        kernel_ids=sorted(d.kernel_id for d in descriptors)))
+    monkeypatch.setattr(selftest, '_load_dependencies', lambda: object())
+    monkeypatch.setattr(hardware, 'current_hardware', lambda: SimpleNamespace(soc_model=soc))
+    seen = []
+    def run(kernel_id):
+        seen.append(kernel_id)
+        return selftest.SelftestResult(kernel_id, 'PASS', 'numerical match')
+    monkeypatch.setattr(selftest, '_run_kernel_process', run)
+    assert selftest.run_selftest() == 0
+    assert seen == [d.kernel_id for d in descriptors if d.target_soc == soc]
+    output = capsys.readouterr().out
+    assert '3 of 6 packaged kernels; other SoCs are not runtime-validated' in output
+    assert 'Summary: 3 PASS, 0 FAIL, 0 SKIP (total=3)' in output
+
+
+def test_shared_wheel_selftest_rejects_wrong_hardware_before_executing(monkeypatch, capsys):
+    from flashinfer.runtime import hardware
+    descriptors = tuple(d for d in selftest._production_descriptors()
+                        if d.target_soc in ('Ascend910B', 'Ascend910C'))
+    monkeypatch.setattr(selftest, '_production_descriptors', lambda: descriptors)
+    monkeypatch.setattr(selftest, '_wheel_metadata', lambda: dict(schema_version=2,
+        family='a2a3', soc_models=['Ascend910B', 'Ascend910C'], distribution='flashinfer_ascend910b',
+        kernel_ids=sorted(d.kernel_id for d in descriptors)))
+    monkeypatch.setattr(selftest, '_load_dependencies', lambda: object())
+    monkeypatch.setattr(hardware, 'current_hardware', lambda: SimpleNamespace(soc_model='Ascend950'))
+    monkeypatch.setattr(selftest, '_run_kernel_process', lambda _: pytest.fail('must reject before launching'))
+    assert selftest.run_selftest() == 1
+    assert 'does not match local SoC Ascend950' in capsys.readouterr().out
+
+
+def test_explicit_foreign_soc_selftest_cannot_execute_a_local_numerical_case(monkeypatch, tmp_path):
+    from flashinfer.jit import discovery
+    from flashinfer.runtime import hardware
+    descriptor = next(d for d in selftest._production_descriptors()
+                      if d.op == 'attention.sparse_flash_attention' and d.target_soc == 'Ascend910C')
+    monkeypatch.setattr(selftest, '_package_root', lambda: tmp_path)
+    monkeypatch.setattr(selftest, '_load_dependencies', lambda: object())
+    monkeypatch.setattr(discovery, 'AotPackageIndex', lambda **kwargs:
+                        SimpleNamespace(find=lambda *args, **kwargs: object()))
+    monkeypatch.setattr(hardware, 'current_hardware', lambda: SimpleNamespace(soc_model='Ascend910B'))
+    monkeypatch.setitem(selftest._NUMERICAL_CASES, descriptor.op,
+                       lambda *args: pytest.fail('must reject before executing any numerical case'))
+    result = selftest._check_kernel(descriptor)
+    assert result.status == 'FAIL'
+    assert result.reason == 'ValueError: selftest kernel requires Ascend910C; local SoC is Ascend910B'
+
+
+def test_author_selftest_locks_the_requested_kernel(monkeypatch):
+    from flashinfer.operators import testing
+    monkeypatch.setitem(sys.modules, 'torch_npu', SimpleNamespace())
+    calls = []
+    def numerical(*args, **kwargs):
+        calls.append((args,kwargs))
+        return {'0': {'max_abs': [0.0]}}
+    monkeypatch.setattr(testing, 'numerical_cases', numerical)
+    torch = SimpleNamespace(npu=SimpleNamespace(config=SimpleNamespace()))
+    assert testing.selftest_case(torch, 'sparse_flash_attention', kernel_id='requested/id') == 'author CPU reference matched; max_abs=[0.0]'
+    assert calls == [((torch, sys.modules['torch_npu'], 'sparse_flash_attention'),
+                      dict(first_only=True, kernel_id='requested/id'))]

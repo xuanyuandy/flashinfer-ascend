@@ -77,7 +77,7 @@ class AscendCImplementation(ImplementationDefinition):
     """Author declaration that derives the native recipe and lazy execution binding."""
 
     @classmethod
-    def for_targets(cls, *, support, **configuration):
+    def for_targets(cls, *, support, default_target=None, **configuration):
         """Expand one ABI/runner declaration into immutable per-SoC build units.
 
         Use canonical runtime models (Ascend910B/Ascend910C/Ascend950).
@@ -89,6 +89,8 @@ class AscendCImplementation(ImplementationDefinition):
         targets = support.rules.get("soc_models", ())
         if not targets or len(set(targets)) != len(targets):
             raise SchemaError("multi-target Ascend C requires unique target SoCs")
+        if default_target is not None and default_target not in targets:
+            raise SchemaError("default recipe target must be one of the declared SoCs")
         if configuration.get("kernel_id") is not None:
             raise SchemaError("multi-target IDs are derived from name and target SoC")
         from flashinfer.jit.op_package import package_target
@@ -110,7 +112,8 @@ class AscendCImplementation(ImplementationDefinition):
                 ),
                 **configuration,
             )
-            object.__setattr__(variant, "_recipe_target_suffix", target)
+            if target != default_target:
+                object.__setattr__(variant, "_recipe_target_suffix", target)
             variants.append(variant)
         return tuple(variants)
 

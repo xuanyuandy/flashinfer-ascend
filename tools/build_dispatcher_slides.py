@@ -374,7 +374,7 @@ Ascend950、连续 ND BF16。Ka 是当前 AOT Matmul 实现的唯一 kernel_id �
 ascendc/gemm/matmul/native/op_package/Ascend950。
 不传 kernel_id。框图中 CANN/Triton 是更换 backend 参数后的可选路径，本次只执行 AOT 分支。
 
-① flashinfer.gemm.matmul 先 enable_aclnn 注册公共 Torch schema/PrivateUse1 实现；
+① flashinfer.gemm.matmul 调用时自动注册公共 Torch schema/PrivateUse1 实现；
 传入 out 时调用 torch.ops.flashinfer.matmul_out，经 _plain_matmul_out 进入 _matmul_impl。
 函数与模块名中的 ACLNN/Ascend C 不代表已经选中了该后端；这里是三个后端共有的门面适配。
 不传 out 则经 torch.ops.flashinfer.matmul 与 _plain_matmul 进入同一个 _matmul_impl。

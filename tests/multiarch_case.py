@@ -71,7 +71,7 @@ def project(directory):
 #else
 #include "arch22/compute.h"
 #endif
-extern "C" __global__ __aicore__ void FI_DEVICE_ENTRY(
+extern "C" __global__ __aicore__ void fi_multiarch_probe(
     GM_ADDR a, GM_ADDR b, GM_ADDR out, GM_ADDR workspace, GM_ADDR tiling) {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_AIC_ONLY);
     FI_PROBE_CHECK_TILING();

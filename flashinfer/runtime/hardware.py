@@ -15,6 +15,8 @@ import threading
 from dataclasses import dataclass
 from typing import Optional
 
+from .targets import canonical_soc_model
+
 
 @dataclass(frozen=True)
 class HardwareSignature:
@@ -50,6 +52,10 @@ _SOC_PREFIXES = (
 def _normalize_soc_model(device_name: str) -> str:
     """``"Ascend910B3"`` → ``"Ascend910B"``：只保留系列型号。"""
     name = device_name.replace(" ", "")
+    try:
+        return canonical_soc_model(name)
+    except ValueError:
+        pass
     # TorchNPU reports A3 SKUs as Ascend910_93xx; capabilities use the family.
     if name.startswith("Ascend910_93"):
         return "Ascend910C"

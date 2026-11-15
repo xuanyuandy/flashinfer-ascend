@@ -18,6 +18,9 @@
 #include "sparse_flash_attention_infershape.cpp"
 #include "register/op_def_registry.h"
 
+#define FI_STRING_INNER(x) #x
+#define FI_STRING(x) FI_STRING_INNER(x)
+
 namespace ops {
 class FiSparseFlashAttention : public OpDef {
 public:
@@ -88,7 +91,7 @@ public:
             .DynamicShapeSupportFlag(true)
             .NeedCheckSupportFlag(false)
             .PrecisionReduceFlag(true);
-        this->AICore().AddConfig("ascend910b", aicore_config);
+        this->AICore().AddConfig(FI_STRING(FI_COMPUTE_UNIT), aicore_config);
     }
 };
 OP_ADD(FiSparseFlashAttention);

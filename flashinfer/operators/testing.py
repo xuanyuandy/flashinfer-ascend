@@ -20,7 +20,7 @@ def _outputs(result, count):
     return outputs
 
 
-def numerical_cases(torch, torch_npu, name, *, first_only=False):
+def numerical_cases(torch, torch_npu, name, *, first_only=False, kernel_id=None):
     operator = definition(name)
     cases = cases_module(name)
     parameters = cases.CASE_PARAMETERS[:1] if first_only else cases.CASE_PARAMETERS
@@ -30,6 +30,8 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False):
     observations = {}
     for index, configuration in enumerate(parameters):
         args, options, expected = cases.sample(torch, torch_npu, **configuration)
+        if kernel_id is not None:
+            options = dict(options, kernel_id=kernel_id)
         originals = tuple(t for t in tuple(args) + tuple(options.values()) if isinstance(t, torch.Tensor))
         pointers = tuple(t.data_ptr() for t in originals)
         outputs = _outputs(call(*args, **options), len(operator.output_names))
@@ -56,10 +58,10 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False):
     return observations
 
 
-def selftest_case(torch, name):
+def selftest_case(torch, name, *, kernel_id=None):
     import torch_npu
     torch.npu.config.allow_internal_format = True
-    observations = numerical_cases(torch, torch_npu, name, first_only=True)
+    observations = numerical_cases(torch, torch_npu, name, first_only=True, kernel_id=kernel_id)
     return "author CPU reference matched; max_abs=" + repr(observations["0"]["max_abs"])
 
 

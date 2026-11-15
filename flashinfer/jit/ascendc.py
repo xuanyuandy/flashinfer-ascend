@@ -39,7 +39,11 @@ def _cann_identity(root):
 
 def _driver_identity():
     root = Path(__file__).parent
-    return _canonical_hash({p: _digest(root / p) for p in ("ascendc.py", "op_package.py")})
+    inputs = {name: root / name for name in ("ascendc.py", "op_package.py")}
+    # package_target consumes this shared mapping during compilation and
+    # verification. Changing it must invalidate the frozen compiler identity.
+    inputs["runtime/targets.py"] = root.parent / "runtime/targets.py"
+    return _canonical_hash({name: _digest(path) for name, path in inputs.items()})
 
 
 def _host_standard_includes(compiler):
@@ -182,9 +186,12 @@ def compile_recipe(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolch
             if _header_tree(target) != dependency.headers_digest:
                 raise SchemaError("dependency changed while snapshotting: " + dependency.declaration.name)
             includes.append(target)
-        definitions = list(recipe.definitions) + [
-            "FI_DEVICE_ENTRY=" + recipe.device_entry, "FI_HOST_ENTRY=" + recipe.host_entry,
-            "FI_BLOCK_DIM=" + str(recipe.block_dim)]
+        definitions = list(recipe.definitions)
+        if recipe.schema_version == 1:
+            # Frozen legacy probes retain their original macro-based ABI.
+            definitions.append("FI_DEVICE_ENTRY=" + recipe.device_entry)
+        definitions += ["FI_HOST_ENTRY=" + recipe.host_entry,
+                        "FI_BLOCK_DIM=" + str(recipe.block_dim)]
         options = list(recipe.compile_options) + list(spec.compile_options)
         options.extend("-I" + str(path) for path in toolchain.host_standard_includes)
         if recipe.output_kind == "host_shared":
@@ -200,6 +207,11 @@ def compile_recipe(spec, resolved: ResolvedBuildRecipe, toolchain: AscendCToolch
             variables.update(FI_HOST_SOURCES=[inputs / s.locator for s in recipe.host_sources],
                 FI_PACKAGE_VENDOR=[recipe.package_vendor], FI_PACKAGE_OP_TYPE=[recipe.package_op_type],
                 FI_INPUT_ROOT=[inputs])
+            if recipe.schema_version == 2:
+                binding_recipe = scratch / "aclnn-recipe.json"
+                binding_recipe.write_text(json.dumps(recipe.to_dict(), sort_keys=True) + "\n")
+                variables["FI_ACLNN_GENERATOR"] = [inputs / "csrc/cmake/operator/aclnn_adapter.py"]
+                variables["FI_ACLNN_RECIPE_FILE"] = [binding_recipe]
             if recipe.cmake_entry is not None:
                 variables["FI_OPERATOR_CMAKE"] = [inputs / recipe.cmake_entry]
         request = scratch / "recipe.cmake"

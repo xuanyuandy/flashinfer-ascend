@@ -12,11 +12,14 @@ import subprocess
 import pytest
 
 from flashinfer.jit import (
-    AscendCBackend, AscendCToolchain, BuildDependency,
+    AscendCBackend, AscendCToolchain,
     DiskJitBuildStore, JitCompilationError, JitSpecRegistry, declare_kernel,
 
 )
-from flashinfer.jit.recipe import CATLASS_REVISION
+from flashinfer.jit._legacy_recipe import (
+    _LegacyBuildDependency as BuildDependency,
+    _LEGACY_CATLASS_REVISION as CATLASS_REVISION,
+)
 from flashinfer.runtime import (
     Backend, CompileMode, KernelDescriptor, KernelLaunchABI, KernelRegistry, SchemaError,
 )

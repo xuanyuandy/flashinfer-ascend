@@ -16,10 +16,10 @@ python -B -c 'import torch,torch_npu;print(torch.npu.is_available(),torch.npu.de
 
 ## 安装与导入
 
-使用本仓构建、与主机平台和运行栈匹配的 wheel。以下文件名示例对应 aarch64：
+使用与芯片、主机平台和运行栈匹配的 wheel；A2/A3 共用 `flashinfer_ascend910b`，A5 选择 `flashinfer_ascend950`。导入名均为 `flashinfer`，同一环境只安装一种；pip 不自动探测 NPU。以下示例对应 A2/aarch64：
 
 ```bash
-python -m pip install --force-reinstall ./flashinfer-0.1.0.dev0-py3-none-linux_aarch64.whl
+python -m pip install --force-reinstall ./flashinfer_ascend910b-0.1.0.dev0-py3-none-linux_aarch64.whl
 python -B -c 'import flashinfer;print(flashinfer.__file__)'
 python -B -m flashinfer --help
 python -B -m flashinfer show-config
@@ -29,7 +29,7 @@ python -B -m flashinfer show-config
 
 ## 一个 Tensor 调用
 
-`mm_bf16` 的 CANN 声明覆盖 Ascend910B/Ascend950；实际 dtype/布局仍须符合该接口约定：
+`mm_bf16` 的 CANN 声明覆盖 Ascend910B/Ascend910C/Ascend950；实际 dtype/布局仍须符合该接口约定：
 
 ```python
 import torch
@@ -59,7 +59,7 @@ for item in get_global_registry().descriptors(op="gemm.matmul"):
 
 ## AOT 与装后检查
 
-AOT-only 算子需要匹配的预编译包和原生桥。源码模式不提供二进制；缺包、损坏或目标不匹配不能通过手改指纹绕过。
+AOT-only 算子需要匹配的预编译包和原生桥。公共函数首次调用自动注册 Torch/ACLNN 接口，无需启用开关。源码模式不提供二进制；缺包、损坏或目标不匹配不能通过手改指纹绕过。
 
 A2 上可对已安装的 SFA 单项执行：
 
@@ -67,4 +67,4 @@ A2 上可对已安装的 SFA 单项执行：
 python -B -m flashinfer selftest --kernel-id ascendc/attention/sparse_flash_attention/native/Ascend910B
 ```
 
-不指定 ID 时 selftest 检查整个生产登记。A2/A5 的项目应分别在匹配设备验收，所选范围必须零失败、零跳过。编译与 PREBUILT 打包见 [交付说明](ascendc_aot.md)，完整验收规则见 [测试规范](development/testing.md)。
+不指定 ID 时，安装包 selftest 按实际 SoC 选择本机条目：910B 包含 A2/A3 各自的 GMM/SwiGLU/量化、SFA、CATLASS prefill，共六项；单机检查对应三项并打印范围。950 包含 Matmul、MatmulBiasSiLU、CATLASS prefill。其他 SoC 不计为 PASS，A3 真机数值未验证；各目标需分别验收，所选范围必须零失败、零跳过。编译与 PREBUILT 打包见 [交付说明](ascendc_aot.md)，完整验收规则见 [测试规范](development/testing.md)。

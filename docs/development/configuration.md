@@ -26,10 +26,10 @@
 
 | 名称 | 作用 |
 | --- | --- |
-| `FLASHINFER_AOT_ALL` | 未指定其他模式时默认全量；0 为源码模式，1 显式全量 |
-| `FLASHINFER_AOT_CONFIG` | 按配置选择 recipe/目标 |
+| `FLASHINFER_AOT_ALL` | 默认构建本地交付分组的完整生产集合，A2/A3 共包；0 为源码模式，1 显式启用 |
+| `FLASHINFER_AOT_CONFIG` | 选择生产 recipe/implementation，收集交付分组内对应的全部已声明变体 |
 | `FLASHINFER_AOT_PREBUILT` | 收集并验证已有发布产物和原生桥 |
-| `FLASHINFER_AOT_SOCS` | CONFIG 模式的目标列表；不改写生产能力 |
+| `FLASHINFER_AOT_SOCS` | 显式选择 Ascend910B/Ascend910C（共 910B 包）或 Ascend950；也接受 a2a3/ascend950；不探测设备、不扩大能力 |
 | `FLASHINFER_AOT_CACHE_DIR` | AOT 构建缓存 |
 | `FLASHINFER_CATLASS_ROOT` | 固定 revision 的外部 CATLASS checkout |
 | `FLASHINFER_<NAME>_ROOT` | 通用依赖根；AOT CLI 也支持 --dependency-root |
@@ -64,6 +64,7 @@ ALL、CONFIG、PREBUILT 互斥。原生构建与安装要求见 [编译交付](.
 | 同上 | `attention-accuracy`、`attention-accuracy-corpus`、`attention-protocol-validate` | Host 数值/协议资料检查，不是 NPU 后端验收 |
 | `python -m flashinfer.operators` | `generate`、`check`、`build` | 类型化声明生成、检查与 AOT 构建 |
 | `python -m flashinfer.aot` | `--freeze`、`--all`、`--kernel-id`、`--config` | 冻结、选择和发布原生编译单元 |
+| `python -m flashinfer.aot.wheels` | 重复 `--soc`、`--output-dir` | 按 910B（A2/A3）和 950（A5）分组出包，B/C 请求去重 |
 | `python -m flashinfer.aclnn.build` | `--output-dir` | 构建统一原生桥 |
 | `python -m flashinfer.operators.testing` | 算子名 + `matrix/one/missing/corrupt/installed` | 通用数值及交付验收 |
 

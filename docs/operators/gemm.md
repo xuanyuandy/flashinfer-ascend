@@ -35,7 +35,7 @@ Ascend C implementation 声明 NativeBinding/BuildConfig，设备源码在 `csrc
 
 ## GroupedMatmulSwigluQuant
 
-`grouped_matmul_swiglu_quant` 使用 Ascend910B arch22 AOT：grouped integer GEMM → 反量化 → SwiGLU → 逐 token INT8 量化，返回 `[M,N/2]` INT8 输出与 `[M]` FP32 scale。
+`grouped_matmul_swiglu_quant` 使用 Ascend910B/Ascend910C 共用的 arch22 AOT：grouped integer GEMM → 反量化 → SwiGLU → 逐 token INT8 量化，返回 `[M,N/2]` INT8 输出与 `[M]` FP32 scale。
 
 A8W8 与 A8W4 按完整组合声明，不是对任意存储 dtype 的笛卡尔积支持。A8W4 的 INT32 carrier 表示打包 INT4，某些 scale 由 INT64 carrier 保存 UINT64 位模式；这属于位解释，不是普通数值 cast。ND/NZ 排布、scale 的 per-channel/per-group 与 K/N 对齐由具体 case/binding 联合限制。
 
@@ -47,6 +47,6 @@ A8W8 与 A8W4 按完整组合声明，不是对任意存储 dtype 的笛卡尔�
 
 `fused_moe`、`fp8_per_tensor_scale_moe`、`fp8_block_scale_moe` 使用已有 CANN 原语组合与受限外部接入。它们不提供上游全部 backend、激活、量化方式和 moe_ep API。
 
-一个 CANN MoE 声明使用 `Ascend910_93`，硬件探测归一化为 `Ascend910C`，精确能力匹配因此不能据该声明保证 A3 可路由。现有支持与名称差异按 [矩阵](../backends/overview.md) 判断；统一目标命名是 [规划](../roadmap.md) 中的扩展前置条件。
+CANN MoE 与其他通用实现统一以 `Ascend910C` 声明 A3，硬件名 `Ascend910_93xx` 归一为该值。GMM 的 B/C 变体共享源码与 runner，910B wheel 收集各自产物；A3 真机数值未验证。Matmul/FP8 等现有 A5 限定域不因共包而扩大，按 [矩阵](../backends/overview.md) 判断。
 
 源码：[公共 GEMM](../../flashinfer/gemm.py)、[Matmul 公共定义](../../flashinfer/operators/gemm/matmul/)、[Ascend C](../../flashinfer/ascendc/gemm/)、[CANN](../../flashinfer/cann/gemm/)、[Triton Matmul](../../flashinfer/triton/gemm/matmul/)、[GMM 公共定义](../../flashinfer/operators/gemm/grouped_matmul_swiglu_quant/)、[MoE 适配](../../flashinfer/cann/fused_moe/)。

@@ -1,5 +1,7 @@
 """cann implementation of rope.apply_rope_pos_ids_inplace."""
 
+
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
 from flashinfer.operators.author_api import (
     CANNImplementation,
     Support,
@@ -14,7 +16,7 @@ IMPLEMENTATION = CANNImplementation(
     kernel_id="cann/rope/apply_rope_pos_ids_inplace_v1",
     support=Support(
         dtypes=("float16", "bfloat16", "float32", "int32", "int64"),
-        soc_models=("Ascend910B", "Ascend950"),
+        soc_models=GENERAL_ASCEND_SOCS,
     ),
     runner=run,
 )

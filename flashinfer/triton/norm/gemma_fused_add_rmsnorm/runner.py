@@ -1,8 +1,10 @@
 from __future__ import annotations
+
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS
 from typing import Any, Tuple
 from flashinfer.runtime.schema import Backend, CapabilitySpec, CompileMode, KernelDescriptor
 _SUPPORTED_DTYPES = ("float16", "bfloat16", "float32")
-_SUPPORTED_SOCS = ("Ascend910B", "Ascend950")
+_SUPPORTED_SOCS = GENERAL_ASCEND_SOCS
 
 def _gemma_fused_add_rmsnorm_triton(
     input: Any, residual: Any, weight: Any, eps: float

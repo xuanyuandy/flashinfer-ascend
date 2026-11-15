@@ -16,6 +16,8 @@
 
 recipe 和 spec 不替代 capability；编译通过不扩大硬件支持。修改源码、头文件、CMake、能力或 ABI 后重新生成、冻结并构建，不手填 SHA 或改 manifest 消除失配。
 
+设备源码直接声明算子自己的具名入口，例如 `fi_matmul`、`fi_flash_attention`。v2 构建核对 `device_entry` 与 OpDef 生成的 `opInterface.value`，保留源码函数名进行编译；不注入 `FI_DEVICE_ENTRY` 重命名宏。旧 v1 冻结兼容样例保留其原始宏 ABI。
+
 ## 源码与包内资源
 
 ```text
@@ -50,9 +52,13 @@ python -B -m flashinfer.aot --all --cache-dir build/aot-cache --output-dir build
 
 冻结与构建核验依赖根、固定 revision、头文件及环境身份。CATLASS 根通过 `FLASHINFER_CATLASS_ROOT` 或 AOT 的 `--dependency-root catlass=...` 指定；wheel 不携带完整 CATLASS 头树。通用动态依赖根为 `FLASHINFER_<NAME>_ROOT`。
 
+CATLASS 固定为 [v2.2.0](https://gitcode.com/cann/catlass/tree/v2.2.0)，commit `6c0a3242b2effd861ac91aab1999f2226b643614`。A2/A3 共用 arch22，与 A5/arch35 使用独立设备实现、Descriptor 和产物，公共 prefill 接口和 runner 相同；A3 真机数值未验证。编译与数值测试定义见 [多目标验收](../tests/test_catlass_targets_real.py)。交叉编译不等于目标设备运行通过。
+
 ## 原生产物与执行
 
 公开原生构建采用 `schema_version=2`、`op_package`。包包含 ACLNN host API、推形/tiling 库、设备二进制和元数据。旧 v1/raw/host_shared 仅用于内部冻结兼容测试，不是新算子接入路径。
+
+每次新构建强制将 NativeBinding 与该算子 OpDef 生成的 ACLNN 头逐参数核对，生成并编译 `fi_aclnn_adapter.cpp`；参数名、顺序或类型失配直接终止构建。导出保留适配源码、头和身份元数据，加载核验其摘要及库内 recipe 指纹；新发布包必须包含该适配。它是框架生成物，作者不逐算子手写。公共调用自动执行延迟 Torch 注册。
 
 `AotKernelRunner` 优先搜索并验证匹配 AOT，再通过 runner 工厂绑定 Tensor 调用。只有 missing 且实现允许回落、全局策略也允许时才 JIT；corrupt、加载失败和身份冲突不触发重编。所有候选不兼容可能汇总为 missing，之后仍遵守该策略。
 
@@ -79,17 +85,25 @@ export FLASHINFER_ACLNN_ADAPTER_PATH="$PWD/build/aclnn"
 
 | 构建模式 | 实际行为 |
 | --- | --- |
-| 默认或 `FLASHINFER_AOT_ALL=1` | 冻结并构建已登记生产 AOT，打入 wheel |
-| `FLASHINFER_AOT_CONFIG` | 按配置和可选 `FLASHINFER_AOT_SOCS` 选择构建 |
-| `FLASHINFER_AOT_PREBUILT` | 校验并复用已导出的包与原生桥，不调用编译器 |
+| 默认或 `FLASHINFER_AOT_ALL=1` | 探测本地芯片，构建所属交付分组的完整生产 AOT 集合；A2/A3 共用 910B 包 |
+| `FLASHINFER_AOT_CONFIG` | 按 recipe/implementation 选择分组内全部已声明目标；不重定向冻结 spec 的 target_soc |
+| `FLASHINFER_AOT_PREBUILT` | 按交付分组筛选、校验已有包与桥，并恢复匹配的冻结 spec，不调用编译器；同 recipe 已声明的 A2/A3 变体必须齐全 |
 | `FLASHINFER_AOT_ALL=0` | 源码模式，不提供生产 AOT 二进制 |
 
-ALL、CONFIG、PREBUILT 互斥。所有目标的工具链和依赖必须齐全；构建机不必有对应 NPU，但安装后的运行必须按每个 SoC 分别验证。
+ALL、CONFIG、PREBUILT 互斥。`FLASHINFER_AOT_SOCS` 接受 Ascend910B、Ascend910C、Ascend950 或分组 a2a3、ascend950；显式选择时不探测设备。Ascend910B 与 Ascend910C 合并选择属于同一分组，重复目标或跨 910B/950 分组拒绝。省略时 PREBUILT 从产物分组推导，其他模式探测本地芯片，未知芯片报错。构建机不必有目标 NPU，但工具链与依赖必须齐全，运行必须按 SoC 分别验证。
 
 ```bash
 python -B setup.py bdist_wheel
 ```
 
-完整发布包含源码资源、Python 适配、索引及所选二进制。PREBUILT 子集不能当作全量算子包；装后使用明确 ID 的 selftest，规则见 [开始使用](getting-started.md) 与 [测试规范](development/testing.md)。
+线上发布按显式矩阵分别出包：
+
+```bash
+python -B -m flashinfer.aot.wheels --soc Ascend910B --soc Ascend910C --soc Ascend950 --output-dir dist
+```
+
+包名为 `flashinfer_ascend910b`、`flashinfer_ascend950`，版本与平台 tag 仍由项目版本和构建主机决定，例如 `flashinfer_ascend910b-0.1.0.dev0-py3-none-linux_aarch64.whl`。两包导入名均为 `flashinfer`，同一环境只安装一个。原生 Descriptor、冻结 spec、recipe 与包内二进制保持精确一致；源码全目录的 9 项按分组收集：910B 包含 A2/A3 各三项，共六项；950 包含三项。发布 CLI 将 B/C 去重为一个 910B wheel，最终生成两个文件。包内 `data/wheel.json` 记录分组、物理 SoC 列表及精确 ID 集合；每个 Descriptor/recipe/spec/产物仍只绑定一个 SoC。
+
+完整发布包含源码资源、Python 适配、索引及所选二进制。PREBUILT 子集不能当作全量算子包；默认 selftest 仅执行实际本机 SoC 的随包条目，打印本机项数/总项数；其他 SoC 不计为 PASS，需在对应设备另验。也可使用明确 ID 的 selftest，规则见 [开始使用](getting-started.md) 与 [测试规范](development/testing.md)。
 
 代码入口：[作者生成](../flashinfer/operators/authoring.py)、[冻结](../flashinfer/aot/declarations.py)、[共享构建](../flashinfer/jit/build.py)、[延迟绑定](../flashinfer/jit/runtime.py)、[包验证](../flashinfer/jit/op_package.py)、[Torch 适配](../flashinfer/jit/tensor_adapter.py)、[打包](../setup.py)。
