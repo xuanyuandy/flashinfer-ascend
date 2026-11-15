@@ -1,6 +1,6 @@
 # 图模式接口与范围
 
-面向推理框架集成者：本页说明现有 NPU 图辅助接口、已声明范围和接入条件。调用方拥有图、固定 buffer 与流，本仓不替调用方创建或重放整张图。
+面向推理框架集成者：本页说明现有 NPU 图辅助接口、已声明范围和接入条件。调用方创建并拥有图、固定 buffer 与流；通用辅助接口不承担模型切图或整图重放，受限 single-decode wrapper 为调用方的图提供带更新检查的重放入口。
 
 ## 当前范围
 
@@ -9,6 +9,8 @@
 该 single-decode 声明限定 Ascend950、BSND `.out`、固定 workspace/out、无 mask；query 为 `[1,1,8,64]`，K/V 为 `[1,1024,2,64]`、FP16/BF16、8/2 heads、scale=0.125、返回 LSE。更新的逻辑 KV 长度是长度为 1 的 host list，元素范围 1..1024。
 
 这不是通用 single/batch/paged 动态图支持；公共入口是否能提供该声明所需资源也要核对。真实证据入口是 [图验证测试](../tests/test_single_decode_graph_real.py)，完整模型与其他输入不能由此推断。
+
+公共 `flashinfer.decode.SingleDecodeWithKVCacheWrapper` 在捕获外执行 `plan()`、`warmup()`，在调用方 capture 内执行 `recording(graph)` 与恰好一次 `run()`。一张图只绑定一个此类 wrapper；每次重放均调用 `before_replay(kv_seq_len, stream=...)` 后再调用 wrapper 的 `replay()`，不能绕过更新检查直接重放底层图。捕获后不能再次 `plan()` 或替换固定资源。通用 prepared、多 wrapper 协调和动态 batch 图仍是 [设计目标](features/wrapper-and-aclgraph-design.md)。
 
 ## NPU 扩展接口
 

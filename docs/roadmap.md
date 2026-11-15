@@ -10,7 +10,7 @@
 | 调用方拥有图，已有 ReplayParameterUpdates | 将选中 runner 与实际模型捕获/重放边界衔接 | 验证多层、重复任务、逻辑参数映射、序列化更新与失败恢复，不要求框架再持有另一张图 |
 | batch wrapper 有资源/计划合同 | 建立可运行的 batch/paged 动态重放 | 提供真实后端、最大 workspace、页表/长度等可变参数边界，不能以 CUDAGraph 类名作为证据 |
 
-新增图声明必须绑定具体 kernel、测试与环境；未完成前保持 NOT_CAPTURABLE。具体当前接口见 [图模式](npu_graph_extensions.md)。
+新增图声明必须绑定具体 kernel、测试与环境；未完成前保持 NOT_CAPTURABLE。具体当前接口见 [图模式](npu_graph_extensions.md)，准备结果复用、异步执行桥和多 wrapper 图协调的设计见 [执行会话与图模式设计](features/wrapper-and-aclgraph-design.md)。
 
 ## Tuning
 
