@@ -24,9 +24,9 @@
 
 | 冻结对象 | 当前检查位置 |
 | --- | --- |
-| binary ABI v1 与 error ABI | [runtime ABI 测试](../../tests/test_runtime_abi.py) |
-| 量化 KV binary ABI v2 与布局 | [量化启动 ABI 测试](../../tests/test_attention_quant_launch_abi.py) |
-| metadata wire 长度、布局与序列化身份 | [metadata wire 测试](../../tests/test_attention_metadata_wire.py) |
-| 旧原生 recipe 与新版本边界 | [原生契约测试](../../tests/test_ascendc_contract_v2.py) |
+| binary ABI v1 与 error ABI | [runtime ABI 测试](../../tests/framework/test_runtime_abi.py) |
+| 量化 KV binary ABI v2 与布局 | [量化启动 ABI 测试](../../tests/framework/test_attention_quant_launch_abi.py) |
+| metadata wire 长度、布局与序列化身份 | [metadata wire 测试](../../tests/framework/test_attention_wire_formats.py) |
+| 旧原生 recipe 与新版本边界 | [原生契约测试](../../tests/framework/test_ascendc_contract_v2.py) |
 
 测试中保留的旧文档路径均指向本规则。历史过程日志不作为当前运行结果发布；当前修改不得据这些历史结果宣称新的设备、图或性能验证。

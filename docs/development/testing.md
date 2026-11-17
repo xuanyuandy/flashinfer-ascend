@@ -21,11 +21,13 @@
 
 ```bash
 python -B tools/run_regression.py --profile quick
-python -B tools/run_regression.py --profile compile tests/test_operator_packages_real.py
+python -B tools/run_regression.py --profile compile tests/packaging/test_operator_packages_real.py
 python -B tools/run_regression.py --profile full
 ```
 
 这些命令按改动范围选用，不是要求每次连续执行全部。quick 排除 real_compile，但仍可能用 NPU；compile 只运行所选编译用例；full 包含全部 real_compile，之后无需紧接着重复同一矩阵。入口保留日志、JUnit、pytest 原始退出码；有 skip 或没有执行用例时返回失败。
+
+测试按 [算子精度、框架特性与打包交付](../../tests/README.md) 分组。回归入口默认 `--soc auto`，full 表示适用于本机芯片的完整范围；有明确硬件前提的异芯片用例单独记为 deselected，不代表已验证。`--soc all` 保留跨芯片范围；直接调用 pytest 也默认收集全芯片用例。
 
 仅改文档执行静态核对和受影响检查；编译、缓存、原生桥或设备源码改动补受影响 compile，发布和跨层重构执行 full。环境可见性先检查 Torch/TorchNPU，不能把错误解释器的依赖缺失当成功能缺失。
 
@@ -37,7 +39,7 @@ CPU 参考计算要独立于目标 runner，覆盖真实量化、裁剪、mask�
 
 ## 通用算子验收
 
-schema 算子可提供 `cases.py` 的 sample、CASE_PARAMETERS、TOLERANCES 和可选 verify_effect。`tests/test_operator_packages_real.py` 收集样例，调用公开接口并检查输出、out 身份、原输入存储、非默认流及队列策略；缺包和损坏用例也复用公共工具。
+schema 算子可提供 `cases.py` 的 sample、CASE_PARAMETERS、TOLERANCES 和可选 verify_effect。`tests/packaging/test_operator_packages_real.py` 收集样例，调用公开接口并检查输出、out 身份、原输入存储、非默认流及队列策略；缺包和损坏用例也复用公共工具。
 
 ```bash
 python -B -m flashinfer.operators.testing sparse_flash_attention matrix

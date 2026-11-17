@@ -1,0 +1,398 @@
+"""attention wire formats regression coverage."""
+
+
+import json
+import unittest
+from dataclasses import replace
+
+from flashinfer.attention import (
+    AttentionJsonEnvelopeLimits,
+    AttentionTrace,
+    build_framework_attention_corpus,
+    decode_attention_json,
+)
+from flashinfer.runtime import SchemaError
+
+
+class AttentionJsonEnvelopeTests(unittest.TestCase):
+    def test_builtin_trace_is_measured_before_domain_construction(self):
+        trace = build_framework_attention_corpus().cases[0].trace
+        decoded, usage = decode_attention_json(trace.to_json())
+        self.assertEqual(decoded["kind"], "attention_conformance")
+        self.assertGreaterEqual(usage.tensors, 5)
+        self.assertGreater(usage.total_tensor_elements, 0)
+        restored = AttentionTrace.from_json(trace.to_json())
+        self.assertEqual(restored.fingerprint, trace.fingerprint)
+
+    def test_bytes_and_lexical_depth_are_bounded_before_json_loads(self):
+        with self.assertRaisesRegex(SchemaError, "bytes exceed"):
+            decode_attention_json(
+                "{}", limits=AttentionJsonEnvelopeLimits(max_bytes=1)
+            )
+        nested = "[" * 5 + "0" + "]" * 5
+        with self.assertRaisesRegex(SchemaError, "nesting depth"):
+            decode_attention_json(
+                nested,
+                limits=AttentionJsonEnvelopeLimits(max_nesting_depth=4),
+            )
+        decoded, _ = decode_attention_json(
+            json.dumps({"text": "[[[[[[ not structural nesting"}),
+            limits=AttentionJsonEnvelopeLimits(max_nesting_depth=3),
+        )
+        self.assertIn("not structural", decoded["text"])
+
+    def test_duplicate_keys_and_nonstandard_constants_are_rejected(self):
+        with self.assertRaisesRegex(SchemaError, "duplicate JSON object key"):
+            decode_attention_json('{"a":1,"a":2}')
+        for constant in ("NaN", "Infinity", "-Infinity"):
+            with self.subTest(constant=constant):
+                with self.assertRaisesRegex(SchemaError, "strict JSON"):
+                    decode_attention_json('{"value":%s}' % constant)
+
+    def test_generic_container_and_string_limits_are_independent(self):
+        cases = (
+            (
+                '{"a":1,"b":2}',
+                AttentionJsonEnvelopeLimits(max_object_fields=1),
+                "object fields",
+            ),
+            (
+                "[1,2]",
+                AttentionJsonEnvelopeLimits(max_array_items=1),
+                "array exceeds",
+            ),
+            (
+                '{"a":"long"}',
+                AttentionJsonEnvelopeLimits(max_string_bytes=3),
+                "string exceeds",
+            ),
+            (
+                "[1]",
+                AttentionJsonEnvelopeLimits(max_nodes=1),
+                "nodes exceed",
+            ),
+        )
+        for payload, limits, message in cases:
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(SchemaError, message):
+                    decode_attention_json(payload, limits=limits)
+
+    def test_tensor_rank_per_tensor_and_aggregate_elements_are_bounded(self):
+        tensor = {
+            "shape": [2, 2],
+            "data": [0, 0, 0, 0],
+            "dtype": "float32",
+            "device": "cpu",
+        }
+        with self.assertRaisesRegex(SchemaError, "tensor rank"):
+            decode_attention_json(
+                json.dumps(tensor),
+                limits=AttentionJsonEnvelopeLimits(max_tensor_rank=1),
+            )
+        with self.assertRaisesRegex(SchemaError, "tensor elements"):
+            decode_attention_json(
+                json.dumps(tensor),
+                limits=AttentionJsonEnvelopeLimits(max_tensor_elements=3),
+            )
+        with self.assertRaisesRegex(SchemaError, "total tensor elements"):
+            decode_attention_json(
+                json.dumps([tensor, tensor]),
+                limits=AttentionJsonEnvelopeLimits(
+                    max_tensor_elements=4,
+                    max_total_tensor_elements=7,
+                ),
+            )
+
+    def test_tensor_count_and_corpus_case_count_are_bounded(self):
+        tensor = {
+            "shape": [1],
+            "data": [0],
+            "dtype": "float32",
+            "device": "cpu",
+        }
+        with self.assertRaisesRegex(SchemaError, "tensors exceed"):
+            decode_attention_json(
+                json.dumps([tensor, tensor]),
+                limits=AttentionJsonEnvelopeLimits(max_tensors=1),
+            )
+        corpus_envelope = {
+            "kind": "attention_conformance_corpus",
+            "cases": [{}, {}],
+        }
+        with self.assertRaisesRegex(SchemaError, "corpus cases"):
+            decode_attention_json(
+                json.dumps(corpus_envelope),
+                limits=AttentionJsonEnvelopeLimits(max_cases=1),
+            )
+
+    def test_claimed_shape_is_charged_even_when_data_is_underfilled(self):
+        tensor = {
+            "shape": [100],
+            "data": [],
+            "dtype": "float32",
+            "device": "cpu",
+        }
+        with self.assertRaisesRegex(SchemaError, "tensor elements"):
+            decode_attention_json(
+                json.dumps(tensor),
+                limits=AttentionJsonEnvelopeLimits(max_tensor_elements=99),
+            )
+
+    def test_from_json_honors_caller_supplied_envelope(self):
+        trace = build_framework_attention_corpus().cases[0].trace
+        limits = replace(
+            AttentionJsonEnvelopeLimits(), max_total_tensor_elements=1
+        )
+        with self.assertRaisesRegex(SchemaError, "total tensor elements"):
+            AttentionTrace.from_json(trace.to_json(), limits=limits)
+
+    def test_limits_reject_nonpositive_values(self):
+        with self.assertRaisesRegex(SchemaError, "positive integer"):
+            AttentionJsonEnvelopeLimits(max_cases=0)
+
+
+import struct
+
+from flashinfer.attention import (
+    ATTENTION_METADATA_SECTION_C_ABI,
+    ATTENTION_PLAN_CONFIG_C_ABI,
+    ATTENTION_PLAN_METADATA_HEADER_C_ABI,
+    AttentionFrameworkSession,
+    AttentionMetadataSectionKind,
+    AttentionMode,
+    AttentionPlanMetadataDecodeLimits,
+    AttentionPlanMetadataWire,
+    AttentionPlanFlags,
+    PagedKVMetadata,
+    build_framework_attention_corpus,
+    materialize_attention_plan_metadata,
+)
+
+
+DISPATCH_FINGERPRINT = "d" * 64
+
+
+def plans_by_mode():
+    result = {}
+    for case in build_framework_attention_corpus().cases:
+        trace = case.trace
+        if trace.spec.mode not in result:
+            result[trace.spec.mode] = AttentionFrameworkSession(
+                trace.spec.mode
+            ).plan(trace.spec, trace.metadata)
+    return result
+
+
+class AttentionMetadataWireTests(unittest.TestCase):
+    def test_config_directory_layout_and_canonical_blob_are_frozen(self):
+        # 注：下列 binary / error / wire 指纹为 2026-10-25 重新冻结值。
+        # 原始冻结值由 T1 契约恢复未完成导致无法复现（见 docs/reports/T1-report.md 遗留 #3），
+        # 确认无任何活产物依赖旧值后正式采纳当前实现为权威契约。
+        # 理由、检索范围与影响分析见 docs/reports/abi-refreeze-2026-10-25.md。
+        self.assertEqual(ATTENTION_PLAN_CONFIG_C_ABI.size_bytes, 128)
+        self.assertEqual(ATTENTION_METADATA_SECTION_C_ABI.size_bytes, 32)
+        self.assertEqual(
+            ATTENTION_PLAN_CONFIG_C_ABI.fingerprint,
+            "904cb34545a527c447ae575f037ec7c9764fc3938dc62bddd7be8c8db4c023cb",
+        )
+        self.assertEqual(
+            ATTENTION_METADATA_SECTION_C_ABI.fingerprint,
+            "e8af6b5d791411cb58ace8c446d526007c41cda0a9b56fbeac851c5913a90e9d",
+        )
+        wire = materialize_attention_plan_metadata(
+            plans_by_mode()[AttentionMode.BATCH_PREFILL_PAGED],
+            dispatch_fingerprint=DISPATCH_FINGERPRINT,
+        )
+        self.assertEqual(len(wire.to_bytes()), 488)
+        self.assertEqual(
+            wire.fingerprint,
+            "4fe29f10a3bc5582d41bbf066246302d79c31110e30bfb4df063068c44231c98",
+        )
+
+    def test_all_six_modes_round_trip_with_exact_section_sets(self):
+        expected = {
+            AttentionMode.SINGLE_PREFILL: (),
+            AttentionMode.SINGLE_DECODE: (),
+            AttentionMode.BATCH_PREFILL_PAGED: (
+                AttentionMetadataSectionKind.QO_INDPTR,
+                AttentionMetadataSectionKind.KV_INDPTR,
+                AttentionMetadataSectionKind.KV_INDICES,
+                AttentionMetadataSectionKind.LAST_PAGE_LEN,
+                AttentionMetadataSectionKind.MASK_INDPTR,
+            ),
+            AttentionMode.BATCH_PREFILL_RAGGED: (
+                AttentionMetadataSectionKind.QO_INDPTR,
+                AttentionMetadataSectionKind.KV_INDPTR,
+                AttentionMetadataSectionKind.MASK_INDPTR,
+            ),
+            AttentionMode.BATCH_DECODE_PAGED: (
+                AttentionMetadataSectionKind.KV_INDPTR,
+                AttentionMetadataSectionKind.KV_INDICES,
+                AttentionMetadataSectionKind.LAST_PAGE_LEN,
+            ),
+            AttentionMode.BATCH_MIXED_PAGED: (
+                AttentionMetadataSectionKind.QO_INDPTR,
+                AttentionMetadataSectionKind.KV_INDPTR,
+                AttentionMetadataSectionKind.KV_INDICES,
+                AttentionMetadataSectionKind.KV_LEN,
+            ),
+        }
+        plans = plans_by_mode()
+        self.assertEqual(set(plans), set(AttentionMode))
+        for mode, plan in plans.items():
+            with self.subTest(mode=mode):
+                wire = materialize_attention_plan_metadata(
+                    plan, dispatch_fingerprint=DISPATCH_FINGERPRINT
+                )
+                payload = wire.to_bytes()
+                restored = AttentionPlanMetadataWire.from_bytes(payload)
+                self.assertEqual(restored, wire)
+                self.assertEqual(restored.to_bytes(), payload)
+                self.assertEqual(
+                    tuple(section.kind for section in restored.sections),
+                    expected[mode],
+                )
+                restored.validate_plan(plan)
+
+    def test_custom_mask_offsets_flags_and_quantization_are_derived(self):
+        plans = plans_by_mode()
+        paged = materialize_attention_plan_metadata(
+            plans[AttentionMode.BATCH_PREFILL_PAGED],
+            dispatch_fingerprint=DISPATCH_FINGERPRINT,
+        )
+        self.assertTrue(paged.flags & AttentionPlanFlags.CUSTOM_MASK)
+        self.assertTrue(paged.flags & AttentionPlanFlags.QUANTIZED_KV)
+        self.assertEqual(
+            paged.section_map[AttentionMetadataSectionKind.MASK_INDPTR],
+            (0, 2),
+        )
+        ragged = materialize_attention_plan_metadata(
+            plans[AttentionMode.BATCH_PREFILL_RAGGED],
+            dispatch_fingerprint=DISPATCH_FINGERPRINT,
+        )
+        self.assertTrue(ragged.flags & AttentionPlanFlags.CUSTOM_MASK_PACKED)
+        self.assertEqual(
+            ragged.section_map[AttentionMetadataSectionKind.MASK_INDPTR],
+            (0, 1),
+        )
+
+    def test_noncanonical_lengths_offsets_padding_and_reserved_are_rejected(self):
+        plan = plans_by_mode()[AttentionMode.BATCH_PREFILL_PAGED]
+        wire = materialize_attention_plan_metadata(
+            plan, dispatch_fingerprint=DISPATCH_FINGERPRINT
+        )
+        payload = wire.to_bytes()
+        with self.assertRaisesRegex(SchemaError, "byte length"):
+            AttentionPlanMetadataWire.from_bytes(payload[:-1])
+
+        reserved = bytearray(payload)
+        reserved[dict(ATTENTION_PLAN_METADATA_HEADER_C_ABI.field_offsets)["reserved"]] = 1
+        with self.assertRaisesRegex(SchemaError, "reserved"):
+            AttentionPlanMetadataWire.from_bytes(bytes(reserved))
+
+        offset = bytearray(payload)
+        first_entry = (
+            ATTENTION_PLAN_METADATA_HEADER_C_ABI.size_bytes
+            + ATTENTION_PLAN_CONFIG_C_ABI.size_bytes
+        )
+        struct.pack_into("<Q", offset, first_entry + 8, 0)
+        with self.assertRaisesRegex(SchemaError, "offset"):
+            AttentionPlanMetadataWire.from_bytes(bytes(offset))
+
+        header_size = ATTENTION_PLAN_METADATA_HEADER_C_ABI.size_bytes
+        config = ATTENTION_PLAN_CONFIG_C_ABI.unpack(
+            payload[header_size : header_size + ATTENTION_PLAN_CONFIG_C_ABI.size_bytes]
+        )
+        padding = bytearray(payload)
+        for index in range(config["section_count"]):
+            start = header_size + ATTENTION_PLAN_CONFIG_C_ABI.size_bytes + index * ATTENTION_METADATA_SECTION_C_ABI.size_bytes
+            entry = ATTENTION_METADATA_SECTION_C_ABI.unpack(
+                payload[start : start + ATTENTION_METADATA_SECTION_C_ABI.size_bytes]
+            )
+            if entry["nbytes"] % 8:
+                padding[header_size + entry["offset_bytes"] + entry["nbytes"]] = 1
+                break
+        else:  # pragma: no cover - fixture deliberately contains odd int32 counts
+            self.fail("fixture has no padded section")
+        with self.assertRaisesRegex(SchemaError, "padding"):
+            AttentionPlanMetadataWire.from_bytes(bytes(padding))
+
+    def test_decode_limits_and_int32_index_boundary_are_enforced(self):
+        plan = plans_by_mode()[AttentionMode.BATCH_DECODE_PAGED]
+        payload = materialize_attention_plan_metadata(
+            plan, dispatch_fingerprint=DISPATCH_FINGERPRINT
+        ).to_bytes()
+        with self.assertRaisesRegex(SchemaError, "byte limit"):
+            AttentionPlanMetadataWire.from_bytes(
+                payload,
+                limits=AttentionPlanMetadataDecodeLimits(
+                    max_total_nbytes=len(payload) - 1,
+                    max_section_count=16,
+                    max_section_elements=1024,
+                ),
+            )
+        with self.assertRaisesRegex(SchemaError, "element limit"):
+            AttentionPlanMetadataWire.from_bytes(
+                payload,
+                limits=AttentionPlanMetadataDecodeLimits(
+                    max_total_nbytes=len(payload),
+                    max_section_count=16,
+                    max_section_elements=1,
+                ),
+            )
+
+        metadata = PagedKVMetadata((0, 1), (1 << 31,), (1,), 1)
+        overflow = AttentionFrameworkSession(AttentionMode.BATCH_DECODE_PAGED).plan(
+            replace(plan.spec, q_len_per_req=1), metadata
+        )
+        with self.assertRaisesRegex(SchemaError, "outside int32"):
+            materialize_attention_plan_metadata(
+                overflow, dispatch_fingerprint=DISPATCH_FINGERPRINT
+            )
+
+    def test_unknown_mode_flags_config_and_section_enums_are_rejected(self):
+        plan = plans_by_mode()[AttentionMode.BATCH_PREFILL_PAGED]
+        payload = materialize_attention_plan_metadata(
+            plan, dispatch_fingerprint=DISPATCH_FINGERPRINT
+        ).to_bytes()
+        header_size = ATTENTION_PLAN_METADATA_HEADER_C_ABI.size_bytes
+
+        mode = bytearray(payload)
+        struct.pack_into("<H", mode, 4, 0xFFFF)
+        with self.assertRaisesRegex(SchemaError, "mode code"):
+            AttentionPlanMetadataWire.from_bytes(bytes(mode))
+
+        flags = bytearray(payload)
+        struct.pack_into("<H", flags, 6, 1 << 15)
+        with self.assertRaisesRegex(SchemaError, "unknown bits"):
+            AttentionPlanMetadataWire.from_bytes(bytes(flags))
+
+        config = bytearray(payload)
+        struct.pack_into("<H", config, header_size + 36, 0xFFFF)
+        with self.assertRaisesRegex(SchemaError, "wire enum"):
+            AttentionPlanMetadataWire.from_bytes(bytes(config))
+
+        section = bytearray(payload)
+        struct.pack_into(
+            "<H",
+            section,
+            header_size + ATTENTION_PLAN_CONFIG_C_ABI.size_bytes,
+            0xFFFF,
+        )
+        with self.assertRaisesRegex(SchemaError, "unknown enum"):
+            AttentionPlanMetadataWire.from_bytes(bytes(section))
+
+    def test_stale_plan_and_binary_fingerprint_are_rejected(self):
+        plans = plans_by_mode()
+        wire = materialize_attention_plan_metadata(
+            plans[AttentionMode.SINGLE_DECODE],
+            dispatch_fingerprint=DISPATCH_FINGERPRINT,
+        )
+        with self.assertRaisesRegex(SchemaError, "stale"):
+            wire.validate_plan(plans[AttentionMode.SINGLE_PREFILL])
+        with self.assertRaisesRegex(SchemaError, "canonical binary ABI"):
+            materialize_attention_plan_metadata(
+                plans[AttentionMode.SINGLE_DECODE],
+                dispatch_fingerprint=DISPATCH_FINGERPRINT,
+                binary_abi_fingerprint="b" * 64,
+            )

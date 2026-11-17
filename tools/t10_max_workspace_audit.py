@@ -156,7 +156,7 @@ def main():
     if args.interfaces:
         interfaces()
         return
-    target = str(Path(__file__).resolve().parents[1] / "tests/test_attention_max_workspace.py")
+    target = str(Path(__file__).resolve().parents[1] / "tests/framework/test_attention_resource_limits.py")
     if args.negative_control:
         negative_controls(target)
     else:

@@ -30,4 +30,5 @@ flashinfer = ["data/*.json", "data/kernels/*.json", "tuning/data/manifest.json",
 testpaths = ["tests"]
 markers = [
   "real_compile: invokes a real compiler or builds/loads real compiled artifacts on disk (including JIT compilation on cache misses)",
+  "requires_soc(*models): device execution validated only for the listed canonical SoC targets",
 ]

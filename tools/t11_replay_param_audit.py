@@ -128,7 +128,7 @@ else:
                 raise ModuleNotFoundError('simulated missing dependency: ' + fullname, name=fullname)
     sys.meta_path.insert(0, Missing())
 import pytest
-raise SystemExit(pytest.main(['-q', 'tests/test_replay_param_npu.py']))
+raise SystemExit(pytest.main(['-q', 'tests/framework/test_replay_param_npu.py']))
 '''
     for mode in ("no_torch", "no_torch_npu", "no_device"):
         print("environment:", mode, flush=True)
@@ -183,7 +183,7 @@ def main():
         return
     from flashinfer.runtime import get_global_registry
     verified = audit_declarations(get_global_registry().descriptors())
-    target = str(Path(__file__).resolve().parents[1] / "tests/test_replay_param_npu.py")
+    target = str(Path(__file__).resolve().parents[1] / "tests/framework/test_replay_param_npu.py")
     if args.negative_control:
         negative_control(target)
     elif not args.declarations:
@@ -192,7 +192,7 @@ def main():
         # caller-owned hardware tests; run those too rather than merely finding
         # their source. Avoid running selectors twice under a whole-file target.
         selectors = sorted({test for d in verified for test in d.graph_replay.validation_tests
-                            if not test.startswith("tests/test_replay_param_npu.py::")})
+                            if not test.startswith("tests/framework/test_replay_param_npu.py::")})
         raise SystemExit(pytest.main(["-q", "-s", target, *selectors]))
 
 

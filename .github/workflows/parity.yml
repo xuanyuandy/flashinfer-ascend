@@ -16,4 +16,4 @@ jobs:
       - name: Validate packaged ledgers without GPU or NPU dependencies
         working-directory: /tmp
         run: python -m flashinfer parity-check
-      - run: python -m pytest tests/test_manifests.py tests/test_parity_nvidia.py tests/test_parity_tracking.py -q
+      - run: python -m pytest tests/framework/test_manifests.py tests/framework/test_api_compatibility.py tests/framework/test_parity_tracking.py -q

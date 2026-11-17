@@ -17,7 +17,7 @@ def main():
     args = parser.parse_args()
     import pytest
 
-    target = str(Path(__file__).resolve().parents[1] / "tests/test_attention_graph_plan.py")
+    target = str(Path(__file__).resolve().parents[1] / "tests/framework/test_attention_graph_plan.py")
     if not args.negative_control:
         raise SystemExit(pytest.main(["-q", "-s", target]))
 

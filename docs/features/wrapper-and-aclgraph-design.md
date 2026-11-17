@@ -35,7 +35,7 @@
 表中 Python 路径均相对 `flashinfer/`。受限 single-decode 的已声明范围是 Ascend950、FP16/BF16、NHD，公共 Q 为 `[8,64]`、K/V 为 `[1024,2,64]`；底层使用 BSND `.out`、固定 workspace/out、无 mask、8/2 heads、scale=0.125，并生成 LSE。
 只有逻辑 KV 长度在 `1..1024` 内更新，其他存储和执行规格保持冻结。调用方创建 `NPUGraph` 并使用 `auto_dispatch_capture=False`；每次通过 wrapper 重放前都要提交一次 `before_replay`，不能绕过护栏直接调用底层图。
 这项限定声明不能外推到 A2/A3、自带 AOT、其他 shape 或通用 batch 图执行；声明中的环境与真实验证入口见 [实现依据与验证边界](#14-实现依据与验证边界)。
-当前普通 `dispatch` 不以 `graph_capability` 改变 eager 候选排序，也没有 prepared 选择模式；图查询和特定录制入口的校验不等于自动图路由。后续准备/捕获准入需要显式接入，现有选择行为由 `tests/test_graph_capability.py` 保持约束。
+当前普通 `dispatch` 不以 `graph_capability` 改变 eager 候选排序，也没有 prepared 选择模式；图查询和特定录制入口的校验不等于自动图路由。后续准备/捕获准入需要显式接入，现有选择行为由 `tests/framework/test_graph_capability.py` 保持约束。
 
 ## 2. 对标边界与分层
 
@@ -362,10 +362,10 @@ call、prepared-eager、graph replay 三种边界的记录分别保存；更换�
 | 核对项 | 代码或测试入口 | 能证明的边界 |
 | --- | --- | --- |
 | 已选实现与 AOT 加载 | [Plan](../../flashinfer/runtime/plan.py)、[原生绑定缓存](../../flashinfer/aclnn/_native.py)、[ACLNN 桥](../../csrc/aclnn_torch_adapter/adapter.cpp) | 选型、绑定与每次普通执行；不证明原生准备复用 |
-| 图声明、证据和参数映射 | [声明约束](../../flashinfer/runtime/schema.py)、[能力测试](../../tests/test_graph_capability.py)、[更新协议测试](../../tests/test_replay_param_runtime.py) | schema 与模拟更新顺序；不证明真实设备 capture/replay |
-| 现有受限 FIA 图路径 | [范围声明](../../flashinfer/cann/attention/_shared.py)、[底层真机测试](../../tests/test_replay_param_npu.py)、[公共 wrapper 真机测试](../../tests/test_single_decode_graph_real.py) | 只覆盖声明内的 Ascend950 组合；在匹配设备与依赖环境执行后才形成运行证据 |
-| 固定 metadata 与 Host 身份 | [图资源](../../flashinfer/attention/execution_identity.py)、[Tensor 计划测试](../../tests/test_attention_graph_plan.py)、[身份测试](../../tests/test_attention_execution_identity.py) | 资源冻结、更新和结构兼容；不等价于真实 batch 图 |
-| 资源租约 | [存储租约](../../flashinfer/attention/storage_lease.py)、[租约测试](../../tests/test_attention_storage_lease.py) | Host 所有权与状态规则；不等价于已完成异步设备寿命验证 |
+| 图声明、证据和参数映射 | [声明约束](../../flashinfer/runtime/schema.py)、[能力测试](../../tests/framework/test_graph_capability.py)、[更新协议测试](../../tests/framework/test_replay_param_runtime.py) | schema 与模拟更新顺序；不证明真实设备 capture/replay |
+| 现有受限 FIA 图路径 | [范围声明](../../flashinfer/cann/attention/_shared.py)、[底层真机测试](../../tests/framework/test_replay_param_npu.py)、[公共 wrapper 真机测试](../../tests/framework/test_single_decode_graph_real.py) | 只覆盖声明内的 Ascend950 组合；在匹配设备与依赖环境执行后才形成运行证据 |
+| 固定 metadata 与 Host 身份 | [图资源](../../flashinfer/attention/execution_identity.py)、[Tensor 计划测试](../../tests/framework/test_attention_graph_plan.py)、[身份测试](../../tests/framework/test_attention_execution_identity.py) | 资源冻结、更新和结构兼容；不等价于真实 batch 图 |
+| 资源租约 | [存储租约](../../flashinfer/attention/storage_lease.py)、[租约测试](../../tests/framework/test_attention_workspace.py) | Host 所有权与状态规则；不等价于已完成异步设备寿命验证 |
 
 上游、SDK 文档和现有 Host 测试提供设计依据，不替代目标实现的设备证据。本文不记录本机路径、一次测试耗时或历史通过数字。
 通用 prepared、异步原生桥、多 wrapper 图协调和性能效果均未验证；实现时按上述验收条件重新产生证据，不复用历史全量测试数字。

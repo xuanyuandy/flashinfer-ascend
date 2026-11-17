@@ -31,6 +31,8 @@ def junit_counts(path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=SCOPES, default="quick")
+    parser.add_argument("--soc", choices=("auto", "all", "Ascend910B", "Ascend910C", "Ascend950"),
+                        default="auto", help="Hardware scope; incompatible-chip tests are deselected, not counted as pass")
     parser.add_argument("--log-dir", type=Path,
                         help="New directory for this run; an existing directory is rejected")
     parser.add_argument("paths", nargs="*", default=["tests"], help="Optional changed-area test paths")
@@ -39,10 +41,10 @@ def main(argv=None):
     logs = (args.log_dir or root / "build/regression" / datetime.now().strftime("%Y%m%d-%H%M%S-%f")).resolve()
     logs.mkdir(parents=True, exist_ok=False)
     command = [sys.executable, "-B", "-m", "pytest", "-p", "no:cacheprovider", "-q", *args.paths,
-               "--junitxml=" + str(logs / "results.xml")]
+               "--soc=" + args.soc, "--junitxml=" + str(logs / "results.xml")]
     if SCOPES[args.profile]:
         command.extend(["-m", SCOPES[args.profile]])
-    (logs / "command.json").write_text(json.dumps({"profile": args.profile, "command": command,
+    (logs / "command.json").write_text(json.dumps({"profile": args.profile, "soc": args.soc, "command": command,
                                                   "cwd": str(root)}, indent=2) + "\n")
     environment = dict(os.environ)
     if "FLASHINFER_TEST_NPU_DEVICE" in environment:
@@ -60,12 +62,15 @@ def main(argv=None):
     with (logs / "pytest.log").open("w") as output:
         result = subprocess.run(command, cwd=root, env=environment, stdout=output, stderr=subprocess.STDOUT)
     (logs / "pytest.exit").write_text(str(result.returncode) + "\n")
-    summary = {"profile": args.profile, "pytest_returncode": result.returncode,
+    summary = {"profile": args.profile, "soc": args.soc, "pytest_returncode": result.returncode,
                "elapsed_seconds": round(time.monotonic() - started, 3)}
     xml = logs / "results.xml"
     if xml.exists():
         summary.update(junit_counts(xml))
     output_text = (logs / "pytest.log").read_text()
+    scope = re.search(r"SoC scope: ([^;]+); (\d+) incompatible-chip tests deselected", output_text)
+    if scope:
+        summary.update(selected_soc=scope[1], incompatible_soc_deselected=int(scope[2]))
     deselected = re.findall(r"(\d+) deselected", output_text)
     summary["deselected"] = int(deselected[-1]) if deselected else 0
     # A skipped device/optional-dependency test is not accepted as a green run.

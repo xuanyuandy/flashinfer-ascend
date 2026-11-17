@@ -350,12 +350,12 @@ v2 的环境、计时与执行契约见 [上游设计](https://github.com/flashi
 
 | 核对项 | 代码与测试入口 | 证据范围 |
 | --- | --- | --- |
-| 公开离线接口与统计规则 | [接口导出](../../flashinfer/tuning/__init__.py)、[采集器](../../flashinfer/tuning/benchmark.py)、[统计测试](../../tests/test_tuning.py) | 显式候选、同步 wall time、原始样本和保守分析；不是自动搜索或性能优势证据 |
-| 候选与显式覆盖 | [dispatcher](../../flashinfer/runtime/dispatch.py)、[选择顺序测试](../../tests/test_dispatch_ordering.py) | 完整普通准入与显式 ID 分支；不提供 tactic 执行交接 |
-| 旧记录身份和查询 | [存储](../../flashinfer/tuning/store.py)、[身份钩子](../../flashinfer/tuning/identity.py)、[记录测试](../../tests/test_tuning_release.py) | 记录内比较者、可选执行身份、无冠军与拒绝行为；不是完整新候选快照 |
-| 内存与决策缓存 | [缓存测试](../../tests/test_dispatch_cache.py)、[记录缓存测试](../../tests/test_tuning_release.py) | 命中无文件/SQL I/O、revision/reload 失效；不是当前最快的证明 |
+| 公开离线接口与统计规则 | [接口导出](../../flashinfer/tuning/__init__.py)、[采集器](../../flashinfer/tuning/benchmark.py)、[统计测试](../../tests/framework/test_tuning.py) | 显式候选、同步 wall time、原始样本和保守分析；不是自动搜索或性能优势证据 |
+| 候选与显式覆盖 | [dispatcher](../../flashinfer/runtime/dispatch.py)、[选择顺序测试](../../tests/framework/test_dispatch_ordering.py) | 完整普通准入与显式 ID 分支；不提供 tactic 执行交接 |
+| 旧记录身份和查询 | [存储](../../flashinfer/tuning/store.py)、[身份钩子](../../flashinfer/tuning/identity.py)、[记录测试](../../tests/packaging/test_tuning_release.py) | 记录内比较者、可选执行身份、无冠军与拒绝行为；不是完整新候选快照 |
+| 内存与决策缓存 | [缓存测试](../../tests/framework/test_dispatch_cache.py)、[记录缓存测试](../../tests/packaging/test_tuning_release.py) | 命中无文件/SQL I/O、revision/reload 失效；不是当前最快的证明 |
 | 显式 FA 场景 | [FA 脚本](../../tools/tune_flash_attention.py) | 私有 registry、精确 shape、独立数值校验与 api/runner 边界；不能扩大为全算子自动调优 |
-| 发布导出与包内资料 | [导出器](../../flashinfer/tuning/_release.py)、[当前清单](../../flashinfer/tuning/data/manifest.json)、[发布测试](../../tests/test_tuning_release.py) | schema、已有身份与大小/安装协议；清单没有测量 shard，不能证明实际测量来源 |
+| 发布导出与包内资料 | [导出器](../../flashinfer/tuning/_release.py)、[当前清单](../../flashinfer/tuning/data/manifest.json)、[发布测试](../../tests/packaging/test_tuning_release.py) | schema、已有身份与大小/安装协议；清单没有测量 shard，不能证明实际测量来源 |
 
 现有统计与发布单测使用合成时钟、数据或注入身份验证规则，不作为真实 NPU 性能结论。AutoTuner、通用 tactic 交接、prepared/图测量和模型收益仍未验证；实现后按匹配平台重新产生证据，不复用历史通过数字。
 

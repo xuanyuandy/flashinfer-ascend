@@ -8,7 +8,7 @@ _DECODE_ID = "cann/attention/single_decode_fia_v1"
 
 _DECODE_REPLAY = GraphReplaySpec(
     validated_kernel_id=_DECODE_ID,
-    validation_tests=("tests/test_replay_param_npu.py::test_fia_full_capture_replay_needs_parameter_update",),
+    validation_tests=("tests/framework/test_replay_param_npu.py::test_fia_full_capture_replay_needs_parameter_update",),
     validated_environment="Ascend950PR_9579; torch 2.10.0+cpu; torch_npu 2.10.0.post7; CANN 9.2",
     parameter_sources=(("actual_seq_lengths_kv", "kv_seq_lengths"),),
     required_arguments=("workspace", "out"),
