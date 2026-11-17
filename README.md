@@ -164,7 +164,7 @@ python -B -m flashinfer selftest
 
 公共算子定义位于 `flashinfer/operators/<domain>/<op>/`，后端实现位于 `flashinfer/<backend>/<domain>/<op>/`。Ascend C 计算源码位于 `csrc/kernels/`，Triton kernel 与其后端实现共同维护。新增算子通过公共定义描述语义，通过各实现声明支持域与执行入口，并提供独立数值样例；生成元数据和交付资源由框架管理。
 
-实现分层与文件职责见 [架构](docs/concepts/architecture.md)，完整接入流程见 [算子开发指南](docs/development/adding-an-operator.md)，提交规范见 [贡献约定](CONTRIBUTING.md)。
+实现分层与文件职责见 [架构](docs/concepts/architecture.md)，完整接入流程见 [算子开发指南](docs/development/adding-an-operator.md)，维护与审计入口见 [仓库工具](tools/README.md)，提交规范见 [贡献约定](CONTRIBUTING.md)。
 
 ## 开发路线
 

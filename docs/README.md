@@ -16,6 +16,7 @@
 | 新增算子或给同一 op 增加后端 | [算子接入](development/adding-an-operator.md) |
 | 理解 recipe/spec、AOT/JIT、原生桥与 wheel | [编译与交付](ascendc_aot.md) |
 | 查环境变量、CLI 和配置作用域 | [配置参考](development/configuration.md) |
+| 执行源码审计、工具检查与显式调优采集 | [仓库工具](../tools/README.md) |
 | 提交正确性、路由与产物验证 | [测试规范](development/testing.md) |
 | 维护冻结 ABI 与兼容边界 | [ABI 兼容规则](development/abi-compatibility.md) |
 | 接入已有受限图能力 | [图模式](npu_graph_extensions.md) |

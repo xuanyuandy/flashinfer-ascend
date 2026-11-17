@@ -1,8 +1,7 @@
-"""Inventory declarations without importing the CUDA upstream checkout.
+"""Refresh API compatibility annotations from pinned upstream declarations.
 
-This does not replace the missing 147-row CANN/consumer coverage matrix. Unknown
-coverage stays unverified. Running twice is idempotent for a fixed upstream ref.
-"""
+Source analysis is independent of CUDA imports. Inventory, implementation and
+execution evidence remain separate; unverified annotations stay explicit."""
 
 import argparse
 import ast
@@ -352,7 +351,7 @@ def refresh(manifest, upstream, all_symbols=()):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--upstream", type=Path, default=Path("/home/dy/projects/flashinfer-ori"))
+    parser.add_argument("--upstream", type=Path, default=Path(__file__).resolve().parents[2] / "flashinfer-ori")
     parser.add_argument("--stage-only", action="store_true")
     args = parser.parse_args()
     upstream = Upstream(args.upstream)

@@ -24,12 +24,13 @@ def flash_attention_release(tmp_path_factory):
     assert torch.npu.device_count() == 8, "expected the declared eight Ascend devices"
     cann = Path(os.environ.get("ASCEND_HOME_PATH", "/absent"))
     assert (cann / "bin/bisheng").is_file(), "real bisheng is required to build the AOT fixture"
-    from tools.build_flash_attention import build_release
+    from flashinfer.ascendc import FLASH_ATTENTION_KERNEL_ID
+    from tests.support.aot_release import build_release
 
     original = os.environ.get("FLASHINFER_CATLASS_ROOT")
     os.environ["FLASHINFER_CATLASS_ROOT"] = str(CATLASS_ROOT)
     try:
-        return build_release(tmp_path_factory.mktemp("flash-attention-release"))
+        return build_release(FLASH_ATTENTION_KERNEL_ID, tmp_path_factory.mktemp("flash-attention-release"))
     finally:
         if original is None:
             os.environ.pop("FLASHINFER_CATLASS_ROOT", None)

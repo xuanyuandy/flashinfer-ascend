@@ -1,13 +1,13 @@
-"""Check graph declarations and rerun descriptor-driven caller-owned evidence.
+"""Audit graph declarations and execute their caller-owned validation tests.
 
-python tools/t11_replay_param_audit.py --interfaces
-python tools/t11_replay_param_audit.py --declarations
-python tools/t11_replay_param_audit.py --negative-control
-python tools/t11_replay_param_audit.py --portable-skips
-python tools/t11_replay_param_audit.py
+  python -B -m tools.audit_graph_replay --declarations
+  python -B -m tools.audit_graph_replay --interfaces
+  python -B -m tools.audit_graph_replay --negative-control
+  python -B -m tools.audit_graph_replay --portable-skips
 
-Capture/replay belongs to the tests/caller, never to flashinfer runtime.
-"""
+Declaration checks require no device execution. Hardware evidence modes need
+the exact device/runtime scope cited by each descriptor. Capture/replay remains
+owned by the caller; skipped tests do not provide new validation evidence."""
 
 import argparse
 import ast

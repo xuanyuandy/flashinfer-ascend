@@ -1,9 +1,11 @@
-"""T14 evidence using a real prepared T13 artifact and PrivateUse1 execution.
+"""Validate prepared Ascend C artifacts through Torch PrivateUse1 and Meta dispatch.
 
-JIT: --config examples/ascendc_native.json --cache-dir /tmp/t14-cache
-AOT: --package /path/to/verified/release --soc ascend950
-Use TORCH_LOGS=graph_breaks to also observe the deliberate positive control.
-"""
+  python -B -m tools.check_ascendc_torch_library --config examples/ascendc_native.json --cache-dir build/torch-library-smoke
+
+Use --package for an existing verified release, and TORCH_LOGS=graph_breaks to
+inspect the deliberate positive control. Device execution requires a matching
+SoC, runtime and artifact. The checks cover namespaces, memory, mutations,
+FakeTensor behavior and torch.compile; they do not capture a device graph."""
 
 import argparse
 import json
@@ -152,7 +154,7 @@ def main():
     if args.config and not args.cache_dir:
         parser.error("--config requires --cache-dir")
     if args.package or args.cache_only:
-        # Leave torch.compile's graph compiler available, but make any T13
+        # Leave torch.compile's graph compiler available, but make any Ascend C
         # source/dependency resolution, toolchain probing or build fatal.
         import flashinfer.jit
         from flashinfer.jit import AscendCBackend, AscendCToolchain, recipe
@@ -179,7 +181,7 @@ def main():
         torch.npu.set_device(int(os.environ["FLASHINFER_TEST_NPU_DEVICE"]))
 
     if not torch.npu.is_available():
-        raise RuntimeError("T14 evidence requires NPU")
+        raise RuntimeError("Ascend C torch.library validation requires an available NPU")
     memory_check(torch)
     compile_check(torch, recipe, positive_control=not args.skip_positive_control)
     from flashinfer.aclnn import _native

@@ -1,9 +1,11 @@
-"""Capture/replay every builtin's auto request without importing any provider.
+"""Compare dispatch outcomes for fixed metadata samples without executing kernels.
 
-Run with the same Python and environment before and after a dispatch change:
-    python tools/t19_selection_audit.py --write /tmp/t19-before.json
-    python tools/t19_selection_audit.py --compare /tmp/t19-before.json
-"""
+  python -B -m tools.audit_dispatch_selection --write build/dispatch-before.json
+  python -B -m tools.audit_dispatch_selection --compare build/dispatch-before.json
+
+Each registered implementation contributes a sample. Accepted and rejected
+requests are recorded; these samples are a regression aid, not a complete
+operator input matrix or evidence of numerical/backend support."""
 
 import argparse
 from collections import Counter, defaultdict
@@ -40,7 +42,14 @@ def snapshot():
         )
         # Include reference-only ops while retaining backend='auto'. Also
         # record the ordinary hot-path result with reference opt-in disabled.
-        decision = dispatch(signature, hardware, allow_reference=True, registry=registry)
+        try:
+            decision = dispatch(signature, hardware, allow_reference=True, registry=registry)
+            error = None
+        except DispatchError as rejected:
+            # A metadata sample may fall outside every implementation's domain.
+            # Retain its rejection in the baseline instead of dropping the row.
+            decision = None
+            error = str(rejected)
         try:
             hot_path = dispatch(signature, hardware, registry=registry).kernel_id
         except DispatchError:
@@ -48,9 +57,10 @@ def snapshot():
         rows.append(dict(
             record=descriptor.kernel_id, stack=origin(descriptor),
             fingerprint=descriptor.fingerprint, signature=asdict(signature),
-            hardware=asdict(hardware), selected=decision.kernel_id,
-            fallback=list(decision.fallback_chain), hot_path_selected=hot_path,
-            filters=[asdict(report) for report in decision.reports],
+            hardware=asdict(hardware), selected=decision.kernel_id if decision else None,
+            fallback=list(decision.fallback_chain) if decision else [], hot_path_selected=hot_path,
+            filters=[asdict(report) for report in decision.reports] if decision else [],
+            error=error,
         ))
     # JSON normalization also turns enum/string subclasses and tuples into
     # the same representation used by a persisted pre-change snapshot.
@@ -77,6 +87,7 @@ def main():
                   if count > 1]
     print("multi_config_op_source_groups:", len(duplicates), duplicates)
     if args.write:
+        args.write.parent.mkdir(parents=True, exist_ok=True)
         args.write.write_text(json.dumps(rows, ensure_ascii=False, indent=2) + "\n")
         print("baseline:", args.write)
         return
@@ -100,9 +111,9 @@ def main():
             assert old["fingerprint"] == new["fingerprint"], (
                 new["record"], "fingerprint", old["fingerprint"], new["fingerprint"])
         for key in ("stack", "signature", "hardware", "selected",
-                    "fallback", "hot_path_selected", "filters"):
+                    "fallback", "hot_path_selected", "filters", "error"):
             assert old[key] == new[key], (new["record"], key, old[key], new[key])
-    print(f"PASS {len(rows)}/{len(rows)} auto selections unchanged; "
+    print(f"PASS {len(rows)}/{len(rows)} dispatch outcomes unchanged; "
           f"{len(rows) - len(changed)}/{len(rows)} descriptor fingerprints unchanged")
     if changed:
         print("PASS %d graph-only fingerprint changes verified against the original baseline" % len(changed))

@@ -1,4 +1,4 @@
-"""Reproduce the T3 inventory from declarations in the pinned upstream commit."""
+"""Update vendor-specific API incompatibility entries from pinned upstream sources."""
 
 import argparse
 import ast
@@ -50,7 +50,7 @@ SOURCES = {
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--upstream", default="/home/dy/projects/flashinfer-ori")
+    parser.add_argument("--upstream", default=str(Path(__file__).resolve().parents[2] / "flashinfer-ori"))
     parser.add_argument("--stage-only", action="store_true")
     args = parser.parse_args()
     inventory = []

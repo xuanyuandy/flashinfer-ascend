@@ -1,8 +1,10 @@
-"""Build bounded, per-SoC release shards from explicitly reviewed T20A JSONs.
+"""Export bounded per-SoC tuning shards from reviewed measurement JSON files.
 
-No collection, compilation, or search is performed. With no inputs, export an
-empty manifest. See docs/tuning.md for provenance and release review rules.
-"""
+  python -B -m tools.export_tuning_data measurements.json --output-dir build/tuning-release
+
+No collection, compilation or search is performed. With no input records,
+export an empty manifest. Output must use a new directory; publication rules
+are documented in docs/tuning.md."""
 
 import argparse
 import importlib

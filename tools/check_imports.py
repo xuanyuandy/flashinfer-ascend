@@ -1,4 +1,4 @@
-"""Run the task's package import gate and retain structured evidence."""
+"""Import package modules and report failures as structured JSON."""
 
 import importlib
 import json

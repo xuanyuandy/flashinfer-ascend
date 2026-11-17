@@ -1,10 +1,10 @@
-"""Reproduce T9's plan evidence or disable freezes in memory as a negative control.
+"""Validate Attention graph-plan resource contracts and their negative controls.
 
-python tools/t09_graph_plan_audit.py
-python tools/t09_graph_plan_audit.py --negative-control
+  python -B -m tools.audit_graph_plan
+  python -B -m tools.audit_graph_plan --negative-control
 
-No source files are changed and no device graph is captured.
-"""
+Negative controls disable guards in memory and require the existing tests to
+reject the injected behavior. Source files are unchanged; no device graph is captured."""
 
 import argparse
 from copy import copy

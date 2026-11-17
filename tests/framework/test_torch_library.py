@@ -299,7 +299,7 @@ def test_compile_fullgraph_inductor_npu_with_graph_break_logging(registered):
                    if not key.startswith("FLASHINFER_NPU_")}
     environment["TORCH_LOGS"] = "graph_breaks"
     result = subprocess.run(
-        [sys.executable, "tools/t08_torch_compile_smoke.py"], cwd=root,
+        [sys.executable, "tools/check_torch_compile.py"], cwd=root,
         capture_output=True, text=True, env=environment, timeout=180,
     )
     assert result.returncode == 0, result.stdout + result.stderr

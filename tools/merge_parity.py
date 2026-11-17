@@ -1,4 +1,4 @@
-"""Merge a task's reviewed parity entries, preserving earlier working changes."""
+"""Merge reviewed API compatibility entries into a parity ledger."""
 
 import argparse
 import json

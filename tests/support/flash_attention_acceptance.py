@@ -128,13 +128,13 @@ def run_scenario(scenario, store_root):
                               kernel_id=descriptor.kernel_id, **values), sort_keys=True))
 
     if scenario == "missing_dependency":
-        from tools.build_flash_attention import build_release
+        from tests.support.aot_release import build_release
 
         absent = store_root.parent / "absent-catlass-checkout"
         assert not absent.exists()
         os.environ["FLASHINFER_CATLASS_ROOT"] = str(absent)
         try:
-            build_release(store_root.parent / "missing-dependency-build")
+            build_release(FLASH_ATTENTION_KERNEL_ID, store_root.parent / "missing-dependency-build")
         except SchemaError as error:
             diagnostic = str(error)
             assert "catlass" in diagnostic.lower() and "dependency" in diagnostic.lower()

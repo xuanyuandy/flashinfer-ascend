@@ -1,11 +1,11 @@
-"""T8 compile/logging evidence, without graph capture.
+"""Validate torch.compile graphs, output buffers and mutations.
 
-    TORCH_LOGS=graph_breaks python tools/t08_torch_compile_smoke.py --probe
-    TORCH_LOGS=graph_breaks python tools/t08_torch_compile_smoke.py
+Run from the repository root:
+  python -B -m tools.check_torch_compile --device cpu
+  TORCH_LOGS=graph_breaks python -B -m tools.check_torch_compile --probe
 
-The probe deliberately emits a graph break to verify the logger. The ordinary
-run checks the two registered public APIs with Inductor, including mutations.
-"""
+The probe checks graph-break logging. The ordinary run validates public APIs
+with Inductor; neither mode is evidence of NPU graph capture/replay."""
 
 import argparse
 import os

@@ -1,9 +1,11 @@
-"""Real FIA workspace evidence and in-memory negative controls; no graph capture.
+"""Audit native Attention workspace bounds and in-memory negative controls.
 
-python tools/t10_max_workspace_audit.py
-python tools/t10_max_workspace_audit.py --negative-control
-python tools/t10_max_workspace_audit.py --interfaces
-"""
+  python -B -m tools.audit_attention_workspace
+  python -B -m tools.audit_attention_workspace --negative-control
+  python -B -m tools.audit_attention_workspace --interfaces
+
+Device modes require the runtime and hardware declared by the cited tests.
+Workspace checks do not establish graph capture/replay support."""
 
 import argparse
 from pathlib import Path

@@ -125,7 +125,7 @@ def test_public_v2_probe_compile_fake_namespace_and_numerical_execution(tmp_path
         catlass = environment['FLASHINFER_CATLASS_ROOT']
     else:
         catlass = str(tmp_path / 'absent-catlass')
-    command = [sys.executable, '-B', 'tools/t14_torch_library_smoke.py', '--config',
+    command = [sys.executable, '-B', 'tools/check_ascendc_torch_library.py', '--config',
                'examples/ascendc_' + implementation + '.json', '--cache-dir', str(tmp_path / 'cache'),
                '--catlass-root', catlass]
     result = subprocess.run(command, cwd=ROOT, env=environment, capture_output=True, text=True, timeout=180)

@@ -1,11 +1,11 @@
-"""T20A: explicitly benchmark T19A BLOCK=128/256 at hidden=128 on a real NPU.
+"""Collect explicit Gemma normalization tuning measurements on a real NPU.
 
-All output/database/cache paths should be outside the checkout. Example:
-  ASCEND_RT_VISIBLE_DEVICES=0 python tools/t20_collect_gemma.py \
-    --cache-dir /tmp/t20-jit --db /tmp/t20.sqlite3 --output /tmp/t20-quiet.json
-  # Optional controlled CPU contention on the SAME affinity used for quiet:
-  ... --affinity 120,121 --busy-workers 8 --output /tmp/t20-busy.json
-"""
+Compare BLOCK=128/256 at hidden=128 in an isolated registry:
+  python -B -m tools.collect_gemma_tuning --cache-dir build/gemma-tuning/cache --db build/gemma-tuning/measurements.sqlite3 --output build/gemma-tuning/quiet.json
+
+Optional --affinity and --busy-workers control CPU contention. Use the same
+CPU affinity when comparing conditions. Measurements are explicitly requested
+and do not change the production operator registry."""
 
 import argparse
 from contextlib import contextmanager

@@ -162,7 +162,7 @@ from flashinfer import (
     BatchPrefillWithRaggedKVCacheWrapper,
 )
 from flashinfer.attention.planner import AttentionStateError
-from tools.t10_max_workspace_audit import workspace_allocations
+from tools.audit_attention_workspace import workspace_allocations
 
 
 @pytest.fixture(scope="module")

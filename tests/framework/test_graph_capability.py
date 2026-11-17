@@ -131,7 +131,7 @@ def test_query_returns_graph_capability_and_parameters_without_execution(capabil
 
 
 def test_only_proven_record_declares_capture_and_keeps_others_conservative():
-    from tools.t11_replay_param_audit import audit_declarations
+    from tools.audit_graph_replay import audit_declarations
 
     registry = KernelRegistry(_builtin_descriptors())
     audit_declarations(registry.descriptors())

@@ -26,9 +26,10 @@ def production_release(tmp_path_factory):
     cann = Path(os.environ.get("ASCEND_HOME_PATH", "/absent"))
     if not (cann / "bin/bisheng").is_file():
         pytest.skip("requires bisheng to build the production AOT fixture")
-    from tools.build_matmul_bias_silu import build_release
+    from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID
+    from tests.support.aot_release import build_release
 
-    return build_release(tmp_path_factory.mktemp("matmul-bias-silu"))
+    return build_release(MATMUL_BIAS_SILU_KERNEL_ID, tmp_path_factory.mktemp("matmul-bias-silu"))
 
 
 @contextmanager

@@ -332,7 +332,7 @@ def test_real_native_artifact_compile_fake_memory_namespace_and_positive_control
     if not (cann / "bin/bisheng").is_file():
         pytest.skip("requires CANN compiler to prepare a fresh native T13 artifact")
     environment = dict(os.environ, TORCH_LOGS="graph_breaks")
-    script = [sys.executable, "tools/t14_torch_library_smoke.py"]
+    script = [sys.executable, "tools/check_ascendc_torch_library.py"]
     if kind == "host_shared":
         script += ["--config", "examples/ascendc_native.json", "--cache-dir", str(tmp_path / "cache"),
                    "--catlass-root", str(tmp_path / "absent-catlass")]

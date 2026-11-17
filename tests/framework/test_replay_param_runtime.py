@@ -331,7 +331,7 @@ def test_descriptor_scope_rejects_before_device_nodes(device, change, match):
 
 
 def test_declaration_evidence_is_required_and_cannot_be_copied_to_another_kernel(device):
-    from tools.t11_replay_param_audit import audit_declarations
+    from tools.audit_graph_replay import audit_declarations
 
     safe = KernelDescriptor("cann/test/unverified", op="test.graph", graph_capability="capture_safe")
     with pytest.raises(SchemaError, match="no graph replay validation evidence"):
