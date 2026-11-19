@@ -265,7 +265,7 @@ from flashinfer.operators.authoring import discover, discover_implementations, g
 from flashinfer.operators.implementation import ImplementationDefinition, implementation_entries
 from flashinfer.runtime import (
     Backend, CapabilityCase, CapabilitySpec, FeatureConstraint, HardwareSignature, InputSignature, KernelDescriptor,
-    KernelRegistry, SchemaError, dispatch, get_global_registry,
+    KernelRegistry, SchemaError, ShapeRange, dispatch, get_global_registry,
 )
 from flashinfer.runtime.registry import kernel_registry_scope
 from flashinfer.runtime.runner import run_selected
@@ -319,6 +319,33 @@ def test_existing_85_and_reviewed_arch22_capabilities_match_exactly():
     ):
         expected[kernel_id] = dict(baseline[kernel_id],
                                    soc_models=["Ascend910B", "Ascend910C", "Ascend950"])
+    # Reviewed addition: gemm.grouped_matmul_k_dim on arch22. The capability is
+    # restated here rather than imported, so widening what the kernel claims still
+    # requires editing this fixture.
+    kdim_cases = tuple(
+        CapabilityCase(
+            name="%s_to_%s" % (compute, output),
+            dtype_signatures=((compute, compute, "int64", output),),
+            compute_dtypes=(compute,),
+            accumulator_dtypes=("float32",),
+            shape_ranges=(ShapeRange("XB", 0, 1, 1, 65535), ShapeRange("N", 1, 1, 1, 65535)),
+            specializations=(("tensor_contract", ("supported",)),),
+        )
+        for compute in ("float16", "bfloat16")
+        for output in (compute, "float32")
+    )
+    for soc in ("Ascend910B", "Ascend910C"):
+        expected["ascendc/gemm/grouped_matmul_k_dim/native/op_package/" + soc] = CapabilitySpec(
+            op="gemm.grouped_matmul_k_dim",
+            soc_models=(soc,),
+            physical_layouts=("ND",),
+            cases=kdim_cases,
+        ).to_dict()
+    # The reference backend is device agnostic and declares no SoC or layout claim.
+    expected["reference/gemm/grouped_matmul_k_dim_v1"] = CapabilitySpec(
+        op="gemm.grouped_matmul_k_dim",
+        cases=kdim_cases,
+    ).to_dict()
     for kernel_id in (
         "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
         "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
@@ -334,8 +361,8 @@ def test_all_existing_implementations_have_one_authority_and_a_bound_runner():
     production = [d for _, _, d in declarations if d.scope == 'global']
     registry = get_global_registry()
     assert {d.kernel_id for d in production} == {d.kernel_id for d in registry.descriptors()}
-    assert len(production) == 90
-    assert len(discover(ROOT)) == 48
+    assert len(production) == 93
+    assert len(discover(ROOT)) == 49
     assert len([d for _, _, d in declarations if d.scope == 'experimental']) == 1
     for directory, _, declaration in declarations:
         assert directory.parent.parent.name == declaration.backend.value

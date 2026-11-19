@@ -279,7 +279,7 @@ def test_all_builtin_records_are_queryable_without_inventing_metadata():
     from flashinfer.runtime.registry import _builtin_descriptors
 
     descriptors = tuple(registry.get(d.kernel_id) for d in _builtin_descriptors())
-    assert len(descriptors) == 81
+    assert len(descriptors) == 82
     assert len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
     assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in descriptors} == PRODUCTION_KERNEL_IDS
     before = [(d.to_dict(), d.fingerprint) for d in registry.descriptors()]
@@ -494,14 +494,14 @@ subprocess.Popen = forbidden_probe
 import flashinfer
 from flashinfer.jit import (AscendCBackend, JitSpecRegistry, TritonBackend,
                            declare_kernel, describe_artifact)
-from flashinfer.runtime import (Backend, HardwareSignature, InputSignature,
+from flashinfer.runtime import (Backend, HardwareSignature, InferenceSpec, InputSignature,
                                KernelDescriptor, KernelRegistry, SourceRef)
 from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID
 from flashinfer.runtime.registry import _builtin_descriptors
 from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS
 registry = flashinfer.get_global_registry()
 legacy = _builtin_descriptors()
-assert len(legacy) == 81 and len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
+assert len(legacy) == 82 and len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
 assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy} == PRODUCTION_KERNEL_IDS
 selected = []
 for d in legacy:
@@ -514,6 +514,13 @@ for d in legacy:
         signature = InputSignature(d.op, dtypes=('bfloat16',) * 3,
             shapes=((16, 16),) * 3, physical_layouts=('ND',) * 3,
             specializations=(('tensor_contract', 'supported'),))
+    if d.op == 'gemm.grouped_matmul_k_dim':
+        # Three operands, a prospective output and an explicit compute contract,
+        # so the two-tensor dummy signature above cannot reach this operator.
+        signature = InputSignature(d.op, dtypes=('float16', 'float16', 'int64', 'float16'),
+            shapes=((64, 96), (96, 96), (4,), (4, 64, 96)), physical_layouts=('ND',) * 4,
+            specializations=(('tensor_contract', 'supported'),),
+            inference=InferenceSpec(compute_dtype='float16', accumulator_dtype='float32'))
     selected.append(flashinfer.dispatch(signature, HardwareSignature(soc, 32),
                                        allow_reference=True).kernel_id)
     expected_state = 'source_only' if d.kernel_id == 'triton/gemm/matmul_v1/Ascend950' else 'undeclared'
@@ -555,7 +562,7 @@ print(json.dumps({'records': len(selected), 'legacy_records': len(legacy),
                                capture_output=True, text=True, env=env)
     print(completed.stdout.strip())
     assert json.loads(completed.stdout) == {
-        "records": 82, "legacy_records": 81, "optional_import_attempts": [],
+        "records": 83, "legacy_records": 82, "optional_import_attempts": [],
         "selected_production": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
         "compiler_probe_attempts": [],
         "compiler_paths": {"bisheng": None, "ccec": None, "ascendc": None},

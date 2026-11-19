@@ -11,6 +11,7 @@ All Ascend C operator sources live under `csrc/kernels/<domain>/<op>/`:
   launch fixtures live in `tests/fixtures/legacy_ascendc/`, outside build inputs.
 - `gemm/matmul/` and `gemm/matmul_bias_silu/`: production native implementations.
 - `gemm/grouped_matmul_swiglu_quant/`: grouped integer GEMM, SwiGLU and quantization.
+- `gemm/grouped_matmul_k_dim/`: grouped FP16/BF16 matmul whose groups split the shared K axis.
 - `attention/flash_attention/`: production CATLASS implementation.
 - `attention/sparse_flash_attention/`: arch22 MLA sparse attention, with an Ascend910B AOT-only declaration.
 

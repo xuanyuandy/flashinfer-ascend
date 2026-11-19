@@ -330,7 +330,7 @@ class KernelExecutionBodyTests(unittest.TestCase):
 
         registry = get_global_registry()
         legacy = _builtin_descriptors()
-        self.assertEqual(len(legacy), 81)
+        self.assertEqual(len(legacy), 82)
         self.assertEqual(len(registry.descriptors()), DEFAULT_DESCRIPTOR_COUNT)
         self.assertEqual(
             {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy},

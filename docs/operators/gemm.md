@@ -43,6 +43,18 @@ A8W8 与 A8W4 按完整组合声明，不是对任意存储 dtype 的笛卡尔�
 
 公共层保留量化/裁剪语义与必要值检查，后端 runner 适配真实属性与存储。该实现 AOT-only、NOT_CAPTURABLE；分组 GEMM 不等于提供专家并行或分布式路由。
 
+## GroupedMatmulKDim
+
+`grouped_matmul_k_dim` 使用 Ascend910B/Ascend910C 共用的 arch22 AOT，分组沿共享 K 轴：`x` 为 `[M,TotalK]`（`trans_a=True` 时 `[TotalK,M]`），`weight` 为 `[TotalK,N]`，每组只乘属于自己的一段 K，因此输出是 `[G,M,N]`，每组一块独立结果，不做行方向拼接。
+
+`group_list` 是 INT64 累积前缀而非每组长度：第 `g` 项是第 `g` 组在 K 轴上的**结束**位置，第 0 组从 0 开始，末项必须等于 `TotalK`。公共层在派发前校验非负、非递减与末项，空组（相邻两项相等）合法，其输出由运行前清零保证为 0，不读未初始化显存。
+
+计算类型为 FP16/BF16、Cube 内 FP32 累加，输出可为同类型或 FP32；`fp32_output=True` 对应移植来源 `gmm_k_dim` 的 `type_promotion` 参数。四种 dtype 组合 × `trans_a` 两态对应 8 个 tiling key，纯 cube 核执行，vector 核直接退出。
+
+`tiling` 以 `singleM/singleN=256` 划分基本块，`baseM/baseN/baseK` 由 L0A/L0B/L0C 容量反推；`dimM`、`dimN` 同时不小于 12，或满足 kernel 中另外两种块数比例条件时改用对角线扫描，否则走行优先。当前用例最大 `M=128`、`N=256`，`dimM`/`dimN` 均为 1，对角线扫描分支**未在真机验证**。
+
+限制：仅 ND；`x` 行 stride 与 `N` 不超过 65535（Ascend C matmul 的 stride 上界）；`group_list` 长度与每组 K 长度需为正。本算子与 `grouped_matmul_swiglu_quant` 的分组方向不同——后者按 M 分组、前缀以 M 结束，二者不可互换。
+
 ## MoE
 
 `fused_moe`、`fp8_per_tensor_scale_moe`、`fp8_block_scale_moe` 使用已有 CANN 原语组合与受限外部接入。它们不提供上游全部 backend、激活、量化方式和 moe_ep API。

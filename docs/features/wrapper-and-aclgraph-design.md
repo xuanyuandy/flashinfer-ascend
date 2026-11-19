@@ -14,8 +14,8 @@
 2. 为可控制的后端实现准备结果复用，减少重复执行中的原生准备工作。
 3. 将满足捕获约束的执行路径接入 NPU 图模式；调用方拥有图和模型捕获区域。
 
-当前源码全局目录有 90 个 Descriptor、48 个逻辑 op；9 条生产 Ascend C 实现均为 `NOT_CAPTURABLE`。
-其中 89 条声明 `NOT_CAPTURABLE`，仅 `cann/attention/single_decode_fia_v1` 声明 `NEEDS_PARAM_UPDATE`，没有 `CAPTURE_SAFE` 实现。
+当前源码全局目录有 93 个 Descriptor、49 个逻辑 op；11 条生产 Ascend C 实现均为 `NOT_CAPTURABLE`。
+其中 92 条声明 `NOT_CAPTURABLE`，仅 `cann/attention/single_decode_fia_v1` 声明 `NEEDS_PARAM_UPDATE`，没有 `CAPTURE_SAFE` 实现。
 这些数字按完整源码发现统计；分芯片 wheel 的目录会裁剪，不能把目录条数视为当前设备可运行条数。
 上游公共 API 基线由 `tools/metadata/api_parity.json` 与 `attention_api_parity.json` 固定为 `2895577720741ddfedff118202c89584996b8875`。
 
