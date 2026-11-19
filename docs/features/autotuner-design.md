@@ -23,7 +23,7 @@ AutoTuner 在显式预热阶段，比较同一逻辑算子的合法 `(kernel_id,
 
 当前采集器由调用方提供 `BenchmarkCandidate`，没有通用的上下文触发与内部 tactic 搜索。
 发布调优清单为空；`FLASHINFER_NPU_ONLINE_TUNING` 有配置读取，但未接通自动搜索。
-源码全局有 90 个 Descriptor、48 个逻辑 op；9 条生产 Ascend C 均为 `NOT_CAPTURABLE`。只有受限 CANN single-decode 声明 `NEEDS_PARAM_UPDATE`，不能外推为通用图调优。
+源码全局有 93 个 Descriptor、49 个逻辑 op；11 条生产 Ascend C 均为 `NOT_CAPTURABLE`。只有受限 CANN single-decode 声明 `NEEDS_PARAM_UPDATE`，不能外推为通用图调优。
 现有机制见 [测量与存储](../tuning.md)；原生准备和图生命周期见 [Wrapper 与 NPU 图模式设计](wrapper-and-aclgraph-design.md)。源码全量目录与分芯片 wheel 的裁剪目录分开统计，登记不等于设备验证。
 
 | 核对项 | 当前行为 | 设计扩展 |

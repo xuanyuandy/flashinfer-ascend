@@ -135,7 +135,7 @@ def test_only_proven_record_declares_capture_and_keeps_others_conservative():
 
     registry = KernelRegistry(_builtin_descriptors())
     audit_declarations(registry.descriptors())
-    assert len(registry.descriptors()) == 81
+    assert len(registry.descriptors()) == 82
     for descriptor in registry.descriptors():
         if descriptor.kernel_id == "cann/attention/single_decode_fia_v1":
             assert registry.graph_requirements(descriptor.kernel_id) == (

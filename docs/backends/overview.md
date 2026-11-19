@@ -15,9 +15,9 @@
 | backend | 全局 Descriptor | 执行方式 | 主要边界 |
 | --- | ---: | --- | --- |
 | `cann` | 41 | 调用已安装的 Torch/TorchNPU/CANN 算子或组合 | 各算子单独限制 SoC、dtype 和布局 |
-| `ascendc` | 9 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C/Ascend950 各三项；各自固定支持域 |
+| `ascendc` | 11 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C 各四项、Ascend950 三项；各自固定支持域 |
 | `triton` | 2 | 后端目录内的 Triton kernel，首次需要时 JIT | Matmul 与 Gemma fused Add RMSNorm |
-| `reference` | 38 | 显式参考计算 | 不作为默认 auto 的运行失败兜底 |
+| `reference` | 39 | 显式参考计算 | 不作为默认 auto 的运行失败兜底 |
 
 `custom`、`external` 是运行时扩展入口，当前没有内建数学算子记录；`aclnn`、`ascendc_aot`、`ascendc_jit` 是代码接受的后端枚举，当前全局目录没有对应记录。枚举存在不等于后端已部署。
 
@@ -27,7 +27,7 @@
 | 算子族 | CANN | Ascend C | Triton | reference |
 | --- | --- | --- | --- | --- |
 | Attention | Partial (6) | Partial (5) | Not supported | Partial (3) |
-| GEMM | Partial (6) | Partial (4) | Partial (1) | Partial (5) |
+| GEMM | Partial (6) | Partial (6) | Partial (1) | Partial (6) |
 | MoE | Partial (3) | Not supported | Not supported | Partial (3) |
 | Norm | Supported (4) | Not supported | Supported (1) | Partial (5) |
 | Activation | Supported (3) | Not supported | Not supported | Partial (3) |
@@ -36,7 +36,7 @@
 | KV cache | Partial (1) | Not supported | Not supported | Partial (1) |
 | State merge | Supported (2) | Not supported | Not supported | Partial (2) |
 
-族级标签覆盖该族的现有登记项，不能外推为整个上游算子族。以下逐项表列出源码全部 90 个 Descriptor 对应的 op × backend。
+族级标签覆盖该族的现有登记项，不能外推为整个上游算子族。以下逐项表列出源码全部 93 个 Descriptor 对应的 op × backend。
 
 ## 算子登记矩阵
 
@@ -80,6 +80,9 @@
 | `gemm.bmm_fp8` | `reference` | 由完整组合约束 | 未按 SoC 限制（仍受执行实现约束） | **Partial** — 显式参考；Host/数值对照测试不覆盖所有登记组合 | [test_gemm_segment.py](../../tests/framework/test_gemm_segment.py)、[test_gemm_fp8.py](../../tests/framework/test_gemm_fp8.py)、[数值测试](../../tests/operators/test_gemm_fp8.py) |
 | <a id="op-gemm-gemm-fp8-nt-groupwise"></a>`gemm.gemm_fp8_nt_groupwise` | `cann` | float32, float8_e4m3fn, float8_e5m2 | Ascend950 | **Partial** — 使用公共 Tensor 契约及 runner 校验；存在目标后端数值测试定义 | [test_gemm_segment.py](../../tests/framework/test_gemm_segment.py)、[test_gemm_fp8.py](../../tests/framework/test_gemm_fp8.py)、[数值测试](../../tests/operators/test_a5_npu.py) |
 | `gemm.gemm_fp8_nt_groupwise` | `reference` | 由完整组合约束 | 未按 SoC 限制（仍受执行实现约束） | **Partial** — 显式参考；Host/数值对照测试不覆盖所有登记组合 | [test_gemm_segment.py](../../tests/framework/test_gemm_segment.py)、[test_gemm_fp8.py](../../tests/framework/test_gemm_fp8.py)、[数值测试](../../tests/operators/test_gemm_fp8.py) |
+| <a id="op-gemm-grouped-matmul-k-dim"></a>`gemm.grouped_matmul_k_dim` | `ascendc` | bfloat16, float16, float32, int64 | Ascend910B | **Partial** — 4 组完整 dtype 组合 × trans_a 两态；分组沿共享 K，输出 `[G,M,N]`；physical=ND；x 行 stride 与 N ≤ 65535；AOT-only；单 device TU | [test_grouped_matmul_k_dim.py](../../tests/framework/test_grouped_matmul_k_dim.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_grouped_matmul_k_dim.py) |
+| `gemm.grouped_matmul_k_dim` | `ascendc` | bfloat16, float16, float32, int64 | Ascend910C | **Partial** — 共用 arch22 源码/runner；A3 真机数值未验证； 4 组完整 dtype 组合 × trans_a 两态；分组沿共享 K，输出 `[G,M,N]`；physical=ND；x 行 stride 与 N ≤ 65535；AOT-only；单 device TU | [test_grouped_matmul_k_dim.py](../../tests/framework/test_grouped_matmul_k_dim.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_grouped_matmul_k_dim.py) |
+| `gemm.grouped_matmul_k_dim` | `reference` | 由完整组合约束 | 未按 SoC 限制（仍受执行实现约束） | **Partial** — 显式参考；Host/数值对照测试不覆盖所有登记组合 | [数值测试](../../tests/operators/test_grouped_matmul_k_dim.py) |
 | <a id="op-gemm-grouped-matmul-swiglu-quant"></a>`gemm.grouped_matmul_swiglu_quant` | `ascendc` | bfloat16, float16, float32, int32, int64, int8 | Ascend910B | **Partial** — 7 组完整能力组合；A8W8/A8W4 carrier/scale 组合；ND/NZ 与对齐按 binding；AOT-only；原生 dtype 组合数=4 | [test_grouped_matmul_swiglu_quant.py](../../tests/framework/test_grouped_matmul_swiglu_quant.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_grouped_matmul_swiglu_quant.py) |
 | `gemm.grouped_matmul_swiglu_quant` | `ascendc` | bfloat16, float16, float32, int32, int64, int8 | Ascend910C | **Partial** — 共用 arch22 源码/runner；A3 真机数值未验证； 7 组完整能力组合；A8W8/A8W4 carrier/scale 组合；ND/NZ 与对齐按 binding；AOT-only；原生 dtype 组合数=4 | [test_grouped_matmul_swiglu_quant.py](../../tests/framework/test_grouped_matmul_swiglu_quant.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_grouped_matmul_swiglu_quant.py) |
 | <a id="op-gemm-matmul"></a>`gemm.matmul` | `ascendc` | bfloat16 | Ascend950 | **Partial** — M=16..256 / 16; N=16..256 / 16; K=16..256 / 16；physical=ND；公共 Tensor 契约准入 | [test_matmul.py](../../tests/framework/test_matmul.py)、[test_matmul_real.py](../../tests/packaging/test_matmul_real.py)、[数值测试](../../tests/operators/test_gemm.py) |
@@ -139,15 +142,15 @@
 
 ## 图与实验实现
 
-图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 89 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。9 条生产 Ascend C 均为 `not_capturable`。
+图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 92 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。11 条生产 Ascend C 均为 `not_capturable`。
 
-实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 90 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
+实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 93 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
 
 ## 安装与构建边界
 
 包的声明版本为 `0.1.0.dev0`、Python `>=3.9`。`environment-a5.yml` 指定 Python 3.11、Torch `2.10.0+cpu`、torch-npu `2.10.0.post7`、triton-ascend `3.6.0`；它是 A5 环境模板，不构成其他产品或版本组合的验证。
 
-普通 wheel 按本地芯片选择交付分组；910B 包含 A2/A3 各三项、共六项，950 包含 A5 三项，包名分别为 `flashinfer_ascend910b`、`flashinfer_ascend950`。`FLASHINFER_AOT_ALL=1`、`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 互斥；`FLASHINFER_AOT_ALL=0` 是源码模式。源码模式不提供 AOT-only 二进制。PREBUILT 仍校验产物和桥的身份，原生登记仅保留实际交付项。
+普通 wheel 按本地芯片选择交付分组；910B 包含 A2/A3 各四项、共八项，950 包含 A5 三项，包名分别为 `flashinfer_ascend910b`、`flashinfer_ascend950`。`FLASHINFER_AOT_ALL=1`、`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 互斥；`FLASHINFER_AOT_ALL=0` 是源码模式。源码模式不提供 AOT-only 二进制。PREBUILT 仍校验产物和桥的身份，原生登记仅保留实际交付项。
 
 构建依赖包括匹配的 CANN/Torch/TorchNPU 头文件与库、编译器及 libffi；CATLASS 声明钉定 revision，头树由构建方提供。安装后执行仍需要相应运行栈，框架不隐式安装依赖。代码：[aot_mode](../../setup.py#L20)、[BuildPy](../../setup.py#L90)、[pyproject.toml](../../pyproject.toml)。
 

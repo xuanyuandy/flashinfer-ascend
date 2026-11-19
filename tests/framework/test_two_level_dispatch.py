@@ -63,7 +63,7 @@ def test_builtin_partition_is_complete_disjoint_and_has_no_within_stack_data():
     from flashinfer.runtime.registry import _builtin_descriptors
 
     legacy = _builtin_descriptors()
-    assert len(legacy) == 81
+    assert len(legacy) == 82
     assert {d.kernel_id for d in flat} - {d.kernel_id for d in legacy} == PRODUCTION_KERNEL_IDS
     assert {id(d) for d in flat} == {id(d) for d in registry.descriptors()}
     duplicates = {
@@ -76,6 +76,10 @@ def test_builtin_partition_is_complete_disjoint_and_has_no_within_stack_data():
             "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
             "ascendc/t4/flash_attention/catlass/op_package/Ascend910C",
             "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
+        }),
+        ("ascendc", "gemm.grouped_matmul_k_dim"): frozenset({
+            "ascendc/gemm/grouped_matmul_k_dim/native/op_package/Ascend910B",
+            "ascendc/gemm/grouped_matmul_k_dim/native/op_package/Ascend910C",
         }),
         ("ascendc", "gemm.grouped_matmul_swiglu_quant"): frozenset({
             "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",

@@ -52,7 +52,7 @@ python -B -m flashinfer selftest --kernel-id ascendc/attention/sparse_flash_atte
 python -B -m flashinfer.operators.testing sparse_flash_attention installed
 ```
 
-只打包一个 AOT 子集时只验对应范围。源码模式默认 selftest 检查全部生产登记；安装包按 wheel 元数据检查实际本机 SoC 的条目并打印范围。910B 包的六项需要 A2/A3 分别执行三项，其他 SoC 不计为 PASS；显式 ID 锁定该实现，异 SoC 在数值执行前拒绝。必须解释目标设备不匹配与缺包；单设备的部分通过不能写成整个矩阵通过。
+只打包一个 AOT 子集时只验对应范围。源码模式默认 selftest 检查全部生产登记；安装包按 wheel 元数据检查实际本机 SoC 的条目并打印范围。910B 包的八项需要 A2/A3 分别执行四项，其他 SoC 不计为 PASS；显式 ID 锁定该实现，异 SoC 在数值执行前拒绝。必须解释目标设备不匹配与缺包；单设备的部分通过不能写成整个矩阵通过。
 
 ## 精确预期与兼容
 

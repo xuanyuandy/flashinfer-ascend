@@ -102,7 +102,7 @@ python -B setup.py bdist_wheel
 python -B -m flashinfer.aot.wheels --soc Ascend910B --soc Ascend910C --soc Ascend950 --output-dir dist
 ```
 
-包名为 `flashinfer_ascend910b`、`flashinfer_ascend950`，版本与平台 tag 仍由项目版本和构建主机决定，例如 `flashinfer_ascend910b-0.1.0.dev0-py3-none-linux_aarch64.whl`。两包导入名均为 `flashinfer`，同一环境只安装一个。原生 Descriptor、冻结 spec、recipe 与包内二进制保持精确一致；源码全目录的 9 项按分组收集：910B 包含 A2/A3 各三项，共六项；950 包含三项。发布 CLI 将 B/C 去重为一个 910B wheel，最终生成两个文件。包内 `data/wheel.json` 记录分组、物理 SoC 列表及精确 ID 集合；每个 Descriptor/recipe/spec/产物仍只绑定一个 SoC。
+包名为 `flashinfer_ascend910b`、`flashinfer_ascend950`，版本与平台 tag 仍由项目版本和构建主机决定，例如 `flashinfer_ascend910b-0.1.0.dev0-py3-none-linux_aarch64.whl`。两包导入名均为 `flashinfer`，同一环境只安装一个。原生 Descriptor、冻结 spec、recipe 与包内二进制保持精确一致；源码全目录的 11 项按分组收集：910B 包含 A2/A3 各四项，共八项；950 包含三项。发布 CLI 将 B/C 去重为一个 910B wheel，最终生成两个文件。包内 `data/wheel.json` 记录分组、物理 SoC 列表及精确 ID 集合；每个 Descriptor/recipe/spec/产物仍只绑定一个 SoC。
 
 完整发布包含源码资源、Python 适配、索引及所选二进制。PREBUILT 子集不能当作全量算子包；默认 selftest 仅执行实际本机 SoC 的随包条目，打印本机项数/总项数；其他 SoC 不计为 PASS，需在对应设备另验。也可使用明确 ID 的 selftest，规则见 [开始使用](getting-started.md) 与 [测试规范](development/testing.md)。
 

@@ -240,7 +240,7 @@ def test_config_selects_implementations_within_the_wheel_chip(
     metadata = json.loads((tmp_path / "build/flashinfer/data/wheel.json").read_text())
     assert metadata["family"] == "a2a3"
     assert metadata["soc_models"] == ["Ascend910B", "Ascend910C"]
-    assert len(metadata["kernel_ids"]) == (2 if selector == "flash_attention" else 6)
+    assert len(metadata["kernel_ids"]) == (2 if selector == "flash_attention" else 8)
 
 
 @pytest.mark.parametrize("value", ["0", ""])
