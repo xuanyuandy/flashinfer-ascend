@@ -15,7 +15,7 @@
 | backend | 全局 Descriptor | 执行方式 | 主要边界 |
 | --- | ---: | --- | --- |
 | `cann` | 41 | 调用已安装的 Torch/TorchNPU/CANN 算子或组合 | 各算子单独限制 SoC、dtype 和布局 |
-| `ascendc` | 9 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C/Ascend950 各三项；各自固定支持域 |
+| `ascendc` | 10 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C/Ascend950 各三项，另加 A3-only `attention.mla_prolog` 一项；各自固定支持域 |
 | `triton` | 2 | 后端目录内的 Triton kernel，首次需要时 JIT | Matmul 与 Gemma fused Add RMSNorm |
 | `reference` | 38 | 显式参考计算 | 不作为默认 auto 的运行失败兜底 |
 
@@ -62,6 +62,7 @@
 | <a id="op-attention-single-prefill"></a>`attention.single_prefill` | `cann` | bfloat16, float16 | Ascend950 | **Partial** — logical=NHD,HND；head_dim 为 64 或 128 | [test_attention_cann.py](../../tests/operators/test_attention_cann.py)、[test_attention_reference.py](../../tests/framework/test_attention_reference.py) |
 | <a id="op-attention-sparse-flash-attention"></a>`attention.sparse_flash_attention` | `ascendc` | bfloat16, float16, float32, int32 | Ascend910B | **Partial** — 2 组完整能力组合；MLA D=512; KV head=1; 连续 ND；BSND/TND/分页；AOT-only；原生 dtype 组合数=2 | [test_sparse_flash_attention.py](../../tests/framework/test_sparse_flash_attention.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_sparse_flash_attention.py) |
 | `attention.sparse_flash_attention` | `ascendc` | bfloat16, float16, float32, int32 | Ascend910C | **Partial** — 共用 arch22 源码/runner；A3 真机数值未验证； 2 组完整能力组合；MLA D=512; KV head=1; 连续 ND；BSND/TND/分页；AOT-only；原生 dtype 组合数=2 | [test_sparse_flash_attention.py](../../tests/framework/test_sparse_flash_attention.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_sparse_flash_attention.py) |
+| <a id="op-attention-mla-prolog"></a>`attention.mla_prolog` | `ascendc` | bfloat16, int8, float32, int32 | Ascend910C | **Partial** — fixed HIDDEN=5120/Q_LORA=1280/KV_LORA=512/D_NOPE=448/D_ROPE=64/HEAD_DIM=512; local `q_head_num` attribute N=1..64 (default 64) for TP sharding, w_qb `[N*16,80,16,32]` NZ, w_qb_scale `[N*512]`; T=1..4096; AOT-only; single launch; returns `q_output[T,N,512]` and unsharded `qr[T,1280]=q_norm(wq_a(x))`; `rms_norm_eps` attribute (default 1e-6, finite and >0; DS4.1 may pass 1e-20); `kv_cache` in-place with sentinel preservation; `update_kv_cache` attribute (default true): true keeps the fused `kv_cache` scatter and returns `(q_output,qr)` (the declared `kv` output is never written), false ignores `slot_indices`/`kv_cache` (required-but-ignored native inputs), writes the same BF16 row to `kv[T,512]` and returns `(q_output,qr,kv)`; A3 build + T=1/96/193 AOT numeric cases; H=64 byte-identical to the N=64 contract; H=1/16/31/32/63/64 device cases in both modes | [test_mla_prolog.py](../../tests/test_mla_prolog.py)、[test_operator_packages_real.py](../../tests/test_operator_packages_real.py) |
 | <a id="op-cascade-merge-state"></a>`cascade.merge_state` | `cann` | bfloat16, float16, float32 | Ascend910B, Ascend910C, Ascend950 | **Supported** — 使用公共 Tensor 契约及 runner 校验；存在目标后端数值测试定义 | [test_cascade.py](../../tests/framework/test_cascade.py)、[test_page_and_states.py](../../tests/framework/test_page_and_states.py) |
 | `cascade.merge_state` | `reference` | 由完整组合约束 | 未按 SoC 限制（仍受执行实现约束） | **Partial** — 显式参考；Host/数值对照测试不覆盖所有登记组合 | [test_cascade.py](../../tests/framework/test_cascade.py)、[test_page_and_states.py](../../tests/framework/test_page_and_states.py) |
 | <a id="op-cascade-merge-states"></a>`cascade.merge_states` | `cann` | bfloat16, float16, float32 | Ascend950 | **Supported** — 使用公共 Tensor 契约及 runner 校验；存在目标后端数值测试定义 | [test_cascade.py](../../tests/framework/test_cascade.py)、[test_page_and_states.py](../../tests/framework/test_page_and_states.py) |
@@ -139,9 +140,9 @@
 
 ## 图与实验实现
 
-图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 89 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。9 条生产 Ascend C 均为 `not_capturable`。
+图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 89 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。10 条生产 Ascend C 均为 `not_capturable`。
 
-实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 90 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
+实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 91 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
 
 ## 安装与构建边界
 

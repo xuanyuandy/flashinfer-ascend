@@ -20,6 +20,18 @@ def _outputs(result, count):
     return outputs
 
 
+def case_output_count(operator, cases, configuration):
+    """Public output count for one case; operators may vary it per case.
+
+    ``operator.output_names`` is the full declared output set. An optional
+    ``cases.output_count(configuration)`` hook opts into per-case subsets (for
+    example an optional diagnostic output); everything else keeps the fixed
+    one-output-per-declared-name contract.
+    """
+    counter = getattr(cases, "output_count", None)
+    return len(operator.output_names) if counter is None else int(counter(configuration))
+
+
 def numerical_cases(torch, torch_npu, name, *, first_only=False, kernel_id=None):
     operator = definition(name)
     cases = cases_module(name)
@@ -30,11 +42,12 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False, kernel_id=None)
     observations = {}
     for index, configuration in enumerate(parameters):
         args, options, expected = cases.sample(torch, torch_npu, **configuration)
+        count = case_output_count(operator, cases, configuration)
         if kernel_id is not None:
             options = dict(options, kernel_id=kernel_id)
         originals = tuple(t for t in tuple(args) + tuple(options.values()) if isinstance(t, torch.Tensor))
         pointers = tuple(t.data_ptr() for t in originals)
-        outputs = _outputs(call(*args, **options), len(operator.output_names))
+        outputs = _outputs(call(*args, **options), count)
         if hasattr(cases, "verify_effect"):
             cases.verify_effect(torch, call, args, options, outputs)
         supplied = tuple(allocate_output(OutputSpec(tuple(t.shape), str(t.dtype).removeprefix("torch."), t.device))
