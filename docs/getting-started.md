@@ -55,7 +55,7 @@ for item in get_global_registry().descriptors(op="gemm.matmul"):
     print(item.kernel_id, item.backend.value, item.compile_mode.value)
 ```
 
-`python -m flashinfer list-kernels` 当前只列 Ascend C 生产声明；完整目录用 registry 查询。Reference 需要显式选择，不是执行失败时的自动 CPU 兜底。
+`python -m flashinfer list-kernels` 默认列出原生生产声明，加 `--all` 可查看全部后端。Reference 需要显式选择，不是执行失败时的自动 CPU 兜底。
 
 ## AOT 与装后检查
 
@@ -67,4 +67,4 @@ A2 上可对已安装的 SFA 单项执行：
 python -B -m flashinfer selftest --kernel-id ascendc/attention/sparse_flash_attention/native/Ascend910B
 ```
 
-不指定 ID 时，安装包 selftest 按实际 SoC 选择本机条目：910B 包含 A2/A3 各自的 GMM/SwiGLU/量化、SFA、PermuteQkv、UnpermuteQkv、Histgram、MergeChunk2、CATLASS prefill，共十四项；单机检查对应七项并打印范围。950 包含 Matmul、MatmulBiasSiLU、CATLASS prefill。其他 SoC 不计为 PASS，A3 真机数值未验证；各目标需分别验收，所选范围必须零失败、零跳过。编译与 PREBUILT 打包见 [交付说明](ascendc_aot.md)，完整验收规则见 [测试规范](development/testing.md)。
+不指定 ID 时，安装包 selftest 从 wheel 元数据选择实际 SoC 的条目，并打印本机项数及随包总数。可用 `python -m flashinfer list-kernels` 查看包里的原生 kernel ID。其他 SoC 不计为 PASS，A3 真机数值未验证；各目标需分别验收，所选范围必须零失败、零跳过。编译与 PREBUILT 打包见 [交付说明](ascendc_aot.md)，完整验收规则见 [测试规范](development/testing.md)。

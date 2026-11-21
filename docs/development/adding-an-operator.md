@@ -8,10 +8,13 @@
 
 ## 作者文件
 
+已有算子族的常规 PR 提交本算子的定义、实现、独立数值样例和一份审核记录。特有的输入约束或边界行为放在算子专项测试里，面向用户的新参数写入对应算子页。根 README、通用测试和发布检查只在框架行为变化时更新。
+
 | 文件 | 作者职责 |
 | --- | --- |
 | `flashinfer/operators/<domain>/<op>/operator.py` | OperatorDefinition：公共 schema、输出名、元数据 infer、必要值校验；既有富接口可引用 public_entry |
 | 同目录 `cases.py` | 新 schema 直接算子必须提供独立 CPU golden、样例、参数矩阵和逐输出容差；必要时验证某项功能实际生效 |
+| `tests/inventory/<op>.py` | 为新增实现写独立审核记录，多个目标或后端可共用一个文件 |
 | `flashinfer/<backend>/<domain>/<op>/implementation.py` | 后端声明、Support、runner/工厂；原生实现还声明 NativeBinding/BuildConfig |
 | 同目录 `runner.py` | 选型后将逻辑参数适配到后端，处理真实启动、workspace、stream 和资源寿命 |
 | `csrc/kernels/<domain>/<op>/op_kernel/` | Ascend C 设备实现；统一入口与实际提供的 arch22/arch35 分支 |
@@ -96,9 +99,13 @@ python -B -m flashinfer.operators check
 python -B -m flashinfer.operators build --kernel-id ascendc/attention/sparse_flash_attention/native/Ascend910B --output-dir build/sfa-aot
 ```
 
-该 build 会冻结完整原生目录再只编译所选项，外部依赖要求见 [编译与交付](../ascendc_aot.md)。新增生产实现还要独立审核 `tests/production_inventory.py` 的精确预期；不能让生成器自动修改测试答案。
+该 build 会冻结完整原生目录再只编译所选项，外部依赖要求见 [编译与交付](../ascendc_aot.md)。
 
-已有通用验收自动发现 cases，复用 out 身份、非默认 stream、队列、缺包/损坏包等场景；新增语义仍要补专门正反例。验收定义不等于真机通过，具体规则见 [测试规范](testing.md)。
+在 `tests/inventory/<op>.py` 中导出 `KERNELS`，每个 `ReviewedKernel` 明列实现 ID、后端和独立审核的 `CapabilitySpec`。实验实现用 `scope="experimental"` 标明。原生发布目标还填写 `native_recipe=(recipe_id, implementation)`。有特殊输入约束的非原生实现可提供纯元数据的 `smoke_signature`，用于无编译器的路由测试。有源码身份的非原生实现通过 `source=(language, target_soc)` 明确预期。请从算子规格写这些值，勿导入待测 implementation 或复制生成索引。[多 SoC 审核记录示例](../../tests/inventory/sparse_flash_attention.py)
+
+通用测试用这些审核记录精确核对注册表、分 SoC 的 wheel 内容和 selftest 执行范围。运行 `python -m flashinfer list-kernels --all` 可查看当前环境的实际登记。
+
+通用 AOT 验收按原生声明的物理 SoC 自动收集 cases，复用 out 身份、非默认 stream、队列、缺包/损坏包等场景；新增语义仍要补专门正反例。验收定义不等于真机通过，具体规则见 [测试规范](testing.md)。
 
 ## 可直接阅读的实现
 

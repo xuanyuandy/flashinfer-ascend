@@ -1,6 +1,6 @@
 """Installed selftest must fail closed without sources, devices, or artifacts."""
 
-from tests.production_inventory import PRODUCTION
+from tests.production_inventory import PRODUCTION, native_kernel_ids
 
 from dataclasses import asdict
 import json
@@ -167,8 +167,12 @@ def test_shared_wheel_selftest_scopes_to_physical_soc_without_counting_foreign_p
     assert selftest.run_selftest() == 0
     assert seen == [d.kernel_id for d in descriptors if d.target_soc == soc]
     output = capsys.readouterr().out
-    assert '4 of 8 packaged kernels; other SoCs are not runtime-validated' in output
-    assert 'Summary: 4 PASS, 0 FAIL, 0 SKIP (total=4)' in output
+    local = native_kernel_ids(soc)
+    packaged = native_kernel_ids("Ascend910B", "Ascend910C")
+    assert sorted(seen) == sorted(local)
+    assert sorted(d.kernel_id for d in descriptors) == sorted(packaged)
+    assert f'{len(local)} of {len(packaged)} packaged kernels; other SoCs are not runtime-validated' in output
+    assert f'Summary: {len(local)} PASS, 0 FAIL, 0 SKIP (total={len(local)})' in output
 
 
 def test_shared_wheel_selftest_rejects_wrong_hardware_before_executing(monkeypatch, capsys):

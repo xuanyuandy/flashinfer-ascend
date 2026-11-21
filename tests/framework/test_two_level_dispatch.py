@@ -1,8 +1,9 @@
 """T19A: real registry partition, source identities and both decision levels."""
 
-from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS, STACK_COUNTS
+from tests.production_inventory import (
+    DEFAULT_DESCRIPTOR_COUNT, LEGACY_KERNEL_IDS, PRODUCTION_KERNEL_IDS, STACK_COUNTS, STACK_KERNEL_IDS,
+)
 
-from collections import Counter
 from dataclasses import replace
 import importlib
 from itertools import permutations
@@ -63,45 +64,14 @@ def test_builtin_partition_is_complete_disjoint_and_has_no_within_stack_data():
     from flashinfer.runtime.registry import _builtin_descriptors
 
     legacy = _builtin_descriptors()
-    assert len(legacy) == 81
+    assert sorted(d.kernel_id for d in legacy) == sorted(LEGACY_KERNEL_IDS)
     assert {d.kernel_id for d in flat} - {d.kernel_id for d in legacy} == PRODUCTION_KERNEL_IDS
     assert {id(d) for d in flat} == {id(d) for d in registry.descriptors()}
-    duplicates = {
-        (s.stack_id, op): frozenset(d.kernel_id for d in s.descriptors if d.op == op)
-        for s in stacks for op, count in Counter(d.op for d in s.descriptors).items()
-        if count > 1
+    actual_groups = {
+        (s.stack_id, op): {d.kernel_id for d in s.descriptors if d.op == op}
+        for s in stacks for op in {d.op for d in s.descriptors}
     }
-    assert duplicates == {
-        ("ascendc", "ascendc.single_prefill_catlass"): frozenset({
-            "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
-            "ascendc/t4/flash_attention/catlass/op_package/Ascend910C",
-            "ascendc/t4/flash_attention/catlass/op_package/Ascend950",
-        }),
-        ("ascendc", "gemm.grouped_matmul_swiglu_quant"): frozenset({
-            "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
-            "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910C",
-        }),
-        ("ascendc", "attention.permute_qkv"): frozenset({
-            "ascendc/attention/permute_qkv/native/Ascend910B",
-            "ascendc/attention/permute_qkv/native/Ascend910C",
-        }),
-        ("ascendc", "attention.unpermute_qkv"): frozenset({
-            "ascendc/attention/unpermute_qkv/native/Ascend910B",
-            "ascendc/attention/unpermute_qkv/native/Ascend910C",
-        }),
-        ("ascendc", "fused_moe.histgram"): frozenset({
-            "ascendc/fused_moe/histgram/native/Ascend910B",
-            "ascendc/fused_moe/histgram/native/Ascend910C",
-        }),
-        ("ascendc", "fused_moe.merge_chunk2"): frozenset({
-            "ascendc/fused_moe/merge_chunk2/native/Ascend910B",
-            "ascendc/fused_moe/merge_chunk2/native/Ascend910C",
-        }),
-        ("ascendc", "attention.sparse_flash_attention"): frozenset({
-            "ascendc/attention/sparse_flash_attention/native/Ascend910B",
-            "ascendc/attention/sparse_flash_attention/native/Ascend910C",
-        }),
-    }
+    assert actual_groups == STACK_KERNEL_IDS
     assert before == [(d.kernel_id, d.fingerprint) for d in registry.descriptors()]
     assert registry.stacks(op="missing.op") == ()
 

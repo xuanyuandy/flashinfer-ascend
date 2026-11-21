@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import sys
 from pathlib import Path
 from typing import Optional, Sequence
@@ -73,7 +74,22 @@ def _parity_check(args: argparse.Namespace) -> int:
     return int(args.require_complete and not all(m.is_complete for m in manifests))
 
 
-def _list_kernels(_args: argparse.Namespace) -> int:
+def _list_kernels(args: argparse.Namespace) -> int:
+    if args.all:
+        from .runtime import get_global_registry
+
+        descriptors = get_global_registry().descriptors()
+        print("kernel_id\top\tbackend\tdeclared_soc\tgraph_capability")
+        for descriptor in descriptors:
+            socs = ",".join(descriptor.capability.soc_models) or "*"
+            print(descriptor.kernel_id, descriptor.op, descriptor.backend.value, socs,
+                  descriptor.graph_capability.value, sep="\t")
+        ops = {d.op for d in descriptors}
+        counts = Counter(d.backend.value for d in descriptors)
+        by_backend = ", ".join(f"{name}={count}" for name, count in sorted(counts.items()))
+        print(f"{len(ops)} logical ops, {len(descriptors)} implementations ({by_backend})")
+        return 0
+
     from .ascendc import ascendc_descriptors
     descriptors = ascendc_descriptors()
     profiles = load_attention_capability_manifest(
@@ -314,6 +330,8 @@ def build_parser() -> argparse.ArgumentParser:
     kernels = subparsers.add_parser(
         "list-kernels", help="list runtime-visible kernel descriptors"
     )
+    kernels.add_argument("--all", action="store_true",
+                         help="show all globally registered backends, declared SoCs and graph capabilities")
     kernels.set_defaults(handler=_list_kernels)
 
     capabilities = subparsers.add_parser(

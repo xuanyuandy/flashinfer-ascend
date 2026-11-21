@@ -90,7 +90,7 @@ for descriptor in registry.descriptors(op="gemm.matmul"):
 | `FLASHINFER_AOT_ALL` / `FLASHINFER_AOT_CONFIG` / `FLASHINFER_AOT_PREBUILT` | 构建时互斥模式；详见编译与交付，不是运行期选型优先级 |
 | `FLASHINFER_AOT_SOCS` / `FLASHINFER_AOT_CACHE_DIR` | 交付分组的显式选择与 AOT 缓存，B/C 共 910B 包；运行时仍按物理 SoC 选型，不扩大实现能力 |
 
-代码：[dispatch_order](../../flashinfer/config.py#L42)、[_db_path](../../flashinfer/tuning/store.py#L40)、[build_and_load](../../flashinfer/jit/build.py#L123)、[_list_kernels](../../flashinfer/cli.py#L76)。CLI 的 `show-config` 只显示 config 暴露的子集，`list-kernels` 实际只列 Ascend C 生产声明；完整全局目录使用上述 registry 查询。
+代码：[dispatch_order](../../flashinfer/config.py#L42)、[_db_path](../../flashinfer/tuning/store.py#L40)、[build_and_load](../../flashinfer/jit/build.py#L123)、[_list_kernels](../../flashinfer/cli.py#L77)。CLI 的 `show-config` 只显示 config 暴露的子集，`list-kernels` 默认列出原生生产声明，`list-kernels --all` 显示全局注册表。
 
 ## 回退与失败语义
 

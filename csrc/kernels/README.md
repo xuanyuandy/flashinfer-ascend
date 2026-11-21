@@ -5,14 +5,14 @@ The packaged registry is `flashinfer/data/kernels/registry.json` and is
 populated by the production Ascend C declarations. Capability claims require real evidence. Registration is independent of optional
 binaries; execution requires a matching frozen contract and verified artifact.
 
-All Ascend C operator sources live under `csrc/kernels/<domain>/<op>/`:
+Ascend C operator sources live under `csrc/kernels/<domain>/<op>/`. Use `python -m flashinfer list-kernels` for the current native registry. Examples include
 
 - `gemm/matmul_probe/`: bounded v2 native and CATLASS ACLNN probes. Frozen v1/raw
   launch fixtures live in `tests/fixtures/legacy_ascendc/`, outside build inputs.
 - `gemm/matmul/` and `gemm/matmul_bias_silu/`: production native implementations.
 - `gemm/grouped_matmul_swiglu_quant/`: grouped integer GEMM, SwiGLU and quantization.
 - `attention/flash_attention/`: production CATLASS implementation.
-- `attention/sparse_flash_attention/`: arch22 MLA sparse attention, with an Ascend910B AOT-only declaration.
+- `attention/sparse_flash_attention/`: arch22 MLA sparse attention, with separate A2 and A3 AOT declarations.
 
 Each operator owns `op_host/` (OpDef, inference and tiling), `op_kernel/`
 (device code) and `include/` (shared tiling layouts). Production recipes are generated under
@@ -40,9 +40,9 @@ live in architecture directories, following vLLM-Ascend's per-operator layout:
 └── include/                 # shared host/device wire layouts
 ```
 
-GMM and SparseFlashAttention implementations and tilers currently live in `arch22/`. Matmul,
-MatmulBiasSilu and CATLASS FlashAttention implementations live in `arch35/`;
-their entries reject other device architectures at compile time. The native
+GMM and SparseFlashAttention implementations and tilers currently live in `arch22/`. Matmul and
+MatmulBiasSilu use `arch35/`. CATLASS FlashAttention has both `arch22/` and
+`arch35/` implementations. The native
 FP32 Matmul probe uses `common/`; its CATLASS variant uses `arch35/`.
 Directories describe actual implementations, and do not expand their declared
 SoC support. Host ABI and Python runners remain shared. Source moves require

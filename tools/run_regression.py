@@ -31,8 +31,8 @@ def junit_counts(path):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--profile", choices=SCOPES, default="quick")
-    parser.add_argument("--soc", choices=("auto", "all", "Ascend910B", "Ascend910C", "Ascend950"),
-                        default="auto", help="Hardware scope; incompatible-chip tests are deselected, not counted as pass")
+    parser.add_argument("--soc", default="auto", metavar="auto|all|A2|A3|A5|SOC",
+                        help="Hardware scope passed to pytest. A2/A3/A5 and device model names are accepted.")
     parser.add_argument("--log-dir", type=Path,
                         help="New directory for this run; an existing directory is rejected")
     parser.add_argument("paths", nargs="*", default=["tests"], help="Optional changed-area test paths")

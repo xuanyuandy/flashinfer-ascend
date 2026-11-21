@@ -132,10 +132,11 @@ def test_query_returns_graph_capability_and_parameters_without_execution(capabil
 
 def test_only_proven_record_declares_capture_and_keeps_others_conservative():
     from tools.audit_graph_replay import audit_declarations
+    from tests.production_inventory import LEGACY_KERNEL_IDS
 
     registry = KernelRegistry(_builtin_descriptors())
     audit_declarations(registry.descriptors())
-    assert len(registry.descriptors()) == 81
+    assert sorted(d.kernel_id for d in registry.descriptors()) == sorted(LEGACY_KERNEL_IDS)
     for descriptor in registry.descriptors():
         if descriptor.kernel_id == "cann/attention/single_decode_fia_v1":
             assert registry.graph_requirements(descriptor.kernel_id) == (

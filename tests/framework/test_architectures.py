@@ -67,6 +67,7 @@ from flashinfer.jit import (
 )
 from flashinfer.jit.build import _build_record
 from flashinfer.operators.implementation import implementations
+from tests.production_inventory import PRODUCTION, native_kernel_ids
 from flashinfer.runtime import (
     Backend,
     CapabilitySpec,
@@ -106,18 +107,24 @@ def test_native_declarations_close_the_selected_architecture_and_platform_tiler(
         )
 
 
+# The independent inventory determines which physical targets must be tested.
+ARCH22_A2 = {(op, implementation) for _, op, _, implementation, soc in PRODUCTION if soc == "Ascend910B"}
+ARCH22_SHARED = sorted((op, implementation) for _, op, _, implementation, soc in PRODUCTION
+                       if soc == "Ascend910C" and (op, implementation) in ARCH22_A2)
+ARCH22_NATIVE_IDS = sorted(key for key, op, _, implementation, soc in PRODUCTION
+                           if soc == "Ascend910C" and implementation == "native"
+                           and (op, implementation) in ARCH22_A2)
+
+
+def _arch22_device_sources():
+    native = {declaration.kernel_id: declaration.native for declaration in implementations(backend="ascendc")}
+    return sorted({(Path(native[key].source_dir) / native[key].build.device).relative_to("csrc/kernels").as_posix()
+                   for key in ARCH22_NATIVE_IDS})
+
+
 @pytest.mark.parametrize(
     "entry,wrong_core,required",
-    [
-        (
-            "gemm/grouped_matmul_swiglu_quant/op_kernel/grouped_matmul_swiglu_quant.cpp",
-            310,
-            "arch22",
-        ),
-        ("attention/permute_qkv/op_kernel/permute_qkv.cpp", 310, "arch22"),
-        ("attention/unpermute_qkv/op_kernel/unpermute_qkv.cpp", 310, "arch22"),
-        ("moe/histgram/op_kernel/histgram.cpp", 310, "arch22"),
-        ("moe/merge_chunk2/op_kernel/merge_chunk2.cpp", 310, "arch22"),
+    [(entry, 310, "arch22") for entry in _arch22_device_sources()] + [
         ("gemm/matmul/op_kernel/native.cpp", 220, "arch35"),
         ("gemm/matmul_bias_silu/op_kernel/native.cpp", 220, "arch35"),
         ("attention/flash_attention/op_kernel/catlass.cpp", 200, "arch22 or arch35"),
@@ -330,11 +337,10 @@ from flashinfer.jit.op_package import package_target
 from flashinfer.runtime import DispatchError, HardwareSignature, dispatch
 
 
-@pytest.mark.parametrize("name", ["single_prefill_catlass", "grouped_matmul_swiglu_quant",
-                                 "sparse_flash_attention", "permute_qkv", "unpermute_qkv", "histgram", "merge_chunk2"])
-def test_arch22_variants_share_sources_and_runner_but_not_frozen_identity(name):
+@pytest.mark.parametrize("op,implementation", ARCH22_SHARED)
+def test_arch22_variants_share_sources_and_runner_but_not_frozen_identity(op, implementation):
     variants = {d.native.target_soc: d for d in implementations(backend="ascendc")
-                if d.operator.name == name}
+                if d.op == op and d.native.build.implementation == implementation}
     b, c = (variants[soc] for soc in ("Ascend910B", "Ascend910C"))
     assert b.runner_factory is c.runner_factory
     assert b.native.source_dir == c.native.source_dir
@@ -352,11 +358,9 @@ def test_arch22_variants_share_sources_and_runner_but_not_frozen_identity(name):
 
 
 def test_shared_wheel_inventory_is_exactly_both_physical_targets():
-    expected = {d.kernel_id for d in implementations(backend="ascendc")
-                if d.native.target_soc in ("Ascend910B", "Ascend910C")}
-    assert set(production_kernel_ids("Ascend910B")) == expected
-    assert set(production_kernel_ids("Ascend910C")) == expected
-    assert len(expected) == 14
+    expected = sorted(native_kernel_ids("Ascend910B", "Ascend910C"))
+    assert sorted(production_kernel_ids("Ascend910B")) == expected
+    assert sorted(production_kernel_ids("Ascend910C")) == expected
 
 
 @pytest.mark.parametrize("alias", ["Ascend910C", "Ascend910_9362", "Ascend910_9391", "Ascend910_9392"])
@@ -386,14 +390,12 @@ def test_shared_public_semantics_route_to_only_the_physical_soc(name, soc):
 
 
 @pytest.mark.real_compile
-@pytest.mark.parametrize("name", ["grouped_matmul_swiglu_quant", "sparse_flash_attention", "permute_qkv", "unpermute_qkv", "histgram", "merge_chunk2"])
-def test_a3_shared_arch22_native_package_cross_compile(name, tmp_path):
+@pytest.mark.parametrize("kernel_id", ARCH22_NATIVE_IDS)
+def test_a3_shared_arch22_native_package_cross_compile(kernel_id, tmp_path):
     from flashinfer.aot.build import build_production_packages
     from flashinfer.jit.cache import verify_build_directory
     from flashinfer.jit.op_package import verify_op_package
 
-    kernel_id = next(d.kernel_id for d in implementations(backend="ascendc")
-                     if d.operator.name == name and d.native.target_soc == "Ascend910C")
     release, = build_production_packages(kernel_ids=(kernel_id,), output_dir=tmp_path / "release",
         cache_dir=os.environ.get("FLASHINFER_AOT_CACHE_DIR", tmp_path / "cache"))
     _, recipe, spec = load_contract(kernel_id)

@@ -25,6 +25,25 @@ from flashinfer.attention import (
 from flashinfer.cli import main
 
 
+def test_list_all_kernels_reports_the_reviewed_catalog(capsys):
+    from tests.production_inventory import REVIEWED_BACKENDS, REVIEWED_CAPABILITIES, STACK_COUNTS
+
+    assert main(["list-kernels", "--all"]) == 0
+    header, *rows, summary = capsys.readouterr().out.splitlines()
+    assert header.split("\t") == ["kernel_id", "op", "backend", "declared_soc", "graph_capability"]
+    actual = [row.split("\t") for row in rows]
+    assert [row[:4] for row in actual] == [
+        [key, cap["op"], REVIEWED_BACKENDS[key], ",".join(cap["soc_models"]) or "*"]
+        for key, cap in sorted(REVIEWED_CAPABILITIES.items())
+    ]
+    graph = {key: mode for key, _, _, _, mode in actual}
+    assert graph["cann/attention/single_decode_fia_v1"] == "needs_param_update"
+    assert graph["ascendc/gemm/matmul/native/op_package/Ascend950"] == "not_capturable"
+    ops = {cap["op"] for cap in REVIEWED_CAPABILITIES.values()}
+    counts = ", ".join(f"{name}={count}" for name, count in sorted(STACK_COUNTS.items()))
+    assert summary == f"{len(ops)} logical ops, {len(actual)} implementations ({counts})"
+
+
 def tensor(value):
     return ReferenceTensor.from_nested(value, dtype="float32", device="cpu")
 

@@ -56,7 +56,7 @@ ALL、CONFIG、PREBUILT 互斥。原生构建与安装要求见 [编译交付](.
 | 命令入口 | 子命令或动作 | 功能 |
 | --- | --- | --- |
 | `python -m flashinfer` | `show-config` | 显示 config 暴露的配置子集 |
-| 同上 | `list-kernels` | 列出 Ascend C 生产声明；完整目录用 registry |
+| 同上 | `list-kernels [--all]` | 默认列出原生生产声明，`--all` 查询全部已登记后端及声明 SoC |
 | 同上 | `selftest --kernel-id ...` | 安装包 AOT 自检，ID 可重复 |
 | 同上 | `parity-report --scope all`、`parity-check` | 读取/校验版本化 API 台账，不执行目标算子 |
 | 同上 | `attention-capabilities` | 查看 AttentionPlan profile 目录，不等于全局 CANN 支持表 |

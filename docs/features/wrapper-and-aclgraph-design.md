@@ -14,8 +14,7 @@
 2. 为可控制的后端实现准备结果复用，减少重复执行中的原生准备工作。
 3. 将满足捕获约束的执行路径接入 NPU 图模式；调用方拥有图和模型捕获区域。
 
-当前源码全局目录有 98 个 Descriptor、52 个逻辑 op；17 条生产 Ascend C 实现均为 `NOT_CAPTURABLE`。
-其中 97 条声明 `NOT_CAPTURABLE`，仅 `cann/attention/single_decode_fia_v1` 声明 `NEEDS_PARAM_UPDATE`，没有 `CAPTURE_SAFE` 实现。
+按实现查看图能力可运行 `python -m flashinfer list-kernels --all`。目前只有 `cann/attention/single_decode_fia_v1` 声明 `NEEDS_PARAM_UPDATE`，其余默认实现均声明 `NOT_CAPTURABLE`。
 这些数字按完整源码发现统计；分芯片 wheel 的目录会裁剪，不能把目录条数视为当前设备可运行条数。
 上游公共 API 基线由 `tools/metadata/api_parity.json` 与 `attention_api_parity.json` 固定为 `2895577720741ddfedff118202c89584996b8875`。
 
@@ -119,7 +118,7 @@ csrc/
 | 实现类型 | 普通调用 | 原生计划复用 | NPU 图模式 |
 | --- | --- | --- | --- |
 | CANN 直接路由 | 按现有能力 | 仅能复用外部暴露的状态及框架准备结果 | 按具体接口证据；不能整类拒绝或放行 |
-| 自带 Ascend C 现有 op-package | 已有有限验证，按算子/SoC 区分 | 当前未完成 | 当前 9 条均为 `NOT_CAPTURABLE` |
+| 自带 Ascend C 现有 op-package | 已有有限验证，按算子/SoC 区分 | 当前未完成 | 当前均为 `NOT_CAPTURABLE` |
 | 自带 Ascend C prepared 候选 | 拟新增 | 拟支持 | 完成真实验证后再登记 |
 | Triton 实现 | 按既有入口 | 可准备编译模块、配置和辅助资源 | 需独立验证启动路径、同步与资源约束 |
 

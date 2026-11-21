@@ -1,6 +1,8 @@
 """Device/build setup stays outside public-API numerical tests."""
 
 import os
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 import pytest
 
@@ -29,13 +31,11 @@ def npu_runtime(device_runtime):
         torch.npu.set_option({"ALLOW_INTERNAL_FORMAT": previous.decode("ascii")})
 
 
-@pytest.fixture(scope="session")
-def local_aot_release(device_runtime, tmp_path_factory):
+def _prepare_local_aot(root):
     from flashinfer.aclnn.build import build_adapter
     from flashinfer.aot.build import build_production_packages
     from flashinfer.runtime import Backend, current_hardware, get_global_registry
 
-    root = tmp_path_factory.mktemp("operator-accuracy-aot")
     release = os.environ.get("FLASHINFER_OPERATOR_TEST_RELEASE")
     adapter = os.environ.get("FLASHINFER_OPERATOR_TEST_ADAPTER")
     if release is None:
@@ -52,6 +52,49 @@ def local_aot_release(device_runtime, tmp_path_factory):
     return {"FLASHINFER_AOT_PATHS": str(release), "FLASHINFER_ACLNN_ADAPTER_PATH": str(adapter)}
 
 
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtestloop(session):
+    if session.testsfailed or session.config.option.collectonly or not any(
+        "aot_runtime" in item.fixturenames or item.get_closest_marker("operator_aot") is not None
+        for item in session.items
+    ):
+        return
+    from flashinfer.ascendc import load_contract
+    from flashinfer.jit.discovery import AotMissingError, AotPackageIndex
+    from flashinfer.operators.implementation import implementations
+    from flashinfer.operators.testing import vendor_directory, vendor_search_path
+    from flashinfer.runtime import current_hardware
+
+    # CANN snapshots vendor search paths on its first operator, including CANN
+    # operators from earlier tests in the same process. Prepare before test one.
+    temporary = TemporaryDirectory(prefix="flashinfer-operator-tests-")
+    session.config.add_cleanup(temporary.cleanup)
+    root = Path(temporary.name)
+    release = _prepare_local_aot(root)
+    session.config._flashinfer_operator_release = release
+    index = AotPackageIndex(roots=release["FLASHINFER_AOT_PATHS"].split(os.pathsep))
+    soc = current_hardware().soc_model
+    vendors = []
+    for impl in implementations(backend="ascendc"):
+        if impl.native.target_soc != soc:
+            continue
+        descriptor, _, spec = load_contract(impl.kernel_id)
+        try:
+            match = index.find(spec, descriptor=descriptor, target_soc=soc)
+        except AotMissingError:
+            continue  # A supplied subset is valid. Its requested kernels must still load.
+        vendors.append(vendor_directory(match, root))
+    environment = pytest.MonkeyPatch()
+    session.config.add_cleanup(environment.undo)
+    environment.setenv("ASCEND_CUSTOM_OPP_PATH", vendor_search_path(vendors, replace={Path(p).name for p in vendors}))
+
+
+@pytest.fixture(scope="session")
+def local_aot_release(device_runtime, request, tmp_path_factory):
+    release = getattr(request.config, "_flashinfer_operator_release", None)
+    return release if release is not None else _prepare_local_aot(tmp_path_factory.mktemp("operator-accuracy-aot"))
+
+
 @pytest.fixture
 def aot_runtime(local_aot_release, monkeypatch):
     for name, value in local_aot_release.items():
@@ -62,7 +105,8 @@ def aot_runtime(local_aot_release, monkeypatch):
 
 @pytest.fixture(params=[
     "cann",
-    pytest.param("ascendc", marks=[pytest.mark.real_compile, pytest.mark.requires_soc("Ascend950")]),
+    pytest.param("ascendc", marks=[pytest.mark.real_compile, pytest.mark.requires_soc("Ascend950"),
+                                  pytest.mark.operator_aot]),
     pytest.param("triton", marks=[pytest.mark.real_compile, pytest.mark.requires_soc("Ascend950")]),
 ])
 def matmul_backend(request):

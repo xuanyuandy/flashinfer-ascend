@@ -200,7 +200,7 @@ def test_config_selects_implementations_within_the_wheel_chip(
     from flashinfer.aclnn import build as aclnn_build
     from flashinfer.ascendc import _contracts
     from flashinfer.jit import cache
-    from tests.production_inventory import PRODUCTION
+    from tests.production_inventory import native_kernel_ids
 
     monkeypatch.chdir(ROOT)
     monkeypatch.setenv("FLASHINFER_AOT_SOCS", "Ascend910B")
@@ -224,11 +224,12 @@ def test_config_selects_implementations_within_the_wheel_chip(
     def compile_config(value, **options):
         pytest.fail("wheel CONFIG must select exact frozen variants across its family")
 
+    native_recipe = None if selector == "all" else (selector, "catlass")
+    expected = sorted(native_kernel_ids("Ascend910B", "Ascend910C", native_recipe=native_recipe))
+
     def compile_all(**options):
         calls.append("a2a3")
-        assert set(options["kernel_ids"]) == {row[0] for row in PRODUCTION
-            if row[-1] in ("Ascend910B", "Ascend910C")
-            and (selector == "all" or row[2] == "flash_attention")}
+        assert sorted(options["kernel_ids"]) == expected
         publish(options["kernel_ids"], options["output_dir"])
 
     monkeypatch.setattr(build, "compile_and_package", compile_config)
@@ -240,7 +241,7 @@ def test_config_selects_implementations_within_the_wheel_chip(
     metadata = json.loads((tmp_path / "build/flashinfer/data/wheel.json").read_text())
     assert metadata["family"] == "a2a3"
     assert metadata["soc_models"] == ["Ascend910B", "Ascend910C"]
-    assert len(metadata["kernel_ids"]) == (2 if selector == "flash_attention" else 8)
+    assert sorted(metadata["kernel_ids"]) == expected
 
 
 @pytest.mark.parametrize("value", ["0", ""])

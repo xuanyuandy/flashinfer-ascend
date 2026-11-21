@@ -1,6 +1,6 @@
 """T18A: declarations and observations, without a compiler or loader."""
 
-from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, LEGACY_KERNEL_IDS, PRODUCTION_KERNEL_IDS, SOURCES
 
 import hashlib
 import json
@@ -279,7 +279,7 @@ def test_all_builtin_records_are_queryable_without_inventing_metadata():
     from flashinfer.runtime.registry import _builtin_descriptors
 
     descriptors = tuple(registry.get(d.kernel_id) for d in _builtin_descriptors())
-    assert len(descriptors) == 81
+    assert sorted(d.kernel_id for d in descriptors) == sorted(LEGACY_KERNEL_IDS)
     assert len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
     assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in descriptors} == PRODUCTION_KERNEL_IDS
     before = [(d.to_dict(), d.fingerprint) for d in registry.descriptors()]
@@ -287,10 +287,11 @@ def test_all_builtin_records_are_queryable_without_inventing_metadata():
     for d in descriptors:
         status, = describe_artifact(d.kernel_id, registry=registry, spec_registry=JitSpecRegistry())
         assert status.known_kernel
-        if d.kernel_id == "triton/gemm/matmul_v1/Ascend950":
+        if d.kernel_id in SOURCES:
             assert status.state == JitArtifactState.SOURCE_ONLY and status.is_compiled is False
             assert status.source is d.source is not None
-            assert status.target_soc == d.target_soc == "Ascend950"
+            assert status.target_soc == d.target_soc
+            assert (d.source.language, d.target_soc) == SOURCES[d.kernel_id]
             assert status.artifact is None and status.entry_point is None and status.spec_name is None
             continue
         assert status.state == JitArtifactState.UNDECLARED
@@ -498,25 +499,26 @@ from flashinfer.runtime import (Backend, HardwareSignature, InputSignature,
                                KernelDescriptor, KernelRegistry, SourceRef)
 from flashinfer.ascendc import MATMUL_BIAS_SILU_KERNEL_ID, FLASH_ATTENTION_KERNEL_ID
 from flashinfer.runtime.registry import _builtin_descriptors
-from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, LEGACY_KERNEL_IDS, PRODUCTION_KERNEL_IDS, SOURCES
+from tests.production_inventory import SMOKE_SIGNATURES
 registry = flashinfer.get_global_registry()
 legacy = _builtin_descriptors()
-assert len(legacy) == 81 and len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
+assert sorted(d.kernel_id for d in legacy) == sorted(LEGACY_KERNEL_IDS)
+assert len(registry.descriptors()) == DEFAULT_DESCRIPTOR_COUNT
 assert {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy} == PRODUCTION_KERNEL_IDS
 selected = []
 for d in legacy:
     cap = d.capability
-    signature = InputSignature(d.op, dtypes=(sorted(cap.dtypes)[0] if cap.dtypes else 'float16',),
-        layouts=(sorted(cap.layouts)[0] if cap.layouts else '',), shapes=((4, 128),),
-        specializations=tuple((k, sorted(v)[0]) for k, v in cap.specializations if v))
+    signature = SMOKE_SIGNATURES.get(d.kernel_id)
+    if signature is None:
+        signature = InputSignature(d.op, dtypes=(sorted(cap.dtypes)[0] if cap.dtypes else 'float16',),
+            layouts=(sorted(cap.layouts)[0] if cap.layouts else '',), shapes=((4, 128),),
+            specializations=tuple((k, sorted(v)[0]) for k, v in cap.specializations if v))
     soc = sorted(cap.soc_models)[0] if cap.soc_models else 'Ascend910B'
-    if d.op == 'gemm.matmul':
-        signature = InputSignature(d.op, dtypes=('bfloat16',) * 3,
-            shapes=((16, 16),) * 3, physical_layouts=('ND',) * 3,
-            specializations=(('tensor_contract', 'supported'),))
+    assert signature.op == d.op, d.kernel_id
     selected.append(flashinfer.dispatch(signature, HardwareSignature(soc, 32),
                                        allow_reference=True).kernel_id)
-    expected_state = 'source_only' if d.kernel_id == 'triton/gemm/matmul_v1/Ascend950' else 'undeclared'
+    expected_state = 'source_only' if d.kernel_id in SOURCES else 'undeclared'
     assert describe_artifact(d.kernel_id)[0].state.value == expected_state
 production = registry.get(MATMUL_BIAS_SILU_KERNEL_ID)
 production_signature = InputSignature(
@@ -555,7 +557,7 @@ print(json.dumps({'records': len(selected), 'legacy_records': len(legacy),
                                capture_output=True, text=True, env=env)
     print(completed.stdout.strip())
     assert json.loads(completed.stdout) == {
-        "records": 82, "legacy_records": 81, "optional_import_attempts": [],
+        "records": len(LEGACY_KERNEL_IDS) + 1, "legacy_records": len(LEGACY_KERNEL_IDS), "optional_import_attempts": [],
         "selected_production": "ascendc/t2/matmul_bias_silu/native/op_package/Ascend950",
         "compiler_probe_attempts": [],
         "compiler_paths": {"bisheng": None, "ccec": None, "ascendc": None},

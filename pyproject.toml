@@ -31,4 +31,5 @@ testpaths = ["tests"]
 markers = [
   "real_compile: invokes a real compiler or builds/loads real compiled artifacts on disk (including JIT compilation on cache misses)",
   "requires_soc(*models): device execution validated only for the listed canonical SoC targets",
+  "operator_aot: prepare local operator packages before a fixture requests aot_runtime indirectly",
 ]

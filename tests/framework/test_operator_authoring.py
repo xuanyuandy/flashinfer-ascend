@@ -273,119 +273,38 @@ from flashinfer.runtime.runner import run_selected
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def test_existing_85_and_reviewed_arch22_capabilities_match_exactly():
-    baseline = json.loads((ROOT / 'tests/framework/data/production_capabilities.json').read_text())
+def test_reviewed_capabilities_match_exactly():
+    from tests.production_inventory import REVIEWED_CAPABILITIES
+
     actual = {d.kernel_id: d.capability.to_dict() for d in get_global_registry().descriptors()}
-    # Keep the original 85-entry fixture frozen. Reviewed additions and SoC
-    # changes are explicit below, never copied from implementation discovery.
-    expected = dict(baseline)
-    expected["ascendc/t4/flash_attention/catlass/op_package/Ascend910B"] = dict(
-        baseline["ascendc/t4/flash_attention/catlass/op_package/Ascend950"],
-        soc_models=["Ascend910B"],
-    )
-    expected["ascendc/attention/sparse_flash_attention/native/Ascend910B"] = CapabilitySpec(
-        op="attention.sparse_flash_attention",
-        soc_models=("Ascend910B",),
-        dtypes=("float16", "bfloat16", "int32", "float32", "none"),
-        cases=tuple(CapabilityCase(
-            name="arch22_mla_lse" if lse else "arch22_mla_no_lse",
-            compute_dtypes=("float16", "bfloat16"),
-            accumulator_dtypes=("float32",), attention_variants=("mla",),
-            kv_cache_types=("dense", "ragged", "paged"), causal_values=(False, True),
-            sparse_formats=("block_sparse",),
-            auxiliary_outputs=("softmax_max", "softmax_sum") if lse else (),
-        ) for lse in (False, True)),
-    ).to_dict()
-    # Head counts, UB capacity and the 32-bit element offset also have coupled admission checks.
-    from flashinfer.runtime import ShapeRange
-    permute_axes = (("S", "B", "Nq", "D"), ("S", "B", "Nkv", "D"),
-                    ("S", "B", "Nkv", "D"), ("Nout", "S", "B", "D"))
-    bounds = {"S": (1, 2**31 - 1), "B": (1, 2**31 - 1), "Nq": (1, 4095),
-              "Nkv": (1, 4095), "Nout": (3, 12285), "D": (16, 92160)}
-    expected["ascendc/attention/permute_qkv/native/Ascend910B"] = CapabilitySpec(
-        op="attention.permute_qkv", soc_models=("Ascend910B",), dtypes=("float16", "bfloat16"),
-        physical_layouts=("ND",),
-        cases=(CapabilityCase(name="head_permutation", compute_dtypes=("float16", "bfloat16")),),
-        shape_ranges=tuple(ShapeRange(name, tensor, axis, *bounds[name])
-                           for tensor, axes in enumerate(permute_axes) for axis, name in enumerate(axes)),
-    ).to_dict()
-    # Direct arch22 operators share their logical rules across the two physical targets.
-    # Keep these independent expectations explicit, including mixed data/count dtype signatures.
-    fp = ("float16", "bfloat16")
-    offset = 2**31 - 1
-    ub = 180 * 1024 // 2
-    def ranges(axes, limits):
-        return tuple(ShapeRange(name, tensor, axis, *limits[name])
-                     for tensor, shape in enumerate(axes) for axis, name in enumerate(shape))
-    unpack_axes = (("Split", "S", "B", "Group", "D"), ("S", "B", "Nq", "D"),
-                   ("S", "B", "Nkv", "D"), ("S", "B", "Nkv", "D"))
-    unpack_limits = {"Split": (1, ub), "S": (1, offset), "B": (1, offset), "Group": (1, ub),
-                     "D": (16, ub), "Nq": (1, ub), "Nkv": (1, ub)}
-    expected["ascendc/attention/unpermute_qkv/native/Ascend910B"] = CapabilitySpec(
-        op="attention.unpermute_qkv", soc_models=("Ascend910B",), dtypes=fp, physical_layouts=("ND",),
-        cases=(CapabilityCase(name="unpack_heads", compute_dtypes=fp),),
-        shape_ranges=ranges(unpack_axes, unpack_limits)).to_dict()
-    expected["ascendc/fused_moe/histgram/native/Ascend910B"] = CapabilitySpec(
-        op="fused_moe.histgram", soc_models=("Ascend910B",), dtypes=("int32",), physical_layouts=("ND",),
-        cases=(CapabilityCase(name="expert_counts", compute_dtypes=("int32",)),),
-        shape_ranges=(ShapeRange("T", 0, 0, 1, offset), ShapeRange("E", 1, 0, 1, 2**24))).to_dict()
-    merge_axes = (("T1", "H1"), ("T2", "H1"), ("T1", "H2"), ("T2", "H2"), ("E",), ("E",),
-                  ("T", "H1"), ("T", "H2"), ("E",))
-    merge_limits = {"T1": (1, offset), "T2": (1, offset), "T": (2, offset), "E": (1, 1024),
-                    "H1": (16, 90112), "H2": (16, 90112)}
-    expected["ascendc/fused_moe/merge_chunk2/native/Ascend910B"] = CapabilitySpec(
-        op="fused_moe.merge_chunk2", soc_models=("Ascend910B",), physical_layouts=("ND",),
-        cases=(CapabilityCase(name="expert_merge", compute_dtypes=fp,
-                              dtype_signatures=tuple((d, d, d, d, "int32", "int32", d, d, "int32") for d in fp)),),
-        shape_ranges=ranges(merge_axes, merge_limits)).to_dict()
-    # Only these reviewed general-purpose backends extend their SoC lists.
-    # The frozen fixture remains unchanged; every other capability field is exact.
-    for kernel_id in (
-        'cann/cascade/merge_state_attention_update_v1',
-        'cann/decode/cudnn_batch_decode_fia_v1',
-        'cann/fused_moe/cutlass_fused_moe_gmm_v1',
-        'cann/gemm/bmm_bf16_v1',
-        'cann/gemm/mm_bf16_v1',
-        'cann/gemm/segment_gemm_v1',
-        'cann/norm/fused_add_rmsnorm_aclnn_v1',
-        'cann/norm/gemma_rmsnorm_aclnn_v1',
-        'cann/norm/layernorm_aclnn_v1',
-        'cann/norm/rmsnorm_aclnn_v1',
-        'cann/rope/apply_rope_cos_sin_cache_aclnn_v1',
-        'cann/rope/apply_rope_cos_sin_cache_out_v1',
-        'cann/rope/apply_rope_inplace_v1',
-        'cann/rope/apply_rope_pos_ids_inplace_v1',
-        'cann/rope/apply_rope_pos_ids_v1',
-        'cann/rope/apply_rope_v1',
-        'triton/norm/gemma_fused_add_rmsnorm_v1',
-    ):
-        expected[kernel_id] = dict(baseline[kernel_id],
-                                   soc_models=["Ascend910B", "Ascend910C", "Ascend950"])
-    for kernel_id in (
-        "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
-        "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
-        "ascendc/attention/sparse_flash_attention/native/Ascend910B",
-        "ascendc/attention/permute_qkv/native/Ascend910B",
-        "ascendc/attention/unpermute_qkv/native/Ascend910B",
-        "ascendc/fused_moe/histgram/native/Ascend910B",
-        "ascendc/fused_moe/merge_chunk2/native/Ascend910B",
-    ):
-        expected[kernel_id.rsplit("/", 1)[0] + "/Ascend910C"] = dict(
-            expected[kernel_id], soc_models=["Ascend910C"])
-    assert actual == expected
+    assert actual == REVIEWED_CAPABILITIES
 
 
 def test_all_existing_implementations_have_one_authority_and_a_bound_runner():
+    from tests.production_inventory import PRODUCTION, REVIEWED_CAPABILITIES, REVIEWED_EXPERIMENTAL
+
     declarations = discover_implementations(ROOT)
     production = [d for _, _, d in declarations if d.scope == 'global']
     registry = get_global_registry()
     assert {d.kernel_id for d in production} == {d.kernel_id for d in registry.descriptors()}
-    assert len(production) == 98
-    assert len(discover(ROOT)) == 52
-    assert len([d for _, _, d in declarations if d.scope == 'experimental']) == 1
+    assert sorted(d.kernel_id for d in production) == sorted(REVIEWED_CAPABILITIES)
+    native = [
+        (d.kernel_id, d.op, d.native.name, d.native.build.implementation, d.native.target_soc)
+        for d in production if d.backend == Backend.ASCENDC
+    ]
+    assert sorted(native) == sorted(PRODUCTION)
+    expected_ops = {cap["op"] for cap in REVIEWED_CAPABILITIES.values()}
+    expected_ops.update(cap["op"] for _, cap in REVIEWED_EXPERIMENTAL.values())
+    assert sorted(o.op for _, o in discover(ROOT)) == sorted(expected_ops)
+    experimental = [d for _, _, d in declarations if d.scope == "experimental"]
+    assert sorted(d.kernel_id for d in experimental) == sorted(REVIEWED_EXPERIMENTAL)
     for directory, _, declaration in declarations:
         assert directory.parent.parent.name == declaration.backend.value
-        assert callable(declaration.bind().runner)
+        descriptor = declaration.bind()
+        assert callable(descriptor.runner)
+        if declaration.scope == "experimental":
+            expected = REVIEWED_EXPERIMENTAL[descriptor.kernel_id]
+            assert (descriptor.backend.value, descriptor.capability.to_dict()) == expected
     assert {r['op'] for r in implementation_entries()} == {o.op for _, o in discover(ROOT)}
     generate(check=True)
 

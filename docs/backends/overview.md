@@ -12,31 +12,38 @@
 
 ## 后端摘要
 
-| backend | 全局 Descriptor | 执行方式 | 主要边界 |
-| --- | ---: | --- | --- |
-| `cann` | 41 | 调用已安装的 Torch/TorchNPU/CANN 算子或组合 | 各算子单独限制 SoC、dtype 和布局 |
-| `ascendc` | 17 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C 各七项，Ascend950 三项；各自固定支持域 |
-| `triton` | 2 | 后端目录内的 Triton kernel，首次需要时 JIT | Matmul 与 Gemma fused Add RMSNorm |
-| `reference` | 38 | 显式参考计算 | 不作为默认 auto 的运行失败兜底 |
+运行 `python -m flashinfer list-kernels --all` 查看当前环境的完整默认登记表和各后端数量。每行给出实现 ID、逻辑 op、后端、声明 SoC 和图能力。SoC 为 `*` 表示能力声明没有限制 SoC。要查看某条记录的完整 dtype、布局、尺寸及组合约束，可从同一注册表取出能力声明。
+
+```python
+from flashinfer.runtime import get_global_registry
+cap = get_global_registry().get("cann/norm/rmsnorm_aclnn_v1").capability
+print(cap.to_dict())
+```
+
+| backend | 执行方式 | 主要边界 |
+| --- | --- | --- |
+| `cann` | 调用已安装的 Torch/TorchNPU/CANN 算子或组合 | 各算子单独限制 SoC、dtype 和布局 |
+| `ascendc` | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | 每个原生实现绑定一个物理 SoC |
+| `triton` | 后端目录内的 Triton kernel，首次需要时 JIT | 例如 Matmul 与 Gemma fused Add RMSNorm |
+| `reference` | 显式参考计算 | 由调用者显式选择 |
 
 `custom`、`external` 是运行时扩展入口，当前没有内建数学算子记录；`aclnn`、`ascendc_aot`、`ascendc_jit` 是代码接受的后端枚举，当前全局目录没有对应记录。枚举存在不等于后端已部署。
 
 ## 算子族摘要
 
-
 | 算子族 | CANN | Ascend C | Triton | reference |
 | --- | --- | --- | --- | --- |
-| Attention | Partial (6) | Partial (9) | Not supported | Partial (3) |
-| GEMM | Partial (6) | Partial (4) | Partial (1) | Partial (5) |
-| MoE | Partial (3) | Partial (4) | Not supported | Partial (3) |
-| Norm | Supported (4) | Not supported | Supported (1) | Partial (5) |
-| Activation | Supported (3) | Not supported | Not supported | Partial (3) |
-| RoPE | Supported (6) | Not supported | Not supported | Partial (6) |
-| Sampling | Supported (10) | Not supported | Not supported | Partial (10) |
-| KV cache | Partial (1) | Not supported | Not supported | Partial (1) |
-| State merge | Supported (2) | Not supported | Not supported | Partial (2) |
+| Attention | Partial | Partial | Not supported | Partial |
+| GEMM | Partial | Partial | Partial | Partial |
+| MoE | Partial | Partial | Not supported | Partial |
+| Norm | Supported | Not supported | Supported | Partial |
+| Activation | Supported | Not supported | Not supported | Partial |
+| RoPE | Supported | Not supported | Not supported | Partial |
+| Sampling | Supported | Not supported | Not supported | Partial |
+| KV cache | Partial | Not supported | Not supported | Partial |
+| State merge | Supported | Not supported | Not supported | Partial |
 
-族级标签覆盖该族的现有登记项，不能外推为整个上游算子族。以下逐项表列出源码全部 98 个 Descriptor 对应的 op × backend。
+族级标签归纳下表收录的实现与测试定义。新增登记随上方命令即时可查，专项支持说明按验证范围收录。
 
 ## 算子登记矩阵
 
@@ -147,15 +154,15 @@
 
 ## 图与实验实现
 
-图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 97 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。17 条生产 Ascend C 均为 `not_capturable`。
+图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余默认实现声明 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。
 
-实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 98 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
+实验 Triton FA 的作者记录采用独立 scope；可从对应的实验 scope 查询。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
 
 ## 安装与构建边界
 
 包的声明版本为 `0.1.0.dev0`、Python `>=3.9`。`environment-a5.yml` 指定 Python 3.11、Torch `2.10.0+cpu`、torch-npu `2.10.0.post7`、triton-ascend `3.6.0`；它是 A5 环境模板，不构成其他产品或版本组合的验证。
 
-普通 wheel 按本地芯片选择交付分组；910B 包含 A2/A3 各七项、共十四项，950 包含 A5 三项，包名分别为 `flashinfer_ascend910b`、`flashinfer_ascend950`。`FLASHINFER_AOT_ALL=1`、`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 互斥；`FLASHINFER_AOT_ALL=0` 是源码模式。源码模式不提供 AOT-only 二进制。PREBUILT 仍校验产物和桥的身份，原生登记仅保留实际交付项。
+普通 wheel 按本地芯片选择交付分组；910B 包含 A2/A3 的各自目标，950 包含 A5 目标，包名分别为 `flashinfer_ascend910b`、`flashinfer_ascend950`。`FLASHINFER_AOT_ALL=1`、`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 互斥；`FLASHINFER_AOT_ALL=0` 是源码模式。源码模式不提供 AOT-only 二进制。PREBUILT 仍校验产物和桥的身份，原生登记仅保留实际交付项。
 
 构建依赖包括匹配的 CANN/Torch/TorchNPU 头文件与库、编译器及 libffi；CATLASS 声明钉定 revision，头树由构建方提供。安装后执行仍需要相应运行栈，框架不隐式安装依赖。代码：[aot_mode](../../setup.py#L20)、[BuildPy](../../setup.py#L90)、[pyproject.toml](../../pyproject.toml)。
 

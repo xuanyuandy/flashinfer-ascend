@@ -17,7 +17,7 @@
 
 ## 算子支持
 
-| 算子族 | 当前实现范围 | 接口与约束 |
+| 算子族 | 实现示例 | 接口与约束 |
 | --- | --- | --- |
 | Attention | Prefill/Decode、Paged/Ragged KV、CATLASS dense prefill、受限 MLA 场景的 Sparse Flash Attention | [Attention](docs/operators/attention.md) |
 | GEMM | FP16/BF16/FP32 MM/BMM、FP8 BMM/分组 GEMM、分段 GEMM、Matmul、MatmulBiasSiLU、GMM + SwiGLU + 量化 | [GEMM](docs/operators/gemm.md) |
@@ -27,20 +27,20 @@
 | Sampling | Top-K、Top-P、Min-P、联合采样及链式投机采样 | [Sampling](docs/operators/tensor-ops.md) |
 | KV cache / 状态合并 | Paged KV append、单状态与多状态合并 | [KV 与状态操作](docs/operators/tensor-ops.md) |
 
-各接口具有独立的 dtype、shape、布局和 SoC 约束，完整组合见 [逐算子支持矩阵](docs/backends/overview.md)。Mixed BatchAttention 的默认 NPU provider、完整 MLA/块稀疏 Attention、上游量化转换及通信模块尚未接入；NPU 上的 PDL 参数按兼容契约关闭。
+各接口具有独立的 dtype、shape、布局和 SoC 约束，典型组合与对应测试见 [逐算子支持矩阵](docs/backends/overview.md)。Mixed BatchAttention 的默认 NPU provider、完整 MLA/块稀疏 Attention、上游量化转换及通信模块尚未接入；NPU 上的 PDL 参数按兼容契约关闭。
 
 ## 后端与硬件
 
-| backend | 全局实现数 | 实现来源 | 构建方式 |
-| --- | ---: | --- | --- |
-| `cann` | 41 | 已安装的 Torch/TorchNPU/CANN API 或组合 | 本框架无设备编译步骤 |
-| `ascendc` | 17 | 本仓 Ascend C 原生实现，v2 ACLNN op-package | AOT；部分实现允许受控缺包 JIT |
-| `triton` | 2 | Matmul、Gemma fused Add RMSNorm 的 Triton kernel | JIT |
-| `reference` | 38 | 显式参考实现 | 随 Python 包提供 |
+| backend | 实现来源 | 构建方式 |
+| --- | --- | --- |
+| `cann` | 已安装的 Torch/TorchNPU/CANN API 或组合 | 本框架无设备编译步骤 |
+| `ascendc` | 本仓 Ascend C 原生实现，v2 ACLNN op-package | AOT；部分实现允许受控缺包 JIT |
+| `triton` | Matmul、Gemma fused Add RMSNorm 的 Triton kernel | JIT |
+| `reference` | 显式参考实现 | 随 Python 包提供 |
 
-统计范围为源码默认注册表：52 个逻辑 op、98 个具体实现；实验实现单独登记。二进制 wheel 的原生注册项与随包目标一致。实现声明限定可接收的设备与输入组合，数值测试覆盖范围单独记录。
+运行 `python -m flashinfer list-kernels --all` 可逐项查看当前环境的逻辑算子、实现 ID、后端、声明 SoC 和图能力，末行汇总各后端数量。源码显示默认注册表，wheel 中的原生行对应随包目标。设备数值覆盖以对应测试结果为准。
 
-| 产品系列 | 物理 SoC | 源码架构 | wheel 包名 | 原生 AOT 算子 |
+| 产品系列 | 物理 SoC | 源码架构 | wheel 包名 | 原生 AOT 算子示例 |
 | --- | --- | --- | --- | --- |
 | A2 | `Ascend910B` | arch22 | `flashinfer_ascend910b` | GMM/SwiGLU/量化、SFA、PermuteQkv、UnpermuteQkv、Histgram、MergeChunk2、CATLASS prefill |
 | A3 | `Ascend910C` | arch22 | `flashinfer_ascend910b` | GMM/SwiGLU/量化、SFA、PermuteQkv、UnpermuteQkv、Histgram、MergeChunk2、CATLASS prefill |
@@ -155,7 +155,7 @@ python -B tools/run_regression.py --profile full \
 python -B setup.py bdist_wheel
 ```
 
-A2/A3 的 `flashinfer_ascend910b` 包包含两种 SoC 各自的七项产物；A5 的 `flashinfer_ascend950` 包包含三项产物。默认构建采用本机芯片分组；`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 和 `FLASHINFER_AOT_ALL=0` 分别提供配置选择、预编译产物打包及源码模式，具体约束见 [构建模式](docs/ascendc_aot.md#原生桥与-wheel)。发布构建可显式指定芯片矩阵：
+A2/A3 的 `flashinfer_ascend910b` 包分别交付两种 SoC 的原生产物，A5 使用 `flashinfer_ascend950`。实际打包的 kernel ID 记录在包内 `flashinfer/data/wheel.json`。默认构建采用本机芯片分组；`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 和 `FLASHINFER_AOT_ALL=0` 分别提供配置选择、预编译产物打包及源码模式，具体约束见 [构建模式](docs/ascendc_aot.md#原生桥与-wheel)。发布构建可显式指定芯片矩阵：
 
 ```bash
 python -B -m flashinfer.aot.wheels \

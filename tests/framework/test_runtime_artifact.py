@@ -1,4 +1,4 @@
-from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, PRODUCTION_KERNEL_IDS
+from tests.production_inventory import DEFAULT_DESCRIPTOR_COUNT, LEGACY_KERNEL_IDS, PRODUCTION_KERNEL_IDS, SOURCES
 import hashlib
 import json
 import tempfile
@@ -330,7 +330,7 @@ class KernelExecutionBodyTests(unittest.TestCase):
 
         registry = get_global_registry()
         legacy = _builtin_descriptors()
-        self.assertEqual(len(legacy), 81)
+        self.assertEqual(sorted(d.kernel_id for d in legacy), sorted(LEGACY_KERNEL_IDS))
         self.assertEqual(len(registry.descriptors()), DEFAULT_DESCRIPTOR_COUNT)
         self.assertEqual(
             {d.kernel_id for d in registry.descriptors()} - {d.kernel_id for d in legacy},
@@ -340,9 +340,8 @@ class KernelExecutionBodyTests(unittest.TestCase):
             existing = registry.get(declaration.kernel_id)
             with self.subTest(kernel_id=existing.kernel_id):
                 self.assertEqual(replace(existing), existing)
-                if existing.kernel_id == "triton/gemm/matmul_v1/Ascend950":
-                    self.assertEqual(existing.source.language, "triton")
-                    self.assertEqual(existing.target_soc, "Ascend950")
+                if existing.kernel_id in SOURCES:
+                    self.assertEqual((existing.source.language, existing.target_soc), SOURCES[existing.kernel_id])
                     continue
                 self.assertIsNone(existing.source)
                 self.assertIsNone(existing.target_soc)

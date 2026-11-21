@@ -8,6 +8,7 @@ import pytest
 from flashinfer.runtime.dispatch import clear_dispatch_cache
 from flashinfer.runtime.hardware import HardwareSignature
 from flashinfer.runtime.registry import KernelRegistry
+from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS, canonical_soc_model
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -16,36 +17,59 @@ from flashinfer.runtime.schema import (
 )
 
 
+def _soc_scope(value):
+    aliases = {"a2": "Ascend910B", "a3": "Ascend910C", "a5": "Ascend950",
+               "all": "all", "auto": "auto"}
+    if value.lower() in aliases:
+        return aliases[value.lower()]
+    return canonical_soc_model(value)
+
+
 def pytest_addoption(parser):
     parser.addoption(
-        "--soc", choices=("all", "auto", "Ascend910B", "Ascend910C", "Ascend950"),
-        default="all", help="Select hardware-specific tests; all retains the complete cross-chip collection",
+        "--soc", type=_soc_scope, metavar="auto|all|A2|A3|A5|SOC",
+        help="Run tests for the local chip by default. Collection alone defaults to all target SoCs.",
     )
 
 
+@pytest.hookimpl(trylast=True)
 def pytest_collection_modifyitems(config, items):
+    requirements = {}
     for item in items:
-        required = item.get_closest_marker("requires_soc")
-        if required is not None and (not required.args or any(
-            soc not in ("Ascend910B", "Ascend910C", "Ascend950") for soc in required.args
-        )):
-            raise pytest.UsageError(f"{item.nodeid}: requires_soc needs explicit canonical SoC names")
+        for marker in item.iter_markers("requires_soc"):
+            if not marker.args or not set(marker.args).issubset(GENERAL_ASCEND_SOCS):
+                raise pytest.UsageError(f"{item.nodeid}: requires_soc needs explicit canonical SoC names")
+            requirements.setdefault(item, set(GENERAL_ASCEND_SOCS)).intersection_update(marker.args)
     target = config.getoption("--soc")
+    if target is None:
+        if config.getoption("collectonly") or not requirements:
+            return
+        target = "auto"
     if target == "all":
         return
     if target == "auto":
         from flashinfer.runtime import current_hardware
         target = current_hardware().soc_model
-        if target not in ("Ascend910B", "Ascend910C", "Ascend950"):
+        if target not in GENERAL_ASCEND_SOCS:
             raise pytest.UsageError("--soc=auto requires a visible supported NPU; use --soc=all for host-only tests")
     selected, incompatible = [], []
     for item in items:
-        required = item.get_closest_marker("requires_soc")
-        (incompatible if required is not None and target not in required.args else selected).append(item)
+        (incompatible if item in requirements and target not in requirements[item] else selected).append(item)
     if incompatible:
         config.hook.pytest_deselected(items=incompatible)
     items[:] = selected
     config._flashinfer_soc_scope = (target, len(incompatible))
+
+
+def pytest_collection_finish(session):
+    target = session.config.getoption("--soc")
+    if target in (None, "auto", "all") or session.config.getoption("collectonly"):
+        return
+    from flashinfer.runtime import current_hardware
+    actual = current_hardware().soc_model
+    if actual != target:
+        raise pytest.UsageError(f"--soc selects {target}; local device is {actual}. "
+                                "Use --collect-only to inspect another chip's cases.")
 
 
 def pytest_terminal_summary(terminalreporter, config):

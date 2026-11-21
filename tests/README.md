@@ -13,7 +13,7 @@
 
 CATLASS 独立参考脚本位于 `support/catlass_golden.py`，按原始源码 SHA256 校验。固定 ABI 样本和能力基线分别由构建交付与框架测试目录维护。
 
-`production_inventory.py` 独立维护审核后的精确生产集合。`framework/test_replay_param_*.py` 是图参数更新的协议与真机测试入口，其路径同时用于图能力声明和证据审计。
+新增实现的独立预期放在 `inventory/<op>.py`，`production_inventory.py` 汇总这些记录和冻结基线。`framework/test_replay_param_*.py` 是图参数更新的协议与真机测试入口，其路径同时用于图能力声明和证据审计。
 
 根目录 `conftest.py` 是 pytest 自动发现的插件加载入口，公共逻辑位于 `support/pytest_plugin.py`：SoC 选择、设备初始化、路由缓存隔离和共享单元测试夹具。`operators/conftest.py` 将设备、格式及 AOT 准备限定在算子精度测试范围。`framework/test_replay_param_runtime.py` 检查图参数更新的状态、资源与异常清理；`framework/test_replay_param_npu.py` 在声明匹配的 A5 设备上验证实际 capture/update/replay 与 eager 结果。
 
@@ -57,7 +57,7 @@ python -B tools/run_regression.py --profile full tests/operators
 python -B -m pytest -p no:cacheprovider --collect-only --soc all
 ```
 
-回归入口默认 `--soc auto`，读取本机芯片。`requires_soc` 只用于有明确硬件前提的真机测试；异芯片用例在收集时 deselected，记录数量，不能写成已验证。普通 pytest 默认 `--soc=all` 保留全芯片收集；指定 `--soc=auto` 才按本机选择。
+回归入口和 pytest 执行硬件用例时默认读取本机芯片。`--collect-only` 单独使用时列出全芯片范围，可加 `--soc A2`、`--soc A3` 或 `--soc A5` 查看一类芯片的 kernel ID。异芯片用例在收集时记为 deselected。
 
 quick 排除 `real_compile`，仍可能执行 NPU；full 包含所选芯片的编译与数值用例。一次本机 full 不证明其他芯片通过。没有设备、依赖或适用产物必须显式失败；回归入口仍将 skip 或零用例视为失败。
 

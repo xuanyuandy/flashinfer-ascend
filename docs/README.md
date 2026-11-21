@@ -34,7 +34,7 @@
 - 公共语义：`flashinfer/operators/<domain>/<op>/operator.py` 及既有领域前端。
 - 后端能力和执行：`flashinfer/<backend>/<domain>/<op>/implementation.py`、`runner.py`。
 - 原生计算：`csrc/kernels/<domain>/<op>/`；Triton 计算：对应后端目录的 `kernels.py`。
-- 独立发布预期：`tests/production_inventory.py`；生成器不修改测试答案。
+- 独立发布预期由 `tests/production_inventory.py` 汇总，新算子的审核记录位于 `tests/inventory/<op>.py`。
 - 上游 API 基线：`tools/metadata/api_parity.json`、`attention_api_parity.json`。
 - `operator-comparison-rules.json` 是静态对比工具的机器输入，候选映射不构成本仓支持声明。
 

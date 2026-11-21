@@ -27,7 +27,7 @@ python -B tools/run_regression.py --profile full
 
 这些命令按改动范围选用，不是要求每次连续执行全部。quick 排除 real_compile，但仍可能用 NPU；compile 只运行所选编译用例；full 包含全部 real_compile，之后无需紧接着重复同一矩阵。入口保留日志、JUnit、pytest 原始退出码；有 skip 或没有执行用例时返回失败。
 
-测试按 [算子精度、框架特性与打包交付](../../tests/README.md) 分组。回归入口默认 `--soc auto`，full 表示适用于本机芯片的完整范围；有明确硬件前提的异芯片用例单独记为 deselected，不代表已验证。`--soc all` 保留跨芯片范围；直接调用 pytest 也默认收集全芯片用例。
+回归入口默认按本机芯片执行。pytest 直接运行硬件用例时也会识别设备，单用 `--collect-only` 可查看所有芯片的用例。用 `--soc A2`、`--soc A3` 或 `--soc A5` 可指定 Ascend910B、Ascend910C 或 Ascend950。异芯片用例记为 deselected。测试分组见[算子精度、框架特性与打包交付](../../tests/README.md)。
 
 仅改文档执行静态核对和受影响检查；编译、缓存、原生桥或设备源码改动补受影响 compile，发布和跨层重构执行 full。环境可见性先检查 Torch/TorchNPU，不能把错误解释器的依赖缺失当成功能缺失。
 
@@ -39,10 +39,14 @@ CPU 参考计算要独立于目标 runner，覆盖真实量化、裁剪、mask�
 
 ## 通用算子验收
 
-schema 算子可提供 `cases.py` 的 sample、CASE_PARAMETERS、TOLERANCES 和可选 verify_effect。`tests/packaging/test_operator_packages_real.py` 收集样例，调用公开接口并检查输出、out 身份、原输入存储、非默认流及队列策略；缺包和损坏用例也复用公共工具。
+每个生产 Ascend C 实现都按独立 kernel ID 进入打包测试。它们共用逻辑算子 `cases.py` 中的 `sample`、`CASE_PARAMETERS` 和 `TOLERANCES`。若同一算子的实现支持不同输入，可提供 `parameters_for(kernel_id)` 返回该实现的非空样例集。测试用确切 ID 调用公开接口，核对数值、out 身份、输入存储、非默认流、三种队列设置和缺包时的 JIT 策略。带样例的其他后端也按实现 ID 运行数值用例。
+
+新 checkout 先加载本机 CANN，设置 `FLASHINFER_CATLASS_ROOT`，再运行 `python -B -m flashinfer.operators generate` 和 `python -B -m flashinfer.aot --freeze --all`。pytest 会为本机数值用例准备设备包和 ACLNN 桥，在第一条算子执行前设置已校验的 vendor 路径。单独使用 `flashinfer.operators.testing` 时通过 `FLASHINFER_AOT_PATHS` 和 `FLASHINFER_ACLNN_ADAPTER_PATH` 指向已构建产物，同一算子有多个本机实现可用 `--kernel-id` 指定。
 
 ```bash
-python -B -m flashinfer.operators.testing sparse_flash_attention matrix
+python -B tools/run_regression.py --profile full tests/operators tests/packaging/test_operator_packages_real.py
+python -B -m pytest --collect-only -q --soc A3 tests/packaging/test_operator_packages_real.py
+python -B -m flashinfer.operators.testing single_prefill_catlass one
 ```
 
 装后验证从干净环境和源码目录外运行：
@@ -52,10 +56,10 @@ python -B -m flashinfer selftest --kernel-id ascendc/attention/sparse_flash_atte
 python -B -m flashinfer.operators.testing sparse_flash_attention installed
 ```
 
-只打包一个 AOT 子集时只验对应范围。源码模式默认 selftest 检查全部生产登记；安装包按 wheel 元数据检查实际本机 SoC 的条目并打印范围。910B 完整包的十四项需要 A2/A3 分别执行七项，其他 SoC 不计为 PASS；显式 ID 锁定该实现，异 SoC 在数值执行前拒绝。必须解释目标设备不匹配与缺包；单设备的部分通过不能写成整个矩阵通过。
+只打包一个 AOT 子集时只验对应范围。源码模式默认 selftest 检查全部生产登记；安装包按 wheel 元数据检查实际本机 SoC 的条目并打印范围。910B 包需要在 A2 和 A3 上分别执行各自的条目，其他 SoC 不计为 PASS。显式 ID 锁定该实现，异 SoC 在数值执行前拒绝。必须解释目标设备不匹配与缺包；单设备的部分通过不能写成整个矩阵通过。
 
 ## 精确预期与兼容
 
-生产集合由 `tests/production_inventory.py` 独立维护。新增 kernel 必须审核完整集合和数量，继续使用精确相等，不改成包含或下界。ABI 指纹和序列化护栏同样独立于生成器，规则见 [ABI 兼容](abi-compatibility.md)。
+`tests/production_inventory.py` 汇总冻结基线和 `tests/inventory/<op>.py` 中独立审核的记录。通用检查核对完整的实现集合、逐实现能力和分芯片打包范围。ABI 指纹和序列化护栏同样独立于生成器，规则见 [ABI 兼容](abi-compatibility.md)。
 
 图声明和调优记录不能用模拟计时、类名、固定 buffer 或源代码能编译来代替真机证据，分别参见 [图模式](../npu_graph_extensions.md) 与 [Tuning](../tuning.md)。
