@@ -352,7 +352,7 @@ def test_shared_wheel_inventory_is_exactly_both_physical_targets():
                 if d.native.target_soc in ("Ascend910B", "Ascend910C")}
     assert set(production_kernel_ids("Ascend910B")) == expected
     assert set(production_kernel_ids("Ascend910C")) == expected
-    assert len(expected) == 6
+    assert len(expected) == 7
 
 
 @pytest.mark.parametrize("alias", ["Ascend910C", "Ascend910_9362", "Ascend910_9391", "Ascend910_9392"])

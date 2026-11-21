@@ -167,8 +167,9 @@ def test_shared_wheel_selftest_scopes_to_physical_soc_without_counting_foreign_p
     assert selftest.run_selftest() == 0
     assert seen == [d.kernel_id for d in descriptors if d.target_soc == soc]
     output = capsys.readouterr().out
-    assert '3 of 6 packaged kernels; other SoCs are not runtime-validated' in output
-    assert 'Summary: 3 PASS, 0 FAIL, 0 SKIP (total=3)' in output
+    expected_count = 4 if soc == 'Ascend910C' else 3
+    assert f'{expected_count} of 7 packaged kernels; other SoCs are not runtime-validated' in output
+    assert f'Summary: {expected_count} PASS, 0 FAIL, 0 SKIP (total={expected_count})' in output
 
 
 def test_shared_wheel_selftest_rejects_wrong_hardware_before_executing(monkeypatch, capsys):
