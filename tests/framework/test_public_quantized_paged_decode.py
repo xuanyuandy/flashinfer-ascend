@@ -11,16 +11,14 @@ from flashinfer.attention import (
     AttentionNumericsPolicy,
     AttentionStateError,
     AttentionTraceCorpus,
-    attention_operator_runtime_registry_snapshot,
     build_attention_operator_runtime_resolvers,
     build_framework_attention_corpus,
     framework_attention_coverage_policy,
-    install_attention_operator_runtime_resolvers,
 )
 from flashinfer.decode import BatchDecodeWithPagedKVCacheWrapper
 from flashinfer.runtime import SchemaError
 from tests.framework.test_attention_capability import attention_artifact, attention_launch_abi, bound_kernel, pinned_environment
-from tests.framework.test_package_runtime_integration import package_attention
+from tests.support.attention_provider import install_provider, package_attention
 from tests.framework.test_attention_runtime_bootstrap import bootstrap_components
 from tests.framework.test_public_quantized_paged_prefill import FakeNpuWorkspace, quantized_kv_input
 
@@ -156,19 +154,9 @@ class PublicQuantizedPagedDecodeTests(unittest.TestCase):
     """Paged decode uses the same wrapper-owned quantized provider contract."""
 
     def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
         self.values, self.case, registry = public_decode_runtime()
-        install_attention_operator_runtime_resolvers(
-            registry,
-            operation_catalog=self.values["catalog"],
-        )
+        install_provider(self, registry, self.values["catalog"])
         package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchDecodeWithPagedKVCacheWrapper(

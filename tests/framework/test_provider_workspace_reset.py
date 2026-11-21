@@ -1,14 +1,8 @@
 import unittest
 
-from flashinfer.attention import (
-    AttentionOperatorRuntimeImplementationRegistry,
-    AttentionOperatorRuntimeResolverRegistry,
-    attention_operator_runtime_registry_snapshot,
-    install_attention_operator_runtime_resolvers,
-)
 from flashinfer.decode import BatchDecodeWithPagedKVCacheWrapper
 from flashinfer.runtime import SchemaError
-from tests.framework.test_package_runtime_integration import build_components, package_attention
+from tests.support.attention_provider import ProviderRuntimeTestCase
 
 
 class FakeNpuWorkspace:
@@ -16,15 +10,6 @@ class FakeNpuWorkspace:
         self.shape = (size,)
         self.dtype = dtype
         self.device = device
-
-
-def runtime_registry(components):
-    implementations = AttentionOperatorRuntimeImplementationRegistry(
-        (components["implementation"],)
-    )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementations),)
-    )
 
 
 def plan_wrapper(wrapper):
@@ -42,23 +27,8 @@ def plan_wrapper(wrapper):
     )
 
 
-class ProviderWorkspaceResetTests(unittest.TestCase):
+class ProviderWorkspaceResetTests(ProviderRuntimeTestCase):
     """Package-managed providers retain plans across workspace replacement."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchDecodeWithPagedKVCacheWrapper(

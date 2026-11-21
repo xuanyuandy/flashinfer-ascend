@@ -56,10 +56,9 @@ def namespace_check(torch, before):
     print("NAMESPACE PASS names=" + json.dumps(names) + "; PrivateUse1=True Meta=True CPU=False", flush=True)
 
 
-def memory_check(torch):
+def memory_check(torch, runner_type):
     from torch._subclasses.fake_tensor import FakeTensor, FakeTensorMode
     from unittest.mock import patch
-    from flashinfer.jit.tensor_adapter import TorchOpPackageRunner
 
     torch.npu.init()
     torch.npu.empty_cache()
@@ -71,7 +70,7 @@ def memory_check(torch):
 
     before = counters()
     assert before == (0, 0, 0, 0), before
-    with patch.object(TorchOpPackageRunner, "__call__", side_effect=AssertionError("fake reached runtime")):
+    with patch.object(runner_type, "__call__", side_effect=AssertionError("fake reached runtime")):
         with FakeTensorMode(allow_fallback_kernels=False):
             a, b, out = [torch.empty(16, 16, device="npu") for _ in range(3)]
             for _ in range(100):
@@ -138,7 +137,7 @@ def compile_check(torch, recipe, *, positive_control=True):
         print("GRAPH_BREAK_POSITIVE_CONTROL_END", file=sys.stderr, flush=True)
 
 
-def main():
+def check_artifact(prepare_artifact, runner_type):
     parser = argparse.ArgumentParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--config", type=Path)
@@ -167,7 +166,7 @@ def main():
         recipe.resolve_build_recipe = forbidden
         flashinfer.jit.resolve_build_recipe = forbidden
         print("BUILD_GUARD PASS Ascend C discovery/resolution/compilation=forbidden", flush=True)
-    declaration, recipe = prepare(args)
+    declaration, recipe = prepare_artifact(args)
     from flashinfer.utils import enable_torch_library
     import torch
 
@@ -182,8 +181,14 @@ def main():
 
     if not torch.npu.is_available():
         raise RuntimeError("Ascend C torch.library validation requires an available NPU")
-    memory_check(torch)
+    memory_check(torch, runner_type)
     compile_check(torch, recipe, positive_control=not args.skip_positive_control)
+
+
+def main():
+    from flashinfer.jit.tensor_adapter import TorchOpPackageRunner
+
+    check_artifact(prepare, TorchOpPackageRunner)
     from flashinfer.aclnn import _native
     if _native.available():
         assert len(_native._owners) == 1

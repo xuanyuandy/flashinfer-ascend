@@ -1,9 +1,17 @@
 """Dense unmasked NHD prefill goldens shared by all CATLASS target SoCs."""
 
 
-CASE_PARAMETERS = (dict(dtype="float16", qlen=128, klen=256),
-                   dict(dtype="bfloat16", qlen=256, klen=128))
+CASE_PARAMETERS = tuple(
+    dict(dtype=dtype, qlen=qlen, klen=klen)
+    for dtype, lengths in (("float16", ((128, 256), (128, 128), (256, 512))),
+                           ("bfloat16", ((256, 128), (128, 128), (128, 256), (256, 512))))
+    for qlen, klen in lengths
+)
 TOLERANCES = ((0.004, 0.008),)
+
+
+def tolerances(configuration):
+    return ((0.001, 0.001),) if configuration["dtype"] == "float16" else TOLERANCES
 
 
 def sample(torch, torch_npu, *, dtype, qlen, klen):

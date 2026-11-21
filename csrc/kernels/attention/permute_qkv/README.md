@@ -24,7 +24,7 @@
 
 ## FlashInfer 源码构建
 
-在仓库根目录按 [README 的环境准备和编译步骤](../../../../README.md#原生算子编译与精度验证) 构建设备包与 ACLNN 桥。A2 使用 `ascendc/attention/permute_qkv/native/Ascend910B`，A3 使用 `Ascend910C` 后缀。通过 `tests/operators/test_permute_qkv.py` 运行公共接口精度测试。
+在仓库根目录按 [README 的环境准备和编译步骤](../../../../README.md#原生算子编译与精度验证) 构建设备包与 ACLNN 桥。A2 使用 `ascendc/attention/permute_qkv/native/Ascend910B`，A3 使用 `Ascend910C` 后缀。用 `python -B tools/run_regression.py --profile full -k "permute_qkv and not unpermute_qkv" tests/operators` 运行公共接口精度和边界用例。
 
 ## 上游 ops-transformer 工程的构建命令
 

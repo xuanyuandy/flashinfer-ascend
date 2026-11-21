@@ -20,7 +20,6 @@ import flashinfer as finpu
 # finpu.fused_moe 顶层属性已被同名函数遮蔽，门面模块经 import_module 获取
 _MOE_MOD = importlib.import_module("flashinfer.fused_moe")
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import _reset_global_registry_for_testing
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -137,14 +136,8 @@ class _FakeTensor:
         self.ndim = ndim if ndim is not None else len(shape)
 
 
-@pytest.fixture
-def _clean_global_registry():
-    yield
-    _reset_global_registry_for_testing()
-
-
 class TestCutlassFacadeFlow:
-    def test_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -172,7 +165,7 @@ class TestCutlassFacadeFlow:
         assert x_ is x and idx_ is idx and out_ is out and od_ == "bfloat16"
         assert ep_size_ == 1 and ep_rank_ == 0 and moe_ctx_ is None
 
-    def test_unsupported_features_raise(self, _clean_global_registry):
+    def test_unsupported_features_raise(self, clean_global_registry):
         x = _FakeTensor("bfloat16", (8, 32))
         with pytest.raises(NotImplementedError, match="FP8 Block"):
             finpu.fused_moe(
@@ -204,12 +197,12 @@ class _FakeSymmBuffer:
 class TestFusedMoeEpContext:
     """ep_size > 1：moe_context 校验与透传（不依赖真实多卡环境）。"""
 
-    def test_ep_without_context_raises(self, _clean_global_registry):
+    def test_ep_without_context_raises(self, clean_global_registry):
         x = _FakeTensor("bfloat16", (8, 32))
         with pytest.raises(ValueError, match="必传 moe_context"):
             finpu.fused_moe(x, x, x, x, x, "bfloat16", [], ep_size=2)
 
-    def test_single_card_context_ignored(self, monkeypatch, _clean_global_registry):
+    def test_single_card_context_ignored(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -229,7 +222,7 @@ class TestFusedMoeEpContext:
         )
         assert result is out  # ep_size=1 传 moe_context 不报错、照常执行
 
-    def test_context_ep_mismatch_raises(self, _clean_global_registry):
+    def test_context_ep_mismatch_raises(self, clean_global_registry):
         x = _FakeTensor("bfloat16", (8, 32))
         with pytest.raises(ValueError, match="ep_world_size"):
             finpu.fused_moe(
@@ -237,7 +230,7 @@ class TestFusedMoeEpContext:
                 ep_size=4, moe_context=_FakeSymmBuffer(2),
             )
 
-    def test_context_rank_mismatch_raises(self, _clean_global_registry):
+    def test_context_rank_mismatch_raises(self, clean_global_registry):
         x = _FakeTensor("bfloat16", (8, 32))
         with pytest.raises(ValueError, match="rank_id"):
             finpu.fused_moe(
@@ -245,7 +238,7 @@ class TestFusedMoeEpContext:
                 ep_size=2, ep_rank=1, moe_context=_FakeSymmBuffer(2, 0),
             )
 
-    def test_ep_context_passed_to_runner(self, monkeypatch, _clean_global_registry):
+    def test_ep_context_passed_to_runner(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -337,7 +330,7 @@ class TestCannMegamoeBranch:
 
 
 class TestTrtllmFacadeFlow:
-    def test_per_tensor_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_per_tensor_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -372,7 +365,7 @@ class TestTrtllmFacadeFlow:
         assert args[0] is logits and args[8] is out
         assert args[10] == 2 and args[19] == 0  # top_k / routing_method_type
 
-    def test_block_scale_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_block_scale_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(

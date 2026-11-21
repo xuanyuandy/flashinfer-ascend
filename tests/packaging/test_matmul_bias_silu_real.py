@@ -1,16 +1,14 @@
 """Production T2' AOT/JIT and numeric acceptance on real Ascend hardware."""
 
-from contextlib import contextmanager
 from dataclasses import replace
 import json
 import os
 from pathlib import Path
-from flashinfer._resources import data_root
-import shutil
-import subprocess
-import sys
 
 import pytest
+
+from flashinfer.operators.pytest_support import corrupt_package_copy
+from tests.support.aot_release import installed_release, run_release_scenario, runtime_only_cann
 
 pytestmark = pytest.mark.requires_soc("Ascend950")
 
@@ -32,52 +30,10 @@ def production_release(tmp_path_factory):
     return build_release(MATMUL_BIAS_SILU_KERNEL_ID, tmp_path_factory.mktemp("matmul-bias-silu"))
 
 
-@contextmanager
-def installed_release(release):
-    root = data_root(ROOT) / "op_packages"
-    created = not root.exists()
-    root.mkdir(parents=True, exist_ok=True)
-    destination = root / release.name
-    assert not destination.exists(), "never overwrite an existing release"
-    shutil.copytree(release, destination)
-    try:
-        yield destination
-    finally:
-        shutil.rmtree(destination)
-        if created:
-            root.rmdir()
-
-
 def execute(scenario, tmp_path, *, search_root=None):
-    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-    environment.pop("FLASHINFER_AOT_PATHS", None)
-    environment.pop("FLASHINFER_NPU_JIT_DISABLE", None)
-    if search_root is not None:
-        environment["FLASHINFER_AOT_PATHS"] = str(search_root)
-    if scenario == "hit_disabled":
-        # A runtime-only CANN view: no compiler executable, build tools, or
-        # compiler headers. Keep the platform data required by host tiling.
-        original_home = Path(environment["ASCEND_HOME_PATH"])
-        runtime_home = tmp_path / "runtime-only-cann"
-        runtime_home.mkdir()
-        for name in ("lib64", "share", "conf", "opp", "runtime"):
-            (runtime_home / name).symlink_to(original_home / name, target_is_directory=True)
-        # torch_npu checks this directory's presence at import, not its contents.
-        (runtime_home / "compiler").mkdir()
-        assert not (runtime_home / "bin/bisheng").exists()
-        environment["ASCEND_HOME_PATH"] = str(runtime_home)
-        environment["PATH"] = "/usr/bin:/bin"
-    command = [sys.executable, "-B", "-m", "tests.support.matmul_bias_silu_acceptance",
-               scenario, str(tmp_path / "cold-store")]
-    result = subprocess.run(command, cwd=ROOT, env=environment, capture_output=True,
-                            text=True, timeout=240)
-    assert result.returncode == 0, result.stdout + result.stderr
-    evidence = next(json.loads(line) for line in result.stdout.splitlines()
-                    if line.startswith('{"') and '"scenario"' in line)
-    assert evidence["result"] == "PASS" and evidence["scenario"] == scenario
-    print("COMMAND " + " ".join(command))
-    print(json.dumps(evidence, sort_keys=True))
-    return evidence
+    env = runtime_only_cann(tmp_path) if scenario == "hit_disabled" else {}
+    return run_release_scenario("tests.support.matmul_bias_silu_acceptance", scenario, tmp_path / "cold-store",
+                                search_root=search_root, env=env)
 
 
 @pytest.mark.real_compile
@@ -90,12 +46,6 @@ def test_production_aot_without_compiler(production_release, tmp_path):
 
 
 @pytest.mark.real_compile
-def test_production_missing_real_jit(production_release, tmp_path):
-    evidence = execute("missing_enabled", tmp_path)
-    assert evidence["source"] == "jit" and evidence["compiler_calls"] == 1
-
-
-@pytest.mark.real_compile
 def test_production_missing_disabled(production_release, tmp_path):
     evidence = execute("missing_disabled", tmp_path)
     assert evidence["category"] == "missing" and not evidence["fallback"]
@@ -103,13 +53,8 @@ def test_production_missing_disabled(production_release, tmp_path):
 
 @pytest.mark.real_compile
 def test_production_corrupt_rejects_jit(production_release, tmp_path):
-    damaged = tmp_path / "damaged" / production_release.name
-    shutil.copytree(production_release, damaged)
-    package = json.loads((damaged / "op-package.json").read_text())
-    library = damaged / package["api_library"]
-    payload = library.read_bytes()
-    library.write_bytes(bytes((payload[0] ^ 1,)) + payload[1:])
-    evidence = execute("corrupt", tmp_path, search_root=damaged.parent)
+    root = corrupt_package_copy(production_release, tmp_path / "damaged")
+    evidence = execute("corrupt", tmp_path, search_root=root)
     assert evidence["policy"] == "enabled" and evidence["compiler_calls"] == 0
 
 
@@ -153,12 +98,6 @@ def test_production_incompatible_soc(production_release, tmp_path):
     other = incompatible_release(production_release, tmp_path / "other-product")
     evidence = execute("incompatible", tmp_path, search_root=other)
     assert "Ascend950DT" in evidence["diagnostic"] and evidence["compiler_calls"] == 0
-
-
-@pytest.mark.real_compile
-def test_production_numerical_fp32_fp64(production_release, tmp_path):
-    evidence = execute("numerical", tmp_path, search_root=production_release)
-    assert len(evidence["errors"]) == 8
 
 
 @pytest.mark.real_compile

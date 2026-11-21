@@ -2,14 +2,12 @@ import unittest
 
 from flashinfer.attention import (
     EMPTY_ATTENTION_OPERATOR_RUNTIME_RESOLVERS,
-    AttentionOperatorRuntimeImplementationRegistry,
-    AttentionOperatorRuntimeResolverRegistry,
     AttentionStateError,
     attention_operator_runtime_registry_snapshot,
     install_attention_operator_runtime_resolvers,
 )
 from flashinfer.prefill import BatchPrefillWithPagedKVCacheWrapper
-from tests.framework.test_package_runtime_integration import build_components, package_attention
+from tests.support.attention_provider import ProviderRuntimeTestCase, package_attention
 
 
 class FakeNpuWorkspace:
@@ -17,15 +15,6 @@ class FakeNpuWorkspace:
         self.shape = (size,)
         self.dtype = "uint8"
         self.device = "npu:0"
-
-
-def runtime_registry(components):
-    implementations = AttentionOperatorRuntimeImplementationRegistry(
-        (components["implementation"],)
-    )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementations),)
-    )
 
 
 def wrapper():
@@ -68,23 +57,8 @@ def plan(value, *, kv_length=64):
     )
 
 
-class PagedPrefillWorkspaceQueryTests(unittest.TestCase):
+class PagedPrefillWorkspaceQueryTests(ProviderRuntimeTestCase):
     """Provider size queries plan on a fork and never publish wrapper state."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def test_query_before_plan_returns_exact_caller_workspace_requirement(self):
         value = wrapper()

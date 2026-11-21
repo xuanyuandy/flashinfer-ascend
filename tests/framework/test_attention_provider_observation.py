@@ -15,6 +15,7 @@ from flashinfer.attention import (
     observe_python_callable_signature,
 )
 from flashinfer.runtime import SchemaError
+from tests.support import hash_value
 
 
 OPERATION_ID = "flash_attention_npu.flash_attn_with_kvcache@v2"
@@ -417,10 +418,6 @@ from flashinfer.attention import (
     load_packaged_attention_operator_catalog,
 )
 from flashinfer.runtime import Backend, QuantSpec, SchemaError
-
-
-def hash_value(character):
-    return character * 64
 
 
 def framework_plan(*, provider, page_size=None, layout=None, quant=None):

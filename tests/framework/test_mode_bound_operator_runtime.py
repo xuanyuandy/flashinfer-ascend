@@ -11,7 +11,7 @@ from flashinfer.attention import (
     PagedPrefillMetadata,
 )
 from flashinfer.runtime import SchemaError
-from tests.framework.test_package_runtime_integration import build_components, framework_inputs, package_attention
+from tests.support.attention_provider import build_components, framework_inputs, package_attention
 
 
 def prefill_inputs():

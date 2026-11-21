@@ -14,10 +14,7 @@ from flashinfer.attention import (
     build_framework_attention_corpus,
 )
 from flashinfer.runtime import Backend, SchemaError
-
-
-def hash_value(character):
-    return character * 64
+from tests.support import hash_value
 
 
 def framework_plan(generation=1):

@@ -2,32 +2,20 @@
 
 
 import inspect
-import unittest
 
 from flashinfer.attention import (
     AttentionMode,
-    AttentionOperatorRuntimeImplementationRegistry,
     AttentionOperatorRuntimeResolverRegistry,
-    attention_operator_runtime_registry_snapshot,
     install_attention_operator_runtime_resolvers,
 )
 from flashinfer.prefill import BatchPrefillWithPagedKVCacheWrapper
-from tests.framework.test_package_runtime_integration import build_components, package_attention
+from tests.support.attention_provider import ProviderRuntimeTestCase, package_attention
 
 
 class FakeNpuWorkspace:
     shape = (1024,)
     dtype = "uint8"
     device = "npu:0"
-
-
-def runtime_registry(components):
-    implementations = AttentionOperatorRuntimeImplementationRegistry(
-        (components["implementation"],)
-    )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementations),)
-    )
 
 
 def plan_paged_prefill(wrapper):
@@ -46,23 +34,8 @@ def plan_paged_prefill(wrapper):
     )
 
 
-class PublicPagedPrefillProviderRuntimeTests(unittest.TestCase):
+class PublicPagedPrefillProviderRuntimeTests(ProviderRuntimeTestCase):
     """The FlashInfer facade owns provider selection and plan/run state."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchPrefillWithPagedKVCacheWrapper(
@@ -187,23 +160,8 @@ def plan_paged_decode(wrapper, **kwargs):
     )
 
 
-class PublicPagedDecodeProviderRuntimeTests(unittest.TestCase):
+class PublicPagedDecodeProviderRuntimeTests(ProviderRuntimeTestCase):
     """The paged-decode facade owns provider selection and plan/run state."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchDecodeWithPagedKVCacheWrapper(
@@ -327,23 +285,8 @@ def plan_ragged_prefill(wrapper, **kwargs):
     )
 
 
-class PublicRaggedPrefillProviderRuntimeTests(unittest.TestCase):
+class PublicRaggedPrefillProviderRuntimeTests(ProviderRuntimeTestCase):
     """The ragged-prefill facade owns provider selection and plan/run state."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchPrefillWithRaggedKVCacheWrapper(

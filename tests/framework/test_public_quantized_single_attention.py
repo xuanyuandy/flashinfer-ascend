@@ -21,18 +21,16 @@ from flashinfer.attention import (
     ReferenceQuantizedTensor,
     ReferenceTensor,
     SingleAttentionMetadata,
-    attention_operator_runtime_registry_snapshot,
     build_attention_operator_runtime_resolvers,
     framework_attention_coverage_policy,
     infer_quant_scale_shape,
     infer_quant_storage_shape,
-    install_attention_operator_runtime_resolvers,
 )
 from flashinfer.decode import single_decode_with_kv_cache
 from flashinfer.prefill import single_prefill_with_kv_cache
 from flashinfer.runtime import KernelCapabilityBinding, QuantSpec, SchemaError
 from tests.framework.test_attention_capability import attention_artifact, attention_launch_abi, bound_kernel, pinned_environment
-from tests.framework.test_package_runtime_integration import package_attention
+from tests.support.attention_provider import install_provider, package_attention
 from tests.framework.test_attention_runtime_bootstrap import bootstrap_components
 from tests.framework.test_public_quantized_paged_prefill import metadata_tensor
 
@@ -257,18 +255,9 @@ class PublicQuantizedSingleAttentionTests(unittest.TestCase):
     """Single public APIs derive plans from explicit quantized logical shapes."""
 
     def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
         self.values, self.quant_spec, registry = public_single_quantized_runtime()
-        install_attention_operator_runtime_resolvers(
-            registry, operation_catalog=self.values["catalog"]
-        )
+        install_provider(self, registry, self.values["catalog"])
         package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def test_single_prefill_plans_and_injects_quantized_components(self):
         q = FakeNpuTensor("q-prefill", (2, 2, 1))

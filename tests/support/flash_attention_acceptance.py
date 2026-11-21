@@ -258,11 +258,5 @@ def run_scenario(scenario, store_root):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        if __package__:
-            from .flash_attention import main
-        else:
-            from flash_attention import main
-        main()
-    else:
-        run_scenario(*sys.argv[1:])
+    from tests.support.aot_release import scenario_main
+    scenario_main(run_scenario)

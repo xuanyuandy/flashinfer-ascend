@@ -7,7 +7,7 @@ import pytest
 
 from flashinfer.runtime.dispatch import clear_dispatch_cache
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import KernelRegistry
+from flashinfer.runtime.registry import KernelRegistry, _reset_global_registry_for_testing
 from flashinfer.runtime.targets import GENERAL_ASCEND_SOCS, canonical_soc_model
 from flashinfer.runtime.schema import (
     Backend,
@@ -92,6 +92,44 @@ def pytest_sessionstart(session):
         if not 0 <= index < torch.npu.device_count():
             raise ValueError("FLASHINFER_TEST_NPU_DEVICE is outside the visible device range")
         torch.npu.set_device(index)
+
+
+@pytest.fixture
+def torch_for_class(request):
+    import torch
+
+    request.instance.torch = torch
+
+
+@pytest.fixture(scope="module")
+def npu_device():
+    import torch
+    import torch_npu  # noqa: F401
+
+    if not torch.npu.is_available():
+        pytest.fail("selected test requires an available NPU")
+    return torch.device("npu", torch.npu.current_device())
+
+
+@pytest.fixture(scope="module")
+def a5_device(npu_device):
+    from flashinfer.runtime import current_hardware
+
+    if current_hardware().soc_model != "Ascend950":
+        pytest.fail("selected test requires an Ascend950 device")
+    return npu_device
+
+
+@pytest.fixture
+def cann_a5_device(a5_device, monkeypatch):
+    monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "cann")
+    return a5_device
+
+
+@pytest.fixture
+def clean_global_registry():
+    yield
+    _reset_global_registry_for_testing()
 
 
 @pytest.fixture(autouse=True)

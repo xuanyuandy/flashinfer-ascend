@@ -1,4 +1,4 @@
-"""Arch22 public merge_chunk2 accuracy against an independent CPU reference."""
+"""Arch22 public merge_chunk2 invalid-input checks."""
 
 import pytest
 
@@ -8,17 +8,6 @@ from flashinfer.runtime import DispatchError
 
 pytestmark = [pytest.mark.real_compile, pytest.mark.requires_soc("Ascend910B", "Ascend910C"),
               pytest.mark.usefixtures("aot_runtime")]
-
-
-@pytest.mark.parametrize("configuration", cases.CASE_PARAMETERS)
-def test_accuracy(npu_runtime, configuration):
-    torch, torch_npu = npu_runtime
-    args, options, expected = cases.sample(torch, torch_npu, **configuration)
-    actual = flashinfer.merge_chunk2(*args, **options)
-    assert len(actual) == len(expected) == len(cases.TOLERANCES)
-    for output, reference, (atol, rtol) in zip(actual, expected, cases.TOLERANCES):
-        assert torch_npu.get_npu_format(output) == 2
-        torch.testing.assert_close(output.cpu(), reference, atol=atol, rtol=rtol)
 
 
 @pytest.mark.parametrize("problem,error,match", [

@@ -2,20 +2,17 @@ import unittest
 
 from flashinfer.attention import (
     AttentionMode,
-    AttentionOperatorRuntimeImplementationRegistry,
-    AttentionOperatorRuntimeResolverRegistry,
     AttentionStateError,
     BatchAttention,
     ReferenceTensor,
     attention_operator_runtime_registry_snapshot,
-    install_attention_operator_runtime_resolvers,
 )
 from flashinfer.decode import BatchDecodeWithPagedKVCacheWrapper
 from flashinfer.prefill import (
     BatchPrefillWithPagedKVCacheWrapper,
     BatchPrefillWithRaggedKVCacheWrapper,
 )
-from tests.framework.test_package_runtime_integration import build_components
+from tests.support.attention_provider import build_components, install_provider, runtime_registry
 
 
 class FakeNpuWorkspace:
@@ -23,15 +20,6 @@ class FakeNpuWorkspace:
         self.shape = (size,)
         self.dtype = "uint8"
         self.device = device
-
-
-def runtime_registry(components):
-    implementations = AttentionOperatorRuntimeImplementationRegistry(
-        (components["implementation"],)
-    )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementations),)
-    )
 
 
 def provider_wrappers():
@@ -120,20 +108,10 @@ class PublicPlanSelectionTests(unittest.TestCase):
     """Plan diagnostics reveal identities but never executable provider state."""
 
     def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
         self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
+        install_provider(self, runtime_registry(self.components), self.components["catalog"])
         self.registry_generation = (
             attention_operator_runtime_registry_snapshot().generation
-        )
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
         )
 
     def test_all_batch_modes_publish_provider_selection_after_plan(self):

@@ -5,11 +5,8 @@ import pytest
 import flashinfer as finpu
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestFusedMoeNumerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
     def _moe_naive(self, x, idx, scales, w1, w2):
         """fp64 朴素专家循环（校验基线）。"""
         torch = self.torch
@@ -192,15 +189,9 @@ class TestFusedMoeNumerics:
 
 
 
+@pytest.mark.usefixtures("torch_for_class", "npu_device")
 class TestCutlassMoeCannNpu:
     """CANN kernel（npu_grouped_matmul）NPU 数值验证：与 fp64 基线对拍。"""
-
-    @pytest.fixture(autouse=True)
-    def _npu(self):
-        self.torch = pytest.importorskip("torch")
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
 
     def test_cutlass_cann_vs_fp64(self):
         torch = self.torch

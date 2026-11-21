@@ -3,11 +3,13 @@
 import json
 import os
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 
 import pytest
+
+from flashinfer.operators.pytest_support import corrupt_package_copy
+from tests.support.aot_release import runtime_only_cann
 
 pytestmark = pytest.mark.requires_soc("Ascend950")
 
@@ -83,15 +85,8 @@ def test_triton_cold_compile_and_compiler_free_process_disk_hit(tmp_path):
 
 @pytest.mark.real_compile
 def test_aot_and_cann_without_visible_compiler(matmul_release, tmp_path):
-    original = Path(os.environ["ASCEND_HOME_PATH"])
-    runtime = tmp_path / "runtime-only-cann"
-    runtime.mkdir()
-    for name in ("lib64", "share", "conf", "opp", "runtime"):
-        (runtime / name).symlink_to(original / name, target_is_directory=True)
-    (runtime / "compiler").mkdir()
-    assert not (runtime / "bin/bisheng").exists()
     evidence = execute("aot_without_compiler", tmp_path, release=matmul_release,
-                       ASCEND_HOME_PATH=str(runtime), PATH="/usr/bin:/bin", FLASHINFER_NPU_JIT_DISABLE="1")
+                       FLASHINFER_NPU_JIT_DISABLE="1", **runtime_only_cann(tmp_path))
     assert evidence["compiler_calls"] == dict(ascendc=0, triton=0, toolchain=0)
 
 
@@ -108,14 +103,14 @@ def test_missing_aot_never_compiles_even_with_global_jit_enabled(tmp_path, jit_d
 @pytest.mark.real_compile
 def test_corrupt_aot_rejected_without_jit(matmul_release, tmp_path):
     release_root = Path(matmul_release["FLASHINFER_AOT_PATHS"])
-    package = next(p for p in release_root.iterdir() if (p / "manifest.json").is_file())
-    damaged = tmp_path / "damaged" / package.name
-    shutil.copytree(package, damaged)
-    metadata = json.loads((damaged / "op-package.json").read_text())
-    library = damaged / metadata["api_library"]
-    payload = library.read_bytes()
-    library.write_bytes(bytes([payload[0] ^ 1]) + payload[1:])
-    evidence = execute("corrupt", tmp_path, FLASHINFER_MATMUL_ERROR_ROOT=str(damaged.parent))
+    from flashinfer.ascendc import load_contract
+    from flashinfer.jit.discovery import AotPackageIndex
+
+    descriptor, _, spec = load_contract(AOT_KERNEL_ID)
+    package = AotPackageIndex(roots=(release_root,)).find(
+        spec, descriptor=descriptor, target_soc=descriptor.target_soc).directory
+    root = corrupt_package_copy(package, tmp_path / "damaged")
+    evidence = execute("corrupt", tmp_path, FLASHINFER_MATMUL_ERROR_ROOT=str(root))
     assert evidence["category"] == "corrupt" and evidence["fallback"] is False
 
 

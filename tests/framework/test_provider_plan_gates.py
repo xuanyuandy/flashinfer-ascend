@@ -24,10 +24,7 @@ from flashinfer.attention import (
     load_packaged_attention_operator_catalog,
 )
 from flashinfer.runtime import Backend, QuantSpec, SchemaError
-
-
-def hash_value(character):
-    return character * 64
+from tests.support import hash_value
 
 
 def framework_plan(

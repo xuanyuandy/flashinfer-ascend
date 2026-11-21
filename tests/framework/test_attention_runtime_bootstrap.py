@@ -29,10 +29,7 @@ from flashinfer.attention import (
     load_packaged_attention_operator_catalog,
 )
 from flashinfer.runtime import Backend, SchemaError
-
-
-def hash_value(character):
-    return character * 64
+from tests.support import hash_value
 
 
 def framework_plan(provider):
@@ -279,7 +276,7 @@ from flashinfer.attention import (
 )
 from flashinfer.runtime import SchemaError
 from tests.framework.test_attention_capability import bound_kernel, functional_profile, group_plan
-from tests.framework.test_package_runtime_integration import FakeLogicalFactory, FakeLogicalRunAdapter, FakePackageLoader, FakePlanGate, FakeTensorMaterializer, fake_operation
+from tests.support.attention_provider import FakeLogicalFactory, FakeLogicalRunAdapter, FakePackageLoader, FakePlanGate, FakeTensorMaterializer, fake_operation
 from flashinfer.attention import AttentionOperatorOperationCatalog
 
 

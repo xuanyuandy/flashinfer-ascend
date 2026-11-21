@@ -35,6 +35,7 @@ def main(argv=None):
                         help="Hardware scope passed to pytest. A2/A3/A5 and device model names are accepted.")
     parser.add_argument("--log-dir", type=Path,
                         help="New directory for this run; an existing directory is rejected")
+    parser.add_argument("-k", metavar="EXPRESSION", help="Select pytest names, including operator kernel IDs")
     parser.add_argument("paths", nargs="*", default=["tests"], help="Optional changed-area test paths")
     args = parser.parse_args(argv)
     root = Path(__file__).resolve().parents[1]
@@ -42,6 +43,8 @@ def main(argv=None):
     logs.mkdir(parents=True, exist_ok=False)
     command = [sys.executable, "-B", "-m", "pytest", "-p", "no:cacheprovider", "-q", *args.paths,
                "--soc=" + args.soc, "--junitxml=" + str(logs / "results.xml")]
+    if args.k:
+        command.extend(["-k", args.k])
     if SCOPES[args.profile]:
         command.extend(["-m", SCOPES[args.profile]])
     (logs / "command.json").write_text(json.dumps({"profile": args.profile, "soc": args.soc, "command": command,

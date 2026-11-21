@@ -2,17 +2,10 @@
 
 
 import inspect
-import unittest
 
-from flashinfer.attention import (
-    AttentionOperatorRuntimeImplementationRegistry,
-    AttentionOperatorRuntimeResolverRegistry,
-    attention_operator_runtime_registry_snapshot,
-    install_attention_operator_runtime_resolvers,
-)
 from flashinfer.prefill import single_prefill_with_kv_cache
 from flashinfer.runtime import SchemaError
-from tests.framework.test_package_runtime_integration import build_components, package_attention
+from tests.support.attention_provider import ProviderRuntimeTestCase, package_attention
 
 
 class FakeNpuTensor:
@@ -26,15 +19,6 @@ class FakeNpuTensor:
         return self.name
 
 
-def runtime_registry(components):
-    implementations = AttentionOperatorRuntimeImplementationRegistry(
-        (components["implementation"],)
-    )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementations),)
-    )
-
-
 def prefill_inputs():
     return (
         FakeNpuTensor("q", (2, 8, 128)),
@@ -43,23 +27,8 @@ def prefill_inputs():
     )
 
 
-class PublicSinglePrefillProviderRuntimeTests(unittest.TestCase):
+class PublicSinglePrefillProviderRuntimeTests(ProviderRuntimeTestCase):
     """The functional single-prefill API owns an ephemeral provider runtime."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def test_public_call_plans_selects_and_executes_without_provider_handles(self):
         q, k, v = prefill_inputs()
@@ -124,23 +93,8 @@ def decode_inputs():
     )
 
 
-class PublicSingleDecodeProviderRuntimeTests(unittest.TestCase):
+class PublicSingleDecodeProviderRuntimeTests(ProviderRuntimeTestCase):
     """NPU tensors select an ephemeral single-decode provider runtime."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def test_public_call_plans_selects_and_executes_without_provider_handles(self):
         q, k, v = decode_inputs()

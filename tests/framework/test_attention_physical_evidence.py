@@ -15,7 +15,7 @@ from flashinfer.attention import (
     verify_attention_operator_physical_evidence_results,
 )
 from flashinfer.runtime import SchemaError
-from tests.framework.test_package_runtime_integration import package_attention
+from tests.support.attention_provider import package_attention
 from tests.framework.test_attention_provider_quantization import active_session
 from tests.framework.test_attention_provider_quantization import physical_input, physical_runtime
 

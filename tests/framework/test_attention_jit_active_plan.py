@@ -52,7 +52,7 @@ from flashinfer.runtime import (
     SchemaError,
 )
 from tests.framework.test_public_batch_attention_provider_runtime import FakeExecutor, plan_public_wrapper
-from tests.framework.test_package_runtime_integration import FakeLogicalRunAdapter, build_components, fake_operation, framework_plan
+from tests.support.attention_provider import FakeLogicalRunAdapter, build_components, fake_operation, framework_plan
 from tests.framework.test_attention_jit_framework import runtime_environment
 
 

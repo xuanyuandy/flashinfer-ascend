@@ -1,22 +1,11 @@
-"""Arch22 public histgram accuracy against an independent CPU reference."""
+"""Arch22 public histgram invalid-input checks."""
 
 import pytest
 
 import flashinfer
-from flashinfer.operators.fused_moe.histgram import cases
 
 pytestmark = [pytest.mark.real_compile, pytest.mark.requires_soc("Ascend910B", "Ascend910C"),
               pytest.mark.usefixtures("aot_runtime")]
-
-
-@pytest.mark.parametrize("configuration", cases.CASE_PARAMETERS)
-def test_accuracy(npu_runtime, configuration):
-    torch, torch_npu = npu_runtime
-    args, options, expected = cases.sample(torch, torch_npu, **configuration)
-    actual = flashinfer.histgram(*args, **options)
-    assert torch_npu.get_npu_format(actual) == 2
-    atol, rtol = cases.TOLERANCES[0]
-    torch.testing.assert_close(actual.cpu(), expected, atol=atol, rtol=rtol)
 
 
 @pytest.mark.parametrize("ids,experts,dtype,match", [

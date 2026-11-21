@@ -5,11 +5,8 @@ import pytest
 import flashinfer as finpu
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestGemmFp8Numerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
     def _to_float8(self, x, dtype=None):
         """与上游示例一致的 per-tensor 量化（返回 fp8 张量与 scale）。"""
         torch = self.torch

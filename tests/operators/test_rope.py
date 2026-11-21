@@ -5,16 +5,8 @@ import pytest
 import flashinfer as finpu
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestRopeNumerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
-    def _require_npu(self):
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
-
     def _fp64_rope(self, t3, cs, is_neox):
         """t3: (nnz, H, D) fp64；cs: (nnz, rotary_dim) fp64；仅旋转前 rd 维。"""
         torch = self.torch
@@ -66,13 +58,13 @@ class TestRopeNumerics:
             )
 
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize("is_neox", [True, False])
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
     def test_rope_npu_vs_fp64(self, dtype, atol, is_neox):
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         pos, q, k, cache = self._make_inputs(dt, "npu")
@@ -86,10 +78,10 @@ class TestRopeNumerics:
         assert torch.allclose(q.cpu().double().view(-1, 4, 128), exp_q, atol=atol)
         assert torch.allclose(k.cpu().double().view(-1, 2, 128), exp_k, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize("is_neox", [True, False])
     def test_rope_partial_rotary_npu(self, is_neox):
         """rotary_dim < head_size：仅旋转前 rd 维，其余维原样保留。"""
-        self._require_npu()
         torch = self.torch
         rd = 64
         pos, q, k, cache = self._make_inputs(torch.float16, "npu", rd=rd)
@@ -107,9 +99,9 @@ class TestRopeNumerics:
             k.cpu().double().view(-1, 2, 128), exp_k, atol=2e-2
         )
 
+    @pytest.mark.usefixtures("npu_device")
     def test_cann_vs_reference_consistency(self):
         """M1 验收口径：同输入，CANN 与 reference 两 backend 数值一致。"""
-        self._require_npu()
         torch = self.torch
         pos, q, k, cache = self._make_inputs(torch.float16, "npu")
         q1, k1 = q.clone(), k.clone()

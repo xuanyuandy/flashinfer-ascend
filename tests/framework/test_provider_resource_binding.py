@@ -3,16 +3,12 @@ from dataclasses import replace
 
 from flashinfer.attention import (
     AttentionOperatorResourceBinding,
-    AttentionOperatorRuntimeImplementationRegistry,
-    AttentionOperatorRuntimeResolverRegistry,
     AttentionWorkspaceContract,
-    attention_operator_runtime_registry_snapshot,
     bind_attention_operator_resources,
-    install_attention_operator_runtime_resolvers,
 )
 from flashinfer.prefill import BatchPrefillWithPagedKVCacheWrapper
 from flashinfer.runtime import SchemaError
-from tests.framework.test_package_runtime_integration import build_components, package_attention
+from tests.support.attention_provider import ProviderRuntimeTestCase, package_attention
 
 
 class FakeNpuWorkspace:
@@ -23,15 +19,6 @@ class FakeNpuWorkspace:
 
 class FakeQuery:
     device = "npu:1"
-
-
-def runtime_registry(components):
-    implementations = AttentionOperatorRuntimeImplementationRegistry(
-        (components["implementation"],)
-    )
-    return AttentionOperatorRuntimeResolverRegistry(
-        (("npu", implementations),)
-    )
 
 
 def plan_wrapper(wrapper):
@@ -50,23 +37,8 @@ def plan_wrapper(wrapper):
     )
 
 
-class ProviderResourceBindingTests(unittest.TestCase):
+class ProviderResourceBindingTests(ProviderRuntimeTestCase):
     """Provider workspace and returned tensors are plan-bound resources."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchPrefillWithPagedKVCacheWrapper(

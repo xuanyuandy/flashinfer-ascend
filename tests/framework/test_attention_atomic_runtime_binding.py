@@ -16,13 +16,10 @@ from flashinfer.attention import (
     load_packaged_attention_operator_catalog,
 )
 from flashinfer.runtime import Backend, SchemaError
+from tests.support import hash_value
 
 
 OPERATION_ID = "cann.torch_npu.npu_fused_infer_attention_score_v2@7.3.0"
-
-
-def hash_value(character):
-    return character * 64
 
 
 def callable_authority(adapter_version="test-adapter"):

@@ -13,7 +13,6 @@ from flashinfer.attention import (
     AttentionStateError,
     AttentionTraceCorpus,
     TensorView,
-    attention_operator_runtime_registry_snapshot,
     build_attention_operator_runtime_resolvers,
     build_framework_attention_corpus,
     contiguous_strides,
@@ -21,12 +20,11 @@ from flashinfer.attention import (
     framework_attention_coverage_policy,
     infer_quant_scale_shape,
     infer_quant_storage_shape,
-    install_attention_operator_runtime_resolvers,
 )
 from flashinfer.prefill import BatchPrefillWithPagedKVCacheWrapper
 from flashinfer.runtime import SchemaError
 from tests.framework.test_attention_capability import attention_artifact, attention_launch_abi, bound_kernel, pinned_environment
-from tests.framework.test_package_runtime_integration import package_attention
+from tests.support.attention_provider import install_provider, package_attention
 from tests.framework.test_attention_runtime_bootstrap import bootstrap_components
 
 
@@ -230,19 +228,9 @@ class PublicQuantizedPagedPrefillTests(unittest.TestCase):
     """Public wrapper owns exact quantized provider planning and lowering."""
 
     def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
         self.values, self.case, registry = public_prefill_runtime()
-        install_attention_operator_runtime_resolvers(
-            registry,
-            operation_catalog=self.values["catalog"],
-        )
+        install_provider(self, registry, self.values["catalog"])
         package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchPrefillWithPagedKVCacheWrapper(

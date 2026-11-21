@@ -13,10 +13,7 @@ from flashinfer.attention import (
     load_packaged_attention_operator_catalog,
 )
 from flashinfer.runtime import Backend, SchemaError
-
-
-def hash_value(character):
-    return character * 64
+from tests.support import hash_value
 
 
 def active_plan(operation_id, *, provider_id="cann", corpus_index=0):

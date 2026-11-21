@@ -226,7 +226,7 @@ from flashinfer.attention import (
     infer_quant_storage_shape,
 )
 from tests.framework.test_attention_capability import group_plan
-from tests.framework.test_package_runtime_integration import package_attention
+from tests.support.attention_provider import package_attention
 
 
 def active_session(values, *, spec=None, catalog=None, plan=None):

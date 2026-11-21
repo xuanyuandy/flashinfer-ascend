@@ -10,7 +10,6 @@ import pytest
 
 import flashinfer as finpu
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import _reset_global_registry_for_testing
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -104,16 +103,10 @@ class _FakeTensor:
         self.shape = shape
 
 
-@pytest.fixture
-def _clean_global_registry():
-    yield
-    _reset_global_registry_for_testing()
-
-
 class TestRopeFacadeFlow:
     """门面全链路：假张量 + custom probe kernel（kernel_id 显式锁定）。"""
 
-    def test_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -142,7 +135,7 @@ class TestRopeFacadeFlow:
         assert cache_arg is cache
         assert hs_arg == 128 and neox_arg is False
 
-    def test_cache_dtype_must_be_float32(self, _clean_global_registry):
+    def test_cache_dtype_must_be_float32(self, clean_global_registry):
         pos = _FakeTensor("int64", (8,))
         q = _FakeTensor("float16", (8, 4 * 128))
         k = _FakeTensor("float16", (8, 2 * 128))
@@ -151,18 +144,10 @@ class TestRopeFacadeFlow:
             finpu.apply_rope_with_cos_sin_cache_inplace(pos, q, k, 128, cache)
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestRopeDeviceDispatch:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
-    def _require_npu(self):
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
-
+    @pytest.mark.usefixtures("npu_device")
     def test_auto_dispatch_picks_cann_on_npu(self):
-        self._require_npu()
         hardware = finpu.current_hardware()
         assert hardware.soc_model in ("Ascend910B", "Ascend910C", "Ascend950")
         assert finpu.dispatch(_rope_sig(), hardware).kernel_id == ROPE_ID_CANN

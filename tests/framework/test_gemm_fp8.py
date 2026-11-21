@@ -13,7 +13,6 @@ import pytest
 
 import flashinfer as finpu
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import _reset_global_registry_for_testing
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -85,16 +84,10 @@ class _FakeTensor:
         self.ndim = ndim if ndim is not None else len(shape)
 
 
-@pytest.fixture
-def _clean_global_registry():
-    yield
-    _reset_global_registry_for_testing()
-
-
 class TestGemmFp8FacadeFlow:
     """门面全链路：假张量 + custom probe kernel（kernel_id 显式锁定）。"""
 
-    def test_bmm_fp8_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_bmm_fp8_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -119,7 +112,7 @@ class TestGemmFp8FacadeFlow:
         (a_, b_, sa_, sb_, out_), = calls
         assert a_ is A and b_ is B and sa_ is s and sb_ is s and out_ is out
 
-    def test_groupwise_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_groupwise_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -149,7 +142,7 @@ class TestGemmFp8FacadeFlow:
         assert a_ is a and b_ is b and out_ is out
         assert mode == "K" and gran == (1, 128, 128)
 
-    def test_groupwise_shape_validation(self, _clean_global_registry):
+    def test_groupwise_shape_validation(self, clean_global_registry):
         a = _FakeTensor("float8_e4m3fn", (32, 256))
         b3d = _FakeTensor("float8_e4m3fn", (4, 64, 256))
         with pytest.raises(ValueError, match="Shape mismatch"):

@@ -8,7 +8,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import sys
 from flashinfer._resources import data_root
 
 
@@ -168,11 +167,5 @@ def run_scenario(scenario, store_root):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        if __package__:
-            from .matmul_bias_silu import main
-        else:
-            from matmul_bias_silu import main
-        main()
-    else:
-        run_scenario(*sys.argv[1:])
+    from tests.support.aot_release import scenario_main
+    scenario_main(run_scenario)

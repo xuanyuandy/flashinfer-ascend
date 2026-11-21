@@ -26,7 +26,7 @@ from flashinfer.attention.jit import (
 )
 from flashinfer.runtime import ArtifactVerificationError, SchemaError
 from tests.framework.test_public_batch_attention_provider_runtime import plan_public_wrapper
-from tests.framework.test_package_runtime_integration import FakeLogicalRunAdapter, build_components, framework_plan
+from tests.support.attention_provider import FakeLogicalRunAdapter, build_components, framework_plan
 from tests.framework.test_attention_jit_framework import runtime_environment
 from tests.framework.test_attention_jit_active_plan import FakeJitAuthorityResolver, FakeJitAutoResolver, RecordingJitPlanResolver, SyntheticArtifactReader, cache_payload, cache_record, jit_receipt, package_jit_implementation
 
@@ -67,16 +67,17 @@ class NonBytesReader:
         return "not-bytes"
 
 
+def batch_wrapper(resolver):
+    registry = AttentionOperatorRuntimeResolverRegistry((("npu", resolver),))
+    with patch(
+        "flashinfer.attention.holistic._operator_runtime_resolvers",
+        registry,
+    ):
+        return BatchAttention(kv_layout="NHD", device="npu:0")
+
+
 class AttentionJitArtifactVerificationTests(unittest.TestCase):
     """Checkpoint 032: byte identity is required before runtime publication."""
-
-    def wrapper(self, resolver):
-        registry = AttentionOperatorRuntimeResolverRegistry((("npu", resolver),))
-        with patch(
-            "flashinfer.attention.holistic._operator_runtime_resolvers",
-            registry,
-        ):
-            return BatchAttention(kv_layout="NHD", device="npu:0")
 
     def test_public_api_has_no_artifact_or_loader_controls(self):
         for callable_value in (BatchAttention, BatchAttention.plan, BatchAttention.run):
@@ -171,7 +172,7 @@ class AttentionJitArtifactVerificationTests(unittest.TestCase):
 
     def test_public_plan_owns_artifact_binding_and_run_does_not_reread(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         artifact_binding = runtime.jit_artifact_binding
@@ -186,7 +187,7 @@ class AttentionJitArtifactVerificationTests(unittest.TestCase):
 
     def test_corrupt_replan_preserves_previous_plan_artifact_and_executor(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         old_plan = wrapper.plan_state
@@ -203,11 +204,11 @@ class AttentionJitArtifactVerificationTests(unittest.TestCase):
 
     def test_run_detects_artifact_binding_drift_before_executor(self):
         first_resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(first_resolver)
+        wrapper = batch_wrapper(first_resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         executor = first_resolver.executors[0]
 
-        other = self.wrapper(FakeJitAutoResolver())
+        other = batch_wrapper(FakeJitAutoResolver())
         plan_public_wrapper(other, page_size=16, kv_lengths=(32, 16))
         wrapper._operator_runtime._jit_artifact_binding = (
             other._operator_runtime.jit_artifact_binding
@@ -218,7 +219,7 @@ class AttentionJitArtifactVerificationTests(unittest.TestCase):
 
     def test_artifact_identity_changes_active_plan_fingerprint(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         active = wrapper._operator_runtime.operator_session.active_plan
         changed = replace(
@@ -247,14 +248,6 @@ class LyingIdentityLoader(SyntheticModuleLoader):
 
 class AttentionJitModuleLoadingTests(unittest.TestCase):
     """Checkpoint 033: exact loaded-module identity remains wrapper-owned."""
-
-    def wrapper(self, resolver):
-        registry = AttentionOperatorRuntimeResolverRegistry((("npu", resolver),))
-        with patch(
-            "flashinfer.attention.holistic._operator_runtime_resolvers",
-            registry,
-        ):
-            return BatchAttention(kv_layout="NHD", device="npu:0")
 
     def loaded_case(self, *, symbol_mode="exact", loader=None):
         plan, binding, record, cache, _, _, artifact_resolver = direct_artifact_case()
@@ -366,7 +359,7 @@ class AttentionJitModuleLoadingTests(unittest.TestCase):
 
     def test_public_plan_owns_module_and_run_does_not_reload(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         module_binding = runtime.jit_module_binding
@@ -381,7 +374,7 @@ class AttentionJitModuleLoadingTests(unittest.TestCase):
 
     def test_failed_module_replan_preserves_old_runtime(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         old_plan = wrapper.plan_state
@@ -398,11 +391,11 @@ class AttentionJitModuleLoadingTests(unittest.TestCase):
 
     def test_run_detects_loaded_module_drift_before_executor(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         executor = resolver.executors[0]
 
-        other = self.wrapper(FakeJitAutoResolver())
+        other = batch_wrapper(FakeJitAutoResolver())
         plan_public_wrapper(other, page_size=16, kv_lengths=(32, 16))
         wrapper._operator_runtime._jit_module_binding = (
             other._operator_runtime.jit_module_binding
@@ -429,16 +422,8 @@ from tests.framework.test_attention_jit_active_plan import FakeJitAuthorityResol
 class AttentionJitExecutorBindingTests(unittest.TestCase):
     """Loaded JIT symbols require a private, active-plan-bound executor."""
 
-    def wrapper(self, resolver):
-        registry = AttentionOperatorRuntimeResolverRegistry((("npu", resolver),))
-        with patch(
-            "flashinfer.attention.holistic._operator_runtime_resolvers",
-            registry,
-        ):
-            return BatchAttention(kv_layout="NHD", device="npu:0")
-
     def test_exact_binding_receipt_closes_module_callable_and_executor(self):
-        wrapper = self.wrapper(FakeJitAutoResolver())
+        wrapper = batch_wrapper(FakeJitAutoResolver())
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         binding = runtime.jit_executor_binding
@@ -493,7 +478,7 @@ class AttentionJitExecutorBindingTests(unittest.TestCase):
     def test_stale_binder_receipt_fails_before_plan_publication(self):
         resolver = FakeJitAutoResolver()
         resolver.executor_binding_mode = "stale_callable"
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
 
         with self.assertRaisesRegex(SchemaError, "executor binding is stale"):
             plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
@@ -502,7 +487,7 @@ class AttentionJitExecutorBindingTests(unittest.TestCase):
 
     def test_public_plan_owns_binding_and_run_does_not_rebind(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         binding = runtime.jit_executor_binding
@@ -518,7 +503,7 @@ class AttentionJitExecutorBindingTests(unittest.TestCase):
 
     def test_failed_binding_replan_preserves_previous_runtime(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         old_plan = wrapper.plan_state
@@ -535,11 +520,11 @@ class AttentionJitExecutorBindingTests(unittest.TestCase):
 
     def test_run_detects_executor_binding_drift_before_executor(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         executor = resolver.executors[0]
 
-        other = self.wrapper(FakeJitAutoResolver())
+        other = batch_wrapper(FakeJitAutoResolver())
         plan_public_wrapper(other, page_size=16, kv_lengths=(32, 16))
         wrapper._operator_runtime._jit_executor_binding = (
             other._operator_runtime.jit_executor_binding
@@ -581,16 +566,8 @@ from tests.framework.test_attention_jit_active_plan import FakeJitAuthorityResol
 class AttentionJitPlannerBindingTests(unittest.TestCase):
     """The loaded JIT plan symbol remains private and wrapper-owned."""
 
-    def wrapper(self, resolver):
-        registry = AttentionOperatorRuntimeResolverRegistry((("npu", resolver),))
-        with patch(
-            "flashinfer.attention.holistic._operator_runtime_resolvers",
-            registry,
-        ):
-            return BatchAttention(kv_layout="NHD", device="npu:0")
-
     def test_exact_planner_receipt_closes_module_and_plan_factory(self):
-        wrapper = self.wrapper(FakeJitAutoResolver())
+        wrapper = batch_wrapper(FakeJitAutoResolver())
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         binding = runtime.jit_planner_binding
@@ -653,7 +630,7 @@ class AttentionJitPlannerBindingTests(unittest.TestCase):
     def test_stale_planner_receipt_fails_before_plan_publication(self):
         resolver = FakeJitAutoResolver()
         resolver.planner_binding_mode = "stale_module"
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
 
         with self.assertRaisesRegex(SchemaError, "planner binding is stale"):
             plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
@@ -662,7 +639,7 @@ class AttentionJitPlannerBindingTests(unittest.TestCase):
 
     def test_public_plan_owns_planner_binding_without_rebinding_on_run(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         binding = runtime.jit_planner_binding
@@ -678,7 +655,7 @@ class AttentionJitPlannerBindingTests(unittest.TestCase):
 
     def test_failed_planner_replan_preserves_previous_runtime(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         runtime = wrapper._operator_runtime
         old_plan = wrapper.plan_state
@@ -695,11 +672,11 @@ class AttentionJitPlannerBindingTests(unittest.TestCase):
 
     def test_run_detects_planner_binding_drift_before_executor(self):
         resolver = FakeJitAutoResolver()
-        wrapper = self.wrapper(resolver)
+        wrapper = batch_wrapper(resolver)
         plan_public_wrapper(wrapper, page_size=16, kv_lengths=(24, 16))
         executor = resolver.executors[0]
 
-        other = self.wrapper(FakeJitAutoResolver())
+        other = batch_wrapper(FakeJitAutoResolver())
         plan_public_wrapper(other, page_size=16, kv_lengths=(32, 16))
         wrapper._operator_runtime._jit_planner_binding = (
             other._operator_runtime.jit_planner_binding

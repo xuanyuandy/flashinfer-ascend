@@ -12,7 +12,6 @@ import pytest
 
 import flashinfer as finpu
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import _reset_global_registry_for_testing
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -58,14 +57,8 @@ class _FakeTensor:
         self.ndim = ndim if ndim is not None else len(shape)
 
 
-@pytest.fixture
-def _clean_global_registry():
-    yield
-    _reset_global_registry_for_testing()
-
-
 class TestMergeStateFacadeFlow:
-    def test_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -89,7 +82,7 @@ class TestMergeStateFacadeFlow:
         (va_, sa_, vb_, sb_), = calls
         assert va_ is va and sa_ is sa and vb_ is vb and sb_ is sb
 
-    def test_shape_validation(self, _clean_global_registry):
+    def test_shape_validation(self, clean_global_registry):
         v = _FakeTensor("bfloat16", (16, 4, 32))
         s = _FakeTensor("float32", (16, 4))
         with pytest.raises(ValueError, match="形状须一致"):
@@ -103,11 +96,8 @@ class TestMergeStateFacadeFlow:
             finpu.merge_state(v, _FakeTensor("float32", (16, 2)), v, s)
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestMergeStateNumerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
     def _expected(self, va, sa, vb, sb):
         torch = self.torch
         s_m = torch.logaddexp(sa, sb)
@@ -188,15 +178,9 @@ class TestMergeStateNumerics:
             assert v_m.dtype == dtype and s_m.dtype == torch.float32
 
 
+@pytest.mark.usefixtures("torch_for_class", "npu_device")
 class TestMergeStateCannNpu:
     """CANN kernel（npu_attention_update）NPU 数值验证：与 fp64 基线对拍。"""
-
-    @pytest.fixture(autouse=True)
-    def _npu(self):
-        self.torch = pytest.importorskip("torch")
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
 
     @pytest.mark.parametrize("dtype_name", ["float16", "bfloat16"])
     def test_cann_vs_fp64(self, dtype_name):

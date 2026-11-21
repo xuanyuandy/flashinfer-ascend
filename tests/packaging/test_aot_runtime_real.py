@@ -1,19 +1,18 @@
 """P0-2 real CANN acceptance: public API -> dispatch -> AOT/JIT -> NPU."""
 
-from contextlib import contextmanager
 import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
-import sys
-from flashinfer._resources import data_root
 
 import pytest
 
+from flashinfer.operators.pytest_support import corrupt_package_copy
+from tests.support.aot_release import installed_release, run_release_scenario
+
 pytestmark = pytest.mark.requires_soc("Ascend950")
 
-from tests.support.aot_runtime_probe import ROOT, build_release
+from tests.support.aot_runtime_probe import build_release
 
 
 @pytest.fixture(scope="module")
@@ -28,41 +27,12 @@ def real_release(tmp_path_factory):
     return build_release(tmp_path_factory.mktemp("p0-2-aot"))
 
 
-@contextmanager
-def installed_release(release):
-    """Install only this fixture in the real default wheel discovery layout."""
-    root = data_root(ROOT) / "op_packages"
-    created_root = not root.exists()
-    root.mkdir(parents=True, exist_ok=True)
-    destination = root / release.name
-    assert not destination.exists(), "never overwrite a pre-existing release"
-    shutil.copytree(release, destination)
-    try:
-        yield destination
-    finally:
-        shutil.rmtree(destination)
-        if created_root:
-            root.rmdir()
-
-
 def execute(scenario, release, tmp_path, *, search_root=None, second_release=None):
-    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1")
-    environment.pop("FLASHINFER_AOT_PATHS", None)
-    environment.pop("FLASHINFER_NPU_JIT_DISABLE", None)
-    if search_root is not None:
-        environment["FLASHINFER_AOT_PATHS"] = str(search_root)
-    command = [sys.executable, "-B", "-m", "tests.support.aot_runtime_probe", scenario,
-               str(release), str(tmp_path / "cold-runtime-store")]
+    arguments = [release, tmp_path / "cold-runtime-store"]
     if second_release is not None:
-        command.append(str(second_release))
-    result = subprocess.run(command, cwd=ROOT, env=environment,
-                            capture_output=True, text=True, timeout=180)
-    assert result.returncode == 0, result.stdout + result.stderr
-    evidence = next(json.loads(line) for line in result.stdout.splitlines()
-                    if line.startswith('{"') and '"scenario"' in line)
-    assert evidence["result"] == "PASS" and evidence["scenario"] == scenario
-    print(json.dumps(evidence, sort_keys=True))
-    return evidence
+        arguments.append(second_release)
+    return run_release_scenario("tests.support.aot_runtime_probe", scenario, *arguments,
+                                search_root=search_root, timeout=180)
 
 
 @pytest.mark.real_compile
@@ -87,13 +57,7 @@ def test_missing_forbidden_jit_reports_explicit_error(real_release, tmp_path, sc
 
 @pytest.mark.real_compile
 def test_corrupt_digest_is_fatal_even_with_jit_enabled(real_release, tmp_path):
-    root = tmp_path / "damaged-releases"
-    damaged = root / real_release.name
-    shutil.copytree(real_release, damaged)
-    package = json.loads((damaged / "op-package.json").read_text())
-    library = damaged / package["api_library"]
-    payload = library.read_bytes()
-    library.write_bytes(bytes((payload[0] ^ 1,)) + payload[1:])
+    root = corrupt_package_copy(real_release, tmp_path / "damaged-releases")
     evidence = execute("corrupt", real_release, tmp_path, search_root=root)
     assert evidence["category"] == "corrupt" and evidence["compiler_calls"] == 0
 

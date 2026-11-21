@@ -10,7 +10,6 @@ import pytest
 
 import flashinfer as finpu
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import _reset_global_registry_for_testing
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -94,12 +93,6 @@ class _FakeTensor:
         self.shape = shape
 
 
-@pytest.fixture
-def _clean_global_registry():
-    yield
-    _reset_global_registry_for_testing()
-
-
 def _fake_inputs():
     return dict(
         q=_FakeTensor("float16", (3, 8, 64)),
@@ -114,7 +107,7 @@ def _fake_inputs():
 class TestCudnnDecodeFacadeFlow:
     """门面全链路：假张量 + custom probe kernel（kernel_id 显式锁定）。"""
 
-    def test_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -144,7 +137,7 @@ class TestCudnnDecodeFacadeFlow:
         assert scale == pytest.approx(0.125) and max_kv == 48
         assert lens is t["lens"] and tables is t["tables"] and out is t["out"]
 
-    def test_missing_lens_or_tables_rejected(self, _clean_global_registry):
+    def test_missing_lens_or_tables_rejected(self, clean_global_registry):
         t = _fake_inputs()
         with pytest.raises(ValueError, match="不能为空"):
             finpu.cudnn_batch_decode_with_kv_cache(
@@ -157,7 +150,7 @@ class TestCudnnDecodeFacadeFlow:
                 max_sequence_kv=48, actual_seq_lens_kv=t["lens"], out=t["out"],
             )
 
-    def test_batch_offsets_rejected(self, _clean_global_registry):
+    def test_batch_offsets_rejected(self, clean_global_registry):
         t = _fake_inputs()
         with pytest.raises(NotImplementedError, match="batch_offsets"):
             finpu.cudnn_batch_decode_with_kv_cache(
@@ -170,16 +163,8 @@ class TestCudnnDecodeFacadeFlow:
             )
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestCudnnDecodeNumerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
-    def _require_npu(self):
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
-
     def _make_inputs(self, dtype, device):
         """B=3, GQA(8/2), page=16, 末页部分填充；lens [5, 17, 40]。"""
         torch = self.torch
@@ -227,17 +212,17 @@ class TestCudnnDecodeNumerics:
         expected = self._fp64_decode(q, k, v, scale, max_kv, lens, tables)
         assert torch.allclose(out.double(), expected, atol=1e-4)
 
+    @pytest.mark.usefixtures("npu_device")
     def test_auto_dispatch_picks_cann_on_npu(self):
-        self._require_npu()
         hardware = finpu.current_hardware()
         assert hardware.soc_model in ("Ascend910B", "Ascend910C", "Ascend950")
         assert finpu.dispatch(_decode_sig(), hardware).kernel_id == DECODE_ID_CANN
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol", [("float16", 2e-2), ("bfloat16", 8e-2)]
     )
     def test_decode_npu_vs_fp64(self, dtype, atol):
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         q, k, v, scale, max_kv, lens, tables = self._make_inputs(dt, "npu")
@@ -251,9 +236,9 @@ class TestCudnnDecodeNumerics:
         )
         assert torch.allclose(out.cpu().double(), expected, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     def test_cann_vs_reference_consistency(self):
         """M1 验收口径：同输入，CANN 与 reference 两 backend 数值一致。"""
-        self._require_npu()
         torch = self.torch
         q, k, v, scale, max_kv, lens, tables = self._make_inputs(
             torch.float16, "npu"
@@ -270,8 +255,8 @@ class TestCudnnDecodeNumerics:
         )
         assert torch.allclose(y_cann.cpu().double(), y_ref.double(), atol=2e-2)
 
+    @pytest.mark.usefixtures("npu_device")
     def test_out_buffer_reused(self):
-        self._require_npu()
         torch = self.torch
         q, k, v, scale, max_kv, lens, tables = self._make_inputs(
             torch.float16, "npu"

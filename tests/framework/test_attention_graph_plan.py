@@ -3,6 +3,7 @@
 from dataclasses import replace
 
 import pytest
+from tests.support.pytest_plugin import a5_device as npu
 
 
 from flashinfer import (
@@ -16,15 +17,6 @@ from flashinfer.attention.planner import AttentionStateError
 from flashinfer.attention.reference import ReferenceTensor
 from flashinfer.runtime import Backend, SchemaError, get_global_registry
 from flashinfer.runtime.registry import KernelRegistry
-
-
-@pytest.fixture(scope="module")
-def npu():
-    torch = pytest.importorskip("torch")
-    pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(torch.npu.current_device()):
-        pytest.skip("requires verified Ascend950")
-    return torch.device("npu", torch.npu.current_device())
 
 
 def index(values, device="cpu"):

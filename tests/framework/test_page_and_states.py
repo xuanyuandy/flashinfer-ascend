@@ -1,18 +1,10 @@
 import math
 
 import pytest
+from tests.support.pytest_plugin import cann_a5_device as npu
 import torch
 
 import flashinfer
-
-
-@pytest.fixture
-def npu(monkeypatch):
-    pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(torch.npu.current_device()):
-        pytest.skip("requires verified Ascend950")
-    monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "cann")
-    return torch.device("npu", torch.npu.current_device())
 
 
 @pytest.mark.requires_soc("Ascend950")

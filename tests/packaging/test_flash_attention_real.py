@@ -1,18 +1,16 @@
 """The seven T4 production acceptance scenarios on real Ascend950 hardware."""
 
-from contextlib import contextmanager
-import json
 import os
 from pathlib import Path
-from flashinfer._resources import data_root
-import shutil
-import subprocess
 
 import pytest
 
+from flashinfer.operators.pytest_support import corrupt_package_copy
+from tests.support.aot_release import installed_release, run_release_scenario, runtime_only_cann
+
 pytestmark = pytest.mark.requires_soc("Ascend950")
 
-from tests.support.flash_attention_acceptance import CATLASS_ROOT, GOLDEN_SHAPES, PYTHON, ROOT
+from tests.support.flash_attention_acceptance import CATLASS_ROOT, PYTHON
 
 
 @pytest.fixture(scope="module")
@@ -38,62 +36,15 @@ def flash_attention_release(tmp_path_factory):
             os.environ["FLASHINFER_CATLASS_ROOT"] = original
 
 
-@contextmanager
-def installed_release(release):
-    destination_root = data_root(ROOT) / "op_packages"
-    created = not destination_root.exists()
-    destination_root.mkdir(parents=True, exist_ok=True)
-    destination = destination_root / release.name
-    assert not destination.exists(), "never overwrite an existing release"
-    shutil.copytree(release, destination)
-    try:
-        yield destination
-    finally:
-        shutil.rmtree(destination)
-        if created:
-            destination_root.rmdir()
-
-
 def execute(scenario, tmp_path, *, search_root=None):
-    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1",
-                       FLASHINFER_CATLASS_ROOT=str(CATLASS_ROOT),
-                       FLASHINFER_TEST_CATLASS_ROOT=str(CATLASS_ROOT))
-    environment.pop("FLASHINFER_AOT_PATHS", None)
-    environment.pop("FLASHINFER_NPU_JIT_DISABLE", None)
-    if search_root is not None:
-        environment["FLASHINFER_AOT_PATHS"] = str(search_root)
+    env = {"FLASHINFER_CATLASS_ROOT": str(CATLASS_ROOT), "FLASHINFER_TEST_CATLASS_ROOT": str(CATLASS_ROOT)}
     if scenario == "hit_disabled":
-        original_home = Path(environment["ASCEND_HOME_PATH"])
-        runtime_home = tmp_path / "runtime-only-cann"
-        runtime_home.mkdir()
-        for name in ("lib64", "share", "conf", "opp", "runtime"):
-            (runtime_home / name).symlink_to(original_home / name, target_is_directory=True)
-        (runtime_home / "compiler").mkdir()
-        assert not (runtime_home / "bin/bisheng").exists()
-        environment["ASCEND_HOME_PATH"] = str(runtime_home)
-        environment["PATH"] = "/usr/bin:/bin"
-        absent_catlass = tmp_path / "absent-build-catlass"
-        assert not absent_catlass.exists()
-        environment["FLASHINFER_CATLASS_ROOT"] = str(absent_catlass)
-    command = [str(PYTHON), "-B", "-m", "tests.support.flash_attention_acceptance",
-               scenario, str(tmp_path / "cold-store")]
-    result = subprocess.run(command, cwd=ROOT, env=environment, capture_output=True,
-                            text=True, timeout=300)
-    assert result.returncode == 0, result.stdout + result.stderr
-    evidence = next(json.loads(line) for line in result.stdout.splitlines()
-                    if line.startswith('{"') and '"scenario"' in line)
-    assert evidence["result"] == "PASS" and evidence["scenario"] == scenario
-    print("COMMAND " + " ".join(command))
-    print(json.dumps(evidence, sort_keys=True))
-    return evidence
-
-
-@pytest.mark.real_compile
-def test_flash_attention_golden_multiple_shapes(flash_attention_release, tmp_path):
-    evidence = execute("numerical", tmp_path, search_root=flash_attention_release)
-    assert len(evidence["errors"]) == len(GOLDEN_SHAPES) * 2
-    assert {entry["dtype"] for entry in evidence["errors"]} == {"float16", "bfloat16"}
-    assert evidence["source"] == "aot" and evidence["compiler_calls"] == 0
+        env.update(runtime_only_cann(tmp_path))
+        absent = tmp_path / "absent-build-catlass"
+        assert not absent.exists()
+        env["FLASHINFER_CATLASS_ROOT"] = str(absent)
+    return run_release_scenario("tests.support.flash_attention_acceptance", scenario, tmp_path / "cold-store",
+                                search_root=search_root, env=env, python=PYTHON, timeout=300)
 
 
 @pytest.mark.real_compile
@@ -107,13 +58,6 @@ def test_flash_attention_aot_without_compiler(flash_attention_release, tmp_path)
 
 
 @pytest.mark.real_compile
-def test_flash_attention_missing_real_jit(flash_attention_release, tmp_path):
-    evidence = execute("missing_enabled", tmp_path)
-    assert evidence["source"] == "jit" and evidence["compiler_calls"] == 1
-    assert evidence["toolchain_calls"] == 1
-
-
-@pytest.mark.real_compile
 def test_flash_attention_missing_disabled(flash_attention_release, tmp_path):
     evidence = execute("missing_disabled", tmp_path)
     assert evidence["category"] == "missing" and not evidence["fallback"]
@@ -122,13 +66,8 @@ def test_flash_attention_missing_disabled(flash_attention_release, tmp_path):
 
 @pytest.mark.real_compile
 def test_flash_attention_corrupt_rejects_jit(flash_attention_release, tmp_path):
-    damaged = tmp_path / "damaged" / flash_attention_release.name
-    shutil.copytree(flash_attention_release, damaged)
-    package = json.loads((damaged / "op-package.json").read_text())
-    library = damaged / package["api_library"]
-    payload = library.read_bytes()
-    library.write_bytes(bytes((payload[0] ^ 1,)) + payload[1:])
-    evidence = execute("corrupt", tmp_path, search_root=damaged.parent)
+    root = corrupt_package_copy(flash_attention_release, tmp_path / "damaged")
+    evidence = execute("corrupt", tmp_path, search_root=root)
     assert evidence["policy"] == "enabled" and evidence["compiler_calls"] == 0
     assert evidence["category"] == "corrupt" and not evidence["fallback"]
 

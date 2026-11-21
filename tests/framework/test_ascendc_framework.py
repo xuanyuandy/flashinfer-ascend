@@ -478,6 +478,8 @@ def test_batch_cli_cold_build_cache_reuse_and_public_aot_jit(tmp_path):
         entry["spec"] for entry in builds[1]
     }
 
+    from tests.support.flash_attention_acceptance import GOLDEN_SHAPES
+
     aot = []
     jit = []
     for name, module in (
@@ -501,7 +503,11 @@ def test_batch_cli_cold_build_cache_reuse_and_public_aot_jit(tmp_path):
         )
         assert result["result"] == "PASS" and result["source"] == "aot"
         assert result["compiler_calls"] == result["toolchain_calls"] == 0
-        assert len(result["errors"]) == (8 if name == "matmul" else 12)
+        if name == "attention":
+            assert len(result["errors"]) == 2 * len(GOLDEN_SHAPES)
+            assert {entry["dtype"] for entry in result["errors"]} == {"float16", "bfloat16"}
+        else:
+            assert len(result["errors"]) == 8
         aot.append(result)
         output = run(
             name + "-cold-jit",

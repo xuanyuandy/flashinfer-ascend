@@ -1,21 +1,11 @@
-"""Public permute_qkv accuracy and contract tests on arch22."""
+"""Arch22 public permute_qkv invalid-input checks."""
 
 import pytest
 
 import flashinfer
-from flashinfer.operators.attention.permute_qkv import cases
 
 pytestmark = [pytest.mark.real_compile, pytest.mark.requires_soc("Ascend910B", "Ascend910C"),
               pytest.mark.usefixtures("aot_runtime")]
-
-
-@pytest.mark.parametrize("configuration", cases.CASE_PARAMETERS)
-def test_accuracy(npu_runtime, configuration):
-    torch, torch_npu = npu_runtime
-    args, options, expected = cases.sample(torch, torch_npu, **configuration)
-    actual = flashinfer.permute_qkv(*args, **options)
-    assert torch_npu.get_npu_format(actual) == 2
-    torch.testing.assert_close(actual.cpu(), expected, atol=0, rtol=0)
 
 
 @pytest.mark.parametrize("problem,match", [

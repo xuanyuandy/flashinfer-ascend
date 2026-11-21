@@ -154,6 +154,7 @@ class AttentionResourcePlanGateTests(unittest.TestCase):
 import math
 
 import pytest
+from tests.support.pytest_plugin import a5_device as npu
 
 from flashinfer import (
     BatchDecodeWithPagedKVCacheWrapper,
@@ -163,15 +164,6 @@ from flashinfer import (
 )
 from flashinfer.attention.planner import AttentionStateError
 from tools.audit_attention_workspace import workspace_allocations
-
-
-@pytest.fixture(scope="module")
-def npu():
-    torch = pytest.importorskip("torch")
-    pytest.importorskip("torch_npu")
-    if not torch.npu.is_available() or "950" not in torch.npu.get_device_name(torch.npu.current_device()):
-        pytest.skip("requires verified Ascend950")
-    return torch.device("npu", torch.npu.current_device())
 
 
 def index(values, device="cpu"):

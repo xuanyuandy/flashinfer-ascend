@@ -19,7 +19,7 @@ CATLASS 独立参考脚本位于 `support/catlass_golden.py`，按原始源码 S
 
 ## 算子精度
 
-`operators/test_sparse_flash_attention.py` 与 `operators/test_grouped_matmul_swiglu_quant.py` 直接执行：
+`operators/test_declared_implementations.py` 按已声明的 SoC 选择本机实现。以稀疏 Attention 的公开入口为例：
 
 ```python
 args, options, expected = cases.sample(torch, torch_npu, **configuration)
@@ -41,12 +41,12 @@ for value, reference, (atol, rtol) in zip(actual, expected, cases.TOLERANCES):
 ```bash
 FLASHINFER_OPERATOR_TEST_RELEASE="$PWD/build/sfa-aot" \
 FLASHINFER_OPERATOR_TEST_ADAPTER="$PWD/build/aclnn" \
-python -B tools/run_regression.py --profile full tests/operators/test_sparse_flash_attention.py
+python -B tools/run_regression.py --profile full -k sparse_flash_attention tests/operators/test_declared_implementations.py
 ```
 
 `FLASHINFER_OPERATOR_TEST_RELEASE` 指向设备包导出根目录，`FLASHINFER_OPERATOR_TEST_ADAPTER` 指向包含 `libflashinfer_aclnn.so` 和 `manifest.json` 的原生桥目录。指定两者后公共 fixture 复用产物，设置运行时搜索路径并禁止 JIT。未指定的部分由 fixture 自动构建；自动设备包构建选择本机 SoC 的全部生产 AOT 实现。
 
-SFA 子集产物对应单个测试文件；运行整个 `tests/operators/` 需提供当前 SoC 所需的完整产物，或省略复用变量由 fixture 准备。SFA/GMM 精度测试标记为 `real_compile`，使用 `full` 或 `compile` 档；回归入口按本机芯片选择范围并报告其他目标的未执行数量。wheel 安装后使用 `python -B -m flashinfer selftest` 验证，运行位置与导入核对见 [安装产物验证](../README.md#wheel-构建与安装验证)。
+SFA 子集产物对应按算子名选择的用例；运行整个 `tests/operators/` 需提供当前 SoC 所需的完整产物，或省略复用变量由 fixture 准备。SFA/GMM 精度测试标记为 `real_compile`，使用 `full` 或 `compile` 档；回归入口按本机芯片选择范围并报告其他目标的未执行数量。wheel 安装后使用 `python -B -m flashinfer selftest` 验证，运行位置与导入核对见 [安装产物验证](../README.md#wheel-构建与安装验证)。
 
 ## 运行范围
 

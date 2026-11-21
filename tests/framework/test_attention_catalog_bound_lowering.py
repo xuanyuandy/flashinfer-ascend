@@ -4,49 +4,19 @@ from flashinfer.attention import (
     AttentionDispatchReceipt,
     AttentionFrameworkSession,
     AttentionLoweredOperatorCall,
-    AttentionObservedCallableSignature,
-    AttentionObservedOperatorCallable,
-    AttentionOperatorProviderProbe,
     AttentionOperatorProviderSelection,
     AttentionOperatorWrapperSession,
     AttentionPreparedOperatorPlan,
-    bind_attention_operator_callable,
     build_framework_attention_corpus,
     load_packaged_attention_operator_catalog,
 )
 from flashinfer.runtime import Backend, SchemaError
+from tests.support import hash_value
+from tests.support.attention_provider import callable_authority
 
 
 CANN_V2 = "cann.torch_npu.npu_fused_infer_attention_score_v2@7.3.0"
 FLASH_KV_V3 = "flash_attention_npu.flash_attn_with_kvcache@v3"
-
-
-def hash_value(character):
-    return character * 64
-
-
-def callable_authority(operation_id):
-    operation = load_packaged_attention_operator_catalog().get(operation_id)
-    probe = AttentionOperatorProviderProbe(
-        provider_id=operation.provider_id,
-        adapter_version="test-adapter",
-        available=True,
-        package_versions=((operation.package_name, "test-package"),),
-    )
-    observed = AttentionObservedOperatorCallable(
-        provider_id=operation.provider_id,
-        package_name=operation.package_name,
-        package_version="test-package",
-        callable_path=operation.callable_path,
-        api_version=operation.api_version,
-        available=True,
-        signature=AttentionObservedCallableSignature(
-            operation.positional_arguments,
-            operation.keyword_arguments,
-            observation_kind="test-adapter",
-        ),
-    )
-    return probe, bind_attention_operator_callable(probe, operation, observed)
 
 
 def plan_authority(

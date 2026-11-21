@@ -51,6 +51,15 @@ def case_parameters(cases, kernel_id):
     return parameters
 
 
+def case_tolerances(cases, configuration):
+    if hasattr(cases, "tolerances"):
+        tolerances = cases.tolerances(configuration)
+        if len(tolerances) != len(cases.TOLERANCES):
+            raise AssertionError("a tolerance pair is required for each output")
+        return tolerances
+    return cases.TOLERANCES
+
+
 def numerical_cases(torch, torch_npu, name, *, first_only=False, kernel_id=None, backend=None):
     operator = definition(name)
     cases = cases_module(name)
@@ -61,6 +70,7 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False, kernel_id=None,
     call = public_function(name)
     observations = {}
     for index, configuration in enumerate(parameters[:1] if first_only else parameters):
+        tolerances = case_tolerances(cases, configuration)
         args, options, expected = cases.sample(torch, torch_npu, **configuration)
         if kernel_id is not None:
             options = dict(options, kernel_id=kernel_id)
@@ -80,13 +90,13 @@ def numerical_cases(torch, torch_npu, name, *, first_only=False, kernel_id=None,
         assert output_pointers == tuple(t.data_ptr() for t in supplied), "out storage changed"
         assert pointers == tuple(t.data_ptr() for t in originals), "input storage changed"
         errors = []
-        for actual, reference, (atol, rtol) in zip(outputs, expected, cases.TOLERANCES):
+        for actual, reference in zip(outputs, expected):
             assert actual.shape == reference.shape, "reference output shape differs"
             errors.append(float((actual.cpu().double() - reference.double()).abs().max())
                           if actual.numel() else 0.0)
         print(json.dumps(dict(case=configuration, max_abs=errors), sort_keys=True), flush=True)
         for output_tuple in (outputs, returned):
-            for actual, reference, (atol, rtol) in zip(output_tuple, expected, cases.TOLERANCES):
+            for actual, reference, (atol, rtol) in zip(output_tuple, expected, tolerances):
                 torch.testing.assert_close(actual.cpu().double(), reference.double(), atol=atol, rtol=rtol)
         observations[str(index)] = dict(case=configuration, max_abs=errors)
     return observations

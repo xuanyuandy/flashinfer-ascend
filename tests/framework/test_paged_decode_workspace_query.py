@@ -2,12 +2,10 @@ import unittest
 
 from flashinfer.attention import (
     AttentionStateError,
-    attention_operator_runtime_registry_snapshot,
-    install_attention_operator_runtime_resolvers,
 )
 from flashinfer.decode import BatchDecodeWithPagedKVCacheWrapper
-from tests.framework.test_package_runtime_integration import build_components, package_attention
-from tests.framework.test_attention_batch_providers import FakeNpuWorkspace, plan_paged_decode as plan_public_wrapper, runtime_registry
+from tests.support.attention_provider import ProviderRuntimeTestCase, package_attention
+from tests.framework.test_attention_batch_providers import FakeNpuWorkspace, plan_paged_decode as plan_public_wrapper
 
 
 def query_workspace(value, **kwargs):
@@ -26,23 +24,8 @@ def query_workspace(value, **kwargs):
     )
 
 
-class PagedDecodeWorkspaceQueryTests(unittest.TestCase):
+class PagedDecodeWorkspaceQueryTests(ProviderRuntimeTestCase):
     """Paged decode shares the provider query fork without changing plan state."""
-
-    def setUp(self):
-        self.original = attention_operator_runtime_registry_snapshot()
-        self.components = build_components()
-        install_attention_operator_runtime_resolvers(
-            runtime_registry(self.components),
-            operation_catalog=self.components["catalog"],
-        )
-        package_attention.calls[:] = []
-
-    def tearDown(self):
-        install_attention_operator_runtime_resolvers(
-            self.original.registry,
-            operation_catalog=self.original.operation_catalog,
-        )
 
     def wrapper(self):
         return BatchDecodeWithPagedKVCacheWrapper(

@@ -11,10 +11,7 @@ from flashinfer.attention import (
     AttentionKVPhysicalLayoutAccessCode,
     AttentionStorageLease,
     AttentionStorageLifetime,
-    KVCacheView,
-    PagedKVCacheSpec,
     QuantPhysicalLayoutCatalog,
-    QuantizedTensorView,
     attention_kernel_binary_abi,
     attention_kernel_binary_abi_v2,
     bind_attention_kv_physical_layout,
@@ -26,41 +23,7 @@ from flashinfer.attention import (
 )
 from flashinfer.runtime import KernelConstraints, SchemaError
 from tests.framework.test_attention_capability import attention_launch_abi, bound_kernel, functional_profile, group_plan
-from tests.framework.test_attention_quant_physical_layout import synthetic_layout, uint8_spec
-from tests.framework.test_attention_tensor_contract import view
-
-
-def _physical_kv(descriptor):
-    logical_shape = (2, 3, 4, 5)
-    spec = uint8_spec(descriptor.layout_id)
-    shapes = descriptor.physical_shapes(logical_shape, spec)
-
-    def quantized(prefix):
-        return QuantizedTensorView(
-            logical_shape,
-            view(shapes.storage, dtype="uint8", storage_id=prefix + ".storage"),
-            view(shapes.scale, storage_id=prefix + ".scale"),
-            spec,
-            view(
-                shapes.zero_point,
-                dtype="int32",
-                storage_id=prefix + ".zero",
-            ),
-            descriptor,
-        )
-
-    cache = PagedKVCacheSpec(
-        2,
-        3,
-        4,
-        5,
-        5,
-        "uint8",
-        structure="separate",
-        device="cpu",
-        quant_spec=spec,
-    )
-    return KVCacheView(cache, quantized("key"), quantized("value"))
+from tests.framework.test_attention_quant_physical_layout import physical_kv, synthetic_layout, uint8_spec
 
 
 def _device_bindings(kv):
@@ -98,7 +61,7 @@ def _table_lease(component_count):
 def _native_fixture():
     descriptor = synthetic_layout()
     catalog = QuantPhysicalLayoutCatalog((descriptor,))
-    kv = _physical_kv(descriptor)
+    kv = physical_kv(descriptor)
 
     base_profile = functional_profile()
     environment = replace(

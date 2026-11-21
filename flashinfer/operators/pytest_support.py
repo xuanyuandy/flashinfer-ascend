@@ -89,7 +89,12 @@ def damaged_release(name, directory, release, *, kernel_id=None):
     descriptor, _, spec = load_contract(select_aot_implementation(name, kernel_id).kernel_id)
     index = AotPackageIndex(roots=release["FLASHINFER_AOT_PATHS"].split(os.pathsep))
     source = index.find(spec, descriptor=descriptor, target_soc=spec.target_soc).directory
-    damaged = directory / "damaged" / spec.fingerprint
+    return corrupt_package_copy(source, directory / "damaged")
+
+
+def corrupt_package_copy(source, directory):
+    """Flip one byte of the API library, leaving the original manifest and release intact."""
+    damaged = directory / source.name
     shutil.copytree(source, damaged)
     package = json.loads((damaged / "op-package.json").read_text())
     library = damaged / package["api_library"]

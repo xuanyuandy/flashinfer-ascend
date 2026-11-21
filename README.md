@@ -114,7 +114,7 @@ python -B -m flashinfer.aclnn.build --output-dir build/aclnn
 ```bash
 FLASHINFER_OPERATOR_TEST_RELEASE="$PWD/build/sfa-aot" \
 FLASHINFER_OPERATOR_TEST_ADAPTER="$PWD/build/aclnn" \
-python -B tools/run_regression.py --profile full tests/operators/test_sparse_flash_attention.py
+python -B tools/run_regression.py --profile full -k sparse_flash_attention tests/operators/test_declared_implementations.py
 ```
 
 测试通过上述环境变量定位已有设备包和桥；未指定时，由共享测试 fixture 构建本机 SoC 的生产 AOT 集合及桥。该模块标记为 `real_compile`，命令中的 `full` 范围限定为指定文件。用例直接调用 `flashinfer.sparse_flash_attention`，输入组合、独立 CPU 参考计算和容差定义于对应算子的 `cases.py`。
@@ -129,7 +129,7 @@ python -B -m flashinfer.operators build \
   --cache-dir build/aot-cache --output-dir build/permute-qkv-aot
 FLASHINFER_OPERATOR_TEST_RELEASE="$PWD/build/permute-qkv-aot" \
 FLASHINFER_OPERATOR_TEST_ADAPTER="$PWD/build/aclnn" \
-python -B tools/run_regression.py --profile full tests/operators/test_permute_qkv.py
+python -B tools/run_regression.py --profile full -k "permute_qkv and not unpermute_qkv" tests/operators
 ```
 
 `unpermute_qkv`、`histgram` 和 `merge_chunk2` 也可共用一个产物目录和上面的 ACLNN 桥。在仓库根目录生成并检查元数据后，以下命令编译 A2 的三个算子并逐输出比对 CPU 标杆。A3 使用 `Ascend910C` 构建，在对应设备上执行同一组测试。
@@ -144,7 +144,7 @@ python -B -m flashinfer.operators build \
 FLASHINFER_OPERATOR_TEST_RELEASE="$PWD/build/qkv-moe-$soc" \
 FLASHINFER_OPERATOR_TEST_ADAPTER="$PWD/build/aclnn" \
 python -B tools/run_regression.py --profile full \
-  tests/operators/test_unpermute_qkv.py tests/operators/test_histgram.py tests/operators/test_merge_chunk2.py
+  -k "unpermute_qkv or histgram or merge_chunk2" tests/operators
 ```
 
 ### wheel 构建与安装验证

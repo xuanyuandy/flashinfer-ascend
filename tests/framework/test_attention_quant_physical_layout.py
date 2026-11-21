@@ -114,43 +114,44 @@ class QuantPhysicalAxisTransformTests(unittest.TestCase):
             QuantPhysicalAxisTransform(1, (1,), ("o0",), required_alignment=3)
 
 
-class QuantPhysicalLayoutDescriptorTests(unittest.TestCase):
-    def _physical_kv(self, descriptor):
-        logical_shape = (2, 3, 4, 5)
-        spec = uint8_spec(descriptor.layout_id)
-        shapes = descriptor.physical_shapes(logical_shape, spec)
+def physical_kv(descriptor):
+    logical_shape = (2, 3, 4, 5)
+    spec = uint8_spec(descriptor.layout_id)
+    shapes = descriptor.physical_shapes(logical_shape, spec)
 
-        def quantized(prefix):
-            return QuantizedTensorView(
-                logical_shape,
-                view(
-                    shapes.storage,
-                    dtype="uint8",
-                    storage_id=prefix + ".storage",
-                ),
-                view(shapes.scale, storage_id=prefix + ".scale"),
-                spec,
-                view(
-                    shapes.zero_point,
-                    dtype="int32",
-                    storage_id=prefix + ".zero",
-                ),
-                descriptor,
-            )
-
-        cache = PagedKVCacheSpec(
-            2,
-            3,
-            4,
-            5,
-            5,
-            "uint8",
-            structure="separate",
-            device="cpu",
-            quant_spec=spec,
+    def quantized(prefix):
+        return QuantizedTensorView(
+            logical_shape,
+            view(
+                shapes.storage,
+                dtype="uint8",
+                storage_id=prefix + ".storage",
+            ),
+            view(shapes.scale, storage_id=prefix + ".scale"),
+            spec,
+            view(
+                shapes.zero_point,
+                dtype="int32",
+                storage_id=prefix + ".zero",
+            ),
+            descriptor,
         )
-        return KVCacheView(cache, quantized("key"), quantized("value"))
 
+    cache = PagedKVCacheSpec(
+        2,
+        3,
+        4,
+        5,
+        5,
+        "uint8",
+        structure="separate",
+        device="cpu",
+        quant_spec=spec,
+    )
+    return KVCacheView(cache, quantized("key"), quantized("value"))
+
+
+class QuantPhysicalLayoutDescriptorTests(unittest.TestCase):
     def test_nonlogical_quantized_view_requires_exact_descriptor_and_alignment(self):
         logical_shape = (2, 3, 4, 5)
         descriptor = synthetic_layout()
@@ -191,8 +192,8 @@ class QuantPhysicalLayoutDescriptorTests(unittest.TestCase):
     def test_descriptor_identity_enters_tensor_signature_but_pod_v1_rejects_launch(self):
         first = synthetic_layout()
         second = replace(first, storage_converter_id="synthetic.changed.converter")
-        first_kv = self._physical_kv(first)
-        second_kv = self._physical_kv(second)
+        first_kv = physical_kv(first)
+        second_kv = physical_kv(second)
         q = view((1, 1, 1), storage_id="q")
         first_contract = AttentionRunTensorContract(
             q, first_kv, StreamContext("cpu", "stream")

@@ -10,7 +10,6 @@ import pytest
 
 import flashinfer as finpu
 from flashinfer.runtime.hardware import HardwareSignature
-from flashinfer.runtime.registry import _reset_global_registry_for_testing
 from flashinfer.runtime.schema import (
     Backend,
     CapabilitySpec,
@@ -138,16 +137,10 @@ class _FakeTensor:
         self.shape = shape
 
 
-@pytest.fixture
-def _clean_global_registry():
-    yield
-    _reset_global_registry_for_testing()
-
-
 class TestNormFacadeFlow:
     """门面全链路：假张量 + custom probe kernel（kernel_id 显式锁定）。"""
 
-    def test_rmsnorm_facade_flow(self, monkeypatch, _clean_global_registry):
+    def test_rmsnorm_facade_flow(self, monkeypatch, clean_global_registry):
         calls = []
         finpu.register_custom_kernel(
             KernelDescriptor(
@@ -174,7 +167,7 @@ class TestNormFacadeFlow:
         assert eps_arg == pytest.approx(1e-5)
 
     def test_fused_add_rmsnorm_facade_flow(
-        self, monkeypatch, _clean_global_registry
+        self, monkeypatch, clean_global_registry
     ):
         calls = []
         finpu.register_custom_kernel(
@@ -201,18 +194,10 @@ class TestNormFacadeFlow:
         assert eps_arg == pytest.approx(1e-6)
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestNormDeviceDispatch:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
-    def _require_npu(self):
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
-
+    @pytest.mark.usefixtures("npu_device")
     def test_auto_dispatch_picks_cann_on_npu(self):
-        self._require_npu()
         hardware = finpu.current_hardware()
         assert hardware.soc_model in ("Ascend910B", "Ascend910C", "Ascend950")
         assert finpu.dispatch(_rmsnorm_sig(), hardware).kernel_id == (

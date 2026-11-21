@@ -22,10 +22,7 @@ from flashinfer.attention import (
     observe_python_callable_signature,
 )
 from flashinfer.runtime import Backend, SchemaError
-
-
-def hash_value(character):
-    return character * 64
+from tests.support import hash_value
 
 
 def fake_attention(query, key, value, *, scale=1.0, return_softmax_lse=False):

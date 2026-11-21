@@ -74,6 +74,7 @@ def sample(torch, torch_npu, *, variant="int8", scale_dtype="float32", layout="N
         device_weight, device_scales = weight.npu(), scales.npu()
     if layout == "NZ" and variant != "int32":
         device_weight = torch_npu.npu_format_cast(device_weight, 29)
+    assert torch_npu.get_npu_format(device_weight) == (29 if layout == "NZ" else 2)
     args = (x.npu(), device_weight, device_scales, token_scale.npu(),
             torch.tensor(prefixes, dtype=torch.int64).npu())
     expected = golden(torch, x, weight, scales, token_scale, prefixes, bias=bias, limit=limit)

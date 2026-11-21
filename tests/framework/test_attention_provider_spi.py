@@ -18,6 +18,7 @@ from flashinfer.attention import (
     KVLayout,
 )
 from flashinfer.runtime import Backend, SchemaError
+from tests.support import hash_value
 
 
 def draft_profile(profile_id, backend):
@@ -168,10 +169,6 @@ from flashinfer.attention import (
     explain_attention_operator_provider_binding,
 )
 from flashinfer.runtime import Backend
-
-
-def hash_value(character):
-    return character * 64
 
 
 

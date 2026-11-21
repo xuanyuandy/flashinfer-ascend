@@ -5,16 +5,8 @@ import pytest
 import flashinfer as finpu
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestNormNumerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
-    def _require_npu(self):
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
-
     def _fp64_rmsnorm(self, x, w, eps):
         xf = x.double()
         return (
@@ -71,12 +63,12 @@ class TestNormNumerics:
         assert not torch.allclose(out_small, out_large)
 
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
     def test_rmsnorm_npu_vs_fp64(self, dtype, atol):
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         x = torch.randn(8, 4096, dtype=dt, device="npu")
@@ -85,12 +77,12 @@ class TestNormNumerics:
         expected = self._fp64_rmsnorm(x.cpu(), w.cpu(), 1e-6)
         assert torch.allclose(out.cpu().double(), expected, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
     def test_fused_add_rmsnorm_npu_vs_fp64(self, dtype, atol):
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         x = torch.randn(8, 4096, dtype=dt, device="npu")
@@ -107,13 +99,13 @@ class TestNormNumerics:
         )
         assert torch.allclose(x.cpu().double(), expected, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
     def test_cann_vs_reference_consistency(self, dtype, atol):
         """M1 验收口径：同输入，CANN 与 reference 两 backend 数值一致。"""
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         x = torch.randn(8, 4096, dtype=dt, device="npu")
@@ -133,16 +125,8 @@ class TestNormNumerics:
 
 
 
+@pytest.mark.usefixtures("torch_for_class")
 class TestGemmaNormNumerics:
-    @pytest.fixture(autouse=True)
-    def _torch(self):
-        self.torch = pytest.importorskip("torch")
-
-    def _require_npu(self):
-        pytest.importorskip("torch_npu")
-        if not self.torch.npu.is_available():
-            pytest.skip("无 NPU 环境")
-
     def _require_triton(self):
         pytest.importorskip("triton")
 
@@ -198,12 +182,12 @@ class TestGemmaNormNumerics:
             out.double(), self._fp64_layernorm(x, w, b, 1e-6), atol=1e-5
         )
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
     def test_gemma_rmsnorm_npu_vs_fp64(self, dtype, atol):
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         x = torch.randn(8, 4096, dtype=dt, device="npu")
@@ -212,12 +196,12 @@ class TestGemmaNormNumerics:
         expected = self._fp64_gemma_rmsnorm(x.cpu(), w.cpu(), 1e-6)
         assert torch.allclose(out.cpu().double(), expected, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
     )
     def test_layernorm_npu_vs_fp64(self, dtype, atol):
-        self._require_npu()
         torch = self.torch
         dt = getattr(torch, dtype)
         x = torch.randn(8, 4096, dtype=dt, device="npu")
@@ -227,6 +211,7 @@ class TestGemmaNormNumerics:
         expected = self._fp64_layernorm(x.cpu(), w.cpu(), b.cpu(), 1e-6)
         assert torch.allclose(out.cpu().double(), expected, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
@@ -234,7 +219,6 @@ class TestGemmaNormNumerics:
     @pytest.mark.real_compile
     def test_gemma_fused_add_rmsnorm_triton_npu_vs_fp64(self, dtype, atol):
         """M1 验收口径：Triton 自定义 kernel 与 fp64 参考数值一致。"""
-        self._require_npu()
         self._require_triton()
         torch = self.torch
         dt = getattr(torch, dtype)
@@ -252,6 +236,7 @@ class TestGemmaNormNumerics:
         )
         assert torch.allclose(x.cpu().double(), expected, atol=atol)
 
+    @pytest.mark.usefixtures("npu_device")
     @pytest.mark.parametrize(
         "dtype,atol",
         [("float16", 2e-2), ("bfloat16", 8e-2), ("float32", 1e-4)],
@@ -259,7 +244,6 @@ class TestGemmaNormNumerics:
     @pytest.mark.real_compile
     def test_gemma_fused_triton_vs_reference_consistency(self, dtype, atol):
         """跨 backend 一致性：Triton 与 reference 同输入结果一致。"""
-        self._require_npu()
         self._require_triton()
         torch = self.torch
         dt = getattr(torch, dtype)
