@@ -15,7 +15,7 @@
 | backend | 全局 Descriptor | 执行方式 | 主要边界 |
 | --- | ---: | --- | --- |
 | `cann` | 41 | 调用已安装的 Torch/TorchNPU/CANN 算子或组合 | 各算子单独限制 SoC、dtype 和布局 |
-| `ascendc` | 9 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C/Ascend950 各三项；各自固定支持域 |
+| `ascendc` | 11 | 本仓 v2 op-package，ACLNN + TorchNPU 桥 | Ascend910B/Ascend910C 各四项，Ascend950 三项；各自固定支持域 |
 | `triton` | 2 | 后端目录内的 Triton kernel，首次需要时 JIT | Matmul 与 Gemma fused Add RMSNorm |
 | `reference` | 38 | 显式参考计算 | 不作为默认 auto 的运行失败兜底 |
 
@@ -26,7 +26,7 @@
 
 | 算子族 | CANN | Ascend C | Triton | reference |
 | --- | --- | --- | --- | --- |
-| Attention | Partial (6) | Partial (5) | Not supported | Partial (3) |
+| Attention | Partial (6) | Partial (7) | Not supported | Partial (3) |
 | GEMM | Partial (6) | Partial (4) | Partial (1) | Partial (5) |
 | MoE | Partial (3) | Not supported | Not supported | Partial (3) |
 | Norm | Supported (4) | Not supported | Supported (1) | Partial (5) |
@@ -36,7 +36,7 @@
 | KV cache | Partial (1) | Not supported | Not supported | Partial (1) |
 | State merge | Supported (2) | Not supported | Not supported | Partial (2) |
 
-族级标签覆盖该族的现有登记项，不能外推为整个上游算子族。以下逐项表列出源码全部 90 个 Descriptor 对应的 op × backend。
+族级标签覆盖该族的现有登记项，不能外推为整个上游算子族。以下逐项表列出源码全部 92 个 Descriptor 对应的 op × backend。
 
 ## 算子登记矩阵
 
@@ -60,6 +60,8 @@
 | <a id="op-attention-prefill"></a>`attention.prefill` | `reference` | 由完整组合约束 | 未按 SoC 限制（仍受执行实现约束） | **Partial** — 显式参考；Host/数值对照测试不覆盖所有登记组合 | [test_attention_cann.py](../../tests/operators/test_attention_cann.py)、[test_attention_reference.py](../../tests/framework/test_attention_reference.py) |
 | <a id="op-attention-single-decode"></a>`attention.single_decode` | `cann` | bfloat16, float16 | Ascend950 | **Partial** — logical=NHD,HND；head_dim 为 64 或 128 | [test_attention_cann.py](../../tests/operators/test_attention_cann.py)、[test_attention_reference.py](../../tests/framework/test_attention_reference.py) |
 | <a id="op-attention-single-prefill"></a>`attention.single_prefill` | `cann` | bfloat16, float16 | Ascend950 | **Partial** — logical=NHD,HND；head_dim 为 64 或 128 | [test_attention_cann.py](../../tests/operators/test_attention_cann.py)、[test_attention_reference.py](../../tests/framework/test_attention_reference.py) |
+| <a id="op-attention-dsa-sparse-prolog"></a>`attention.dsa_sparse_prolog` | `ascendc` | bfloat16, float16, float32 | Ascend910B | **Partial** — ND 权重的 TND/BS、FP16/BF16、显式或推导 scale；AOT-only；原生 dtype 组合数=2 | [test_dsa_sparse_prolog.py](../../tests/framework/test_dsa_sparse_prolog.py)、[数值测试](../../tests/operators/test_dsa_sparse_prolog.py) |
+| `attention.dsa_sparse_prolog` | `ascendc` | bfloat16, float16, float32 | Ascend910C | **Partial** — 与 Ascend910B 共用 arch22 源码和 runner；AOT-only；原生 dtype 组合数=2 | [test_dsa_sparse_prolog.py](../../tests/framework/test_dsa_sparse_prolog.py)、[数值测试](../../tests/operators/test_dsa_sparse_prolog.py) |
 | <a id="op-attention-sparse-flash-attention"></a>`attention.sparse_flash_attention` | `ascendc` | bfloat16, float16, float32, int32 | Ascend910B | **Partial** — 2 组完整能力组合；MLA D=512; KV head=1; 连续 ND；BSND/TND/分页；AOT-only；原生 dtype 组合数=2 | [test_sparse_flash_attention.py](../../tests/framework/test_sparse_flash_attention.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_sparse_flash_attention.py) |
 | `attention.sparse_flash_attention` | `ascendc` | bfloat16, float16, float32, int32 | Ascend910C | **Partial** — 共用 arch22 源码/runner；A3 真机数值未验证； 2 组完整能力组合；MLA D=512; KV head=1; 连续 ND；BSND/TND/分页；AOT-only；原生 dtype 组合数=2 | [test_sparse_flash_attention.py](../../tests/framework/test_sparse_flash_attention.py)、[test_operator_packages_real.py](../../tests/packaging/test_operator_packages_real.py)、[数值测试](../../tests/operators/test_sparse_flash_attention.py) |
 | <a id="op-cascade-merge-state"></a>`cascade.merge_state` | `cann` | bfloat16, float16, float32 | Ascend910B, Ascend910C, Ascend950 | **Supported** — 使用公共 Tensor 契约及 runner 校验；存在目标后端数值测试定义 | [test_cascade.py](../../tests/framework/test_cascade.py)、[test_page_and_states.py](../../tests/framework/test_page_and_states.py) |
@@ -139,15 +141,15 @@
 
 ## 图与实验实现
 
-图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 89 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。9 条生产 Ascend C 均为 `not_capturable`。
+图能力枚举中，`cann/attention/single_decode_fia_v1` 为 `needs_param_update`，其余 91 条为 `not_capturable`。类名中的 `CUDAGraph`、固定 buffer 或 FakeTensor 不增加这个范围。11 条生产 Ascend C 均为 `not_capturable`。
 
-实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 90 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
+实验 Triton FA 的作者记录采用独立 scope；它不进入源码默认 92 项。其支持域与默认 CATLASS FA 的同名公共入口仍须分别核对。代码：[IMPLEMENTATION](../../flashinfer/triton/attention/single_prefill_catlass/implementation.py)、[tests/framework/test_single_decode_graph_real.py](../../tests/framework/test_single_decode_graph_real.py)。
 
 ## 安装与构建边界
 
 包的声明版本为 `0.1.0.dev0`、Python `>=3.9`。`environment-a5.yml` 指定 Python 3.11、Torch `2.10.0+cpu`、torch-npu `2.10.0.post7`、triton-ascend `3.6.0`；它是 A5 环境模板，不构成其他产品或版本组合的验证。
 
-普通 wheel 按本地芯片选择交付分组；910B 包含 A2/A3 各三项、共六项，950 包含 A5 三项，包名分别为 `flashinfer_ascend910b`、`flashinfer_ascend950`。`FLASHINFER_AOT_ALL=1`、`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 互斥；`FLASHINFER_AOT_ALL=0` 是源码模式。源码模式不提供 AOT-only 二进制。PREBUILT 仍校验产物和桥的身份，原生登记仅保留实际交付项。
+普通 wheel 按本地芯片选择交付分组；910B 包含 A2/A3 各四项、共八项，950 包含 A5 三项，包名分别为 `flashinfer_ascend910b`、`flashinfer_ascend950`。`FLASHINFER_AOT_ALL=1`、`FLASHINFER_AOT_CONFIG`、`FLASHINFER_AOT_PREBUILT` 互斥；`FLASHINFER_AOT_ALL=0` 是源码模式。源码模式不提供 AOT-only 二进制。PREBUILT 仍校验产物和桥的身份，原生登记仅保留实际交付项。
 
 构建依赖包括匹配的 CANN/Torch/TorchNPU 头文件与库、编译器及 libffi；CATLASS 声明钉定 revision，头树由构建方提供。安装后执行仍需要相应运行栈，框架不隐式安装依赖。代码：[aot_mode](../../setup.py#L20)、[BuildPy](../../setup.py#L90)、[pyproject.toml](../../pyproject.toml)。
 

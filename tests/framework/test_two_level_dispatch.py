@@ -85,6 +85,10 @@ def test_builtin_partition_is_complete_disjoint_and_has_no_within_stack_data():
             "ascendc/attention/sparse_flash_attention/native/Ascend910B",
             "ascendc/attention/sparse_flash_attention/native/Ascend910C",
         }),
+        ("ascendc", "attention.dsa_sparse_prolog"): frozenset({
+            "ascendc/attention/dsa_sparse_prolog/native/Ascend910B",
+            "ascendc/attention/dsa_sparse_prolog/native/Ascend910C",
+        }),
     }
     assert before == [(d.kernel_id, d.fingerprint) for d in registry.descriptors()]
     assert registry.stacks(op="missing.op") == ()

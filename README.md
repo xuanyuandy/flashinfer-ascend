@@ -34,16 +34,16 @@
 | backend | 全局实现数 | 实现来源 | 构建方式 |
 | --- | ---: | --- | --- |
 | `cann` | 41 | 已安装的 Torch/TorchNPU/CANN API 或组合 | 本框架无设备编译步骤 |
-| `ascendc` | 9 | 本仓 Ascend C 原生实现，v2 ACLNN op-package | AOT；部分实现允许受控缺包 JIT |
+| `ascendc` | 11 | 本仓 Ascend C 原生实现，v2 ACLNN op-package | AOT；部分实现允许受控缺包 JIT |
 | `triton` | 2 | Matmul、Gemma fused Add RMSNorm 的 Triton kernel | JIT |
 | `reference` | 38 | 显式参考实现 | 随 Python 包提供 |
 
-统计范围为源码默认注册表：48 个逻辑 op、90 个具体实现；实验实现单独登记。二进制 wheel 的原生注册项与随包目标一致。实现声明限定可接收的设备与输入组合，数值测试覆盖范围单独记录。
+统计范围为源码默认注册表：49 个逻辑 op、92 个具体实现；实验实现单独登记。二进制 wheel 的原生注册项与随包目标一致。实现声明限定可接收的设备与输入组合，数值测试覆盖范围单独记录。
 
 | 产品系列 | 物理 SoC | 源码架构 | wheel 包名 | 原生 AOT 算子 |
 | --- | --- | --- | --- | --- |
-| A2 | `Ascend910B` | arch22 | `flashinfer_ascend910b` | GMM/SwiGLU/量化、SFA、CATLASS prefill |
-| A3 | `Ascend910C` | arch22 | `flashinfer_ascend910b` | GMM/SwiGLU/量化、SFA、CATLASS prefill |
+| A2 | `Ascend910B` | arch22 | `flashinfer_ascend910b` | GMM/SwiGLU/量化、SFA、DsaSparseProlog、CATLASS prefill |
+| A3 | `Ascend910C` | arch22 | `flashinfer_ascend910b` | GMM/SwiGLU/量化、SFA、DsaSparseProlog、CATLASS prefill |
 | A5 | `Ascend950` | arch35 | `flashinfer_ascend950` | Matmul、MatmulBiasSiLU、CATLASS prefill |
 
 A2/A3 共享源码架构与发行包，各自使用严格绑定物理 SoC 的产物。A3 的编译目标和测试入口已登记，真机数值及安装验证尚未完成；CANN/Triton 的支持域仍按具体算子声明判断。

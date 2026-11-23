@@ -6,7 +6,7 @@
 
 `flashinfer` 在 FlashInfer 风格 API 下接入 CANN、Ascend C、Triton 和显式 reference。公共 API 名称、逻辑算子和具体实现分别建模；同名接口不保证与上游所有参数、设备或执行模式等价。
 
-源码全局目录有 48 个逻辑 op、90 个 Descriptor；其中 46 个 op 有 NPU runner，2 个内部 op 只有 reference。分芯片 wheel 的原生目录与随包产物一致。数字表示登记与绑定，不能替代运行、图模式或性能证据。
+源码全局目录有 49 个逻辑 op、92 个 Descriptor；其中 47 个 op 有 NPU runner，2 个内部 op 只有 reference。分芯片 wheel 的原生目录与随包产物一致。数字表示登记与绑定，不能替代运行、图模式或性能证据。
 
 ## 分层
 

@@ -57,6 +57,7 @@ Ascend C 构建在 OpDef codegen 后强制校验 NativeBinding 与对应 ACLNN �
 | CATLASS prefill | `fi_flash_attention` |
 | GroupedMatmulSwigluQuant | `fi_grouped_matmul_swiglu_quant` |
 | SparseFlashAttention | `fi_sparse_flash_attention` |
+| DsaSparseProlog | `dsa_sparse_prolog` |
 | native Matmul probe | `fi_matmul_probe_native` |
 | CATLASS Matmul probe | `fi_matmul_probe_catlass` |
 

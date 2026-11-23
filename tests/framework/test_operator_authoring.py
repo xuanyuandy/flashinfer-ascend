@@ -296,6 +296,13 @@ def test_existing_85_and_reviewed_arch22_capabilities_match_exactly():
             auxiliary_outputs=("softmax_max", "softmax_sum") if lse else (),
         ) for lse in (False, True)),
     ).to_dict()
+    expected["ascendc/attention/dsa_sparse_prolog/native/Ascend910B"] = CapabilitySpec(
+        op="attention.dsa_sparse_prolog",
+        soc_models=("Ascend910B",),
+        dtypes=("float16", "bfloat16", "float32"),
+        physical_layouts=("ND", "NZ"),
+        specializations=(("tensor_contract", ("supported",)),),
+    ).to_dict()
     # Only these reviewed general-purpose backends extend their SoC lists.
     # The frozen fixture remains unchanged; every other capability field is exact.
     for kernel_id in (
@@ -323,6 +330,7 @@ def test_existing_85_and_reviewed_arch22_capabilities_match_exactly():
         "ascendc/t4/flash_attention/catlass/op_package/Ascend910B",
         "ascendc/gemm/grouped_matmul_swiglu_quant/native/op_package/Ascend910B",
         "ascendc/attention/sparse_flash_attention/native/Ascend910B",
+        "ascendc/attention/dsa_sparse_prolog/native/Ascend910B",
     ):
         expected[kernel_id.rsplit("/", 1)[0] + "/Ascend910C"] = dict(
             expected[kernel_id], soc_models=["Ascend910C"])
@@ -334,8 +342,8 @@ def test_all_existing_implementations_have_one_authority_and_a_bound_runner():
     production = [d for _, _, d in declarations if d.scope == 'global']
     registry = get_global_registry()
     assert {d.kernel_id for d in production} == {d.kernel_id for d in registry.descriptors()}
-    assert len(production) == 90
-    assert len(discover(ROOT)) == 48
+    assert len(production) == 92
+    assert len(discover(ROOT)) == 49
     assert len([d for _, _, d in declarations if d.scope == 'experimental']) == 1
     for directory, _, declaration in declarations:
         assert directory.parent.parent.name == declaration.backend.value

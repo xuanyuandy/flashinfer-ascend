@@ -67,4 +67,4 @@ A2 上可对已安装的 SFA 单项执行：
 python -B -m flashinfer selftest --kernel-id ascendc/attention/sparse_flash_attention/native/Ascend910B
 ```
 
-不指定 ID 时，安装包 selftest 按实际 SoC 选择本机条目：910B 包含 A2/A3 各自的 GMM/SwiGLU/量化、SFA、CATLASS prefill，共六项；单机检查对应三项并打印范围。950 包含 Matmul、MatmulBiasSiLU、CATLASS prefill。其他 SoC 不计为 PASS，A3 真机数值未验证；各目标需分别验收，所选范围必须零失败、零跳过。编译与 PREBUILT 打包见 [交付说明](ascendc_aot.md)，完整验收规则见 [测试规范](development/testing.md)。
+不指定 ID 时，安装包 selftest 按实际 SoC 选择本机条目：910B 包含 A2/A3 各自的 GMM/SwiGLU/量化、SFA、DsaSparseProlog、CATLASS prefill，共八项；单机检查对应四项并打印范围。950 包含 Matmul、MatmulBiasSiLU、CATLASS prefill。其他 SoC 不计为 PASS，A3 真机数值未验证；各目标需分别验收，所选范围必须零失败、零跳过。编译与 PREBUILT 打包见 [交付说明](ascendc_aot.md)，完整验收规则见 [测试规范](development/testing.md)。
