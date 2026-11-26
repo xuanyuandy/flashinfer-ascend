@@ -111,9 +111,15 @@ def execute(name, arguments):
     )
     if any(t is not None and t.device.type == torch._C._get_privateuse1_backend_name() for t in tensors):
         import torch_npu
-        if (torch_npu.npu.is_current_stream_capturing()
-                and get_global_registry().get(kid).graph_capability == GraphCapability.NOT_CAPTURABLE):
-            raise SchemaError(operator.name + " graph_capability=NOT_CAPTURABLE")
+        if torch_npu.npu.is_current_stream_capturing():
+            selected = get_global_registry().get(kid)
+            if selected.graph_capability == GraphCapability.NOT_CAPTURABLE:
+                raise SchemaError(operator.name + " graph_capability=NOT_CAPTURABLE")
+            if selected.graph_capability == GraphCapability.CAPTURE_SAFE:
+                from flashinfer.runtime._graph_params import _validate_graph_arguments, _validate_graph_declaration
+
+                _validate_graph_declaration(selected)
+                _validate_graph_arguments(selected, arguments)
     if operator.validate_values is not None:
         operator.validate_values(arguments)
     outputs = tensors[-len(invocation.outputs):]

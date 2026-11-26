@@ -11,6 +11,7 @@
 | batch paged decode | BatchDecode wrapper 的 plan/run | CANN 路径，计划与 workspace 由 wrapper 持有；名字带 CUDAGraph 不扩大图能力 |
 | 独立 dense CATLASS | `single_prefill_with_kv_cache_catlass` | Ascend910B/Ascend910C/Ascend950、本仓 AOT，允许声明范围内的缺包 JIT |
 | MLA sparse | `sparse_flash_attention` | Ascend910B/Ascend910C 共用 arch22、本仓 AOT-only；没有同 op 的 CANN/Triton 生产实现 |
+| C4A4 分页 GQA | `quant_flash_attn_metadata`、`quant_flash_attn` | 面向 Ascend950 的 AICPU 调度与 Ascend C AOT 实现 |
 | 分组 QKV 重排 | `permute_qkv(q, k, v, split_size)` | Ascend910B/Ascend910C，arch22 向量核 AOT |
 
 普通 single 的 auto 会读取全局默认，普通 batch Tensor 的非 reference plan 分支固定请求 cann；它们不是任意后端的统一占位接口。完整规则见 [后端路由](../concepts/backend-routing.md)。
@@ -67,6 +68,33 @@ attention_out, softmax_max, softmax_sum = flashinfer.sparse_flash_attention(
 索引、长度与页表的值约束由公共 validate_values 校验；native ABI 的正尺寸约束保持不变，关闭辅助输出时由 runner 提供内部占位缓冲。当前图声明为 NOT_CAPTURABLE，不从 eager 或编译成功推导图支持。
 
 A2/A3 使用相同公共接口与 runner，910B 包含各自的冻结原生产物；A3 真机数值未验证。
+
+## arch35 C4A4 QuantFlashAttention
+
+`flashinfer.quant_flash_attn_metadata` 生成设备侧 INT32 FA/FD 调度表。主算子 `flashinfer.quant_flash_attn` 接收兼容的调度表，返回 BF16 Attention 和可选的 FP32 LSE。两个算子各自构建并发布 Ascend950 AOT 包。
+
+在 CANN 9.2.1 上使用独立 AOT 发布目录时，在启动 Python 前设置 `FLASHINFER_AOT_PATHS`，并将所用包的 vendor 路径加入 `ASCEND_CUSTOM_OPP_PATH`。主算子的 vendor 是 `flashinfer_quant_flash_attn`，调度生成器的 vendor 是 `flashinfer_quant_flash_attn_metadata`。使用外部调度表时，只需加载主算子包。
+
+- Q 和输出使用 TND，Q descale 支持 `TND` 与 `N2TGD`，KV 支持 `PA_BBND`、`PA_BNBD` 和 `PA_NZ`。D 取 128 或 256，分页大小取 64、128、256、512 或 1024。Batch 最大 65535，Q 和 KV 各最多 256 个头，每个 KV 头最多对应 64 个 Q 头。
+- Q/K/V 用 PyTorch `float4_e2m1fn_x2` 存储，每个元素占一个字节，最后一维按两倍展开为逻辑 FP4 维度。Q/K/V descale 使用 `float8_e8m0fnu`，物理格式为 ND，包括已按 `PA_NZ` 排布的缓存。
+- `quant_mode=5`，`quant_schema` 的 0、1、2 分别选择 OCP、CX、CX Delta。Causal 使用 `mask_mode=3` 和 INT8 `[2048,2048]` mask 模板。启用 LSE 时返回 `[Hq,Tq]`，默认返回空 FP32 张量。
+- `cu_seqlens_q` 为从 0 开始的 INT32 `[B+1]` 累计长度，`seqused_kv` 为 INT32 `[B]` 有效长度。调用方保证页表覆盖各序列的有效 KV，且页号指向当前缓存内的物理页。重新排布批次或更新有效长度后，重新生成调度表。
+- Metadata 的输出和可选 `out` 均为 INT32 `[2, C]`。`C` 以 108 个 AIC/AIV 核预留容量，将 `16 * (1 + 108 * B * num_heads_q)` 向上对齐到 4096 个元素。AICPU 按当前有效核数生成调度表并写入表头。
+
+```python
+metadata = flashinfer.quant_flash_attn_metadata(
+    num_heads_q, num_heads_kv, head_dim,
+    cu_seqlens_q=cu_q, seqused_kv=used_kv, layout_kv="PA_BNBD",
+)
+output, lse = flashinfer.quant_flash_attn(
+    q, k, v, q_descale, k_descale, v_descale,
+    block_table=page_table, cu_seqlens_q=cu_q, seqused_kv=used_kv,
+    metadata=metadata, layout_kv="PA_BNBD", softmax_scale=head_dim**-0.5,
+    return_softmax_lse=True, backend="ascendc",
+)
+```
+
+先用一次普通调用完成 Torch 算子注册，再用 `torch.compile(fullgraph=True)` 将 metadata 和主 QFA 放在同一张 PyTorch 图中。Ascend950 上已验证 Inductor。ACLGraph 可捕获使用固定输入和 `out` 的 `quant_schema=2` 主算子，metadata 在 capture 外生成。 [ACLGraph 调用条件](../npu_graph_extensions.md)
 
 ## 支持与缺口
 

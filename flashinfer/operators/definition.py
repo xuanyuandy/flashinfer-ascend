@@ -159,6 +159,9 @@ class OperatorDefinition:
             or p[0].startswith("Tensor")
             or p[2] is not inspect.Parameter.empty
         ]
+        # Required Tensor inputs moved from keyword-only must precede defaults
+        # in the Torch schema, even when the public signature has positional defaults.
+        positional.sort(key=lambda parameter: parameter[2] is not inspect.Parameter.empty)
         keywords = [
             p
             for p in self.arguments
