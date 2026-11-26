@@ -151,11 +151,31 @@ public:
         if (coreIdx >= td.gemm2UsedCores) {
             return;
         }
-        const uint32_t hasRem = (coreIdx < td.gemm2NUnitsRem) ? 1U : 0U;
-        const uint32_t nUnits = td.gemm2NUnitsBase + hasRem;
-        const uint32_t n0 = MLA_ALIGN16 * (coreIdx * td.gemm2NUnitsBase +
-                                           ((coreIdx < td.gemm2NUnitsRem) ? coreIdx : td.gemm2NUnitsRem));
-        const uint32_t curN = MLA_ALIGN16 * nUnits;
+        uint32_t n0;
+        uint32_t curN;
+        if ((td.aicUsedCores == 24U) && (td.gemm2UsedCores == 24U)) {
+            // Maximize the existing N224 nZ->nZ single-LoadData fast path while
+            // preserving 24 cores and the original maximum per-core N compute.
+            // 22*224 + 2*96 = 5120; only the two N96 cores use the K/16 fallback.
+            constexpr uint32_t FAST_CORES = 22U;
+            constexpr uint32_t FAST_N = 224U;
+            constexpr uint32_t TAIL_N = 96U;
+            static_assert(FAST_CORES * FAST_N + 2U * TAIL_N == MLA_N2, "G2 N partition must cover N2");
+            if (coreIdx < FAST_CORES) {
+                n0 = coreIdx * FAST_N;
+                curN = FAST_N;
+            } else {
+                n0 = FAST_CORES * FAST_N + (coreIdx - FAST_CORES) * TAIL_N;
+                curN = TAIL_N;
+            }
+        } else {
+            // Original host base/remainder mapping remains the non-A3 fallback.
+            const uint32_t hasRem = (coreIdx < td.gemm2NUnitsRem) ? 1U : 0U;
+            const uint32_t nUnits = td.gemm2NUnitsBase + hasRem;
+            n0 = MLA_ALIGN16 * (coreIdx * td.gemm2NUnitsBase +
+                                ((coreIdx < td.gemm2NUnitsRem) ? coreIdx : td.gemm2NUnitsRem));
+            curN = MLA_ALIGN16 * nUnits;
+        }
 
         auto gA = cGm_[0];
         auto gB = w2Gm_[0];
