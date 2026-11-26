@@ -73,18 +73,94 @@ A2/A3 使用相同公共接口与 runner，910B 包含各自的冻结原生产�
 
 `flashinfer.quant_flash_attn_metadata` 生成设备侧 INT32 FA/FD 调度表。主算子 `flashinfer.quant_flash_attn` 接收兼容的调度表，返回 BF16 Attention 和可选的 FP32 LSE。两个算子各自构建并发布 Ascend950 AOT 包。
 
-在 CANN 9.2.1 上使用独立 AOT 发布目录时，在启动 Python 前设置 `FLASHINFER_AOT_PATHS`，并将所用包的 vendor 路径加入 `ASCEND_CUSTOM_OPP_PATH`。主算子的 vendor 是 `flashinfer_quant_flash_attn`，调度生成器的 vendor 是 `flashinfer_quant_flash_attn_metadata`。使用外部调度表时，只需加载主算子包。
+下面的 shape 使用 PyTorch 张量维度。`B` 是请求数，`Tq` 是整个 batch 拼接后的 Q token 数，`Hq` 和 `Hkv` 是 Q 和 KV 头数，`G = Hq / Hkv` 是每个 KV 头对应的 Q 头数，`D` 是逻辑 head dim。`P` 是 KV cache 的物理页总数，`S` 是每页 token 数，`Pmax` 是每个请求在页表中最多可引用的页数。
 
-- Q 和输出使用 TND，Q descale 支持 `TND` 与 `N2TGD`，KV 支持 `PA_BBND`、`PA_BNBD` 和 `PA_NZ`。D 取 128 或 256，分页大小取 64、128、256、512 或 1024。Batch 最大 65535，Q 和 KV 各最多 256 个头，每个 KV 头最多对应 64 个 Q 头。
-- Q/K/V 用 PyTorch `float4_e2m1fn_x2` 存储，每个元素占一个字节，最后一维按两倍展开为逻辑 FP4 维度。Q/K/V descale 使用 `float8_e8m0fnu`，物理格式为 ND，包括已按 `PA_NZ` 排布的缓存。
-- `quant_mode=5`，`quant_schema` 的 0、1、2 分别选择 OCP、CX、CX Delta。Causal 使用 `mask_mode=3` 和 INT8 `[2048,2048]` mask 模板。启用 LSE 时返回 `[Hq,Tq]`，默认返回空 FP32 张量。
-- `cu_seqlens_q` 为从 0 开始的 INT32 `[B+1]` 累计长度，`seqused_kv` 为 INT32 `[B]` 有效长度。调用方保证页表覆盖各序列的有效 KV，且页号指向当前缓存内的物理页。重新排布批次或更新有效长度后，重新生成调度表。
-- Metadata 的输出和可选 `out` 均为 INT32 `[2, C]`。`C` 以 108 个 AIC/AIV 核预留容量，将 `16 * (1 + 108 * B * num_heads_q)` 向上对齐到 4096 个元素。AICPU 按当前有效核数生成调度表并写入表头。
+`D` 支持 128 和 256。`S` 支持 64、128、256、512 和 1024。`B` 最大为 65535，`Hq` 和 `Hkv` 各最多为 256，`Hq` 须能被 `Hkv` 整除，`G` 最大为 64。FP4×2 对应 `torch.float4_e2m1fn_x2`，每字节存两个 FP4 值。E8M0 对应 `torch.float8_e8m0fnu`。
+
+### 主算子 `quant_flash_attn`
+
+`q`、`k`、`v` 和三个 descale 可以按位置传入。其余参数按名字传入。
+
+| 输入 | dtype | shape | 是否必填及用途 |
+| --- | --- | --- | --- |
+| `q` | FP4×2 | `[Tq,Hq,D/2]` | 必填。按 TND 排布。 |
+| `k`、`v` | FP4×2 | 见下方 KV 布局表 | 必填。分页 K、V 缓存使用相同 shape。 |
+| `q_descale` | E8M0 | `TND` 为 `[Tq,Hq,D/64,2]`，`N2TGD` 为 `[Hkv,Tq,G,D/64,2]` | 必填。形状由 `layout_q_descale` 决定。 |
+| `k_descale`、`v_descale` | E8M0 | 见下方 KV 布局表 | 必填。分别使用 K、V 对应的 scale 排布。 |
+| `block_table` | INT32 | `[B,Pmax]` | 必填。每行列出一个请求使用的物理页。有效页号须指向当前 KV cache，页表须覆盖该请求的全部有效 KV token。`S * Pmax` 须在正 INT32 范围内。 |
+| `cu_seqlens_q` | INT32 | `[B+1]` | 必填。每个请求的 Q 累计长度，从 `0` 开始，末项为 `Tq`。相邻两项的差值是该请求对应的 Q token 数。 |
+| `seqused_kv` | INT32 | `[B]` | 必填。每个请求实际参与计算的 KV token 数。 |
+| `metadata` | INT32 | `[1,C]` | 必填。与本次输入匹配的 FA/FD 调度表，通常使用下方生成器的返回值。 |
+| `seqused_q` | INT32 | `[B]` | 可选，默认 `None`。提供时指定每个请求实际参与计算的 Q token 数，否则使用 `cu_seqlens_q` 的差值。 |
+| `attn_mask` | INT8 | `[2048,2048]` | `mask_mode=3` 时传入 causal 模板，`mask_mode=0` 时省略。计算时按 Q 和 KV 的有效长度确定右下 causal 边界。 |
+
+| `layout_kv` | `k`、`v` 的 shape | `k_descale` 的 shape | `v_descale` 的 shape |
+| --- | --- | --- | --- |
+| `PA_BBND` | `[P,S,Hkv,D/2]` | `[P,S,Hkv,D/64,2]` | `[P,S/64,Hkv,D,2]` |
+| `PA_BNBD` | `[P,Hkv,S,D/2]` | `[P,Hkv,S,D/64,2]` | `[P,Hkv,S/64,D,2]` |
+| `PA_NZ` | `[P,Hkv,D/64,S,32]` | `[P,Hkv,S/16,D/64,16,2]` | `[P,Hkv,D/16,S/64,16,2]` |
+
+所有 Tensor 位于同一 NPU，物理存储格式为 ND，包括按 `PA_NZ` 逻辑排布的缓存。Q、Q descale、索引、长度、mask 和 metadata 要求连续存储。KV 缓存及其 descale 的内层维度要求连续。`PA_BBND` 可在物理页轴上保留 stride，`PA_BNBD` 和 `PA_NZ` 可在物理页轴和 KV 头轴上保留 stride。
+
+| 选项 | 类型 | 默认值 | 取值及用途 |
+| --- | --- | --- | --- |
+| `quant_mode` | `int` | `5` | 固定为 `5`，选择 C4A4。 |
+| `quant_schema` | `int` | `2` | `0` 为 OCP，`1` 为 CX，`2` 为 CX Delta。 |
+| `softmax_scale` | `float` | `1.0` | 作用于 QK 分数。须为可用 FP32 表示的有限正数，常用 `D**-0.5`。 |
+| `mask_mode` | `int` | `0` | `0` 为无 mask，`3` 为右下 causal。 |
+| `win_left`、`win_right` | `int` | 均为 `-1` | 两项均固定为 `-1`，表示无额外窗口限制。 |
+| `max_seqlen_q`、`max_seqlen_kv` | `int` | 均为 `-1` | 取 `-1` 或正 INT32。`-1` 表示未指定，每个请求的有效长度由长度 Tensor 提供。 |
+| `layout_q`、`layout_out` | `str` | 均为 `TND` | Q 和 attention 输出固定使用 TND。 |
+| `layout_q_descale` | `str` | `TND` | `TND` 对应 prefill 路径，`N2TGD` 对应 decode 路径。 |
+| `layout_kv` | `str` | `PA_BBND` | 支持 `PA_BBND`、`PA_BNBD` 和 `PA_NZ`。 |
+| `return_softmax_lse` | `bool` | `False` | 为 `True` 时计算并返回每个 Q 头和 token 对应的 LSE。 |
+| `out` | 两个 Tensor 组成的 tuple 或 list | `None` | 按 `(attn_out, softmax_lse)` 提供两个输出缓冲。关闭 LSE 时第二项传 FP32 空 Tensor。 |
+
+返回值始终是 `(attn_out, softmax_lse)`。
+
+| 输出 | dtype | shape | 含义 |
+| --- | --- | --- | --- |
+| `attn_out` | BF16 | `[Tq,Hq,D]` | TND attention 结果。 |
+| `softmax_lse` | FP32 | 启用时为 `[Hq,Tq]`，关闭时为 `[0]` | `softmax_lse[h,t]` 是头 `h` 在 Q token `t` 上的 log-sum-exp。 |
+
+### 调度生成器 `quant_flash_attn_metadata`
+
+五个必填参数可以按表中顺序传入。
+
+| 输入或选项 | 类型或 shape | 是否必填及用途 |
+| --- | --- | --- |
+| `num_heads_q`、`num_heads_kv` | `int` | 必填。分别填写 `Hq` 和 `Hkv`。 |
+| `head_dim` | `int` | 必填。填写逻辑维度 `D`，支持 `128` 和 `256`。 |
+| `cu_seqlens_q` | INT32 `[B+1]` | 必填。与主算子使用相同的 Q 累计长度，`B` 从该 Tensor 推导。 |
+| `seqused_kv` | INT32 `[B]` | 必填。与主算子使用相同的 KV 有效长度。 |
+| `seqused_q` | INT32 `[B]` | 默认 `None`。主算子指定了有效 Q 长度时，同步传给生成器。 |
+| `max_seqlen_q`、`max_seqlen_kv` | `int` | 均默认 `-1`，表示未指定。指定时须为正 INT32。 |
+| `head_dim_v` | `int` 或 `None` | 默认 `None`，即使用 `head_dim`。指定时须等于 `head_dim`。 |
+| `mask_mode` | `int` | 默认 `0`，支持 `0` 和 `3`。与主算子一致。 |
+| `layout_q`、`layout_out` | `str` | 均默认并固定为 `TND`。 |
+| `layout_q_descale` | `str` | 默认 `TND`，也支持 `N2TGD`。与主算子一致。 |
+| `layout_kv` | `str` | 默认 `PA_BBND`，也支持 `PA_BNBD` 和 `PA_NZ`。与主算子一致。 |
+| `quant_mode` | `int` | 默认并固定为 `5`。 |
+| `out` | INT32 `[1,C]` | 默认 `None`。可传单个输出 Tensor，或只包含该 Tensor 的 tuple 或 list。 |
+
+| 输出 | dtype | shape | 含义 |
+| --- | --- | --- | --- |
+| `metadata` | INT32 | `[1,C]` | 设备侧 FA/FD 调度表，直接传给主算子的 `metadata`。 |
+
+将 `16 * (1 + 108 * B * Hq)` 向上对齐到 4096 个元素得到 `C`。108 是用于分配容量的 AIC 和 AIV 合计核数上限。AICPU 按实际有效核数写入表头和调度记录。批次重排或有效长度变动后，重新生成调度表。
+
+### 两个接口的调用选项
+
+| 选项 | 默认值 | 用法 |
+| --- | --- | --- |
+| `backend` | `None` | 由公共路由选择实现，可显式指定 `"ascendc"`。 |
+| `kernel_id` | `None` | 可指定完整 ID。主算子为 `ascendc/attention/quant_flash_attn/native/Ascend950`，生成器为 `ascendc/attention/quant_flash_attn_metadata/native/Ascend950`。 |
+
+省略 `out` 时由接口分配输出。传入的每个输出缓冲须匹配表中的 dtype 和 shape，并与输入位于同一 NPU。输出缓冲使用连续 ND，且各输出与其他参数的存储区域不得重叠。
 
 ```python
 metadata = flashinfer.quant_flash_attn_metadata(
-    num_heads_q, num_heads_kv, head_dim,
-    cu_seqlens_q=cu_q, seqused_kv=used_kv, layout_kv="PA_BNBD",
+    num_heads_q, num_heads_kv, head_dim, cu_q, used_kv, layout_kv="PA_BNBD",
 )
 output, lse = flashinfer.quant_flash_attn(
     q, k, v, q_descale, k_descale, v_descale,

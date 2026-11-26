@@ -16,7 +16,7 @@ from flashinfer.operators.attention.quant_flash_attn.cases import sample
 def test_c4a4_public_fixed_output_replay(device_runtime, aot_runtime, dim, layout, kv_length, lse):
     torch, torch_npu = device_runtime
     heads = 32
-    args, options, _ = sample(torch, torch_npu, dim=dim, kv_layout=layout, kv_length=kv_length,
+    args, options, _ = sample(torch, torch_npu, dim=dim, kv_layout=layout, kv_lengths=(kv_length,),
                               heads=heads, schema=2, lse=lse)
     options["metadata"] = flashinfer.quant_flash_attn_metadata(
         heads, 2, dim, cu_seqlens_q=options["cu_seqlens_q"], seqused_kv=options["seqused_kv"],

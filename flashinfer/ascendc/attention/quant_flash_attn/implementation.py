@@ -46,10 +46,7 @@ TENSORS = (
     _input("seqused_kv", "int32", ("Batch",)),
     _input("sinks", "float32", ("Heads",), optional=True),
     _input("attn_mask", "int8", (2048, 2048), optional=True),
-    _input("metadata", "int32", ("Schedule",), alternative=(2, "Schedule")),
-    _input("v_tail", "bfloat16", ("Pages", "Page", "KvHeads", "D"), optional=True),
-    _input("block_table_tail", "int32", ("Batch", "PageSlots"), optional=True),
-    _input("seqused_v_tail", "int32", ("Batch",), optional=True),
+    _input("metadata", "int32", (1, "Schedule")),
     TensorParameter("attn_out", "output", "bfloat16", ("Tokens", "Heads", "D")),
     TensorParameter("softmax_lse", "output", "float32", (1,), shape_alternatives=(("Heads", "Tokens"),)),
 )

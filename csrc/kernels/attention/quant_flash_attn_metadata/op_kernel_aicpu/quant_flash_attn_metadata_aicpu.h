@@ -59,7 +59,7 @@ private:
     bool ParamsInit();
     bool CheckNeedInitOutput();
     std::vector<int64_t> GetTensorDataAsInt64(Tensor* tensor, size_t size);
-    void GetMetadataRowInfo(int32_t& dimNum, int64_t& rowSize);
+    int64_t GetMetadataRowSize();
 
 private:
     CpuKernelContext* context_ = nullptr;
@@ -86,7 +86,7 @@ private:
     int32_t aicCoreNum_ = 36U;
     int32_t aivCoreNum_ = 72U;
     int64_t metadataDimNum_ = 0;   // 输出 tensor 维度数(宿主侧经 attr 下发, AICPU 侧 shape 可能未填充)
-    int64_t metadataRowSize_ = -1; // 输出 tensor 单行长度(2D 为 dim1, 1D 为 dim0), 同上
+    int64_t metadataRowSize_ = -1; // 输出 [1, C] 的行长度 C，由宿主侧下发
 
     uint32_t groupSize_ = 0;
     uint32_t mBaseSize_ = NUM_64;

@@ -28,8 +28,7 @@ ASCENDC_TPL_ARGS_DECL(FiQuantFlashAttn,
     ASCENDC_TPL_UINT_DECL(QuantMode, ASCENDC_TPL_5_BW, ASCENDC_TPL_UI_RANGE, 1, 0, 31),
     ASCENDC_TPL_BOOL_DECL(HasAttenMask, false, true),
     ASCENDC_TPL_UINT_DECL(KvLayoutType, ASCENDC_TPL_2_BW, ASCENDC_TPL_UI_RANGE, 1, 0, 3),
-    ASCENDC_TPL_BOOL_DECL(IsFd, false, true),
-    ASCENDC_TPL_BOOL_DECL(HasVTail, false, true));
+    ASCENDC_TPL_BOOL_DECL(IsFd, false, true));
 
 ASCENDC_TPL_SEL(
     ASCENDC_TPL_ARGS_SEL(
@@ -40,7 +39,7 @@ ASCENDC_TPL_SEL(
         ASCENDC_TPL_BOOL_SEL(HasAttenMask, false, true),
         ASCENDC_TPL_UINT_SEL(KvLayoutType, ASCENDC_TPL_UI_LIST, KvLayoutType_PA_BBND, KvLayoutType_PA_BNBD,
                              KvLayoutType_PA_NZ),
-        ASCENDC_TPL_BOOL_SEL(IsFd, false, true), ASCENDC_TPL_BOOL_SEL(HasVTail, false),
+        ASCENDC_TPL_BOOL_SEL(IsFd, false, true),
         ASCENDC_TPL_TILING_STRUCT_SEL(QuantFlashAttnTilingData)));
 
 #endif

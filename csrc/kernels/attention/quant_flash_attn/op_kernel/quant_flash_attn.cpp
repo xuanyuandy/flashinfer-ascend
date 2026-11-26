@@ -99,14 +99,13 @@ __aicore__ inline void quant_flash_attn_mxfp4(
 }
 
 template <uint8_t inOutLayoutType, uint16_t config, uint8_t quantMode, bool hasAttenMask, uint8_t KvLayoutType,
-          bool isFd, bool hasVTail>
+          bool isFd>
 __global__ __aicore__ void fi_quant_flash_attn(
     __gm__ uint8_t* query, __gm__ uint8_t* key, __gm__ uint8_t* value, __gm__ uint8_t* dequantScaleQuery,
     __gm__ uint8_t* dequantScaleKey, __gm__ uint8_t* dequantScaleValue, __gm__ uint8_t* blockTable,
     __gm__ uint8_t* pScale, __gm__ uint8_t* cuSeqLensQ, __gm__ uint8_t* cuSeqLensKv, __gm__ uint8_t* sequsedQ,
     __gm__ uint8_t* sequsedKv, __gm__ uint8_t* sinks, __gm__ uint8_t* attnMask, __gm__ uint8_t* metadata,
-    __gm__ uint8_t* vTail, __gm__ uint8_t* blockTableTail, __gm__ uint8_t* sequsedVTail, __gm__ uint8_t* attnOut,
-    __gm__ uint8_t* softmaxLse, __gm__ uint8_t* workspace, __gm__ uint8_t* tiling)
+    __gm__ uint8_t* attnOut, __gm__ uint8_t* softmaxLse, __gm__ uint8_t* workspace, __gm__ uint8_t* tiling)
 {
     REGISTER_TILING_DEFAULT(QuantFlashAttnTilingData);
     // SK/静态图兼容：tiling 在外层入口统一经宏取一次（动=GM零拷贝/静=栈拷贝），向下传参

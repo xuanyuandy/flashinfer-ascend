@@ -68,22 +68,13 @@ __attribute__((visibility("default"))) aclnnStatus aclnnFiQuantFlashAttnMetadata
     if (aclrtGetResInCurrentThread(ACL_RT_DEV_RES_VECTOR_CORE, &aivCoreNum) != ACL_SUCCESS) {
         aivCoreNum = npuInfo.GetVectorCoreNum();
     }
-    // AICPU 的前向调度表容量校验使用 Host 下发的输出 ViewShape。
-    // AICPU 侧输出 TensorShape 可能未填充。
-    // 必须取 ViewShape: torch extension 链路下 aclTensor 的 StorageShape 是一维展平的
-    // 总元素数(aclnn_common.h ConvertType: storage.nbytes()/itemsize), 二维行距只有
-    // ViewShape(DimNum=2, Dim(1)=行长度) 才是正确语义
-    constexpr int64_t DIM_ONE = 1;
-    constexpr int64_t DIM_TWO = 2;
-    constexpr int64_t DIM_IDX_0 = 0;
-    constexpr int64_t DIM_IDX_1 = 1;
-    int64_t metadataDimNum = metaData->GetViewShape().GetDimNum();
-    int64_t metadataRowSize = 0;
-    if (metadataDimNum >= DIM_TWO) {
-        metadataRowSize = metaData->GetViewShape().GetDim(DIM_IDX_1);
-    } else if (metadataDimNum == DIM_ONE) {
-        metadataRowSize = metaData->GetViewShape().GetDim(DIM_IDX_0);
-    }
+    // Torch may expose a flattened StorageShape and AICPU may not receive a TensorShape.
+    // Validate the logical output shape on the host and pass the row capacity to AICPU.
+    const auto& metadataShape = metaData->GetViewShape();
+    const int64_t metadataDimNum = metadataShape.GetDimNum();
+    CHECK_COND(metadataDimNum == 2 && metadataShape.GetDim(0) == 1 && metadataShape.GetDim(1) > 0,
+               ACLNN_ERR_PARAM_INVALID, "metadata output must have shape [1, C]");
+    const int64_t metadataRowSize = metadataShape.GetDim(1);
 
     auto output = l0op::FiQuantFlashAttnMetadata(
         cuSeqlensQOptional, cuSeqlensKvOptional, sequsedQOptional, sequsedKvOptional, batchSize, maxSeqlenQ,

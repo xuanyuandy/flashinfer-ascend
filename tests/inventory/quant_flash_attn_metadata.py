@@ -12,7 +12,7 @@ KERNELS = (
         native_recipe=("quant_flash_attn_metadata", "native"),
         smoke_signature=InputSignature(
             OP, dtypes=("int32", "none", "none", "int32", "int32"),
-            shapes=((2,), (), (), (1,), (2, 4096)),
+            shapes=((2,), (), (), (1,), (1, 4096)),
             physical_layouts=("ND", "", "", "ND", "ND"),
         ),
     ),

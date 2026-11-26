@@ -52,7 +52,7 @@ def infer(arguments, layouts):
 
     return Invocation(
         inputs=(cu_seqlens_q, None, seqused_q, seqused_kv),
-        outputs=(OutputSpec((2, row_size), "int32", cu_seqlens_q.device),),
+        outputs=(OutputSpec((1, row_size), "int32", cu_seqlens_q.device),),
         attributes=dict(
             batch_size=batch_size, max_seqlen_q=max_seqlen_q, max_seqlen_kv=max_seqlen_kv,
             num_heads_q=num_heads_q, num_heads_kv=num_heads_kv, head_dim=head_dim, head_dim_v=head_dim,
@@ -65,10 +65,11 @@ def infer(arguments, layouts):
 OPERATOR = OperatorDefinition(
     name="quant_flash_attn_metadata", domain="attention", op="attention.quant_flash_attn_metadata",
     schema=(
-        "(int num_heads_q, int num_heads_kv, int head_dim, int quant_mode=5, "
-        "*, Tensor cu_seqlens_q, Tensor seqused_kv, Tensor? seqused_q=None, "
+        "(int num_heads_q, int num_heads_kv, int head_dim, "
+        "Tensor cu_seqlens_q, Tensor seqused_kv, Tensor? seqused_q=None, "
         "int max_seqlen_q=-1, int max_seqlen_kv=-1, int? head_dim_v=None, int mask_mode=0, "
-        "str layout_q='TND', str layout_q_descale='TND', str layout_kv='PA_BBND', str layout_out='TND') -> Tensor"
+        "str layout_q='TND', str layout_q_descale='TND', str layout_kv='PA_BBND', str layout_out='TND', "
+        "int quant_mode=5) -> Tensor"
     ),
     output_names=("metadata",),
     infer=infer,

@@ -85,15 +85,17 @@ def test_native_declarations_close_the_selected_architecture_and_platform_tiler(
         prepared = declaration.prepare_outputs(ROOT)
         recipe = prepared["recipe"]
         if recipe.task_type == "aicpu":
-            assert recipe.device_parameter_order == () and recipe.tiling_host_entry is None
-            assert recipe.workspace_host_entry == recipe.host_entry + "GetWorkspaceSize"
+            assert recipe.device_parameter_order == (), recipe.kernel_id
+            assert recipe.tiling_mode == "none", recipe.kernel_id
+            assert recipe.tiling_host_entry is None, recipe.kernel_id
+            assert recipe.workspace_host_entry == recipe.host_entry + "GetWorkspaceSize", recipe.kernel_id
         else:
             architecture = {
                 "Ascend910B": "arch22",
                 "Ascend910C": "arch22",
                 "Ascend950": "arch35",
             }[recipe.target_soc]
-            assert any(architecture in Path(ref.locator).parts for ref in recipe.headers)
+            assert any(architecture in Path(ref.locator).parts for ref in recipe.headers), recipe.kernel_id
             if declaration.operator.name == "grouped_matmul_swiglu_quant":
                 assert any("/op_host/arch22/" in ref.locator for ref in recipe.headers)
             if declaration.operator.name == "single_prefill_catlass":

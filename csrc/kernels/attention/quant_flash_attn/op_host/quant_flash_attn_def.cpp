@@ -42,9 +42,6 @@ public:
         Input("sinks").ParamType(OPTIONAL).DataTypeList({ge::DT_FLOAT}).FormatList({ge::FORMAT_ND});
         Input("attn_mask").ParamType(OPTIONAL).DataTypeList({ge::DT_INT8}).FormatList({ge::FORMAT_ND}).AutoContiguous();
         Input("metadata").ParamType(REQUIRED).DataType({ge::DT_INT32}).FormatList({ge::FORMAT_ND}).AutoContiguous();
-        Input("v_tail").ParamType(OPTIONAL).DataTypeList({ge::DT_BF16}).FormatList({ge::FORMAT_ND});
-        Input("block_table_tail").ParamType(OPTIONAL).DataTypeList({ge::DT_INT32}).FormatList({ge::FORMAT_ND});
-        Input("seqused_v_tail").ParamType(OPTIONAL).DataTypeList({ge::DT_INT32}).FormatList({ge::FORMAT_ND});
         Output("attn_out").ParamType(REQUIRED).DataType({ge::DT_BF16}).FormatList({ge::FORMAT_ND});
         Output("softmax_lse").ParamType(REQUIRED).DataType({ge::DT_FLOAT}).FormatList({ge::FORMAT_ND});
 

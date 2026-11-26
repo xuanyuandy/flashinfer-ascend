@@ -19,7 +19,7 @@ IMPLEMENTATION = AscendCImplementation(
             TensorParameter("cu_seqlens_kv", "input", "int32", ("BatchPlusOne",), optional=True),
             TensorParameter("seqused_q", "input", "int32", ("Batch",), optional=True),
             TensorParameter("seqused_kv", "input", "int32", ("Batch",)),
-            TensorParameter("metadata", "output", "int32", (2, "Schedule")),
+            TensorParameter("metadata", "output", "int32", (1, "Schedule")),
         ),
         attributes=(
             AttributeParameter("batch_size", "int64", 1, 1),

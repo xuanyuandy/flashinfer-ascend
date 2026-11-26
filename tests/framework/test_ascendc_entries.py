@@ -59,25 +59,17 @@ def test_both_v2_cmake_paths_require_codegen_entry_validation():
         assert '--ops-info "${ASCEND_AUTOGEN_PATH}/aic-${ASCEND_COMPUTE_UNIT}-ops-info.ini"' in text
 
 
-@pytest.fixture(scope='module')
-def entry_packages(tmp_path_factory):
-    from flashinfer.aot.build import build_production_packages
-    directory = tmp_path_factory.mktemp('named-entries')
-    cache = Path(os.environ.get('FLASHINFER_AOT_CACHE_DIR', directory / 'cache'))
-    packages = build_production_packages(output_dir=directory / 'release', cache_dir=cache)
-    return {json.loads((p / 'manifest.json').read_text())['spec']['kernel_id']: p
-            for p in packages}, cache
-
-
 @pytest.mark.real_compile
 @pytest.mark.parametrize('kernel_id', [d.kernel_id for d in implementations(backend='ascendc')])
-def test_named_entries_compile_and_bind_their_actual_opdef(kernel_id, entry_packages):
+def test_named_entries_compile_and_bind_their_actual_opdef(kernel_id, tmp_path):
+    from flashinfer.aot.build import build_production_packages
     from flashinfer.jit.cache import verify_build_directory
     from flashinfer.jit.op_package import verify_op_package, package_target
-    packages, cache = entry_packages
-    release = packages[kernel_id]
+    cache = Path(os.environ.get('FLASHINFER_AOT_CACHE_DIR', tmp_path / 'cache'))
+    release, = build_production_packages(kernel_ids=(kernel_id,), output_dir=tmp_path / 'release', cache_dir=cache)
     record = verify_build_directory(release)
     _, recipe, spec = load_contract(kernel_id)
+    # For AICPU, the verifier checks the registry and the entry exported by the shared library.
     metadata, _ = verify_op_package(release, spec)
     if recipe.task_type != 'aicpu':
         compute = package_target(recipe.target_soc)[0]

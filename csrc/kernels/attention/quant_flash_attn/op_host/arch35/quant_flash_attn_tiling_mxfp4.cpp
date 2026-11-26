@@ -269,12 +269,10 @@ ge::graphStatus ParseScheduleInputs(gert::TilingContext* context, int64_t pageSi
         (maskMode == kNoMask && mask != nullptr)) {
         return TilingError("causal mode requires the 2048 x 2048 mask template");
     }
-    if ((metadata->GetDimNum() != 1 && metadata->GetDimNum() != 2) ||
-        (metadata->GetDimNum() == 2 && metadata->GetDim(0) != 2) ||
-        metadata->GetDim(metadata->GetDimNum() - 1) < METADATA_STRIDE) {
-        return TilingError("metadata must be [C] or [2,C] with room for the FA/FD header");
+    if (metadata->GetDimNum() != 2 || metadata->GetDim(0) != 1 || metadata->GetDim(1) < METADATA_STRIDE) {
+        return TilingError("metadata must be [1, C] with room for the FA/FD header");
     }
-    for (const auto input : {P_SCALE, CU_SEQLENS_KV, SINKS, V_TAIL, BLOCK_TABLE_TAIL, SEQUSED_V_TAIL}) {
+    for (const auto input : {P_SCALE, CU_SEQLENS_KV, SINKS}) {
         if (OptionalShape(context, input) != nullptr) {
             return TilingError("unsupported optional input for C4A4");
         }
@@ -361,7 +359,7 @@ uint64_t GenTilingKey(const TilingAttributes& attrs, int64_t headDim)
     const uint64_t layout = attrs.kvLayout == PagedKvLayout::NZ ? KvLayoutType_PA_NZ
                             : attrs.kvLayout == PagedKvLayout::BNBD ? KvLayoutType_PA_BNBD
                                                                   : KvLayoutType_PA_BBND;
-    return GET_TPL_TILING_KEY(InOutLayoutType_TND_TND, config, mode, attrs.maskMode == kCausal, layout, true, false);
+    return GET_TPL_TILING_KEY(InOutLayoutType_TND_TND, config, mode, attrs.maskMode == kCausal, layout, true);
 }
 } // namespace
 

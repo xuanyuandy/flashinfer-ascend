@@ -29,10 +29,7 @@ enum Input : uint32_t {
     SEQUSED_KV, 
     SINKS, 
     ATTN_MASK, 
-    METADATA, 
-    V_TAIL,
-    BLOCK_TABLE_TAIL, 
-    SEQUSED_V_TAIL,
+    METADATA,
 };
 
 enum Attr : uint32_t {

@@ -352,21 +352,17 @@ bool FiQuantFlashAttnMetadataCpuKernel::GenMetaData(SectionStreamKResult& splitR
         KERNEL_LOG_ERROR("metadata is empty");
         return false;
     }
-    int32_t dimNum = 0;
-    int64_t rowSize = 0;
-    GetMetadataRowInfo(dimNum, rowSize);
-
-    // 容量与维度校验: FA/FD 调度区需求 16 + sectionNum*(aic+aiv)*16 不得超过单行长度
-    // (2D 为 dim1, 1D 为 dim0); shape 信息完全不可用时跳过校验(兼容旧调用方)
-    if (dimNum > 0 && rowSize > 0) {
-        int64_t needSize = optiling::METADATA_STRIDE + static_cast<int64_t>(splitRes.sectionNum) *
-                                                           (aicCoreNum_ + aivCoreNum_) * optiling::METADATA_STRIDE;
-        if (needSize > rowSize) {
-            KERNEL_LOG_ERROR("metadata row size %ld is smaller than required %ld (sectionNum %d, aic %d, aiv %d), "
-                             "please allocate metadata by 16 + (aicNum + aivNum) * 16 * batch * numHeadsKv",
-                             rowSize, needSize, splitRes.sectionNum, aicCoreNum_, aivCoreNum_);
-            return false;
-        }
+    const int64_t rowSize = GetMetadataRowSize();
+    if (rowSize <= 0) {
+        KERNEL_LOG_ERROR("metadata output must have shape [1, C]");
+        return false;
+    }
+    const int64_t needSize = optiling::METADATA_STRIDE + static_cast<int64_t>(splitRes.sectionNum) *
+        (aicCoreNum_ + aivCoreNum_) * optiling::METADATA_STRIDE;
+    if (needSize > rowSize) {
+        KERNEL_LOG_ERROR("metadata row size %ld is smaller than required %ld (sectionNum %d, aic %d, aiv %d)",
+                         rowSize, needSize, splitRes.sectionNum, aicCoreNum_, aivCoreNum_);
+        return false;
     }
     detail::FaMetaData faMetadata(aicCoreNum_, aivCoreNum_, splitRes.sectionNum, metaData_->GetData());
     faMetadata.Clear(); // set to all 0
@@ -380,17 +376,16 @@ bool FiQuantFlashAttnMetadataCpuKernel::GenMetaData(SectionStreamKResult& splitR
 
 // 前向调度表的容量检查优先使用 Host 下发的输出形状。
 // 属性缺失时回退到 AICPU 的 TensorShape。
-void FiQuantFlashAttnMetadataCpuKernel::GetMetadataRowInfo(int32_t& dimNum, int64_t& rowSize)
+int64_t FiQuantFlashAttnMetadataCpuKernel::GetMetadataRowSize()
 {
-    dimNum = static_cast<int32_t>(metadataDimNum_);
-    rowSize = metadataRowSize_;
-    if (rowSize <= 0 || dimNum <= 0) {
-        auto outShape = metaData_ == nullptr ? nullptr : metaData_->GetTensorShape();
-        if (outShape != nullptr && outShape->GetDims() >= 1) {
-            dimNum = outShape->GetDims();
-            rowSize = dimNum >= 2 ? outShape->GetDimSize(1) : outShape->GetDimSize(0);
-        }
+    if (metadataDimNum_ != 0) {
+        return metadataDimNum_ == 2 ? metadataRowSize_ : -1;
     }
+    const auto outShape = metaData_->GetTensorShape();
+    if (outShape != nullptr && outShape->GetDims() == 2 && outShape->GetDimSize(0) == 1) {
+        return outShape->GetDimSize(1);
+    }
+    return -1;
 }
 
 void FiQuantFlashAttnMetadataCpuKernel::SetMetadataHead(const SectionStreamKResult& splitRes,

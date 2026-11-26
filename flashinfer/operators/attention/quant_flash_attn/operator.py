@@ -12,7 +12,6 @@ INPUTS = (
     "q", "k", "v", "q_descale", "k_descale", "v_descale",
     "block_table", "p_scale", "cu_seqlens_q", "cu_seqlens_kv",
     "seqused_q", "seqused_kv", "sinks", "attn_mask", "metadata",
-    "v_tail", "block_table_tail", "seqused_v_tail",
 )
 ATTRIBUTES = (
     "quant_compute_mode", "softmax_scale", "mask_mode", "win_left", "win_right",
@@ -98,8 +97,8 @@ def infer(arguments, layouts):
     check_tensor(used_kv, "seqused_kv", "int32", (batch,))
     if used_q is not None:
         check_tensor(used_q, "seqused_q", "int32", (batch,))
-    if metadata.ndim not in (1, 2) or (metadata.ndim == 2 and metadata.shape[0] != 2) or metadata.shape[-1] < 16:
-        raise ValueError("metadata requires int32 [C] or [2,C] with a complete header")
+    if metadata.ndim != 2 or metadata.shape[0] != 1 or metadata.shape[1] < 16:
+        raise ValueError("metadata requires int32 [1, C] with a complete header")
     check_tensor(metadata, "metadata", "int32", tuple(metadata.shape))
     if mask_mode == 3 and mask is not None:
         check_tensor(mask, "attn_mask", "int8", (2048, 2048))
