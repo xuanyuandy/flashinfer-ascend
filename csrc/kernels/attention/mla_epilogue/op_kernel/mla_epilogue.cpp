@@ -27,6 +27,7 @@
 #include "arch22/mla_epilogue_gemm.h"
 #include "arch22/mla_epilogue_gemm_large.h"
 #include "arch22/mla_epilogue_rope.h"
+#include "arch22/mla_epilogue_nzconv.h"
 
 using namespace AscendC;
 
@@ -48,7 +49,7 @@ __global__ __aicore__ void fi_mla_epilogue(GM_ADDR x, GM_ADDR cos, GM_ADDR sin, 
 {
     KERNEL_TASK_TYPE_DEFAULT(KERNEL_TYPE_MIX_AIC_1_2); // AIC:AIV = 1:2
 
-    if constexpr ((SCH_MODE == 0U) || (SCH_MODE == 1U)) {
+    if constexpr ((SCH_MODE == 0U) || (SCH_MODE == 1U) || (SCH_MODE == 2U) || (SCH_MODE == 3U)) {
         REGISTER_TILING_DEFAULT(MlaEpilogueTilingData); // 必须在 GET_TILING_DATA_WITH_STRUCT 之前
         GET_TILING_DATA_WITH_STRUCT(MlaEpilogueTilingData, tilingData, tiling);
         GM_ADDR userWs = GetUserWorkspace(workspace);
@@ -63,14 +64,31 @@ __global__ __aicore__ void fi_mla_epilogue(GM_ADDR x, GM_ADDR cos, GM_ADDR sin, 
                 CrossCoreSetFlag<0, PIPE_FIX>(2);
                 CrossCoreWaitFlag<0, PIPE_MTE2>(2);
                 aic.Gemm2(tilingData);
+            } else if constexpr (SCH_MODE == 1U) {
+                NsMlaEpilogue::AicContextLarge aic(resource);
+                aic.Init(tilingData, userWs, w1, w2, y);
+                CrossCoreWaitFlag<2>(0);
+                aic.Gemm1<false>(tilingData);
+                CrossCoreSetFlag<0, PIPE_FIX>(2);
+                CrossCoreWaitFlag<0, PIPE_MTE2>(2);
+                aic.Gemm2<false, true>(tilingData);
+            } else if constexpr (SCH_MODE == 2U) {
+                NsMlaEpilogue::AicContextLarge aic(resource);
+                aic.Init(tilingData, userWs, w1, w2, y);
+                CrossCoreWaitFlag<2>(0);
+                aic.Gemm1<true>(tilingData);
+                CrossCoreWaitFlag<2>(1);
+                CrossCoreSetFlag<0, PIPE_FIX>(2);
+                CrossCoreWaitFlag<0, PIPE_MTE2>(2);
+                aic.Gemm2<true, false>(tilingData); // full-NZ 保留原分核
             } else {
                 NsMlaEpilogue::AicContextLarge aic(resource);
                 aic.Init(tilingData, userWs, w1, w2, y);
                 CrossCoreWaitFlag<2>(0);
-                aic.Gemm1(tilingData);
+                aic.Gemm1<true>(tilingData);
                 CrossCoreSetFlag<0, PIPE_FIX>(2);
                 CrossCoreWaitFlag<0, PIPE_MTE2>(2);
-                aic.Gemm2(tilingData);
+                aic.Gemm2<false, true>(tilingData); // w1-only：w2 ND + Stage001
             }
         }
 
@@ -78,11 +96,45 @@ __global__ __aicore__ void fi_mla_epilogue(GM_ADDR x, GM_ADDR cos, GM_ADDR sin, 
             TPipe pipe;
             NsMlaEpilogue::RopeContext rope;
             rope.Init(tilingData, &pipe, userWs, x, cos, sin);
-            for (uint32_t t = 0U; t < tilingData.pipeTileNum; ++t) {
-                rope.Tile(t, tilingData);
+            if constexpr (SCH_MODE == 1U) {
+                for (uint32_t t = 0U; t < tilingData.pipeTileNum; ++t) {
+                    rope.Tile(t, tilingData);
+                }
+                SyncAll<true>();
+                CrossCoreSetFlag<2, PIPE_MTE3>(0); // r 就绪
+            } else if constexpr (SCH_MODE == 2U) {
+                NsMlaEpilogue::NzConvContext nzconv;
+                nzconv.Init(tilingData, &pipe, userWs, w1, w2);
+                for (uint32_t t = 0U; t < tilingData.pipeTileNum; ++t) {
+                    rope.Tile(t, tilingData);
+                }
+                SyncAll<true>();
+                const uint32_t aivIdx = static_cast<uint32_t>(GetBlockIdx());
+                const uint32_t aicIdx = aivIdx >> 1U;
+                const uint32_t sub = aivIdx & 1U;
+                nzconv.ConvW1Private(tilingData, aicIdx, sub);
+                CrossCoreSetFlag<2, PIPE_MTE3>(0); // this pair's w1 zN ready
+                nzconv.ConvW2Private(tilingData, aicIdx, sub);
+                CrossCoreSetFlag<2, PIPE_MTE3>(1); // this pair's w2 nZ ready
+            } else if constexpr (SCH_MODE == 3U) {
+                NsMlaEpilogue::NzConvContext nzconv;
+                nzconv.Init(tilingData, &pipe, userWs, w1, w2);
+                for (uint32_t t = 0U; t < tilingData.pipeTileNum; ++t) {
+                    rope.Tile(t, tilingData);
+                }
+                SyncAll<true>();
+                const uint32_t aivIdx = static_cast<uint32_t>(GetBlockIdx());
+                const uint32_t aicIdx = aivIdx >> 1U;
+                const uint32_t sub = aivIdx & 1U;
+                nzconv.ConvW1Private(tilingData, aicIdx, sub);
+                CrossCoreSetFlag<2, PIPE_MTE3>(0); // this pair's w1 zN ready
+            } else {
+                for (uint32_t t = 0U; t < tilingData.pipeTileNum; ++t) {
+                    rope.Tile(t, tilingData);
+                }
+                SyncAll<true>();
+                CrossCoreSetFlag<2, PIPE_MTE3>(0);
             }
-            SyncAll<true>();
-            CrossCoreSetFlag<2, PIPE_MTE3>(0);
         }
     }
 }

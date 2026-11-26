@@ -49,8 +49,8 @@ IMPLEMENTATIONS = AscendCImplementation.for_targets(
         ),
     ),
     runner_factory=make_runner,
-    # Max workspace: r/c + system workspace; w1/w2 are read as ND, no NZ copies.
-    workspace_bound=10754195968,
+    # Max workspace includes r/c, system workspace, and the S>=4096 w1/w2 zN/nZ copies.
+    workspace_bound=10905190912,
 )
 IMPLEMENTATION = IMPLEMENTATIONS[0]
 NATIVE = IMPLEMENTATION.native

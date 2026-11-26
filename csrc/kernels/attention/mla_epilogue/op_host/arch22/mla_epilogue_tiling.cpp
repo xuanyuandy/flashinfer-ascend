@@ -36,6 +36,10 @@ constexpr uint64_t ROPE_ROW_UB = 16384ULL;          // 每行双缓冲 xTile：2
 constexpr uint64_t ROPE_FIXED_UB = 5888ULL;         // ropeF32 + swapF32 + cos/sin 双缓冲 + 3 个辅助向量
 constexpr uint32_t TILE_S_CAP = 8U;                 // 设计余量封顶
 constexpr uint32_t WS_ALIGN = 512U;
+constexpr uint32_t NZ_CONV_MIN_S = 4095U;           // 实测下界：2304/2560 full-NZ 相对 Stage001 回退，从 w1-only 起点开启
+constexpr uint32_t W1_ONLY_MIN_S = 4095U;           // 仅在已测 4K 区间使用 w1-only
+constexpr uint32_t FULL_NZ_MIN_S = 8191U;           // 8191 起恢复原 full-NZ，避免跨点外推
+constexpr uint64_t NZ_STAGE_UB = 32768ULL;          // nzConv 的 2 x 16 KiB UB 双缓冲
 
 // shape 固定维度（spec shape_constraints）
 constexpr int64_t DIM_X_S_HEAD = 64;
@@ -345,6 +349,14 @@ static ge::graphStatus TilingMlaEpilogue(gert::TilingContext* context)
                                                  std::to_string(usableUB) +
                                                  " (tileS=" + std::to_string(tileS) + ")");
     }
+    // 设备内权重预转换（ND -> zN/nZ）：大 S 门控，转换成本 ~468us，S=4096 时净收益转正。
+    const bool nzConv = (totalS >= NZ_CONV_MIN_S);
+    const bool w1Only = nzConv && (totalS >= W1_ONLY_MIN_S) && (totalS < FULL_NZ_MIN_S);
+    const bool w2Conv = nzConv && !w1Only;
+    if (nzConv && (ropeUB + NZ_STAGE_UB > usableUB)) {
+        return ReportTilingFailure(context, "NZ convert UB peak " + std::to_string(ropeUB + NZ_STAGE_UB) +
+                                                 " > usableUB " + std::to_string(usableUB));
+    }
 
     // ---- 5. GEMM1 分核（只切 N，权重只读一次）----
     uint32_t nSplit = aicNum / MLA_G;
@@ -393,9 +405,16 @@ static ge::graphStatus TilingMlaEpilogue(gert::TilingContext* context)
         static_cast<uint64_t>(MLA_G) * static_cast<uint64_t>(paddedM) * static_cast<uint64_t>(MLA_K1) * 2ULL;
     const uint64_t cBytes =
         static_cast<uint64_t>(paddedM) * static_cast<uint64_t>(MLA_G) * static_cast<uint64_t>(MLA_N1) * 2ULL;
-    // CATLASS 只使用 GM 上的 r/c 中间结果；w1/w2 直接以 ND 读取，不再生成 NZ 副本。
     const uint64_t cOffset = AlignUpU64(rBytes, WS_ALIGN);
-    const uint64_t userWorkspaceSize = cOffset + AlignUpU64(cBytes, WS_ALIGN);
+    const uint64_t cEnd = cOffset + AlignUpU64(cBytes, WS_ALIGN);
+    // nzConv 时追加 w1 zN [N1/16][K1][16] 与 w2 nZ [K2/16][N2][16] 两份副本（布局与 CATLASS 一致）。
+    const uint64_t w1NzBytes =
+        static_cast<uint64_t>(MLA_G) * static_cast<uint64_t>(MLA_K1) * static_cast<uint64_t>(MLA_N1) * 2ULL;
+    const uint64_t w2NzBytes = static_cast<uint64_t>(MLA_N2) * static_cast<uint64_t>(MLA_K2) * 2ULL;
+    const uint64_t w1NzOffset = cEnd;
+    const uint64_t w2NzOffset = AlignUpU64(w1NzOffset + w1NzBytes, WS_ALIGN);
+    const uint64_t userWorkspaceSize = w2Conv ? (w2NzOffset + AlignUpU64(w2NzBytes, WS_ALIGN)) :
+                                                (nzConv ? w2NzOffset : cEnd);
     const uint32_t sysWorkspaceSize = platform.GetLibApiWorkSpaceSize();
     if (sysWorkspaceSize == UINT32_MAX) {
         return ReportTilingFailure(context, "GetLibApiWorkSpaceSize() returned UINT32_MAX");
@@ -435,6 +454,10 @@ static ge::graphStatus TilingMlaEpilogue(gert::TilingContext* context)
     tiling->rOffset = 0ULL;
     tiling->cOffset = cOffset;
     tiling->userWorkspaceSize = userWorkspaceSize;
+    tiling->nzConv = nzConv ? 1U : 0U;
+    tiling->nzPad = 0U;
+    tiling->w1NzOffset = w1NzOffset;
+    tiling->w2NzOffset = w2NzOffset;
 
     // ---- 11. 取证日志 ----
     OP_LOGI(context,
@@ -458,7 +481,8 @@ static ge::graphStatus TilingMlaEpilogue(gert::TilingContext* context)
 
     // ---- 12. TilingKey / batchmode / blockDim ----
     // 大 S 使用独立模板（更大的 M tile），小 S 保持原模板。
-    const uint32_t schMode = (totalS > 128U) ? 1U : 0U;
+    // 0=small ND，1=large ND+Stage001，2=full-NZ 原分核，3=w1-only+Stage001。
+    const uint32_t schMode = nzConv ? (w1Only ? 3U : 2U) : ((totalS > 128U) ? 1U : 0U);
     ASCENDC_TPL_SEL_PARAM(context, schMode);
     const ge::graphStatus scheduleModeRc = context->SetScheduleMode(1);
     if (scheduleModeRc != ge::GRAPH_SUCCESS) {

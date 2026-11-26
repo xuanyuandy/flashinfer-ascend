@@ -60,6 +60,13 @@ using G1TileCopyLarge = Catlass::Gemm::Tile::PackedTileCopyTla<
     CatlassElement, Catlass::layout::zN>;
 using G1BlockLarge = Catlass::Gemm::Block::BlockMmadTla<
     G1PolicyLarge, G1L1ShapeLarge, G1L0ShapeLarge, CatlassElement, CatlassElement, CatlassElement, void, G1TileCopyLarge>;
+// nzConv 路径：w1 预置为 zN（[N1/16][K1][16]），B 的 GM 布局直接是 zN，省掉每 tile 的 ND->zN 重排。
+using G1TileCopyNzLarge = Catlass::Gemm::Tile::PackedTileCopyTla<
+    CatlassArch, CatlassElement, Catlass::layout::RowMajor, CatlassElement, Catlass::layout::zN,
+    CatlassElement, Catlass::layout::zN>;
+using G1BlockNzLarge = Catlass::Gemm::Block::BlockMmadTla<
+    G1PolicyLarge, G1L1ShapeLarge, G1L0ShapeLarge, CatlassElement, CatlassElement, CatlassElement, void,
+    G1TileCopyNzLarge>;
 
 // ---------------------------------------------------------------------------
 // GEMM2: c[M,K2] @ w2[N2,K2]^T -> y[M,N2], A 为 Cube NZ，B 用 ColumnMajor 表达转置
@@ -72,6 +79,13 @@ using G2TileCopyLarge = Catlass::Gemm::Tile::PackedTileCopyTla<
     CatlassElement, Catlass::layout::RowMajor>;
 using G2BlockLarge = Catlass::Gemm::Block::BlockMmadTla<
     G2PolicyLarge, G2L1ShapeLarge, G2L0ShapeLarge, CatlassElement, CatlassElement, CatlassElement, void, G2TileCopyLarge>;
+// nzConv 路径：w2 预置为 nZ（[K2/16][N2][16]），B 的 GM 布局直接是 nZ。
+using G2TileCopyNzLarge = Catlass::Gemm::Tile::PackedTileCopyTla<
+    CatlassArch, CatlassElement, Catlass::layout::zN, CatlassElement, Catlass::layout::nZ,
+    CatlassElement, Catlass::layout::RowMajor>;
+using G2BlockNzLarge = Catlass::Gemm::Block::BlockMmadTla<
+    G2PolicyLarge, G2L1ShapeLarge, G2L0ShapeLarge, CatlassElement, CatlassElement, CatlassElement, void,
+    G2TileCopyNzLarge>;
 
 /**
  * @brief AIC 侧 CATLASS 计算上下文
@@ -89,6 +103,8 @@ public:
         cGm_.SetGlobalBuffer(reinterpret_cast<__gm__ bfloat16_t*>(userWs + td.cOffset));
         w1Gm_.SetGlobalBuffer(reinterpret_cast<__gm__ bfloat16_t*>(w1));
         w2Gm_.SetGlobalBuffer(reinterpret_cast<__gm__ bfloat16_t*>(w2));
+        w1NzGm_.SetGlobalBuffer(reinterpret_cast<__gm__ bfloat16_t*>(userWs + td.w1NzOffset));
+        w2NzGm_.SetGlobalBuffer(reinterpret_cast<__gm__ bfloat16_t*>(userWs + td.w2NzOffset));
         yGm_.SetGlobalBuffer(reinterpret_cast<__gm__ bfloat16_t*>(y));
     }
 
@@ -96,6 +112,7 @@ public:
      * @brief GEMM1：每核固定 (g, n0, curN)，循环 M tile 与 N tile。
      *        C 为 layout::zN，物理布局 [N/16][M/16][16][16]。
      */
+    template <bool Nz>
     __aicore__ inline void Gemm1(const MlaEpilogueTilingData& td)
     {
         const uint32_t coreIdx = static_cast<uint32_t>(GetBlockIdx());
@@ -111,22 +128,38 @@ public:
                                                      (nIdx * td.gemm1NUnitsBase));
         const uint32_t curN = MLA_ALIGN16 * nUnits;
 
-        // 每个 batch 的完整 A/B/C 视图；tile 由 GetTile 生成，stride 保持全局布局。
         auto gA = rGm_[static_cast<uint64_t>(g) * td.paddedM * MLA_K1];
-        auto gB = w1Gm_[static_cast<uint64_t>(g) * MLA_K1 * MLA_N1];
         auto gC = cGm_[static_cast<uint64_t>(g) * MLA_N1 * td.paddedM];
         auto layoutA = tla::MakeLayout<CatlassElement, Catlass::layout::RowMajor>(td.paddedM, MLA_K1);
-        auto layoutB = tla::MakeLayout<CatlassElement, Catlass::layout::RowMajor>(MLA_K1, MLA_N1);
         auto layoutC = tla::MakeLayout<CatlassElement, Catlass::layout::zN>(td.paddedM, MLA_N1);
         auto tensorA = tla::MakeTensor(gA, layoutA, Catlass::Arch::PositionGM{});
-        auto tensorB = tla::MakeTensor(gB, layoutB, Catlass::Arch::PositionGM{});
         auto tensorC = tla::MakeTensor(gC, layoutC, Catlass::Arch::PositionGM{});
+        constexpr uint32_t kM = tla::get<0>(G1L1ShapeLarge{});
+        constexpr uint32_t kN = tla::get<1>(G1L1ShapeLarge{});
 
-        {
+        if constexpr (Nz) {
+            // B 已由 AIV 预转换为 zN，直接按 zN 布局读取。
+            auto gB = w1NzGm_[static_cast<uint64_t>(g) * MLA_K1 * MLA_N1];
+            auto layoutB = tla::MakeLayout<CatlassElement, Catlass::layout::zN>(MLA_K1, MLA_N1);
+            auto tensorB = tla::MakeTensor(gB, layoutB, Catlass::Arch::PositionGM{});
+            G1BlockNzLarge blockMmad(resource_);
+            for (uint32_t m0 = 0U; m0 < td.totalS; m0 += kM) {
+                const uint32_t mAct = min(kM, td.totalS - m0);
+                auto tileA = tla::GetTile(tensorA, tla::MakeCoord(m0, 0U), tla::MakeShape(mAct, MLA_K1));
+                for (uint32_t nOff = 0U; nOff < curN; nOff += kN) {
+                    const uint32_t nAct = min(kN, curN - nOff);
+                    auto tileB = tla::GetTile(tensorB, tla::MakeCoord(0U, n0 + nOff),
+                                              tla::MakeShape(MLA_K1, nAct));
+                    auto tileC = tla::GetTile(tensorC, tla::MakeCoord(m0, n0 + nOff),
+                                              tla::MakeShape(mAct, nAct));
+                    blockMmad(tileA, tileB, tileC, GemmCoord{mAct, nAct, MLA_K1});
+                }
+            }
+        } else {
+            auto gB = w1Gm_[static_cast<uint64_t>(g) * MLA_K1 * MLA_N1];
+            auto layoutB = tla::MakeLayout<CatlassElement, Catlass::layout::RowMajor>(MLA_K1, MLA_N1);
+            auto tensorB = tla::MakeTensor(gB, layoutB, Catlass::Arch::PositionGM{});
             G1BlockLarge blockMmad(resource_);
-            constexpr uint32_t kM = tla::get<0>(G1L1ShapeLarge{});
-            constexpr uint32_t kN = tla::get<1>(G1L1ShapeLarge{});
-
             for (uint32_t m0 = 0U; m0 < td.totalS; m0 += kM) {
                 const uint32_t mAct = min(kM, td.totalS - m0);
                 auto tileA = tla::GetTile(tensorA, tla::MakeCoord(m0, 0U), tla::MakeShape(mAct, MLA_K1));
@@ -145,6 +178,7 @@ public:
     /**
      * @brief GEMM2：每核固定 n0/curN，M 方向按 96 行循环；A 直接读 GEMM1 的 zN 输出。
      */
+    template <bool Nz, bool Stage1Partition>
     __aicore__ inline void Gemm2(const MlaEpilogueTilingData& td)
     {
         const uint32_t coreIdx = static_cast<uint32_t>(GetBlockIdx());
@@ -153,9 +187,8 @@ public:
         }
         uint32_t n0;
         uint32_t curN;
-        if ((td.aicUsedCores == 24U) && (td.gemm2UsedCores == 24U)) {
-            // Maximize the existing N224 nZ->nZ single-LoadData fast path while
-            // preserving 24 cores and the original maximum per-core N compute.
+        if (Stage1Partition && (td.aicUsedCores == 24U) && (td.gemm2UsedCores == 24U)) {
+            // Stage001 only on ND paths; the full-NZ path keeps its original partition.
             // 22*224 + 2*96 = 5120; only the two N96 cores use the K/16 fallback.
             constexpr uint32_t FAST_CORES = 22U;
             constexpr uint32_t FAST_N = 224U;
@@ -169,7 +202,6 @@ public:
                 curN = TAIL_N;
             }
         } else {
-            // Original host base/remainder mapping remains the non-A3 fallback.
             const uint32_t hasRem = (coreIdx < td.gemm2NUnitsRem) ? 1U : 0U;
             const uint32_t nUnits = td.gemm2NUnitsBase + hasRem;
             n0 = MLA_ALIGN16 * (coreIdx * td.gemm2NUnitsBase +
@@ -178,22 +210,33 @@ public:
         }
 
         auto gA = cGm_[0];
-        auto gB = w2Gm_[0];
         auto gC = yGm_[0];
         auto layoutA = tla::MakeLayout<CatlassElement, Catlass::layout::zN>(td.paddedM, MLA_K2);
-        auto layoutB = tla::MakeLayout<CatlassElement, Catlass::layout::ColumnMajor>(MLA_K2, MLA_N2);
         auto layoutC = tla::MakeLayout<CatlassElement, Catlass::layout::RowMajor>(td.totalS, MLA_N2);
         auto tensorA = tla::MakeTensor(gA, layoutA, Catlass::Arch::PositionGM{});
-        auto tensorB = tla::MakeTensor(gB, layoutB, Catlass::Arch::PositionGM{});
         auto tensorC = tla::MakeTensor(gC, layoutC, Catlass::Arch::PositionGM{});
+        constexpr uint32_t kM = tla::get<0>(G2L1ShapeLarge{});
 
-        {
-            G2BlockLarge blockMmad(resource_);
-            constexpr uint32_t kM = tla::get<0>(G2L1ShapeLarge{});
-
+        if constexpr (Nz) {
+            // B 已由 AIV 预转换为 nZ，直接按 nZ 布局读取。
+            auto gB = w2NzGm_[0];
+            auto layoutB = tla::MakeLayout<CatlassElement, Catlass::layout::nZ>(MLA_K2, MLA_N2);
+            auto tensorB = tla::MakeTensor(gB, layoutB, Catlass::Arch::PositionGM{});
+            G2BlockNzLarge blockMmad(resource_);
             for (uint32_t m0 = 0U; m0 < td.totalS; m0 += kM) {
                 const uint32_t mAct = min(kM, td.totalS - m0);
-                // paddedM 是 c/A 的物理行数；m0 不会越过 paddedM（totalS <= paddedM）。
+                auto tileA = tla::GetTile(tensorA, tla::MakeCoord(m0, 0U), tla::MakeShape(mAct, MLA_K2));
+                auto tileB = tla::GetTile(tensorB, tla::MakeCoord(0U, n0), tla::MakeShape(MLA_K2, curN));
+                auto tileC = tla::GetTile(tensorC, tla::MakeCoord(m0, n0), tla::MakeShape(mAct, curN));
+                blockMmad(tileA, tileB, tileC, GemmCoord{mAct, curN, MLA_K2});
+            }
+        } else {
+            auto gB = w2Gm_[0];
+            auto layoutB = tla::MakeLayout<CatlassElement, Catlass::layout::ColumnMajor>(MLA_K2, MLA_N2);
+            auto tensorB = tla::MakeTensor(gB, layoutB, Catlass::Arch::PositionGM{});
+            G2BlockLarge blockMmad(resource_);
+            for (uint32_t m0 = 0U; m0 < td.totalS; m0 += kM) {
+                const uint32_t mAct = min(kM, td.totalS - m0);
                 auto tileA = tla::GetTile(tensorA, tla::MakeCoord(m0, 0U), tla::MakeShape(mAct, MLA_K2));
                 auto tileB = tla::GetTile(tensorB, tla::MakeCoord(0U, n0), tla::MakeShape(MLA_K2, curN));
                 auto tileC = tla::GetTile(tensorC, tla::MakeCoord(m0, n0), tla::MakeShape(mAct, curN));
@@ -207,8 +250,10 @@ private:
 
     GlobalTensor<bfloat16_t> rGm_;  // [8, paddedM, 4096]
     GlobalTensor<bfloat16_t> cGm_;  // zN: [8192/16][paddedM/16][16][16]
-    GlobalTensor<bfloat16_t> w1Gm_; // [8, 4096, 1024]
-    GlobalTensor<bfloat16_t> w2Gm_; // [5120, 8192]
+    GlobalTensor<bfloat16_t> w1Gm_;   // [8, 4096, 1024]
+    GlobalTensor<bfloat16_t> w2Gm_;   // [5120, 8192]
+    GlobalTensor<bfloat16_t> w1NzGm_; // zN: [N1/16][K1][16]（nzConv 时有效）
+    GlobalTensor<bfloat16_t> w2NzGm_; // nZ: [K2/16][N2][16]（nzConv 时有效）
     GlobalTensor<bfloat16_t> yGm_;  // [S, 5120]
 };
 
