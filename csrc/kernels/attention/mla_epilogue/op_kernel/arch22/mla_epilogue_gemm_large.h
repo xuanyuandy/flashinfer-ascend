@@ -71,8 +71,8 @@ using G1BlockNzLarge = Catlass::Gemm::Block::BlockMmadTla<
 // ---------------------------------------------------------------------------
 // GEMM2: c[M,K2] @ w2[N2,K2]^T -> y[M,N2], A 为 Cube NZ，B 用 ColumnMajor 表达转置
 // ---------------------------------------------------------------------------
-using G2PolicyLarge = Catlass::Gemm::MmadPingpong<CatlassArch, true, false, 1, false, 2, 2, 3, 2>;
-using G2L1ShapeLarge = tla::Shape<tla::Int<128>, tla::Int<224>, tla::Int<320>>;
+using G2PolicyLarge = Catlass::Gemm::MmadPingpong<CatlassArch, true, false, 1, false, 2, 3, 3, 2>;
+using G2L1ShapeLarge = tla::Shape<tla::Int<128>, tla::Int<224>, tla::Int<256>>;
 using G2L0ShapeLarge = tla::Shape<tla::Int<128>, tla::Int<224>, tla::Int<64>>;
 using G2TileCopyLarge = Catlass::Gemm::Tile::PackedTileCopyTla<
     CatlassArch, CatlassElement, Catlass::layout::zN, CatlassElement, Catlass::layout::ColumnMajor,
