@@ -11,6 +11,7 @@
 | 查看选择规则、覆盖入口与失败行为 | [后端路由](concepts/backend-routing.md) |
 | 查找 op × backend × dtype/SoC 的实际登记 | [后端支持矩阵](backends/overview.md) |
 | 使用 Attention、CATLASS FA 与 arch22 SFA | [Attention 接口](operators/attention.md) |
+| 使用稀疏索引器 Lightning Indexer | [稀疏索引器](operators/sparse-indexer.md) |
 | 使用 Matmul、分段 GEMM、量化融合与 MoE | [GEMM 与 MoE](operators/gemm.md) |
 | 使用 Norm、Activation、RoPE、Sampling、KV 与状态合并 | [其他 Tensor 算子](operators/tensor-ops.md) |
 | 新增算子或给同一 op 增加后端 | [算子接入](development/adding-an-operator.md) |
