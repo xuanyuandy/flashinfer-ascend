@@ -20,7 +20,10 @@ def allocate_output(specification):
         # TorchNPU labels four-dimensional empty/empty_like tensors NCHW,
         # including empty_with_format(..., acl_format=2) on this runtime.
         # Only fresh framework outputs are converted; supplied out stays intact.
-        output = torch_npu.npu_format_cast(output, 2)
+        # The format query is metadata-only, so an allocator-fresh ND output
+        # skips the conversion call entirely.
+        if torch_npu.get_npu_format(output) != 2:
+            output = torch_npu.npu_format_cast(output, 2)
     return output
 
 

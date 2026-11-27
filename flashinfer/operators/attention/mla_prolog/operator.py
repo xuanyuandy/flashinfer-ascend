@@ -214,6 +214,79 @@ def infer(arguments, layouts):
     )
 
 
+_NUMPY = None
+_NUMPY_CHECKED = False
+
+
+def _numpy():
+    """Optional NumPy for the host-side value checks.
+
+    The Torch CPU kernels used here run with the process-wide intra-op thread
+    count; on many-core hosts the fixed overhead of each elementwise call on a
+    large token block dwarfs the check itself. NumPy performs the same checks
+    with a single-threaded C loop. When NumPy is unavailable the Torch path is
+    kept as a fallback with identical rejection behavior.
+    """
+    global _NUMPY, _NUMPY_CHECKED
+    if not _NUMPY_CHECKED:
+        try:
+            import numpy
+        except ImportError:  # pragma: no cover - NumPy ships with every test env.
+            numpy = None
+        _NUMPY, _NUMPY_CHECKED = numpy, True
+    return _NUMPY
+
+
+def _host_float(tensor):
+    """One device-to-host download per checked tensor, converted once."""
+    return tensor.detach().cpu().float()
+
+
+def _validate_slots(slots, t, numpy):
+    import torch
+    page, row = slots[:, 0], slots[:, 1]
+    # The int32 (T, 2) contract keeps the linearized fast path; every other
+    # dtype or shape uses the exact full-row unique so invalid inputs retain
+    # the baseline rejection type, message and order.
+    contract_fast = slots.dtype == torch.int32 and tuple(slots.shape) == (t, 2)
+    if numpy is not None:
+        try:
+            page_array, row_array = page.numpy(), row.numpy()
+        except TypeError:
+            # NumPy cannot represent this dtype (bfloat16 / float8). Fall
+            # through to the Torch checks so the eventual rejection (infer's
+            # ValueError, or the same comparison error) matches the baseline.
+            pass
+        else:
+            if bool((page_array < 0).any()) or bool((page_array >= CACHE_PAGES).any()):
+                raise ValueError("slot page index is out of range")
+            if bool((row_array < 0).any()) or bool((row_array >= CACHE_ROWS).any()):
+                raise ValueError("slot row index is out of range")
+            if contract_fast:
+                # The range checks make page * CACHE_ROWS + row injective, so
+                # the linearized addresses are unique exactly when the pairs are.
+                linear = page_array.astype(numpy.int64) * CACHE_ROWS + row_array
+                unique_count = numpy.unique(linear).size
+            else:
+                # Equivalent to torch.unique(slots, dim=0) for every shape.
+                unique_count = numpy.unique(slots.numpy(), axis=0).shape[0]
+            if unique_count != t:
+                raise ValueError("slot_indices must be unique within one call")
+            return
+    if bool((page < 0).any()) or bool((page >= CACHE_PAGES).any()):
+        raise ValueError("slot page index is out of range")
+    if bool((row < 0).any()) or bool((row >= CACHE_ROWS).any()):
+        raise ValueError("slot row index is out of range")
+    if contract_fast:
+        linear = page.long() * CACHE_ROWS + row.long()
+        ordered = torch.sort(linear).values
+        duplicate = ordered.numel() > 1 and bool((ordered[1:] == ordered[:-1]).any())
+    else:
+        duplicate = torch.unique(slots, dim=0).shape[0] != t
+    if duplicate:
+        raise ValueError("slot_indices must be unique within one call")
+
+
 def validate_values(arguments):
     """Reject cache addresses and encoder values the native kernel cannot use.
 
@@ -222,33 +295,53 @@ def validate_values(arguments):
     checks only the small public Tensor values. With ``update_kv_cache=False``
     the kernel ignores ``slot_indices`` entirely, so its values are not read or
     validated (only the still-required shape/type are checked by ``infer``).
+
+    Each checked Tensor is downloaded and converted once per call; the checks
+    and their rejection order are unchanged.
     """
     import torch
 
+    numpy = _numpy()
     x = arguments["x"]
     t = int(x.shape[0])
     if t < MIN_T or t > MAX_T:
         raise ValueError("T must be in [1, 4096]")
     if _update_kv_cache_flag(
             arguments.get("update_kv_cache", UPDATE_KV_CACHE_DEFAULT)):
-        slots = arguments["slot_indices"].detach().cpu()
-        if bool((slots[:, 0] < 0).any()) or bool((slots[:, 0] >= CACHE_PAGES).any()):
-            raise ValueError("slot page index is out of range")
-        if bool((slots[:, 1] < 0).any()) or bool((slots[:, 1] >= CACHE_ROWS).any()):
-            raise ValueError("slot row index is out of range")
-        if torch.unique(slots, dim=0).shape[0] != t:
-            raise ValueError("slot_indices must be unique within one call")
-    cos = arguments["rope_cos"].detach().cpu().float().reshape(t, ROPE_DIM)
-    sin = arguments["rope_sin"].detach().cpu().float().reshape(t, ROPE_DIM)
-    if not torch.equal(cos[:, 0::2], cos[:, 1::2]):
-        raise ValueError("rope_cos adjacent even/odd values must be equal")
-    if not torch.equal(sin[:, 0::2], sin[:, 1::2]):
-        raise ValueError("rope_sin adjacent even/odd values must be equal")
-    scale = arguments["w_qb_scale"].detach().cpu().float()
-    if bool((scale < 0).any()):
+        _validate_slots(arguments["slot_indices"].detach().cpu(), t, numpy)
+    cos = _host_float(arguments["rope_cos"]).reshape(t, ROPE_DIM)
+    sin = _host_float(arguments["rope_sin"]).reshape(t, ROPE_DIM)
+    if numpy is not None:
+        cos_array, sin_array = cos.numpy(), sin.numpy()
+        if not bool((cos_array[:, 0::2] == cos_array[:, 1::2]).all()):
+            raise ValueError("rope_cos adjacent even/odd values must be equal")
+        if not bool((sin_array[:, 0::2] == sin_array[:, 1::2]).all()):
+            raise ValueError("rope_sin adjacent even/odd values must be equal")
+    else:
+        if not torch.equal(cos[:, 0::2], cos[:, 1::2]):
+            raise ValueError("rope_cos adjacent even/odd values must be equal")
+        if not torch.equal(sin[:, 0::2], sin[:, 1::2]):
+            raise ValueError("rope_sin adjacent even/odd values must be equal")
+    scale = _host_float(arguments["w_qb_scale"])
+    if numpy is not None:
+        scale_array = scale.numpy()
+        if bool((scale_array < 0).any()):
+            raise ValueError("w_qb_scale must be non-negative")
+    elif bool((scale < 0).any()):
         raise ValueError("w_qb_scale must be non-negative")
-    for name in ("gamma_qa", "gamma_kv", "rope_cos", "rope_sin", "w_qb_scale"):
-        value = arguments[name].detach().cpu().float()
+    gamma_qa = _host_float(arguments["gamma_qa"])
+    gamma_kv = _host_float(arguments["gamma_kv"])
+    if numpy is not None:
+        for name, value in (
+                ("gamma_qa", gamma_qa.numpy()), ("gamma_kv", gamma_kv.numpy()),
+                ("rope_cos", cos_array), ("rope_sin", sin_array),
+                ("w_qb_scale", scale_array)):
+            if not bool(numpy.isfinite(value).all()):
+                raise ValueError(f"{name} must contain only finite values")
+        return
+    for name, value in (("gamma_qa", gamma_qa), ("gamma_kv", gamma_kv),
+                        ("rope_cos", cos), ("rope_sin", sin),
+                        ("w_qb_scale", scale)):
         if not bool(torch.isfinite(value).all()):
             raise ValueError(f"{name} must contain only finite values")
 
@@ -302,8 +395,8 @@ def _impl(x, w_qa, gamma_qa, w_qb, w_qb_scale, w_kv, gamma_kv,
     buffer and the kernel performs no extra GM store.
     """
     from flashinfer.operators.runtime import allocate_output
-    from flashinfer.runtime import build_signature, current_hardware, dispatch
-    from flashinfer.runtime.runner import run_selected
+    from flashinfer.runtime import build_signature, current_hardware
+    from flashinfer.runtime.runner import resolve_operator_runner
 
     update_kv_cache = _update_kv_cache_flag(update_kv_cache)
     arguments = _arguments(
@@ -320,12 +413,19 @@ def _impl(x, w_qa, gamma_qa, w_qb, w_qb_scale, w_kv, gamma_kv,
         kv_out = allocate_output(invocation.outputs[2])
     _check_out(out, qr_out, kv_out, x, q_head_num)
     tensors = invocation.inputs + (out, qr_out, kv_out)
-    request = build_signature(
-        OP, tensors, inference=invocation.inference,
-        specializations={"tensor_contract": "supported"})
-    decision = dispatch(
-        request, current_hardware(), backend=backend, kernel_id=kernel_id)
-    run_selected(decision.kernel_id, *tensors, **invocation.attributes)
+
+    def request():
+        return build_signature(
+            OP, tensors, inference=invocation.inference,
+            specializations={"tensor_contract": "supported"})
+
+    # A deferred request lets the runtime's dispatch cache answer repeated
+    # shapes from metadata alone; the full signature (and the selection it
+    # feeds) is rebuilt only on a miss.
+    _, runner = resolve_operator_runner(
+        OP, tensors, invocation.attributes, request,
+        backend=backend, kernel_id=kernel_id, hardware=current_hardware())
+    runner(*tensors, **invocation.attributes)
     return out, qr_out, kv_out
 
 

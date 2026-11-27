@@ -212,12 +212,19 @@ def test_framework_allocates_fresh_nd_outputs_without_replacing_supplied_out(mon
     from flashinfer.operators import OutputSpec
     from flashinfer.operators.runtime import allocate_output
     calls = []
-    monkeypatch.setattr(torch, "empty", lambda *args, **kwargs: type("Output", (), {
-        "device": torch.device("npu:4")})())
+    fresh = type("Output", (), {"device": torch.device("npu:4")})()
+    monkeypatch.setattr(torch, "empty", lambda *args, **kwargs: fresh)
     allocated = object()
     monkeypatch.setattr(torch_npu, "npu_format_cast", lambda tensor, fmt: calls.append(fmt) or allocated)
+    # A fresh non-ND output is converted (four-dimensional empties are NCHW on
+    # this runtime); an output already labeled ND is returned without a cast.
+    monkeypatch.setattr(torch_npu, "get_npu_format", lambda tensor: 0)
     assert allocate_output(OutputSpec((2, 3, 4, 512), "float16", "npu:4")) is allocated
     assert calls == [2]
+    calls.clear()
+    monkeypatch.setattr(torch_npu, "get_npu_format", lambda tensor: 2)
+    assert allocate_output(OutputSpec((2, 3, 4, 512), "float16", "npu:4")) is fresh
+    assert calls == []
 
 
 # The common test_operator_packages_real matrix discovers this operator's
