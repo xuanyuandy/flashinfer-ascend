@@ -12,6 +12,7 @@ distributions.
 | `tests/support/catlass_golden.py` | CATLASS, `examples/49_ascend950_flash_attention_infer/gen_data.py` | `41bf90da655bba3c66d0acd7e00abe33960ecfd6` (frozen numerical reference) |
 | `csrc/kernels/gemm/grouped_matmul_swiglu_quant/` | vllm-ascend, `csrc/gmm/grouped_matmul_swiglu_quant/` | `535ae0bb911cb378819f52fcf2e7c8b67fde3f51` |
 | `csrc/kernels/gemm/grouped_matmul_k_dim/` | cann/ops-transformer, `experimental/gmm/gmm_k_dim/` (merge request !12993) | merge commit `2719e3859` |
+| `csrc/kernels/sparse_indexer/lightning_indexer/` | cann/ops-transformer, `experimental/attention/lightning_indexer/` (merge request !12993) | merge commit `2719e3859` |
 | `csrc/kernels/attention/sparse_flash_attention/` | vllm-ascend, `csrc/attention/sparse_flash_attention/` (arch22) | `535ae0bb911cb378819f52fcf2e7c8b67fde3f51` |
 | `csrc/kernels/attention/dsa_sparse_prolog/` | ops-transformer, `experimental/attention/dsa_sparse_prolog/` | `ffe97f6b7b08e4a8e7d8d2abee6f39cbe3a0c490` |
 | `csrc/kernels/attention/permute_qkv/` | ops-transformer, `experimental/attention/permute_qkv/` | `ffe97f6b7b08e4a8e7d8d2abee6f39cbe3a0c490` |
