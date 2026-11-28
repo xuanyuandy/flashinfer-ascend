@@ -20,6 +20,7 @@ distributions.
 | `csrc/kernels/moe/merge_chunk2/` | ops-transformer, `experimental/moe/merge_chunk2/` | `ffe97f6b7b08e4a8e7d8d2abee6f39cbe3a0c490` |
 | `csrc/kernels/gemm/gmm_local_exp/` | ops-transformer, `experimental/gmm/gmm_local_exp/` and `experimental/gmm/common/tiling_utils.h` | `11d635fadd0cb2eed327b8a40457c2c33cf8e4cd` (PR #12993) |
 | `csrc/kernels/gemm/gmm_local_exp_with_zero/` | ops-transformer, `experimental/gmm/gmm_local_exp_with_zero/` and `experimental/gmm/common/tiling_utils.h` | `11d635fadd0cb2eed327b8a40457c2c33cf8e4cd` (PR #12993) |
+| `csrc/kernels/attention/block_indexer_rearrange/` | cann/ops-transformer, `experimental/attention/block_indexer_rearrange/` | master commit `0a67a402de04fd451a6537883bdb214e4fb49bfb` |
 
 These sources include local adaptations for FlashInfer's operator definitions,
 tiling, workspace, native entry points and supported input envelopes. Original
