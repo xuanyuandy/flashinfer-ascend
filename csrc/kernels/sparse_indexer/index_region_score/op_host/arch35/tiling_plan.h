@@ -4,6 +4,7 @@
 #define INDEXER_REGION_SCORE_TILING_PLAN_H
 
 #include <algorithm>
+#include <climits>
 #include <cstdint>
 #include <cstddef>
 #include <limits>
@@ -300,7 +301,7 @@ inline PagedShardPlan SelectPagedRequestShardPlan(uint32_t totalTokens, uint32_t
     uint64_t bestRatioNumerator = 0U;
     uint32_t bestRatioDenominator = 0U;
     using WideProduct = unsigned __int128;
-    static_assert(std::numeric_limits<WideProduct>::digits >=
+    static_assert(sizeof(WideProduct) * CHAR_BIT >=
                   std::numeric_limits<uint64_t>::digits + std::numeric_limits<uint32_t>::digits,
                   "Request-grid products must fit without overflow");
     WideProduct bestRequestTraffic = 0U;
