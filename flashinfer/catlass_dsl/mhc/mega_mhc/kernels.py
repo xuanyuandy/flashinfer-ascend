@@ -844,7 +844,9 @@ def post_kernel(
     gm_part: tla.Tensor,    # [32, TPAD] f32
     gm_scales: tla.Tensor,  # [3] f32
     gm_bases: tla.Tensor,   # [24] f32
-    gm_coef: tla.Tensor,    # [TPAD, 24] f32 (0:4=pre, 4:8=post, 8:24=comb, token-major)
+    gm_prev: tla.Tensor,    # [TPAD, 4] f32 (coefficients 0:4)
+    gm_post: tla.Tensor,    # [TPAD, 4] f32 (coefficients 4:8)
+    gm_comb: tla.Tensor,    # [TPAD, 16] f32 (coefficients 8:24)
     gm_yu: tla.Tensor,      # [T, H] bf16 (u written by K1, overwritten in place by y)
     gm_w: tla.Tensor,       # [1, H] bf16
     gm_puu: tla.Tensor,     # [TPAD, NSLOT] f32 (u squared partial sums per core slot)
@@ -865,8 +867,8 @@ def post_kernel(
     # Token-major staging for the coefficient write-back ([token, 24 coefficients]):
     # a 96B row satisfies the 32B MTE3 row granularity, and ub_flat is the (1, VL*MF)
     # view of the same UB block used for one whole-group DMA.
-    tk_p = tla.allocate(VL * MF, tla.Float32, tla.AddressSpace.ub, 256)
-    ub_tk = _t2d(tk_p, VL, MF)
+    tk_p = tla.allocate(VL * 32, tla.Float32, tla.AddressSpace.ub, 256)
+    ub_tk = _t2d(tk_p, VL, 32)
     ub_flat = _t2d(tk_p, 1, VL * MF)
     ub_sc = _t2d(tla.allocate(64, tla.Float32, tla.AddressSpace.ub, 256), 1, 64)
     ub_ba = _t2d(tla.allocate(64, tla.Float32, tla.AddressSpace.ub, 256), 1, 64)
@@ -1155,16 +1157,29 @@ def post_kernel(
                     tp = tid % TSPLIT
                     for k in tla.range_constexpr(MF // TSPLIT):
                         jq = tp * (MF // TSPLIT) + k
-                        ub_tk[tk, jq] = ub_out[jq, tk]
+                        ub_tk[tk, jq + (0 if jq < 4 else (4 if jq < 8 else 8))] = ub_out[jq, tk]
                 tla.pipe_barrier(tla.pipes.ALL)
                 m_c.lock(pipe=tla.arch.MTE3)
                 tla.copy(
-                    tla.tile_view(
-                        gm_coef,
-                        tla.make_shape(1, VL * MF),
-                        tla.make_coord(g, 0),
+                    tla.tile_view(gm_prev, tla.make_shape(VL, 4), tla.make_coord(g, 0)),
+                    tla.make_tensor(
+                        tk_p + 0,
+                        tla.make_layout(tla.make_shape(VL, 4), tla.make_stride(32, 1)),
                     ),
-                    ub_flat,
+                )
+                tla.copy(
+                    tla.tile_view(gm_post, tla.make_shape(VL, 4), tla.make_coord(g, 0)),
+                    tla.make_tensor(
+                        tk_p + 8,
+                        tla.make_layout(tla.make_shape(VL, 4), tla.make_stride(32, 1)),
+                    ),
+                )
+                tla.copy(
+                    tla.tile_view(gm_comb, tla.make_shape(VL, 16), tla.make_coord(g, 0)),
+                    tla.make_tensor(
+                        tk_p + 16,
+                        tla.make_layout(tla.make_shape(VL, 16), tla.make_stride(32, 1)),
+                    ),
                 )
                 m_c.unlock(pipe=tla.arch.MTE3)
 
@@ -1382,7 +1397,9 @@ def _desc(t, h, p, d):
         fdp(d["part"].view(BM_G, p["tpad"]), layout_tag=rm),
         fdp(d["scales"].view(1, 3), layout_tag=rm),
         fdp(d["bases"].view(1, 24), layout_tag=rm),
-        fdp(d["new_coef"].view(p["pzpad"] // VL, VL * MF), layout_tag=rm),
+        fdp(d["new_prev"].view(p["tpad"], 4), layout_tag=rm),
+        fdp(d["new_post"].view(p["tpad"], 4), layout_tag=rm),
+        fdp(d["new_comb"].view(p["tpad"], 16), layout_tag=rm),
         fdp(d["y"].view(t, h), layout_tag=rm),
         fdp(d["w"].view(1, h), layout_tag=rm),
         fdp(d["puu"].view(p["pzpad"], NSLOT), layout_tag=rm),
@@ -1410,6 +1427,9 @@ def _workspace(t, h, p, dev):
         "bases": torch.empty(24, dtype=f32, device=dev),
         "y": torch.empty(t, h, dtype=bf, device=dev),
         "new_coef": torch.empty(p["pzpad"], MF, dtype=f32, device=dev),
+        "new_prev": torch.zeros(p["tpad"], 4, dtype=f32, device=dev),
+        "new_post": torch.zeros(p["tpad"], 4, dtype=f32, device=dev),
+        "new_comb": torch.zeros(p["tpad"], 16, dtype=f32, device=dev),
         "fn_bf": torch.empty(1, n, dtype=bf, device=dev),
         "fn_src": torch.empty(1, n, dtype=f32, device=dev),
         "pzz": torch.zeros(p["p"], p["pzpad"], dtype=f32, device=dev),

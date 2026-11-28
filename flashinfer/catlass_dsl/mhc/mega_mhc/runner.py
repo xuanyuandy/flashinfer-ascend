@@ -83,12 +83,26 @@ class _ShapeState:
         # kernels work on the padded workspace and the valid rows are copied out.
         direct = plan["tpad"] == t
         new_res = new_residual.view(t, 4, h) if direct else workspace["new_res"]
+        if direct:
+            coef_prev = new_previous_mix.view(t, 4)
+            coef_post = new_post_mix.view(t, 4)
+            coef_comb = new_comb_res_mix.view(t, 16)
+        else:
+            import torch as _t
+            for _k, _s in (("cprev", (plan["tpad"], 4)),
+                           ("cpost", (plan["tpad"], 4)),
+                           ("ccomb", (plan["tpad"], 16))):
+                if _k not in workspace:
+                    workspace[_k] = _t.zeros(_s, dtype=_t.float32,
+                                             device=new_residual.device)
+            coef_prev, coef_post, coef_comb = (
+                workspace["cprev"], workspace["cpost"], workspace["ccomb"])
         tensors = dict(
             x=x, res=residual, pm=previous_mix, post=post_mix, comb=comb_res_mix,
             new_res=new_res, pzz=workspace["pzz"], part=workspace["part"],
             puu=workspace["puu"], fn_bf=workspace["fn_bf"],
             w=rmsnorm_weight, scales=mix_scales, bases=mix_bases, y=y,
-            new_coef=workspace["new_coef"],
+            new_prev=coef_prev, new_post=coef_post, new_comb=coef_comb,
         )
         k1, k2, k3 = kernels._desc(t, h, plan, tensors)
         cast, mix, proj, post = self.launches
@@ -113,17 +127,18 @@ class _ShapeState:
              block_num=kernels.SPLIT_MAX)
         # K3 launches NCOEF coefficient blocks plus one block per cold-token group;
         # with no cold token only the coefficient chain runs.
-        post(k3[:8],
+        post(k3[:10],
              (workspace["pzz"], workspace["part"], mix_scales, mix_bases,
-              workspace["new_coef"], y, rmsnorm_weight, workspace["puu"]),
+              coef_prev, coef_post, coef_comb, y, rmsnorm_weight,
+              workspace["puu"]),
              block_num=plan["k3blk"])
 
         if not direct:
             new_residual.copy_(new_res[:t])
-        coef = workspace["new_coef"]
-        new_previous_mix.copy_(coef[:t, 0:4])
-        new_post_mix.copy_(coef[:t, 4:8].unsqueeze(-1))
-        new_comb_res_mix.copy_(coef[:t, 8:24].reshape(t, 4, 4))
+        if not direct:
+            new_previous_mix.copy_(coef_prev[:t])
+            new_post_mix.copy_(coef_post[:t].unsqueeze(-1))
+            new_comb_res_mix.copy_(coef_comb[:t].reshape(t, 4, 4))
 
     def _fn_stale(self, fn):
         reference = self.fn_ref
