@@ -170,7 +170,9 @@ output, lse = flashinfer.quant_flash_attn(
 )
 ```
 
-先用一次普通调用完成 Torch 算子注册，再用 `torch.compile(fullgraph=True)` 将 metadata 和主 QFA 放在同一张 PyTorch 图中。Ascend950 上已验证 Inductor。ACLGraph 可捕获使用固定输入和 `out` 的 `quant_schema=2` 主算子，metadata 在 capture 外生成。 [ACLGraph 调用条件](../npu_graph_extensions.md)
+先用一次普通调用完成 Torch 算子注册，再用 `torch.compile(fullgraph=True)` 将 metadata 和主 QFA 放在同一张 PyTorch 图中。Ascend950 上已验证 Inductor。
+
+使用 ACLGraph 时，在 capture 外生成 `metadata`。调用方负责让输入、`metadata` 和输出张量在 capture 与 replay 期间保持有效，固定其地址、形状、数据类型和布局。`quant_schema` 在 capture 时选定，replay 使用同一值。已验证的调用方式是在 capture 时传入预分配的 `out`，并在后续 replay 中复用这些输出缓冲区。 [ACLGraph 调用条件](../npu_graph_extensions.md)
 
 ## 支持与缺口
 
