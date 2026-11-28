@@ -20,7 +20,6 @@
 #include <array>
 #include <c10/util/ScopeExit.h>
 #include "torch_npu/csrc/core/npu/NPUCachingAllocator.h"
-#include "torch_npu/csrc/core/npu/NPUGraphsUtils.h"
 #include <torch/types.h>
 #include <ATen/Tensor.h>
 #include <acl/acl_base.h>
@@ -687,9 +686,6 @@ typedef void (*ReleaseHugeMem)(void *, bool);
         getWorkspaceSizeFuncAddr != nullptr && opApiFuncAddr != nullptr,      \
         #aclnn_api, " or ", #aclnn_api "GetWorkspaceSize", " not in ",        \
         GetOpApiLibName(), ", or ", GetOpApiLibName(), "not found.");         \
-    const auto capture_status = c10_npu::currentStreamCaptureStatusMayInitCtx(); \
-    TORCH_CHECK(capture_status != c10_npu::CaptureStatus::Invalidated,          \
-                "Cannot launch ACLNN on an invalidated NPU graph capture");   \
     auto acl_stream = c10_npu::getCurrentNPUStream().stream(false);           \
     uint64_t workspace_size = 0;                                              \
     uint64_t *workspace_size_addr = &workspace_size;                          \
@@ -733,11 +729,7 @@ typedef void (*ReleaseHugeMem)(void *, bool);
       TORCH_CHECK(ret == 0, #aclnn_api " launch returned ", ret, ": ", aclGetRecentErrMsg());\
       return ret;                                                                     \
     };                                                                                \
-    if (capture_status == c10_npu::CaptureStatus::Active) {                           \
-      acl_call();                                                                    \
-    } else {                                                                         \
-      at_npu::native::OpCommand::RunOpApiV2(#aclnn_api, acl_call);                     \
-    }                                                                                \
+    at_npu::native::OpCommand::RunOpApiV2(#aclnn_api, acl_call);                      \
   } while (false)
 
 #endif
