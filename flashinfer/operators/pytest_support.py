@@ -29,6 +29,27 @@ def aot_params(op=None):
             if op is None or d.op == op]
 
 
+def operator_test_vendors(release, directory, *, target_soc=None):
+    """Resolve verified vendor directories without initializing the NPU."""
+    from flashinfer.ascendc import load_contract
+    from flashinfer.jit.discovery import AotMissingError, AotPackageIndex
+    from .implementation import implementations
+
+    index = AotPackageIndex(roots=release.split(os.pathsep))
+    vendors = []
+    for impl in implementations(backend="ascendc"):
+        soc = impl.native.target_soc
+        if target_soc is not None and soc != target_soc:
+            continue
+        descriptor, _, spec = load_contract(impl.kernel_id)
+        try:
+            match = index.find(spec, descriptor=descriptor, target_soc=soc)
+        except AotMissingError:
+            continue  # A supplied subset is valid. Its requested kernels must still load.
+        vendors.append((soc, vendor_directory(match, directory)))
+    return vendors
+
+
 def prepare_release(name, directory, *, kernel_id=None):
     import torch
     import torch_npu  # noqa: F401

@@ -59,10 +59,8 @@ def pytest_runtestloop(session):
         for item in session.items
     ):
         return
-    from flashinfer.ascendc import load_contract
-    from flashinfer.jit.discovery import AotMissingError, AotPackageIndex
-    from flashinfer.operators.implementation import implementations
-    from flashinfer.operators.testing import vendor_directory, vendor_search_path
+    from flashinfer.operators.pytest_support import operator_test_vendors
+    from flashinfer.operators.testing import vendor_search_path
     from flashinfer.runtime import current_hardware
 
     # CANN snapshots vendor search paths on its first operator, including CANN
@@ -72,18 +70,8 @@ def pytest_runtestloop(session):
     root = Path(temporary.name)
     release = _prepare_local_aot(root)
     session.config._flashinfer_operator_release = release
-    index = AotPackageIndex(roots=release["FLASHINFER_AOT_PATHS"].split(os.pathsep))
     soc = current_hardware().soc_model
-    vendors = []
-    for impl in implementations(backend="ascendc"):
-        if impl.native.target_soc != soc:
-            continue
-        descriptor, _, spec = load_contract(impl.kernel_id)
-        try:
-            match = index.find(spec, descriptor=descriptor, target_soc=soc)
-        except AotMissingError:
-            continue  # A supplied subset is valid. Its requested kernels must still load.
-        vendors.append(vendor_directory(match, root))
+    vendors = [path for _, path in operator_test_vendors(release["FLASHINFER_AOT_PATHS"], root, target_soc=soc)]
     environment = pytest.MonkeyPatch()
     session.config.add_cleanup(environment.undo)
     environment.setenv("ASCEND_CUSTOM_OPP_PATH", vendor_search_path(vendors, replace={Path(p).name for p in vendors}))

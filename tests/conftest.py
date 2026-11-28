@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+import subprocess
+import sys
+from tempfile import TemporaryDirectory
 import pytest
 
 from flashinfer.runtime.dispatch import clear_dispatch_cache
@@ -81,8 +85,36 @@ def pytest_terminal_summary(terminalreporter, config):
         )
 
 
+def _prepare_prebuilt_vendors(config, release):
+    from flashinfer.operators.pytest_support import operator_test_vendors
+    from flashinfer.operators.testing import vendor_search_path
+
+    aliases = TemporaryDirectory(prefix="flashinfer-operator-vendors-")
+    config.add_cleanup(aliases.cleanup)
+    scope = config.getoption("--soc")
+    target = scope if scope in GENERAL_ASCEND_SOCS else None
+    vendors = operator_test_vendors(release, Path(aliases.name), target_soc=target)
+    if len({soc for soc, _ in vendors}) > 1:
+        # A multi-target release needs the local chip before choosing its vendors.
+        # Probe in a child so its CANN initialization cannot freeze this process's paths.
+        target = subprocess.check_output([
+            sys.executable, "-B", "-c",
+            "from flashinfer.runtime import current_hardware; print(current_hardware().soc_model)",
+        ], text=True).strip()
+        vendors = [(soc, path) for soc, path in vendors if soc == target]
+    if vendors:
+        paths = [path for _, path in vendors]
+        environment = pytest.MonkeyPatch()
+        config.add_cleanup(environment.undo)
+        environment.setenv("ASCEND_CUSTOM_OPP_PATH", vendor_search_path(paths, replace={Path(p).name for p in paths}))
+
+
 def pytest_sessionstart(session):
     """Opt in to a free test device without hiding any visible devices."""
+    # CANN snapshots vendor paths when TorchNPU first selects a device.
+    release = os.environ.get("FLASHINFER_OPERATOR_TEST_RELEASE")
+    if release and not session.config.getoption("collectonly"):
+        _prepare_prebuilt_vendors(session.config, release)
     value = os.environ.get("FLASHINFER_TEST_NPU_DEVICE")
     if value is not None:
         import torch
