@@ -12,6 +12,10 @@ import os
 import json
 from pathlib import Path
 import shutil
+import sys
+
+# PEP 517 build hooks do not put the source root on sys.path.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from setuptools import Distribution, setup
 from setuptools.command.build_py import build_py

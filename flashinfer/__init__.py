@@ -9,6 +9,7 @@ from .version import __version__
 from .activation import silu_and_mul, gelu_and_mul, gelu_tanh_and_mul
 from .attention import BatchAttention
 from .attention.catlass_prefill import single_prefill_with_kv_cache_catlass
+from .attention.indexer_prologue import indexer_prologue_k, prepare_indexer_prologue_qw_weight
 from .decode import (
     BatchDecodeWithPagedKVCacheWrapper,
     CUDAGraphBatchDecodeWithPagedKVCacheWrapper,
@@ -145,3 +146,5 @@ __all__ = [
 
 from .operators.catalog import install_exports as _install_operator_exports
 _install_operator_exports(globals())
+
+__all__ = list(__all__) + ["indexer_prologue_k", "prepare_indexer_prologue_qw_weight"]

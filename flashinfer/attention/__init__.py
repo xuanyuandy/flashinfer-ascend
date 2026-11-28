@@ -875,6 +875,10 @@ __all__ = [
 ]
 
 
+from .indexer_prologue import indexer_prologue_k, prepare_indexer_prologue_qw_weight
+
 # Definitions and implementation choices are collected by the framework.
 from flashinfer.operators.catalog import install_exports as _install_operator_exports
 _install_operator_exports(globals(), domain='attention')
+
+__all__ = list(__all__) + ["indexer_prologue_k", "prepare_indexer_prologue_qw_weight"]

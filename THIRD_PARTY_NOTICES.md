@@ -18,6 +18,8 @@ distributions.
 | `csrc/kernels/attention/unpermute_qkv/` | ops-transformer, `experimental/attention/unpermute_qkv/` | `ffe97f6b7b08e4a8e7d8d2abee6f39cbe3a0c490` |
 | `csrc/kernels/moe/histgram/` | ops-transformer, `experimental/moe/histgram/` | `ffe97f6b7b08e4a8e7d8d2abee6f39cbe3a0c490` |
 | `csrc/kernels/moe/merge_chunk2/` | ops-transformer, `experimental/moe/merge_chunk2/` | `ffe97f6b7b08e4a8e7d8d2abee6f39cbe3a0c490` |
+| `csrc/kernels/attention/indexer_prologue_qw/` | IndexerPrologue upstream, `attention/indexer_prologue_qw/` | `63657dc9184afa55cd62c397b073b0f7b8324c80` |
+| `csrc/kernels/attention/indexer_prologue_k/` | IndexerPrologue upstream, `attention/indexer_prologue_k_full_fusion/` | `63657dc9184afa55cd62c397b073b0f7b8324c80` |
 | `csrc/kernels/gemm/gmm_local_exp/` | ops-transformer, `experimental/gmm/gmm_local_exp/` and `experimental/gmm/common/tiling_utils.h` | `11d635fadd0cb2eed327b8a40457c2c33cf8e4cd` (PR #12993) |
 | `csrc/kernels/gemm/gmm_local_exp_with_zero/` | ops-transformer, `experimental/gmm/gmm_local_exp_with_zero/` and `experimental/gmm/common/tiling_utils.h` | `11d635fadd0cb2eed327b8a40457c2c33cf8e4cd` (PR #12993) |
 

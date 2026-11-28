@@ -139,8 +139,6 @@ def test_valid_but_unimplemented_routes_fail_before_tensor_computation(member):
         _route_topk(None, None, 2, 1, 1, 1.0, member)
 
 
-import torch
-
 import flashinfer
 from flashinfer.attention import ReferenceTensor
 
@@ -175,6 +173,7 @@ def test_attention_pdl_is_a_hardware_noop(mode, enable_pdl):
 
 @pytest.mark.parametrize("enable_pdl", [None, False, True])
 def test_norm_and_activation_share_pdl_semantics(monkeypatch, enable_pdl):
+    torch = pytest.importorskip("torch")
     monkeypatch.setenv("FLASHINFER_NPU_BACKEND", "reference")
     x = torch.tensor([[1.0, 2.0, 3.0, 4.0]])
     weight = torch.ones(4)

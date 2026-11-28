@@ -12,6 +12,8 @@
 | 独立 dense CATLASS | `single_prefill_with_kv_cache_catlass` | Ascend910B/Ascend910C/Ascend950、本仓 AOT，允许声明范围内的缺包 JIT |
 | MLA sparse | `sparse_flash_attention` | Ascend910B/Ascend910C 共用 arch22、本仓 AOT-only；没有同 op 的 CANN/Triton 生产实现 |
 | 分组 QKV 重排 | `permute_qkv(q, k, v, split_size)` | Ascend910B/Ascend910C，arch22 向量核 AOT |
+| IndexerPrologue QW | `indexer_prologue_qw`（`prequantized=True` 复用同一入口） | Ascend910B/Ascend910C，单 mixed launch；dense 每次执行 weight DynamicQuant，prequantized 显式接收调用方 NZ weight/scale |
+| IndexerPrologue K | `indexer_prologue_k` | Ascend910B/Ascend910C，单 mixed launch；原地更新调用方的独立-strided key/scale cache，返回 `None` |
 
 普通 single 的 auto 会读取全局默认，普通 batch Tensor 的非 reference plan 分支固定请求 cann；它们不是任意后端的统一占位接口。完整规则见 [后端路由](../concepts/backend-routing.md)。
 
@@ -67,6 +69,45 @@ attention_out, softmax_max, softmax_sum = flashinfer.sparse_flash_attention(
 索引、长度与页表的值约束由公共 validate_values 校验；native ABI 的正尺寸约束保持不变，关闭辅助输出时由 runner 提供内部占位缓冲。当前图声明为 NOT_CAPTURABLE，不从 eager 或编译成功推导图支持。
 
 A2/A3 使用相同公共接口与 runner，910B 包含各自的冻结原生产物；A3 真机数值未验证。
+
+## arch22 IndexerPrologue
+
+Dense QW 接口为：
+
+```python
+q, q_scale, w = flashinfer.indexer_prologue_qw(
+    x, qr, wqb, ww, rope_sin, rope_cos, softmax_scale=128 ** -0.5,
+)
+```
+
+`x[T,5120]`、`qr[T,1280]`、`wqb[4096,1280]`、`ww[32,5120]` 为连续 BF16 ND；RoPE 表为 FP32 `[T,64]`。返回 INT8 `q[T,32,128]`、FP16 `q_scale/w[T,32]`。activation/weight DynamicQuant、量化矩阵乘、RoPE、W projection 和 query quantization 均在同一次 mixed launch 内完成；dense 不缓存 weight preparation。
+
+调用方已持有量化权重时使用同一入口并设置 `prequantized=True`：
+
+```python
+wqb_nz, wqb_scale = flashinfer.prepare_indexer_prologue_qw_weight(wqb)
+q, q_scale, w = flashinfer.indexer_prologue_qw(
+    x, qr, wqb_nz, ww, rope_sin, rope_cos,
+    softmax_scale=128 ** -0.5,
+    wqb_scale=wqb_scale,
+    prequantized=True,
+)
+```
+
+`wqb_nz` 是逻辑 `[1280,4096]` 的 INT8 FRACTAL_NZ，`wqb_scale` 是 FP32 `[4096]`。helper 是显式、无缓存的普通调用；forward 不做隐藏 weight 转换。QW 入口支持 `out=`，并返回调用方提供的原输出对象。
+
+K 的 rich mutation 接口为：
+
+```python
+flashinfer.indexer_prologue_k(
+    latent, wk, norm_weight, rope_cos, rope_sin, indices,
+    k_cache, k_scale_cache, norm_eps=1e-6,
+)
+```
+
+`latent/wk` 为 BF16 `[T,512]`/`[128,512]`，`norm_weight` 为 BF16 或 FP32 `[128]`，RoPE 表为 FP32 `[T,1,1,64]`。INT32 `indices[T,2]` 保存 `[block_id,block_offset]`，仅精确 `[-1,-1]` 表示 padding。`k_cache`/`k_scale_cache` 分别为 INT8 `[NB,NS,1,128]` 和 FP16 `[NB,NS,1,1]`，允许独立的非连续 block/slot stride，最后一维必须连续。该入口原地更新 cache、返回 `None`，不提供 `out=`；`T=0` 只做静态检查，不加载 AOT 或启动 kernel。重复有效 slot 不属于已声明的输入域。
+
+两个入口的 descriptor 均为 `NOT_CAPTURABLE`，不把 eager 可执行或交叉编译成功解释为 graph capture/replay 支持。
 
 ## 支持与缺口
 
